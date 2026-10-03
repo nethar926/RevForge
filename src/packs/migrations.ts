@@ -6,6 +6,8 @@
  * Sep 24 preview pack into one canonical id. User-facing strings never use the
  * legacy names.
  */
+import { storageKey } from '../lib/storageKey';
+
 export const NIGHT_PURSUIT_ID = 'night-pursuit' as const;
 
 /**
@@ -113,10 +115,10 @@ function migrateFontChoices(map: Json): boolean {
 
 function migrateJsonKey(key: string, fn: (value: unknown) => boolean) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(storageKey(key));
     if (!raw) return;
     const value: unknown = JSON.parse(raw);
-    if (fn(value)) localStorage.setItem(key, JSON.stringify(value));
+    if (fn(value)) localStorage.setItem(storageKey(key), JSON.stringify(value));
   } catch {
     /* malformed or blocked storage — leave as is */
   }
@@ -125,10 +127,10 @@ function migrateJsonKey(key: string, fn: (value: unknown) => boolean) {
 /** Retired franchise-named theme ids + retired font choices → canonical. */
 function runThemeRenameMigrations(): void {
   try {
-    const theme = localStorage.getItem(THEME_KEY);
-    if (theme && THEME_ID_MIGRATIONS[theme]) localStorage.setItem(THEME_KEY, THEME_ID_MIGRATIONS[theme]);
-    const atmosphere = localStorage.getItem(ATMOSPHERE_KEY);
-    if (atmosphere && THEME_ID_MIGRATIONS[atmosphere]) localStorage.setItem(ATMOSPHERE_KEY, THEME_ID_MIGRATIONS[atmosphere]);
+    const theme = localStorage.getItem(storageKey(THEME_KEY));
+    if (theme && THEME_ID_MIGRATIONS[theme]) localStorage.setItem(storageKey(THEME_KEY), THEME_ID_MIGRATIONS[theme]);
+    const atmosphere = localStorage.getItem(storageKey(ATMOSPHERE_KEY));
+    if (atmosphere && THEME_ID_MIGRATIONS[atmosphere]) localStorage.setItem(storageKey(ATMOSPHERE_KEY), THEME_ID_MIGRATIONS[atmosphere]);
   } catch {
     /* storage blocked */
   }
@@ -152,10 +154,10 @@ function runThemeRenameMigrations(): void {
 
 function enableExperimental(packId: string) {
   try {
-    const raw = localStorage.getItem(EXPERIMENTAL_KEY);
+    const raw = localStorage.getItem(storageKey(EXPERIMENTAL_KEY));
     const list: unknown = raw ? JSON.parse(raw) : [];
     const ids = Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : [];
-    if (!ids.includes(packId)) localStorage.setItem(EXPERIMENTAL_KEY, JSON.stringify([...ids, packId]));
+    if (!ids.includes(packId)) localStorage.setItem(storageKey(EXPERIMENTAL_KEY), JSON.stringify([...ids, packId]));
   } catch {
     /* storage blocked — session only */
   }
@@ -170,19 +172,19 @@ function enableExperimental(packId: string) {
 export function runPackPrefMigrations(): void {
   runThemeRenameMigrations();
   try {
-    const theme = localStorage.getItem(THEME_KEY);
+    const theme = localStorage.getItem(storageKey(THEME_KEY));
     if (theme && PACK_THEME_MIGRATIONS[theme]) {
       const next = PACK_THEME_MIGRATIONS[theme];
-      localStorage.setItem(THEME_KEY, next);
+      localStorage.setItem(storageKey(THEME_KEY), next);
       if (EXPERIMENTAL_TARGETS.has(next)) enableExperimental(next);
     }
-    const rawPrefs = localStorage.getItem(UI_PREFS_KEY);
+    const rawPrefs = localStorage.getItem(storageKey(UI_PREFS_KEY));
     if (rawPrefs) {
       const prefs = JSON.parse(rawPrefs) as { selectedEngineId?: unknown };
       const id = typeof prefs.selectedEngineId === 'string' ? prefs.selectedEngineId : '';
       if (id && PACK_ENGINE_MIGRATIONS[id]) {
         prefs.selectedEngineId = PACK_ENGINE_MIGRATIONS[id];
-        localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
+        localStorage.setItem(storageKey(UI_PREFS_KEY), JSON.stringify(prefs));
         if (EXPERIMENTAL_TARGETS.has(PACK_ENGINE_MIGRATIONS[id])) enableExperimental(PACK_ENGINE_MIGRATIONS[id]);
       }
     }

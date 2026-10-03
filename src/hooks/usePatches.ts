@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { EnginePatch } from '../audio';
 import { BUILTIN_PATCHES, migrateEnginePatch } from '../audio';
+import { storageKey } from '../lib/storageKey';
 
 const KEY = 'drivesynth.patches.v1';
 const BUILTIN_IDS = new Set(BUILTIN_PATCHES.map((p) => p.id));
 
 function loadUser(): EnginePatch[] {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(storageKey(KEY));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as EnginePatch[];
     return Array.isArray(parsed) ? parsed.map(migrateEnginePatch) : [];
@@ -21,7 +22,7 @@ export function usePatches() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(userPatches));
+      localStorage.setItem(storageKey(KEY), JSON.stringify(userPatches));
     } catch {
       /* ignore */
     }

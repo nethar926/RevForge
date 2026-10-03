@@ -3,6 +3,8 @@
  * engine) and pack HUDs (mounted inside ThemeStage). Keeps HUD ↔ audio wiring
  * out of ThemeStage props and away from the locked IGNITION splash markup.
  */
+import { storageKey } from '../lib/storageKey';
+
 export type PackMode = 'power' | 'auto' | 'norm' | 'pursuit';
 export type ScannerEdge = 'left' | 'right';
 
@@ -21,7 +23,7 @@ export function getPackMode(packId: string, fallback: PackMode = 'norm'): PackMo
   const cached = modes.get(packId);
   if (cached) return cached;
   try {
-    const raw = localStorage.getItem(modeKey(packId));
+    const raw = localStorage.getItem(storageKey(modeKey(packId)));
     if (isMode(raw)) {
       modes.set(packId, raw);
       return raw;
@@ -36,7 +38,7 @@ export function setPackMode(packId: string, mode: PackMode): void {
   if (!isMode(mode)) return;
   modes.set(packId, mode);
   try {
-    localStorage.setItem(modeKey(packId), mode);
+    localStorage.setItem(storageKey(modeKey(packId)), mode);
   } catch {
     /* session only */
   }

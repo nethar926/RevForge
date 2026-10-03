@@ -34,6 +34,7 @@ import { NativeStudio } from "./NativeStudio";
 import { useDriveSimulation } from "./useDriveSimulation";
 import "./forge.css";
 import "./viewport.css";
+import { storageKey } from '../lib/storageKey';
 
 interface Props {
   themes: ReturnType<typeof useThemes>;
@@ -46,7 +47,7 @@ interface Props {
   onSavePatch: (patch: EnginePatch) => void;
   userPatches: EnginePatch[];
 }
-function storedFlag(key: string, fallback: boolean) { try { const value=localStorage.getItem(key); return value===null?fallback:value==='true'; } catch { return fallback; } }
+function storedFlag(key: string, fallback: boolean) { try { const value=localStorage.getItem(storageKey(key)); return value===null?fallback:value==='true'; } catch { return fallback; } }
 function Icon({
   name,
   size = 20,
@@ -119,14 +120,14 @@ export function ForgePage({
     "tuner" | "themes" | "scenes" | "garage" | "tune" | "studio" | "dashlab" | "account" | null
   >(() => (searchParams.get("account") === "1" || new URLSearchParams(window.location.search).get("account") === "1") ? "account" : searchParams.get("studio") === "1" ? "studio" : null);
   const [ignited,setIgnited]=useState(false);
-  const [scale,setScale]=useState(()=>{try{return Math.max(.65,Math.min(1.35,Number(localStorage.getItem("revforge.hudScale")??1)));}catch{return 1;}});
+  const [scale,setScale]=useState(()=>{try{return Math.max(.65,Math.min(1.35,Number(localStorage.getItem(storageKey("revforge.hudScale"))??1)));}catch{return 1;}});
   const opacity = prefs.hudOpacity;
-  useEffect(()=>{try{localStorage.setItem("revforge.hudScale",String(scale));}catch{/* session only */}},[scale]);
+  useEffect(()=>{try{localStorage.setItem(storageKey("revforge.hudScale"),String(scale));}catch{/* session only */}},[scale]);
   const [source, setSource] = useState<"demo" | "gps">(() => storedFlag("drivesynth.demo", true) ? "demo" : "gps");
   useEffect(()=>{onGpsEnabled(source==='gps');},[source,onGpsEnabled]);
   const [jitterEnabled,setJitterEnabled]=useState(()=>storedFlag("revforge.idleJitter",true));
-  const [jitterAmount,setJitterAmount]=useState(()=>{try{return Math.max(0,Math.min(1,Number(localStorage.getItem("revforge.idleJitterAmount")??.25)));}catch{return .25;}});
-  useEffect(()=>{try{localStorage.setItem("revforge.idleJitter",String(jitterEnabled));localStorage.setItem("revforge.idleJitterAmount",String(jitterAmount));}catch{/* session only */}},[jitterEnabled,jitterAmount]);
+  const [jitterAmount,setJitterAmount]=useState(()=>{try{return Math.max(0,Math.min(1,Number(localStorage.getItem(storageKey("revforge.idleJitterAmount"))??.25)));}catch{return .25;}});
+  useEffect(()=>{try{localStorage.setItem(storageKey("revforge.idleJitter"),String(jitterEnabled));localStorage.setItem(storageKey("revforge.idleJitterAmount"),String(jitterAmount));}catch{/* session only */}},[jitterEnabled,jitterAmount]);
   const [mode, setMode] = useState<"auto" | "manual">("auto");
   const [pedal, setPedal] = useState(0);
   const [brake, setBrake] = useState(false);
@@ -165,7 +166,7 @@ export function ForgePage({
   );
   const revReady = audio.running && source === "demo";
 
-  useEffect(() => {try {localStorage.setItem("drivesynth.demo",String(source==='demo'));localStorage.setItem("drivesynth.motion",String(motion));localStorage.setItem("revforge.media.experimental",String(mediaEnabled));localStorage.setItem("drivesynth.pauseShifts",String(pauseShifts));}catch{/* preferences remain available this session */}},[source,motion,mediaEnabled,pauseShifts]);
+  useEffect(() => {try {localStorage.setItem(storageKey("drivesynth.demo"),String(source==='demo'));localStorage.setItem(storageKey("drivesynth.motion"),String(motion));localStorage.setItem(storageKey("revforge.media.experimental"),String(mediaEnabled));localStorage.setItem(storageKey("drivesynth.pauseShifts"),String(pauseShifts));}catch{/* preferences remain available this session */}},[source,motion,mediaEnabled,pauseShifts]);
   useEffect(() => {
     audio.setUpshiftSfxEnabled(prefs.upshiftSfx);
     audio.setLockSfxEnabled(prefs.ionTwinLockSfx);
