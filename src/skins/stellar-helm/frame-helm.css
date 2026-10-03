@@ -1,0 +1,94 @@
+/* Frame 'helm': graphite glass console, hairline chamfered panels, cyan + violet. */
+.sh[data-frame='helm'] {
+  --sh-bg: radial-gradient(1100px 520px at 70% -10%, #13213d 0%, transparent 60%), linear-gradient(180deg, #0a101d, #05080f);
+  --sh-text: #eaf2ff;
+  --sh-muted: #9fb0cc;
+  --sh-accent: #5ce1ff;
+  --sh-accent2: #b49cff;
+  --sh-title: #eaf2ff;
+  --sh-rpm: #eaf2ff;
+  --sh-mph: #5ce1ff;
+  --sh-unit: #9fb0cc;
+  --sh-rule-bg: #1a2742;
+  --sh-rule: linear-gradient(90deg, #7c5cff, #b49cff);
+  --sh-thr-text: #c9d6ea;
+  --sh-thr-bg: #121c30;
+  --sh-thr: linear-gradient(90deg, #2bb8e0, #5ce1ff);
+  --sh-log: #9fb0cc;
+  --sh-log-strong: #5ce1ff;
+  --sh-val: #eaf2ff;
+  --sh-tick: #2f4568;
+  --sh-ring-outer-track: #1d1838;
+  --sh-ring-outer: #b49cff;
+  --sh-ring-inner-track: #0f2a36;
+  --sh-ring-inner: #5ce1ff;
+  --sh-gear: #eaf2ff;
+  --sh-power-head: #b49cff;
+  --sh-seg-off: #16213a;
+  --sh-seg-on: #5ce1ff;
+  --sh-seg-hot: #b49cff;
+  --sh-zone-a: #3a1520;
+  --sh-zone-b: #22101a;
+  --sh-red: #ff5d5d;
+  --sh-red-text: #ff8a80;
+  --sh-bus-off: #141d33;
+  --sh-bus-on: #7c9cff;
+  --sh-seg-radius: 2px;
+  --sh-focus: #5ce1ff;
+  --sh-c: 14px;
+  background-color: #05080f;
+}
+.sh[data-frame='helm'] .sh-panel {
+  position: relative;
+  padding: 14px 16px;
+  background: #2c4366;
+  clip-path: polygon(var(--sh-c) 0, 100% 0, 100% calc(100% - var(--sh-c)), calc(100% - var(--sh-c)) 100%, 0 100%, 0 var(--sh-c));
+}
+.sh[data-frame='helm'] .sh-panel::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: 0;
+  background: linear-gradient(160deg, #111b30f0, #0a1122f5);
+  clip-path: polygon(calc(var(--sh-c) - 0.5px) 0, 100% 0, 100% calc(100% - var(--sh-c) + 0.5px), calc(100% - var(--sh-c) + 0.5px) 100%, 0 100%, 0 calc(var(--sh-c) - 0.5px));
+}
+.sh[data-frame='helm'] .sh-panel > * { position: relative; z-index: 1; }
+.sh[data-frame='helm'] .sh-hdr { border-bottom: 1px solid #22344f; }
+.sh[data-frame='helm'] .sh-cap { color: var(--sh-accent2); }
+
+/* tabs: clean vertical segmented list */
+.sh[data-frame='helm'] .sh-tabs { padding: 6px; }
+.sh[data-frame='helm'] .rf-pack-box .sh-tabs button,
+.rf-pack-box .sh[data-frame='helm'] .sh-tabs button {
+  justify-content: flex-start;
+  padding: 0 16px;
+  background: transparent;
+  color: #c9d6ea;
+  border-bottom: 1px solid #1d2b45;
+  box-shadow: inset 3px 0 0 transparent;
+}
+.rf-pack-box .sh[data-frame='helm'] .sh-tabs button:last-child { border-bottom: 0; }
+.rf-pack-box .sh[data-frame='helm'] .sh-tabs button[aria-current='page'] { color: #5ce1ff; background: #5ce1ff14; box-shadow: inset 3px 0 0 #5ce1ff; }
+
+/* data rows: hairline index tags */
+.sh[data-frame='helm'] .sh-idx { color: #5ce1ff; border: 1px solid #2c4366; background: #0c1426; clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); }
+.sh[data-frame='helm'] .sh-row { border-bottom: 1px solid #1a2740; padding-bottom: 4px; }
+
+/* bottom bar */
+.rf-pack-box .sh[data-frame='helm'] .sh-bar button {
+  background: #0f182b;
+  color: #d6e2f5;
+  box-shadow: inset 0 0 0 1px #2c4366;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.rf-pack-box .sh[data-frame='helm'] .sh-bar button[aria-pressed='true'] { background: #5ce1ff; color: #04121a; box-shadow: none; }
+.rf-pack-box .sh[data-frame='helm'] .sh-bar .sh-mute[aria-pressed='true'] { background: #b49cff; color: #120a26; }
+.rf-pack-box .sh[data-frame='helm'] .sh-bar .sh-shutdown { background: #ff5d5d; color: #1a0404; box-shadow: none; }
+
+/* decorative frame layer */
+.sh[data-frame='helm'] .shf-corner { position: absolute; width: 22px; height: 22px; border-color: #5ce1ff; border-style: solid; border-width: 0; pointer-events: none; opacity: 0.8; }
+.sh[data-frame='helm'] .shf-corner.tl { left: 6px; top: 6px; border-left-width: 2px; border-top-width: 2px; }
+.sh[data-frame='helm'] .shf-corner.tr { right: 6px; top: 6px; border-right-width: 2px; border-top-width: 2px; }
+.sh[data-frame='helm'] .shf-corner.bl { left: 6px; bottom: 6px; border-left-width: 2px; border-bottom-width: 2px; }
+.sh[data-frame='helm'] .shf-corner.br { right: 6px; bottom: 6px; border-right-width: 2px; border-bottom-width: 2px; }
+.sh[data-frame='helm'] .shf-hairline { display: none; }

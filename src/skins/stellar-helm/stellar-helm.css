@@ -1,0 +1,151 @@
+/*
+ * Stellar Helm — frame-independent layout + instruments. Colours come from
+ * custom properties set by frame-helm.css / frame-classic.css on .sh[data-frame].
+ * Display font: Antonio (SIL OFL 1.1, fonts/OFL-Antonio.txt).
+ */
+@font-face { font-family: 'Antonio'; src: url('./fonts/Antonio-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Antonio'; src: url('./fonts/Antonio-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+
+.sh {
+  --sh-ui: -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif;
+  --sh-display: 'Antonio', 'Arial Narrow', -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr) 290px 330px;
+  grid-template-rows: var(--sh-hdr-h, 40px) minmax(0, 1fr) auto var(--pf-tap, 56px);
+  grid-template-areas:
+    'hdr hdr hdr hdr'
+    'tabs main data ring'
+    'tabs main power power'
+    'bar bar bar bar';
+  column-gap: 14px;
+  row-gap: 12px;
+  padding: 14px 16px;
+  overflow: hidden;
+  border-radius: var(--sh-radius, 14px);
+  background: var(--sh-bg);
+  color: var(--sh-text);
+  font-family: var(--sh-ui);
+  text-transform: uppercase;
+}
+.sh > * { min-width: 0; min-height: 0; }
+.sh > :not([class^='shf-']) { position: relative; z-index: 1; }
+
+/* header */
+.sh-hdr { grid-area: hdr; position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; font-family: var(--sh-display); letter-spacing: 2px; }
+.sh-title { font-size: 26px; font-weight: 600; color: var(--sh-title); }
+.sh-status { font-size: 15px; color: var(--sh-muted); letter-spacing: 3px; }
+.sh-clock { font-size: 22px; font-weight: 600; color: var(--sh-accent); }
+
+/* section tabs: vertical segmented list */
+.sh-tabs { grid-area: tabs; display: flex; flex-direction: column; gap: var(--sh-tab-gap, 0); }
+.rf-pack-box .sh-tabs button {
+  flex: 1 1 0;
+  min-height: var(--pf-tap, 56px);
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  border: 0;
+  cursor: pointer;
+  font: 600 20px var(--sh-display);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.rf-pack-box .sh-tabs button[aria-disabled='true'] { cursor: default; }
+
+/* RPM / MPH block */
+.sh-main { grid-area: main; display: flex; flex-direction: column; container-type: size; }
+.sh-screen { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.sh-rpm-row, .sh-mph-row { display: flex; align-items: baseline; justify-content: flex-end; gap: 12px; }
+.sh-rpm { font: 600 min(80px, 17cqh) / 1 var(--sh-display); color: var(--sh-rpm); font-variant-numeric: tabular-nums; }
+.sh-mph { font: 600 min(178px, 40cqh) / 0.92 var(--sh-display); color: var(--sh-mph); font-variant-numeric: tabular-nums; }
+.sh-u { min-width: 54px; font: 400 22px var(--sh-display); letter-spacing: 2px; color: var(--sh-unit); }
+.sh-rule { position: relative; height: 10px; margin: 8px 66px 6px 0; background: var(--sh-rule-bg); }
+.sh-rule i { position: absolute; inset: 0 auto 0 0; background: var(--sh-rule); }
+.sh-mph-row { flex: 1; min-height: 0; align-items: center; }
+.sh-thr { display: flex; align-items: center; gap: 12px; margin-top: auto; }
+.sh-thr-label, .sh-thr-val { font: 600 18px var(--sh-display); letter-spacing: 2px; color: var(--sh-thr-text); }
+.sh-thr-val { min-width: 54px; text-align: right; }
+.sh-thr-track { position: relative; flex: 1; height: 26px; border-radius: var(--sh-thr-radius, 4px); background: var(--sh-thr-bg); overflow: hidden; }
+.sh-thr-track b { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--sh-thr); transition: width 0.12s linear; }
+.sh-log { margin: 10px 0 0; font: 400 16px var(--sh-display); letter-spacing: 1.5px; color: var(--sh-log); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-log b { font-weight: 600; color: var(--sh-log-strong); }
+
+/* numbered data rows */
+.sh-data { grid-area: data; display: flex; flex-direction: column; gap: 6px; justify-content: space-between; container-type: size; }
+.sh-row { flex: 1 1 0; min-height: 0; max-height: 56px; display: grid; grid-template-columns: 62px auto minmax(0, 1fr); column-gap: 8px; align-items: baseline; }
+.sh-idx { align-self: stretch; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0 8px 3px; font: 600 min(18px, 8cqh) var(--sh-display); }
+.sh-val { font: 600 min(30px, 12cqh) / 1 var(--sh-display); max-width: 200px; color: var(--sh-val); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-row small { font: 400 14px var(--sh-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 1.5px; color: var(--sh-muted); }
+
+/* gear rings */
+.sh-ring { grid-area: ring; position: relative; display: flex; flex-direction: column; }
+.sh-cap { font: 600 22px var(--sh-display); letter-spacing: 3px; }
+.sh-cap-r { position: absolute; right: 16px; top: 12px; font: 400 14px var(--sh-display); letter-spacing: 1.5px; color: var(--sh-muted); }
+.sh-ring-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 6px; }
+.sh-rings { width: 100%; height: 100%; }
+.sh-ticks line { stroke: var(--sh-tick); stroke-width: 1.4; }
+.sh-ring-outer .sh-ring-track { fill: none; stroke: var(--sh-ring-outer-track); }
+.sh-ring-outer .sh-ring-seg { fill: none; stroke: var(--sh-ring-outer); }
+.sh-ring-inner .sh-ring-track { fill: none; stroke: var(--sh-ring-inner-track); }
+.sh-ring-inner .sh-ring-seg { fill: none; stroke: var(--sh-ring-inner); }
+.sh-ring-outer .sh-ring-mark { fill: var(--sh-ring-outer); }
+.sh-ring-inner .sh-ring-mark { fill: var(--sh-ring-mark-inner, #fff); }
+.sh-gear-num { font: 600 76px var(--sh-display); fill: var(--sh-gear); }
+.sh-gear-label { font: 400 15px var(--sh-display); letter-spacing: 3px; fill: var(--sh-muted); }
+
+/* POWER bar (red + hatched + REDLINE label past redline: not colour alone) */
+.sh-power { grid-area: power; display: flex; flex-direction: column; }
+.sh-power-head, .sh-bus-head { display: flex; justify-content: space-between; font: 400 17px var(--sh-display); letter-spacing: 3px; color: var(--sh-power-head); }
+.sh-over-tag { font-weight: 600; color: var(--sh-red-text); }
+.sh-segs { position: relative; display: flex; gap: 5px; height: 40px; margin-top: 22px; }
+.sh-segs i { flex: 1; background: var(--sh-seg-off); border-radius: var(--sh-seg-radius, 0); }
+.sh-segs i.on { background: var(--sh-seg-on); }
+.sh-segs i.on.hot { background: var(--sh-seg-hot); }
+.sh-segs i.zone { background: repeating-linear-gradient(135deg, var(--sh-zone-a) 0 5px, var(--sh-zone-b) 5px 10px); }
+.sh-segs i.on.zone { background: repeating-linear-gradient(135deg, var(--sh-red) 0 6px, #ffb3a8 6px 9px); }
+.sh-redline-mark { position: absolute; top: -21px; padding-left: 5px; border-left: 2px solid var(--sh-red); font: 600 13px/18px var(--sh-display); letter-spacing: 1.5px; color: var(--sh-red-text); }
+.sh-nums { display: flex; justify-content: space-between; margin-top: 4px; font: 400 15px var(--sh-display); color: var(--sh-muted); }
+.sh-bus-head { margin-top: 10px; }
+.sh-bus { display: flex; gap: 4px; height: 14px; margin-top: 6px; }
+.sh-bus i { flex: 1; background: var(--sh-bus-off); border-radius: var(--sh-seg-radius, 0); }
+.sh-bus i.on { background: var(--sh-bus-on); }
+
+/* bottom bar */
+.sh-bar { grid-area: bar; display: flex; gap: 8px; }
+.sh-modes { display: flex; gap: inherit; flex: 3; }
+.rf-pack-box .sh-bar button {
+  flex: 1;
+  min-height: var(--pf-tap, 56px);
+  min-width: 44px;
+  border: 0;
+  cursor: pointer;
+  font: 600 20px var(--sh-display);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.rf-pack-box .sh-bar .sh-mute { flex: 1; }
+.rf-pack-box .sh-bar .sh-shutdown { flex: 1.2; }
+.rf-pack-box .sh-bar button[aria-disabled='true'] { cursor: default; }
+.rf-pack-box .sh button:focus-visible { outline: 3px solid var(--sh-focus, #fff); outline-offset: 3px; position: relative; z-index: 3; }
+
+/* Reduce Motion / Animated environment off: rings are held by HelmRings; kill transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .sh-thr-track b { transition: none; }
+  .sh-thumb-outer, .sh-thumb-inner { animation: none !important; }
+}
+
+/* picker thumbnail: counter-rotating rings (CSS only) */
+.sh-thumb-outer { animation: sh-thumb-ccw 6s linear infinite; }
+.sh-thumb-inner { animation: sh-thumb-cw 3s linear infinite; }
+@keyframes sh-thumb-cw { to { transform: rotate(360deg); } }
+@keyframes sh-thumb-ccw { to { transform: rotate(-360deg); } }
+
+/* Compact (short stage): drop the header row, tighten spacing; targets keep a 44pt floor. */
+.sh[data-compact='true'] { --pf-tap: max(44px, calc(44.5px / var(--pf-s, 1))); --sh-hdr-h: 0px; row-gap: 6px; padding: 8px 12px; }
+.sh[data-compact='true'] .sh-hdr, .sh[data-compact='true'] .shf-topbar { display: none; }
+.sh[data-compact='true'] .sh-tabs { padding-top: 4px; padding-bottom: 4px; --sh-tab-gap: 4px; }
+.sh[data-frame='classic'][data-compact='true'] .shf-elbow-top { height: 26px; }
+.sh[data-frame='classic'][data-compact='true'] .sh-tabs { padding-top: 14px; padding-bottom: 14px; }
+.sh[data-frame='classic'][data-compact='true'] .shf-elbow-bot { height: calc(100% + 14px); }
