@@ -101,9 +101,11 @@
 .cc-readout { position: absolute; right: 20px; top: 12px; font-size: min(30px, 18cqh); line-height: 1; padding: 6px 10px; border-radius: 6px; background: #140f04; color: var(--cc-amb); text-shadow: 0 0 8px #ffb21e; }
 .cc-meter-wrap { flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: center; }
 .cc-meter-svg { width: 100%; height: 100%; max-height: 100%; }
-.cc-meter-text text { font-family: var(--cc-ui); font-weight: 800; font-size: 18px; fill: #2b1f05; }
-.cc-meter-text .cc-meter-units { font-size: 18px; letter-spacing: 3px; }
-.cc-meter-text .cc-meter-max { font-size: 18px; letter-spacing: 1px; }
+/* Labels render at 12 screen px whatever the SVG/host scale: --cc-meter-scale = on-screen px
+   per viewBox unit (set by OutputMeter). Fallback ≈ the old 18-unit size. */
+.cc-meter-text text { font-family: var(--cc-ui); font-weight: 800; font-size: calc(12px / var(--cc-meter-scale, 0.6667)); fill: #2b1f05; }
+.cc-meter-text .cc-meter-units { letter-spacing: 3px; }
+.cc-meter-text .cc-meter-max { letter-spacing: 1px; }
 .cc-needle { transform-origin: 200px 145px; transform-box: view-box; transition: transform 0.18s linear; }
 
 /* velocity */
