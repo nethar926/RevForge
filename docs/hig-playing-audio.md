@@ -162,3 +162,14 @@ All cues go through the master bus, so none can exceed the ceiling or rise above
 8. Turn the **volume knob** all the way through its range while running. It controls the level the whole time, and RevForge never gets louder by itself.
 9. Hold to rev to the redline with Pulse Burst and a gear change at once. Loud but clean, and no harsh clipping.
 10. Media card or notification: shows the pack name, "RevForge", and Automatic/Manual gearbox.
+
+## Twin Ion live level −2 dB (separate commit, droppable)
+`audio(ion-twin): -2 dB live level (HIG loudness; preview/hig only, pending Wilson A/B)`.
+`src/audio/liveTrim.ts` sets `LIVE_TRIM_DB['ion-twin'] = -2`, applied on `CharacterEngine.output`
+after every dynamics stage, so it moves the level only and leaves timbre and dynamics alone. It
+isn't applied when Twin Ion is used as a layer inside another pack. Offline live render
+(`node scripts/hig-level-check.mjs ion-twin`): idle −33.49 → −35.49, cruise −13.52 → −15.52,
+WOT −6.71 → −8.71 LUFS, with peaks also exactly −2.00 dB. The Engines preview `ion-twin.wav` comes
+from the `buildScifi` approximation, not the live voice, so it's unaffected and stays at
+−20.4 LUFS (the preview median). No compensation was needed. To revert, drop the commit or delete
+the `ion-twin` entry.
