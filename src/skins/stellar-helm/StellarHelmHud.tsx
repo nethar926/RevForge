@@ -1,9 +1,10 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { PackShellAction, PackShellPanel } from '../../packs/runtime';
 import type { PackHudProps } from '../../packs/types';
 import { FrameToggle } from './FrameToggle';
 import { HelmRings } from './HelmRings';
 import { StellarFrame, type FrameStyle } from './StellarFrame';
+import { useHudCompact, type HudCompact } from './useHudCompact';
 import './stellar-helm.css';
 
 export interface StellarHelmHudProps extends PackHudProps {
@@ -12,8 +13,15 @@ export interface StellarHelmHudProps extends PackHudProps {
   frame: FrameStyle;
   /** User frame choice (persisted by the mount); renders the Frame: CLASSIC / NEO control. */
   onFrameChange: (frame: FrameStyle) => void;
-  /** Short stage: tighter spacing (touch floor stays ≥ 44pt). */
-  compact?: boolean;
+  /**
+   * Compact layout for small windows: host passes `true` once its fit would push text
+   * under 11px (`'auto'` = skin self-detects from its rendered scale). Sizes are authored
+   * in on-screen px so text stays ≥11px and the bar ≥48px at any host scale. Keeps tabs,
+   * RPM / MPH / THR, rings + gear + ring readout, power bar + redline, full bottom bar
+   * (modes, MUTE, Frame CLASSIC/NEO, SHUTDOWN); drops header, data rows, log line and
+   * audio bus. Both frames. Default false = full layout. Dev/test: `?hudCompact=1|auto|0`.
+   */
+  compact?: HudCompact;
   engineName: string;
   shellConnected: boolean;
   muted: boolean;
@@ -59,6 +67,8 @@ function useClock(): Date {
 export function StellarHelmHud(p: StellarHelmHudProps) {
   const { rpm, speed, unit, throttle, load, gear, redlineRpm, running, demo, motion, distanceM, rpmNorm } = p;
   const now = useClock();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const cfit = useHudCompact(rootRef, p.compact, 13);
   const { mode, onModeChange: setMode } = p;
 
   const mph = unit === 'kph' ? speed / 1.609344 : speed;
@@ -85,7 +95,16 @@ export function StellarHelmHud(p: StellarHelmHudProps) {
   };
 
   return (
-    <div className={`sh ${overRedline ? 'sh-over' : ''}`} data-frame={p.frame} data-compact={p.compact ? 'true' : undefined} data-mode={mode} data-running={running ? 'true' : 'false'}>
+    <div
+      ref={rootRef}
+      className={`sh ${overRedline ? 'sh-over' : ''}${cfit.compact ? ' sh-compact' : ''}`}
+      data-frame={p.frame}
+      data-compact={cfit.compact ? 'true' : undefined}
+      data-sh-tight={cfit.compact && cfit.realH < 330 ? '' : undefined}
+      data-mode={mode}
+      data-running={running ? 'true' : 'false'}
+      style={cfit.compact ? ({ '--u': `${cfit.unit}px` } as CSSProperties) : undefined}
+    >
       <StellarFrame frame={p.frame} />
       <header className="sh-hdr" aria-hidden="true">
         <span className="sh-title">{p.title.toUpperCase()}</span>
@@ -151,7 +170,7 @@ export function StellarHelmHud(p: StellarHelmHudProps) {
         <span className="sh-cap">{p.frame === 'classic' ? 'WARP' : 'DRIVE'}</span>
         <span className="sh-cap-r">{Math.round(mph)} MPH · {Math.round(rpm)} RPM</span>
         <div className="sh-ring-wrap">
-          <HelmRings rpm={running ? rpm : 0} mph={running ? mph : 0} gear={gearText} still={!motion} />
+          <HelmRings rpm={running ? rpm : 0} mph={running ? mph : 0} gear={gearText} still={!motion} compact={cfit.compact} />
         </div>
       </section>
 
