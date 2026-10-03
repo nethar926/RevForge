@@ -22,8 +22,6 @@ const fallbackEngineName = () => getBuiltin(ID.engine.preferred)?.name ?? getBui
 export function StellarHelmMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
   const shell = usePackShell();
-  // Short stages (e.g. ~1024×600 with the throttle card): compact spacing, 44pt floor.
-  const compact = fit.h * fit.s < 380;
   // Frame look (classic default / helm): persisted user choice, switched from the HUD bar.
   const [frame, setFrame] = useStellarHelmFrame();
   const [mode, setMode] = useState<HelmMode>(() => toHelm(getPackMode(ID.id, 'norm')));
@@ -44,7 +42,7 @@ export function StellarHelmMount(props: PackHudProps) {
       <div className="rf-pack-box">
         <StellarHelmHud
           {...props}
-          compact={compact}
+          compact="auto"
           title={ID.displayName}
           frame={frame}
           onFrameChange={setFrame}
