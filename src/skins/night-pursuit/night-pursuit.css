@@ -1,0 +1,498 @@
+/**
+ * DriveSynth — Night Pursuit visual skin
+ * Matte-black command dash · crimson LED scanner · 7-seg · dual CRT · mode rail
+ * Original geometry only — no show IP / logos / wordmarks.
+ */
+
+[data-skin="night-pursuit"] {
+  --skin-bg: #0a0a0a;
+  --skin-bg-elevated: #121212;
+  --skin-bg-panel: rgba(10, 10, 10, 0.94);
+  --skin-void: #050505;
+  --skin-crimson: #ff1a1a;
+  --skin-crimson-hot: #ff0000;
+  --skin-crimson-glow: rgba(255, 26, 26, 0.55);
+  --skin-amber: #ffb000;
+  --skin-amber-glow: rgba(255, 176, 0, 0.45);
+  --skin-green: #00c853;
+  --skin-green-glow: rgba(0, 200, 83, 0.4);
+  --skin-cyan: #00e5ff;
+  --skin-cyan-glow: rgba(0, 229, 255, 0.35);
+  --skin-text: #f0f0f0;
+  --skin-text-dim: rgba(240, 240, 240, 0.5);
+  --skin-touch-min: 48px;
+  --skin-scanner-h: 44px;
+  --skin-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --skin-scanline-opacity: 0.045;
+  --accent: #ff1a1a;
+  --text: #f0f0f0;
+}
+
+.drive-skin-night-pursuit .drive-skin-plate {
+  background:
+    radial-gradient(ellipse 55% 40% at 50% 70%, #141010 0%, var(--skin-bg, #0a0a0a) 55%, var(--skin-void, #050505) 100%);
+}
+
+.drive-skin-night-pursuit:has(.np-overlay.np-hot) .drive-skin-plate {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 80%, rgba(255, 26, 26, 0.18), transparent 55%),
+    radial-gradient(ellipse 55% 40% at 50% 70%, #1a0808 0%, var(--skin-bg, #0a0a0a) 55%, var(--skin-void, #050505) 100%);
+}
+
+/* ——— Overlay ——— */
+.np-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  grid-template-rows: var(--skin-scanner-h, 44px) 1fr auto;
+  color: var(--skin-text, #f0f0f0);
+  font-family: var(--skin-font-mono);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.np-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, var(--skin-scanline-opacity, 0.045)) 2px,
+    rgba(0, 0, 0, var(--skin-scanline-opacity, 0.045)) 4px
+  );
+}
+
+/* Top scanner — horizontal red LED chase */
+.np-scanner {
+  position: relative;
+  z-index: 6;
+  height: var(--skin-scanner-h, 44px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 10px;
+  background: #0c0505;
+  border-bottom: 1px solid rgba(255, 26, 26, 0.22);
+  box-shadow: inset 0 0 24px rgba(255, 26, 26, 0.12);
+}
+
+.np-scanner-cell {
+  flex: 1;
+  max-width: 16px;
+  height: 20px;
+  background: #1a0808;
+  border-radius: 1px;
+  opacity: 0.35;
+  box-shadow: inset 0 0 4px #000;
+}
+
+/* Sweep eye: bright core + crimson tails, ping-pong edge to edge. transform-only (GPU). */
+.np-scanner-track {
+  position: absolute;
+  inset: 0 10px;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.np-scanner-eye {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 14%;
+  height: 26px;
+  margin-top: -13px;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 26, 26, 0.25) 18%,
+    var(--skin-crimson, #ff1a1a) 40%,
+    #ffe8e0 50%,
+    var(--skin-crimson, #ff1a1a) 60%,
+    rgba(255, 26, 26, 0.25) 82%,
+    transparent 100%
+  );
+  box-shadow: 0 0 18px var(--skin-crimson-glow, rgba(255, 26, 26, 0.55)),
+    0 0 42px var(--skin-crimson-glow, rgba(255, 26, 26, 0.55));
+  will-change: transform;
+  animation: np-sweep var(--np-scanner-ms, 2200ms) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+/* 14% wide eye → travel (100/14 − 1) × 100% of its own width */
+@keyframes np-sweep {
+  from { transform: translateX(0); }
+  to { transform: translateX(614%); }
+}
+
+/* prefers-reduced-motion: static center glow */
+@media (prefers-reduced-motion: reduce) {
+  .np-scanner-eye {
+    animation: none !important;
+    display: none;
+  }
+  .np-scanner-cell {
+    animation: none !important;
+    opacity: 0.15;
+  }
+  .np-scanner-cell:nth-child(17),
+  .np-scanner-cell:nth-child(18),
+  .np-scanner-cell:nth-child(19) {
+    opacity: 1;
+    background: var(--skin-crimson, #ff1a1a);
+    box-shadow: 0 0 18px var(--skin-crimson-glow, rgba(255, 26, 26, 0.55));
+  }
+}
+
+.motion-off .np-scanner-eye {
+  animation: none !important;
+  display: none;
+}
+.motion-off .np-scanner-cell {
+  animation: none !important;
+  opacity: 0.15;
+}
+.motion-off .np-scanner-cell:nth-child(17),
+.motion-off .np-scanner-cell:nth-child(18),
+.motion-off .np-scanner-cell:nth-child(19) {
+  opacity: 1;
+  background: var(--skin-crimson, #ff1a1a);
+  box-shadow: 0 0 18px var(--skin-crimson-glow, rgba(255, 26, 26, 0.55));
+}
+
+/* Dash grid */
+.np-dash {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.7fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 12px 14px 6px;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.np-pod {
+  background: linear-gradient(180deg, #121212 0%, #0a0a0a 100%);
+  border: 2px solid #222;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px #333, inset 0 0 36px rgba(0, 0, 0, 0.75), 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 10px 12px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.np-pod-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--skin-cyan, #00e5ff);
+  text-shadow: 0 0 6px var(--skin-cyan-glow, rgba(0, 229, 255, 0.35));
+  margin-bottom: 6px;
+}
+
+/* 7-segment */
+.np-seg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.np-seg-digit {
+  width: 28px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.np-seg-crimson .np-seg-on {
+  fill: var(--skin-crimson, #ff1a1a);
+}
+.np-seg-crimson {
+  filter: drop-shadow(0 0 8px var(--skin-crimson-glow, rgba(255, 26, 26, 0.55)));
+}
+.np-seg-amber .np-seg-on {
+  fill: var(--skin-amber, #ffb000);
+}
+.np-seg-amber {
+  filter: drop-shadow(0 0 8px var(--skin-amber-glow, rgba(255, 176, 0, 0.45)));
+}
+.np-seg-green .np-seg-on {
+  fill: var(--skin-green, #00c853);
+}
+.np-seg-off {
+  fill: #2a0a0a;
+}
+.np-seg-unit {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  margin: 0 0 6px 4px;
+  color: inherit;
+}
+.np-seg-crimson .np-seg-unit {
+  color: var(--skin-crimson, #ff1a1a);
+}
+.np-seg-amber .np-seg-unit {
+  color: var(--skin-amber, #ffb000);
+}
+
+/* Bars */
+.np-bar-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+.np-bar-label {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--skin-text-dim, rgba(240, 240, 240, 0.5));
+}
+.np-bar {
+  display: flex;
+  gap: 2px;
+  height: 9px;
+}
+.np-bar i {
+  flex: 1;
+  background: #1a1010;
+  border-radius: 1px;
+}
+.np-bar i.lit.g {
+  background: var(--skin-green, #00c853);
+  box-shadow: 0 0 4px var(--skin-green-glow, rgba(0, 200, 83, 0.4));
+}
+.np-bar i.lit.a {
+  background: var(--skin-amber, #ffb000);
+  box-shadow: 0 0 4px var(--skin-amber-glow, rgba(255, 176, 0, 0.45));
+}
+.np-bar i.lit.r {
+  background: var(--skin-crimson, #ff1a1a);
+  box-shadow: 0 0 4px var(--skin-crimson-glow, rgba(255, 26, 26, 0.55));
+}
+
+/* Voice envelope */
+.np-voice {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 5px;
+  height: 110px;
+  margin-top: 8px;
+  align-items: stretch;
+}
+.np-voice-col {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+.np-voice-col span {
+  flex: 1;
+  background: #1a0808;
+  border-radius: 1px;
+  opacity: 0.3;
+}
+.np-voice-col span.lit {
+  background: var(--skin-crimson, #ff1a1a);
+  box-shadow: 0 0 5px var(--skin-crimson-glow, rgba(255, 26, 26, 0.55));
+  opacity: 1;
+}
+
+/* Dual CRT */
+.np-crt-pair {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  height: calc(100% - 18px);
+  min-height: 140px;
+}
+.np-crt {
+  position: relative;
+  background: #020806;
+  border: 3px solid #1a1a1a;
+  border-radius: 4px;
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.9), 0 0 0 1px #333;
+  overflow: hidden;
+  min-height: 64px;
+}
+.np-crt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 40, 20, 0.12) 2px,
+    rgba(0, 40, 20, 0.12) 3px
+  );
+}
+.np-crt-a {
+  color: var(--skin-green, #00c853);
+  background: radial-gradient(circle at 50% 48%, rgba(0, 200, 83, 0.22), transparent 55%), #020806;
+  display: grid;
+  place-content: center;
+}
+.np-crt-glyph {
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(0 0 8px var(--skin-green-glow, rgba(0, 200, 83, 0.4)));
+}
+.np-crt-b .np-crt-feed {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--skin-cyan, #00e5ff);
+  text-shadow: 0 0 6px var(--skin-cyan-glow, rgba(0, 229, 255, 0.35));
+  background:
+    linear-gradient(180deg, transparent 55%, rgba(0, 229, 255, 0.06)),
+    repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(0, 229, 255, 0.05) 10px, rgba(0, 229, 255, 0.05) 11px);
+}
+
+/* Mode rail — ≥48px Tesla touch; pointer-events enabled */
+.np-mode-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  pointer-events: auto;
+  z-index: 7;
+}
+.np-mode-btn {
+  min-width: 84px;
+  min-height: var(--skin-touch-min, 48px);
+  padding: 10px 12px;
+  background: linear-gradient(180deg, #2a1010, #120808);
+  border: 2px solid #4a1818;
+  border-radius: 3px;
+  color: #c08080;
+  font: 700 11px var(--skin-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 #3a2020, 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+.np-mode-btn.active {
+  color: #fff;
+  background: linear-gradient(180deg, #ff2a2a, #8a1010);
+  border-color: #ff5050;
+  box-shadow: 0 0 16px var(--skin-crimson-glow, rgba(255, 26, 26, 0.55)), inset 0 1px 0 #ff8080;
+}
+.np-mode-btn.amber.active {
+  background: linear-gradient(180deg, #ffb000, #8a6000);
+  border-color: #ffc850;
+  box-shadow: 0 0 16px var(--skin-amber-glow, rgba(255, 176, 0, 0.45));
+}
+
+/* Footer */
+.np-footer {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px 12px;
+  border-top: 1px solid #1a1a1a;
+  background: rgba(8, 8, 8, 0.85);
+}
+.np-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #3a3a3a, #0a0a0a);
+  border: 2px solid #555;
+  display: grid;
+  place-content: center;
+  box-shadow: inset 0 0 10px #000, 0 0 8px rgba(255, 26, 26, 0.2);
+  flex-shrink: 0;
+}
+.np-badge svg {
+  width: 24px;
+  height: 24px;
+}
+.np-status {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--skin-text-dim, rgba(240, 240, 240, 0.5));
+  min-width: 0;
+}
+.np-pack-tag {
+  color: var(--skin-crimson, #ff1a1a);
+  text-shadow: 0 0 6px var(--skin-crimson-glow, rgba(255, 26, 26, 0.55));
+}
+.np-yoke {
+  width: 100px;
+  height: 40px;
+  border: 2px solid #333;
+  border-radius: 20px 20px 6px 6px;
+  background: linear-gradient(180deg, #1a1a1a, #0a0a0a);
+  position: relative;
+  opacity: 0.65;
+  flex-shrink: 0;
+}
+.np-yoke::before,
+.np-yoke::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  width: 12px;
+  height: 28px;
+  background: #151515;
+  border: 1px solid #333;
+  border-radius: 3px;
+}
+.np-yoke::before {
+  left: 8px;
+}
+.np-yoke::after {
+  right: 8px;
+}
+
+/* ThemeStage inheritance (forge preview) */
+.theme-night-pursuit .skin-body,
+.f14-inherited.np-inherited {
+  position: relative;
+}
+.theme-night-pursuit .np-overlay {
+  position: relative;
+  min-height: 420px;
+  inset: auto;
+}
+.theme-night-pursuit .skin-heading {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .np-dash {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+  .np-mode-rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+  }
+  .np-mode-btn {
+    flex: 1;
+    min-width: 72px;
+  }
+  .np-seg-digit {
+    width: 22px;
+    height: 38px;
+  }
+}

@@ -5,6 +5,7 @@ import { AerospaceF14Overlay } from './aerospace-f14/AerospaceF14Overlay';
 import { IonTwinOverlay } from './ion-twin/IonTwinOverlay';
 import { IceV8Overlay } from './ice-v8/IceV8Overlay';
 import { EvInverterOverlay } from './ev-inverter/EvInverterOverlay';
+import { NightPursuitOverlay, type NightPursuitMode } from './night-pursuit/NightPursuitOverlay';
 import { GradientCluster } from './gradient/GradientCluster';
 import type { IonLockStage } from './ion-twin/lockLadder';
 
@@ -24,6 +25,15 @@ export interface DriveSkinProps {
   lockSfxEnabled?: boolean;
   /** Secondary cluster mode from Customize. */
   gaugeCluster?: GaugeCluster;
+  /** Night Pursuit (experimental): mph for the decorative 7-seg; falls back to speedNorm scale. */
+  speedMph?: number;
+  /** Night Pursuit: controlled POWER/AUTO/NORM/PURSUIT mode (Frontend owns state + pursuitBoost wiring). */
+  pursuitMode?: NightPursuitMode;
+  onPursuitModeChange?: (mode: NightPursuitMode) => void;
+  /** Night Pursuit: Audio Synth envelope 0..1 for the voice box. */
+  voiceEnvelope?: number;
+  /** Night Pursuit: called once per scanner pass; wire to Audio `scannerTick`. */
+  onScannerPass?: (edge: 'left' | 'right') => void;
 }
 
 /**
@@ -32,6 +42,7 @@ export interface DriveSkinProps {
  * Canonical pack/topology id is `ion-twin`; `tie-fighter` remaps via getBuiltin.
  */
 export function skinIdForEngine(engineId: string): string {
+  if (engineId === 'night-pursuit') return 'night-pursuit'; // experimental flagship pack
   const builtin = getBuiltin(engineId);
   if (builtin?.revforge) return builtin.kind === 'scifi' ? 'ion-twin' : builtin.kind === 'aerospace' ? 'aerospace-f14' : builtin.kind === 'ev-whine' ? 'ev-inverter' : 'ice-v8';
   switch (engineId) {
@@ -64,6 +75,11 @@ export function DriveSkinSlot({
   lockStage,
   lockSfxEnabled,
   gaugeCluster = 'classic',
+  speedMph,
+  pursuitMode,
+  onPursuitModeChange,
+  voiceEnvelope,
+  onScannerPass,
 }: DriveSkinProps) {
   const skinId = skinIdForEngine(engineId);
   return (
@@ -72,7 +88,7 @@ export function DriveSkinSlot({
       data-skin={skinId}
       data-engine={engineId}
       data-gauge-cluster={gaugeCluster}
-      aria-hidden
+      aria-hidden={skinId === 'night-pursuit' ? undefined : true}
       style={
         {
           ['--skin-rpm' as string]: String(rpmNorm),
@@ -105,6 +121,19 @@ export function DriveSkinSlot({
           speedNorm={speedNorm}
           throttle={throttle}
           loadFeel={loadFeel}
+        />
+      )}
+      {skinId === 'night-pursuit' && (
+        <NightPursuitOverlay
+          rpmNorm={rpmNorm}
+          speedNorm={speedNorm}
+          throttle={throttle}
+          loadFeel={loadFeel}
+          speedMph={speedMph}
+          mode={pursuitMode}
+          onModeChange={onPursuitModeChange}
+          voiceEnvelope={voiceEnvelope}
+          onScannerPass={onScannerPass}
         />
       )}
       {skinId === 'ev-inverter' && (

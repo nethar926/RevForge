@@ -1,0 +1,277 @@
+import { useMemo, useState, type AnimationEvent, type CSSProperties } from 'react';
+import './night-pursuit.css';
+
+export type NightPursuitMode = 'power' | 'auto' | 'norm' | 'pursuit';
+
+interface Props {
+  rpmNorm: number;
+  speedNorm: number;
+  throttle: number;
+  loadFeel: number;
+  /** Optional mph readout for decorative 7-seg (ThemeStage). Drive may omit — uses speedNorm×scale. */
+  speedMph?: number;
+  /** Initial / controlled mode. Default NORM. */
+  mode?: NightPursuitMode;
+  onModeChange?: (mode: NightPursuitMode) => void;
+  /**
+   * Audio Synth voice envelope, 0..1 (post-gain loudness of the engine bus).
+   * Drives the center voice box. Falls back to throttle/rpm/load blend when absent.
+   */
+  voiceEnvelope?: number;
+  /**
+   * Fired each time the top scanner eye reaches an edge (one pass).
+   * Wire to Audio's optional `scannerTick` hook. Not fired under reduced motion.
+   */
+  onScannerPass?: (edge: 'left' | 'right') => void;
+}
+
+const SEG_BITS: Record<string, number[]> = {
+  '0': [1, 1, 1, 1, 1, 1, 0],
+  '1': [0, 1, 1, 0, 0, 0, 0],
+  '2': [1, 1, 0, 1, 1, 0, 1],
+  '3': [1, 1, 1, 1, 0, 0, 1],
+  '4': [0, 1, 1, 0, 0, 1, 1],
+  '5': [1, 0, 1, 1, 0, 1, 1],
+  '6': [1, 0, 1, 1, 1, 1, 1],
+  '7': [1, 1, 1, 0, 0, 0, 0],
+  '8': [1, 1, 1, 1, 1, 1, 1],
+  '9': [1, 1, 1, 1, 0, 1, 1],
+  '-': [0, 0, 0, 0, 0, 0, 1],
+  ' ': [0, 0, 0, 0, 0, 0, 0],
+};
+
+const SEG_PATHS = [
+  'M4 2 H16 L18 4 L16 6 H4 L2 4 Z',
+  'M18 5 L20 7 V15 L18 17 L16 15 V7 Z',
+  'M18 19 L20 21 V29 L18 31 L16 29 V21 Z',
+  'M4 30 H16 L18 32 L16 34 H4 L2 32 Z',
+  'M2 19 L4 21 V29 L2 31 L0 29 V21 Z',
+  'M2 5 L4 7 V15 L2 17 L0 15 V7 Z',
+  'M4 16 H16 L18 18 L16 20 H4 L2 18 Z',
+];
+
+function SevenSeg({
+  value,
+  digits = 3,
+  tone = 'crimson',
+  unit,
+}: {
+  value: number;
+  digits?: number;
+  tone?: 'crimson' | 'amber' | 'green';
+  unit?: string;
+}) {
+  const text = String(Math.max(0, Math.min(10 ** digits - 1, Math.round(value)))).padStart(
+    digits,
+    '0',
+  );
+  return (
+    <div className={`np-seg-row np-seg-${tone}`}>
+      {[...text].map((ch, i) => {
+        const bits = SEG_BITS[ch] ?? SEG_BITS[' '];
+        return (
+          <svg key={i} className="np-seg-digit" viewBox="0 0 20 36" aria-hidden>
+            {SEG_PATHS.map((d, si) => (
+              <path key={si} className={bits[si] ? 'np-seg-on' : 'np-seg-off'} d={d} />
+            ))}
+          </svg>
+        );
+      })}
+      {unit ? <span className="np-seg-unit">{unit}</span> : null}
+    </div>
+  );
+}
+
+function SegBar({
+  value,
+  segments = 20,
+  palette = 'gar',
+}: {
+  value: number;
+  segments?: number;
+  palette?: string;
+}) {
+  const lit = Math.round(Math.max(0, Math.min(1, value)) * segments);
+  const pal = palette.split('');
+  return (
+    <div className="np-bar" aria-hidden>
+      {Array.from({ length: segments }, (_, i) => {
+        if (i >= lit) return <i key={i} />;
+        const t = i / segments;
+        const c = t < 0.45 ? pal[0] : t < 0.75 ? pal[1] || pal[0] : pal[2] || pal[1] || pal[0];
+        return <i key={i} className={`lit ${c}`} />;
+      })}
+    </div>
+  );
+}
+
+const MODES: { id: NightPursuitMode; label: string; amber?: boolean }[] = [
+  { id: 'power', label: 'Power' },
+  { id: 'auto', label: 'Auto', amber: true },
+  { id: 'norm', label: 'Norm', amber: true },
+  { id: 'pursuit', label: 'Pursuit' },
+];
+
+const SCANNER_CELLS = 36;
+
+/**
+ * Night Pursuit Drive HUD — matte-black command dash with crimson scanner,
+ * 7-seg banks, dual CRT pods, and POWER/AUTO/NORM/PURSUIT mode rail.
+ * Original art only. Decorative SPEED 7-seg mirrors telemetry; app may still own hero SPEED.
+ */
+export function NightPursuitOverlay({
+  rpmNorm,
+  speedNorm,
+  throttle,
+  loadFeel,
+  speedMph,
+  mode: modeProp,
+  onModeChange,
+  voiceEnvelope,
+  onScannerPass,
+}: Props) {
+  const [modeLocal, setModeLocal] = useState<NightPursuitMode>('norm');
+  const mode = modeProp ?? modeLocal;
+  const setMode = (m: NightPursuitMode) => {
+    setModeLocal(m);
+    onModeChange?.(m);
+  };
+
+  const rpm = Math.max(0, Math.min(1, rpmNorm));
+  const thr = Math.max(0, Math.min(1, throttle));
+  const load = Math.max(0, Math.min(1, loadFeel));
+  const spd = Math.max(0, Math.min(1, speedNorm));
+  const mph = speedMph ?? Math.round(spd * 120);
+  const pursuitHot = mode === 'pursuit' || mode === 'power';
+
+  const env = voiceEnvelope == null ? null : Math.max(0, Math.min(1, voiceEnvelope));
+  const voiceCols = useMemo(() => {
+    // Outer columns sit lower than the center, like a classic voice-box modulator.
+    const base =
+      env == null
+        ? [thr * 0.7 + load * 0.3, rpm * 0.85 + thr * 0.15, load * 0.6 + rpm * 0.4]
+        : [env * 0.72, env, env * 0.72];
+    return base.map((v) => Math.max(0.08, Math.min(1, v * (pursuitHot ? 1.15 : 0.9))));
+  }, [env, thr, load, rpm, pursuitHot]);
+
+  const [edge, setEdge] = useState<'left' | 'right'>('left');
+  const handleSweepIteration = (_e: AnimationEvent<HTMLDivElement>) => {
+    const next = edge === 'left' ? 'right' : 'left';
+    setEdge(next);
+    onScannerPass?.(next);
+  };
+
+  return (
+    <div
+      className={`np-overlay${pursuitHot ? ' np-hot' : ''}`}
+      data-mode={mode}
+      style={
+        {
+          ['--np-rpm']: rpm,
+          ['--np-speed']: spd,
+          ['--np-throttle']: thr,
+          ['--np-load']: load,
+          ['--np-scanner-ms']: pursuitHot ? '1100ms' : '2200ms',
+        } as CSSProperties
+      }
+    >
+      {/* Mandatory top scanner — ping-pong sweep eye over a dim LED bank.
+          Reduced motion → static center glow via CSS. */}
+      <div className="np-scanner" aria-hidden>
+        {Array.from({ length: SCANNER_CELLS }, (_, i) => (
+          <i key={i} className="np-scanner-cell" />
+        ))}
+        <div className="np-scanner-track">
+          <div className="np-scanner-eye" onAnimationIteration={handleSweepIteration} />
+        </div>
+      </div>
+
+      <div className="np-dash">
+        <section className="np-pod np-pod-speed" aria-hidden>
+          <div className="np-pod-label">Primary · Velocity</div>
+          <SevenSeg value={mph} digits={3} tone="crimson" unit="MPH" />
+          <div className="np-bar-stack">
+            <span className="np-bar-label">Throttle</span>
+            <SegBar value={thr} palette="gar" />
+            <span className="np-bar-label">Load</span>
+            <SegBar value={load} palette="gar" />
+            <span className="np-bar-label">Engine</span>
+            <SegBar value={rpm} palette="ar" />
+          </div>
+        </section>
+
+        <section className="np-pod np-pod-tach" aria-hidden>
+          <div className="np-pod-label">Tach · Envelope</div>
+          <SevenSeg value={Math.round(rpm * 99)} digits={2} tone="amber" unit="RPM" />
+          <div className="np-voice" aria-hidden>
+            {voiceCols.map((h, ci) => {
+              const n = 10;
+              const lit = Math.round(h * n);
+              return (
+                <div key={ci} className="np-voice-col">
+                  {Array.from({ length: n }, (_, i) => (
+                    <span key={i} className={i < lit ? 'lit' : undefined} />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="np-pod np-pod-crt" aria-hidden>
+          <div className="np-pod-label">Sensor pods</div>
+          <div className="np-crt-pair">
+            <div className="np-crt np-crt-a">
+              {/* Original orbit/chevron glyph (Night Pursuit mark) */}
+              <svg className="np-crt-glyph" viewBox="0 0 64 64" aria-hidden>
+                <circle cx="32" cy="32" r="22" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.7" />
+                <circle cx="32" cy="32" r="10" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+                <path d="M32 12 L38 28 L32 24 L26 28 Z" fill="currentColor" />
+                <path d="M18 40 L32 50 L46 40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div className="np-crt np-crt-b">
+              <div className="np-crt-feed">
+                <span>{pursuitHot ? 'SYS · PURSUIT' : 'SYS · MONITOR'}</span>
+                <span>{Math.round(thr * 100)}% THR</span>
+                <span>{Math.round(load * 100)}% LOAD</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="np-mode-rail" role="group" aria-label="Drive mode" onClick={(e) => e.stopPropagation()}>
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              className={`np-mode-btn${m.amber ? ' amber' : ''}${mode === m.id ? ' active' : ''}`}
+              aria-pressed={mode === m.id}
+              onClick={() => setMode(m.id)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="np-footer" aria-hidden>
+        <div className="np-badge" title="Night Pursuit mark">
+          <svg viewBox="0 0 32 32" fill="none" aria-hidden>
+            <circle cx="16" cy="16" r="11" stroke="#ff1a1a" strokeWidth="1.5" opacity="0.7" />
+            <path d="M16 6 L20 14 L16 12 L12 14 Z" fill="#ff1a1a" />
+            <path d="M8 20 L16 26 L24 20" stroke="#ffb000" strokeWidth="1.4" strokeLinecap="round" />
+            <circle cx="16" cy="16" r="2.5" fill="#00e5ff" />
+          </svg>
+        </div>
+        <div className="np-status">
+          <span className="np-pack-tag">Night Pursuit · Experimental</span>
+          <span>
+            {pursuitHot ? 'Scanner chase' : 'Scanner idle'} · Mode {mode.toUpperCase()}
+          </span>
+        </div>
+        <div className="np-yoke" title="Decorative yoke motif" />
+      </div>
+    </div>
+  );
+}
