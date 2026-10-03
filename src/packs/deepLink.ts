@@ -1,3 +1,4 @@
+import { PACK_THEME_MIGRATIONS } from './migrations';
 import { THEME_PACKS } from './registry';
 import { storageKey } from '../lib/storageKey';
 
@@ -40,9 +41,12 @@ function stripPackParam() {
  *  - `?pack=<id|previewSlug>` (or `#/drive?pack=…`): applied, then stripped from the URL.
  *  - Build-time `VITE_PREVIEW_PACK=<id|slug>` (gh-pages preview builds): applied once per
  *    browser session so a preview path always opens in its pack. Unset in production.
+ *  - `migrated`: pack id returned by runPackPrefMigrations when a retired theme was
+ *    replaced by a pack — completes that selection like the picker (theme + opt-in + engine).
+ * Retired theme ids (PACK_THEME_MIGRATIONS) resolve straight to their pack.
  * Unknown ids are ignored. Safe to call on every boot.
  */
-export function applyPackDeepLink(): void {
+export function applyPackDeepLink(migrated = ''): void {
   const fromUrl = readPackParam();
   let want = fromUrl;
   if (!want) {
@@ -56,7 +60,9 @@ export function applyPackDeepLink(): void {
       want = env;
     }
   }
+  if (!want) want = migrated;
   if (!want) return;
+  want = PACK_THEME_MIGRATIONS[want] ?? want;
   const pack = THEME_PACKS.find((p) => p.id === want || p.previewSlug === want);
   if (fromUrl) stripPackParam();
   if (!pack) return;

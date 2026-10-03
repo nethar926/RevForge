@@ -7,6 +7,7 @@
  * legacy names.
  */
 import { storageKey } from '../lib/storageKey';
+import STELLAR_HELM from './stellar-helm.identity';
 
 export const NIGHT_PURSUIT_ID = 'night-pursuit' as const;
 
@@ -23,8 +24,19 @@ const LEGACY_NIGHT_IDS = [legacy('redir-thgin'), legacy('rennur-thgin'), legacy(
 const toNightPursuit = (): Record<string, string> =>
   Object.fromEntries(LEGACY_NIGHT_IDS.map((id) => [id, NIGHT_PURSUIT_ID]));
 
-/** Theme preset ids → canonical (drivesynth.theme.v2, saved combinations). */
-export const PACK_THEME_MIGRATIONS: Record<string, string> = toNightPursuit();
+/**
+ * Retired themes replaced by the Stellar Helm pack (Wilson, Oct 3 2026): the two
+ * saffron themes and their reversed legacy ids go straight to the pack id (no
+ * chains). Selected like picking the pack in the picker: theme + Experimental
+ * opt-in + linked engine (see SELECT_ON_MIGRATE); the frame stays at its default.
+ */
+const TO_STELLAR_HELM = ['saffron-console', 'saffron-command', legacy('sdlrow-wen'), legacy('esirpretne')];
+
+/** Theme preset ids → canonical pack id (drivesynth.theme.v2, saved combinations, deep links). */
+export const PACK_THEME_MIGRATIONS: Record<string, string> = {
+  ...toNightPursuit(),
+  ...Object.fromEntries(TO_STELLAR_HELM.map((id) => [id, STELLAR_HELM.id])),
+};
 
 /**
  * Retired brand-named engine / patch ids → original replacements (Oct 2 2026).
@@ -44,7 +56,14 @@ export const PACK_ENGINE_MIGRATIONS: Record<string, string> = {
 };
 
 /** Only migrations that land on an experimental pack auto-enable its opt-in. */
-const EXPERIMENTAL_TARGETS: ReadonlySet<string> = new Set([NIGHT_PURSUIT_ID]);
+const EXPERIMENTAL_TARGETS: ReadonlySet<string> = new Set([NIGHT_PURSUIT_ID, STELLAR_HELM.id]);
+
+/**
+ * Packs that replace retired themes: a saved selection migrated to one of these is
+ * completed exactly like picking the pack (main.tsx hands the id to
+ * applyPackDeepLink, which also links the pack engine).
+ */
+const SELECT_ON_MIGRATE: ReadonlySet<string> = new Set([STELLAR_HELM.id]);
 
 /**
  * Retired franchise-named theme ids → original replacements (Oct 2 2026).
@@ -56,8 +75,6 @@ const EXPERIMENTAL_TARGETS: ReadonlySet<string> = new Set([NIGHT_PURSUIT_ID]);
  */
 const LEGACY_THEME_RENAMES: ReadonlyArray<readonly [string, string]> = [
   [legacy('enihcam-emit'), 'epoch-banks'],
-  [legacy('sdlrow-wen'), 'saffron-console'],
-  [legacy('esirpretne'), 'saffron-command'],
   [legacy('omortson'), 'cargo-terminal'],
   [legacy('noivilbo'), 'white-spire'],
   [legacy('xofrats'), 'cobalt-vane'],
@@ -144,6 +161,11 @@ function runThemeRenameMigrations(): void {
       if (typeof c.skinId === 'string' && THEME_ID_MIGRATIONS[c.skinId]) {
         c.skinId = THEME_ID_MIGRATIONS[c.skinId];
         changed = true;
+      } else if (typeof c.skinId === 'string' && SELECT_ON_MIGRATE.has(PACK_THEME_MIGRATIONS[c.skinId])) {
+        const pack = PACK_THEME_MIGRATIONS[c.skinId];
+        c.skinId = pack;
+        enableExperimental(pack);
+        changed = true;
       }
       if (isObject(c.fonts) && [rekeyThemeMap(c.fonts), migrateFontChoices(c.fonts)].some(Boolean)) changed = true;
       if (isObject(c.colors) && rekeyThemeMap(c.colors)) changed = true;
@@ -168,8 +190,13 @@ function enableExperimental(packId: string) {
  * picked the legacy preset keeps it: the experimental pack is auto-enabled so
  * their selection is never hidden behind the Experimental opt-in.
  * Idempotent; safe to call on every boot.
+ *
+ * Returns the pack id the saved theme was migrated to when that pack replaces a
+ * retired theme (SELECT_ON_MIGRATE), else ''. The caller completes the selection
+ * like the picker would (linked engine) via applyPackDeepLink.
  */
-export function runPackPrefMigrations(): void {
+export function runPackPrefMigrations(): string {
+  let select = '';
   runThemeRenameMigrations();
   try {
     const theme = localStorage.getItem(storageKey(THEME_KEY));
@@ -177,6 +204,7 @@ export function runPackPrefMigrations(): void {
       const next = PACK_THEME_MIGRATIONS[theme];
       localStorage.setItem(storageKey(THEME_KEY), next);
       if (EXPERIMENTAL_TARGETS.has(next)) enableExperimental(next);
+      if (SELECT_ON_MIGRATE.has(next)) select = next;
     }
     const rawPrefs = localStorage.getItem(storageKey(UI_PREFS_KEY));
     if (rawPrefs) {
@@ -191,4 +219,5 @@ export function runPackPrefMigrations(): void {
   } catch {
     /* malformed prefs — the hooks fall back to defaults */
   }
+  return select;
 }

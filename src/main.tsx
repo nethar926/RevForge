@@ -7,9 +7,10 @@ import { runPackPrefMigrations } from './packs/migrations';
 import { applyPackDeepLink } from './packs/deepLink';
 
 // Legacy theme/engine ids → canonical pack ids before any hook reads prefs.
-runPackPrefMigrations();
-// `?pack=<id|slug>` / VITE_PREVIEW_PACK preview builds open straight into a pack.
-applyPackDeepLink();
+const migratedPack = runPackPrefMigrations();
+// `?pack=<id|slug>` / VITE_PREVIEW_PACK preview builds open straight into a pack;
+// a retired theme migrated to its replacement pack is completed the same way.
+applyPackDeepLink(migratedPack);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
