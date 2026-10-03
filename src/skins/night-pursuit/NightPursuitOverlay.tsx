@@ -164,7 +164,8 @@ export function NightPursuitOverlay({
   // Real RPM from drive state; normalized fallback only when the host omits it.
   const rpmReal = Math.max(0, Math.round(rpmAbs ?? rpm * redline));
   const rpmShown = Math.round(rpmReal / 10) * 10; // last digit settles like a real counter
-  const tachMax = Math.ceil((redline * 1.1) / 1000) * 1000;
+  // Classic 0–8k face (grows in 1k steps only if redline + 10% exceeds 8k); redline zone from redlineRpm.
+  const tachMax = Math.max(8000, Math.ceil((redline * 1.1) / 1000) * 1000);
   const tachFrac = Math.min(1, rpmReal / tachMax);
   const gearText = gear == null ? null : gear <= 0 ? 'N' : String(Math.min(9, gear));
   const pursuitHot = mode === 'pursuit' || mode === 'power';
@@ -240,7 +241,13 @@ export function NightPursuitOverlay({
             <SegBar value={tachFrac} segments={22} palette="aar" redFrom={redline / tachMax} />
             <div className="np-tach-scale">
               {Array.from({ length: tachMax / 1000 + 1 }, (_, k) => (
-                <span key={k}>{k}</span>
+                <span
+                  key={k}
+                  className={k * 1000 >= redline ? 'red' : undefined}
+                  style={{ left: `${((k * 1000) / tachMax) * 100}%` }}
+                >
+                  {k}
+                </span>
               ))}
             </div>
           </div>

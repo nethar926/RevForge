@@ -303,12 +303,22 @@
   height: 12px;
 }
 .np-tach-scale {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 3px;
+  position: relative;
+  height: 12px;
+  margin: 3px 4px 0;
   font-size: 9px;
   color: rgba(255, 176, 0, 0.72);
   font-variant-numeric: tabular-nums;
+}
+/* Ticks sit exactly at k×1000 / tachMax so labels line up with the segments */
+.np-tach-scale span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  line-height: 12px;
+}
+.np-tach-scale span.red {
+  color: #ff5a5a;
 }
 .np-bar i {
   flex: 1;
