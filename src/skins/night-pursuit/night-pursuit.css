@@ -565,3 +565,165 @@
     height: 38px;
   }
 }
+
+/* ——— Compact (small Tesla window) ———
+ * Additive: only applies under .np-compact (host `compact` prop / ?hudCompact).
+ * --u = one on-screen px (1 / host scale), so every size here is authored in real
+ * screen px: text ≥11px, mode buttons ≥48px, whatever the host's scale-to-fit.
+ * Keeps: scanner, speed 7-seg + gear, RPM 7-seg + tach bar/scale, voice box, mode rail.
+ * Drops: throttle/load/engine bar stack, sensor pods (CRT), footer badge/status.
+ */
+.np-overlay.np-compact {
+  grid-template-rows: calc(22 * var(--u, 1px)) minmax(0, 1fr);
+}
+.np-compact .np-scanner {
+  height: auto;
+  gap: calc(2 * var(--u, 1px));
+  padding: 0 calc(8 * var(--u, 1px));
+  border-bottom-width: var(--u, 1px);
+}
+.np-compact .np-scanner-cell {
+  height: calc(10 * var(--u, 1px));
+}
+.np-compact .np-scanner-track {
+  inset: 0 calc(8 * var(--u, 1px));
+}
+.np-compact .np-scanner-eye {
+  height: calc(12 * var(--u, 1px));
+  margin-top: calc(-6 * var(--u, 1px));
+}
+.np-c-dash {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: calc(6 * var(--u, 1px));
+  padding: calc(8 * var(--u, 1px));
+  min-height: 0;
+}
+.np-compact[data-np-cols="2"] .np-c-dash {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.np-compact .np-pod {
+  padding: calc(6 * var(--u, 1px)) calc(10 * var(--u, 1px));
+  border-width: calc(2 * var(--u, 1px));
+  border-radius: calc(6 * var(--u, 1px));
+  justify-content: space-between;
+}
+.np-compact .np-pod-label {
+  font-size: calc(11.25 * var(--u, 1px));
+  letter-spacing: 0.12em;
+  margin-bottom: calc(4 * var(--u, 1px));
+}
+.np-compact .np-seg-row {
+  gap: calc(3 * var(--u, 1px));
+}
+.np-compact .np-seg-digit {
+  width: calc(32 * var(--u, 1px));
+  height: calc(56 * var(--u, 1px));
+}
+.np-compact .np-seg-unit {
+  font-size: calc(11.25 * var(--u, 1px));
+  letter-spacing: 0.12em;
+  margin: 0 0 calc(4 * var(--u, 1px)) calc(3 * var(--u, 1px));
+}
+.np-compact .np-readout-row {
+  gap: calc(8 * var(--u, 1px));
+}
+.np-compact .np-gear {
+  gap: calc(2 * var(--u, 1px));
+}
+.np-compact .np-mini-label {
+  font-size: calc(11.25 * var(--u, 1px));
+  letter-spacing: 0.1em;
+}
+.np-compact .np-gear .np-seg-digit {
+  width: calc(22 * var(--u, 1px));
+  height: calc(38 * var(--u, 1px));
+}
+.np-c-tach-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(8 * var(--u, 1px));
+}
+.np-c-tach .np-seg-digit {
+  width: calc(28 * var(--u, 1px));
+  height: calc(50 * var(--u, 1px));
+}
+.np-compact .np-voice {
+  flex: 1;
+  max-width: calc(96 * var(--u, 1px));
+  min-height: calc(50 * var(--u, 1px));
+  margin-top: 0;
+  gap: calc(3 * var(--u, 1px));
+  align-self: stretch;
+}
+.np-compact .np-tach-bar {
+  margin-top: calc(6 * var(--u, 1px));
+}
+.np-compact .np-tach-bar .np-bar {
+  height: calc(10 * var(--u, 1px));
+  gap: calc(2 * var(--u, 1px));
+}
+.np-compact .np-tach-scale {
+  height: calc(14 * var(--u, 1px));
+  margin: calc(3 * var(--u, 1px)) calc(4 * var(--u, 1px)) 0;
+  font-size: calc(11.25 * var(--u, 1px));
+}
+.np-compact .np-tach-scale span {
+  line-height: calc(14 * var(--u, 1px));
+}
+.np-compact .np-c-rail {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  grid-column: 1 / -1;
+  gap: calc(6 * var(--u, 1px));
+}
+.np-overlay.np-compact .np-mode-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: calc(48 * var(--u, 1px));
+  padding: 0 calc(4 * var(--u, 1px));
+  border-width: calc(2 * var(--u, 1px));
+  border-radius: calc(3 * var(--u, 1px));
+  font-size: calc(12 * var(--u, 1px));
+  letter-spacing: 0.08em;
+}
+/* Active mode is not colour-only: underline bar under the label. */
+.np-overlay.np-compact .np-mode-btn.active {
+  text-decoration: underline;
+  text-decoration-thickness: calc(2 * var(--u, 1px));
+  text-underline-offset: calc(4 * var(--u, 1px));
+}
+/* Throttle merged into the velocity pod (single bar; load/engine bars dropped). */
+.np-c-thr {
+  display: grid;
+  gap: calc(3 * var(--u, 1px));
+  margin-top: calc(6 * var(--u, 1px));
+}
+.np-compact .np-bar-label {
+  font-size: calc(11.25 * var(--u, 1px));
+  letter-spacing: 0.1em;
+}
+.np-c-thr .np-bar {
+  height: calc(10 * var(--u, 1px));
+  gap: calc(2 * var(--u, 1px));
+}
+/* Tight (short host, e.g. demo throttle card open): smaller digits, throttle bar folds away. */
+.np-compact[data-np-tight] .np-c-thr {
+  display: none;
+}
+.np-compact[data-np-tight] .np-seg-digit {
+  width: calc(26 * var(--u, 1px));
+  height: calc(46 * var(--u, 1px));
+}
+.np-compact[data-np-tight] .np-c-tach .np-seg-digit {
+  width: calc(22 * var(--u, 1px));
+  height: calc(40 * var(--u, 1px));
+}
+.np-compact[data-np-tight] .np-voice {
+  min-height: calc(40 * var(--u, 1px));
+}

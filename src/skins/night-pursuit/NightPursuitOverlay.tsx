@@ -1,4 +1,5 @@
-import { useMemo, useState, type AnimationEvent, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type AnimationEvent, type CSSProperties } from 'react';
+import { useHudCompact, type HudCompact } from './useHudCompact';
 import './night-pursuit.css';
 
 export type NightPursuitMode = 'power' | 'auto' | 'norm' | 'pursuit';
@@ -29,7 +30,18 @@ interface Props {
    * Wire to Audio's optional `scannerTick` hook. Not fired under reduced motion.
    */
   onScannerPass?: (edge: 'left' | 'right') => void;
+  /**
+   * Compact layout for small windows (host passes `true` once its fit would push text
+   * under 11px). Keeps scanner, speed + gear, RPM tach and the mode rail; drops the
+   * bar stack, sensor pods and footer. Sizes are authored in on-screen px so text stays
+   * ≥11px at any host scale. `'auto'` = self-detect. Default false = full layout.
+   * Dev/test override when omitted: `?hudCompact=1|auto`.
+   */
+  compact?: HudCompact;
 }
+
+/** Smallest font-size in the full layout (bar labels / tach scale) — drives `'auto'`. */
+const NP_MIN_DESIGN_PX = 9;
 
 const SEG_BITS: Record<string, number[]> = {
   '0': [1, 1, 1, 1, 1, 1, 0],
@@ -147,7 +159,10 @@ export function NightPursuitOverlay({
   rpm: rpmAbs,
   redlineRpm = 7000,
   gear,
+  compact: compactProp,
 }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const fit = useHudCompact(rootRef, compactProp, NP_MIN_DESIGN_PX);
   const [modeLocal, setModeLocal] = useState<NightPursuitMode>('norm');
   const mode = modeProp ?? modeLocal;
   const setMode = (m: NightPursuitMode) => {
@@ -187,8 +202,121 @@ export function NightPursuitOverlay({
     onScannerPass?.(next);
   };
 
+  const scanner = (
+    <>
+      {/* Mandatory top scanner — ping-pong sweep eye over a dim LED bank.
+          Reduced motion → static center glow via CSS. */}
+      <div className="np-scanner" aria-hidden>
+        {Array.from({ length: SCANNER_CELLS }, (_, i) => (
+          <i key={i} className="np-scanner-cell" />
+        ))}
+        <div className="np-scanner-track">
+          <div className="np-scanner-eye" onAnimationIteration={handleSweepIteration} />
+        </div>
+      </div>
+    </>
+  );
+  const tachBar = (
+    <div className="np-tach-bar">
+      <SegBar value={tachFrac} segments={22} palette="aar" redFrom={redline / tachMax} />
+      <div className="np-tach-scale">
+        {Array.from({ length: tachMax / 1000 + 1 }, (_, k) => (
+          <span
+            key={k}
+            className={k * 1000 >= redline ? 'red' : undefined}
+            style={{ left: `${((k * 1000) / tachMax) * 100}%` }}
+          >
+            {k}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+  const voice = (
+    <div className="np-voice" aria-hidden>
+      {voiceCols.map((h, ci) => {
+        const n = 10;
+        const lit = Math.round(h * n);
+        return (
+          <div key={ci} className="np-voice-col">
+            {Array.from({ length: n }, (_, i) => (
+              <span key={i} className={i < lit ? 'lit' : undefined} />
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+  const modeRail = (extra = '') => (
+    <div className={`np-mode-rail${extra}`} role="group" aria-label="Drive mode" onClick={(e) => e.stopPropagation()}>
+      {MODES.map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          className={`np-mode-btn${m.amber ? ' amber' : ''}${mode === m.id ? ' active' : ''}`}
+          aria-pressed={mode === m.id}
+          onClick={() => setMode(m.id)}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (fit.compact) {
+    return (
+      <div
+        ref={rootRef}
+        className={`np-overlay np-compact${pursuitHot ? ' np-hot' : ''}`}
+        data-mode={mode}
+        data-np-cols={fit.realW >= 560 ? 2 : 1}
+        data-np-tight={fit.realH < 345 && fit.realW < 560 ? '' : undefined}
+        style={
+          {
+            ['--np-rpm']: rpm,
+            ['--np-speed']: spd,
+            ['--np-throttle']: thr,
+            ['--np-load']: load,
+            ['--np-scanner-ms']: pursuitHot ? '1100ms' : '2200ms',
+            ['--u']: `${fit.unit}px`,
+          } as CSSProperties
+        }
+      >
+        {scanner}
+        <div className="np-c-dash">
+          <section className="np-pod np-c-speed" aria-hidden>
+            <div className="np-pod-label">Velocity</div>
+            <div className="np-readout-row">
+              <SevenSeg value={mph} digits={3} blankLeading tone="crimson" unit="MPH" />
+              {gearText ? (
+                <div className="np-gear">
+                  <span className="np-mini-label">Gear</span>
+                  <SevenSeg value={gearText} digits={1} tone="green" />
+                </div>
+              ) : null}
+            </div>
+            <div className="np-c-thr">
+              <span className="np-bar-label">Throttle</span>
+              <SegBar value={thr} palette="gar" />
+            </div>
+          </section>
+          <section className="np-pod np-c-tach" aria-hidden>
+            <div className="np-pod-label">Tach</div>
+            <div className="np-c-tach-row">
+              <SevenSeg value={rpmShown} digits={4} blankLeading tone="amber" unit="RPM" />
+              {voice}
+            </div>
+            {tachBar}
+          </section>
+          {modeRail(' np-c-rail')}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
+      ref={rootRef}
       className={`np-overlay${pursuitHot ? ' np-hot' : ''}`}
       data-mode={mode}
       style={
@@ -201,16 +329,7 @@ export function NightPursuitOverlay({
         } as CSSProperties
       }
     >
-      {/* Mandatory top scanner — ping-pong sweep eye over a dim LED bank.
-          Reduced motion → static center glow via CSS. */}
-      <div className="np-scanner" aria-hidden>
-        {Array.from({ length: SCANNER_CELLS }, (_, i) => (
-          <i key={i} className="np-scanner-cell" />
-        ))}
-        <div className="np-scanner-track">
-          <div className="np-scanner-eye" onAnimationIteration={handleSweepIteration} />
-        </div>
-      </div>
+      {scanner}
 
       <div className="np-dash">
         <section className="np-pod np-pod-speed" aria-hidden>
@@ -237,33 +356,8 @@ export function NightPursuitOverlay({
         <section className="np-pod np-pod-tach" aria-hidden>
           <div className="np-pod-label">Tach · Envelope</div>
           <SevenSeg value={rpmShown} digits={4} blankLeading tone="amber" unit="RPM" />
-          <div className="np-tach-bar">
-            <SegBar value={tachFrac} segments={22} palette="aar" redFrom={redline / tachMax} />
-            <div className="np-tach-scale">
-              {Array.from({ length: tachMax / 1000 + 1 }, (_, k) => (
-                <span
-                  key={k}
-                  className={k * 1000 >= redline ? 'red' : undefined}
-                  style={{ left: `${((k * 1000) / tachMax) * 100}%` }}
-                >
-                  {k}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="np-voice" aria-hidden>
-            {voiceCols.map((h, ci) => {
-              const n = 10;
-              const lit = Math.round(h * n);
-              return (
-                <div key={ci} className="np-voice-col">
-                  {Array.from({ length: n }, (_, i) => (
-                    <span key={i} className={i < lit ? 'lit' : undefined} />
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+          {tachBar}
+          {voice}
         </section>
 
         <section className="np-pod np-pod-crt" aria-hidden>
@@ -288,19 +382,7 @@ export function NightPursuitOverlay({
           </div>
         </section>
 
-        <div className="np-mode-rail" role="group" aria-label="Drive mode" onClick={(e) => e.stopPropagation()}>
-          {MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={`np-mode-btn${m.amber ? ' amber' : ''}${mode === m.id ? ' active' : ''}`}
-              aria-pressed={mode === m.id}
-              onClick={() => setMode(m.id)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        {modeRail()}
       </div>
 
       <div className="np-footer" aria-hidden>
