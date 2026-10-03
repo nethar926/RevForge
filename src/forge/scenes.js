@@ -22,7 +22,7 @@ function y(e, t, n, r) {
     l = i.speedMps,
     u = a.scene,
     d =
-      a.scene === `plaid` && l > 18 && o > 0.2
+      a.scene === `surge` && l > 18 && o > 0.2
         ? (Math.random() - 0.5) * o * 2.2
         : 0;
   {
@@ -67,7 +67,7 @@ function y(e, t, n, r) {
     if (u === `trench`) {
       ne(e, t, n, p, m, c, i.distance);
     }
-    if (u === `plaid`) {
+    if (u === `surge`) {
       O(e, t, n, c, l);
     }
     C(e, t, n, p, m, c, i.distance, u);

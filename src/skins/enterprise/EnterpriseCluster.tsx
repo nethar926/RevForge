@@ -55,7 +55,7 @@ export function EnterpriseCluster({
     <div
       className="ent"
       role="img"
-      aria-label={`Enterprise cluster: ${speedShow} ${unitShow}, ${rpmShow} RPM, gear ${gearShow}`}
+      aria-label={`Saffron Command cluster: ${speedShow} ${unitShow}, ${rpmShow} RPM, gear ${gearShow}`}
     >
       <div className="ent-inner">
       <div className="ent-main">
@@ -81,7 +81,7 @@ export function EnterpriseCluster({
 
         <div className="ent-center" aria-hidden />
 
-        <section className="ent-right" aria-label="Warp drive">
+        <section className="ent-right" aria-label="Drive rings">
           <div className="ent-warp">
             <span className="ent-label ent-warp-label">WARP</span>
           </div>

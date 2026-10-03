@@ -24,12 +24,128 @@ const toNightPursuit = (): Record<string, string> =>
 /** Theme preset ids → canonical (drivesynth.theme.v2, saved combinations). */
 export const PACK_THEME_MIGRATIONS: Record<string, string> = toNightPursuit();
 
+/**
+ * Retired brand-named engine / patch ids → original replacements (Oct 2 2026).
+ * Reversed like LEGACY_NIGHT_IDS. Folded into PACK_ENGINE_MIGRATIONS because
+ * that map is what the audio catalog's legacy-id resolver spreads (saved
+ * patches, combinations, deep links); these are not packs and never touch the
+ * Experimental opt-in.
+ */
+const LEGACY_ENGINE_RENAMES: ReadonlyArray<readonly [string, string]> = [
+  [legacy('dialp-egrofver'), 'revforge-dual-surge'],
+];
+
 /** Engine / patch ids → canonical (drivesynth.ui.v1 selectedEngineId, deep links). */
-export const PACK_ENGINE_MIGRATIONS: Record<string, string> = toNightPursuit();
+export const PACK_ENGINE_MIGRATIONS: Record<string, string> = {
+  ...toNightPursuit(),
+  ...Object.fromEntries(LEGACY_ENGINE_RENAMES),
+};
+
+/** Only migrations that land on an experimental pack auto-enable its opt-in. */
+const EXPERIMENTAL_TARGETS: ReadonlySet<string> = new Set([NIGHT_PURSUIT_ID]);
+
+/**
+ * Retired franchise-named theme ids → original replacements (Oct 2 2026).
+ * Same migration-only exception and reversed storage as LEGACY_NIGHT_IDS:
+ * the old ids exist only to carry saved prefs, combinations and deep links
+ * forward, are never displayed, and stay out of the shipped bundle as plain
+ * strings. These are ordinary themes, not packs, so they never touch the
+ * Experimental opt-in.
+ */
+const LEGACY_THEME_RENAMES: ReadonlyArray<readonly [string, string]> = [
+  [legacy('enihcam-emit'), 'epoch-banks'],
+  [legacy('sdlrow-wen'), 'saffron-console'],
+  [legacy('esirpretne'), 'saffron-command'],
+  [legacy('omortson'), 'cargo-terminal'],
+  [legacy('noivilbo'), 'white-spire'],
+  [legacy('xofrats'), 'cobalt-vane'],
+  [legacy('olah'), 'visor-arc'],
+  [legacy('dialp-daor'), 'road-dual-surge'],
+];
+
+/** Theme ids → canonical for retired franchise-named (non-pack) themes. */
+export const THEME_ID_MIGRATIONS: Record<string, string> = Object.fromEntries(LEGACY_THEME_RENAMES);
+
+/** Retired font-picker choices → bundled OFL replacement (Oswald). */
+const FONT_CHOICE_MIGRATIONS: Record<string, string> = { [legacy('hsebilne')]: 'oswald' };
 
 const THEME_KEY = 'drivesynth.theme.v2';
 const UI_PREFS_KEY = 'drivesynth.ui.v1';
 const EXPERIMENTAL_KEY = 'revforge.packs.experimental';
+const FONTS_KEY = 'revforge.fonts';
+const ATMOSPHERE_KEY = 'revforge.atmosphere';
+const COLORS_KEY = 'revforge.colors';
+const COMBINATIONS_KEY = 'drivesynth.combinations.v1';
+
+type Json = Record<string, unknown>;
+const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Re-key a per-theme map (fonts / colors) from retired ids to canonical ids. */
+function rekeyThemeMap(map: Json): boolean {
+  let changed = false;
+  for (const [from, to] of Object.entries(THEME_ID_MIGRATIONS)) {
+    if (!(from in map)) continue;
+    if (!(to in map)) map[to] = map[from];
+    delete map[from];
+    changed = true;
+  }
+  return changed;
+}
+
+/** Swap retired font-picker choices inside a { [themeId]: { numbers, labels } } map. */
+function migrateFontChoices(map: Json): boolean {
+  let changed = false;
+  for (const choice of Object.values(map)) {
+    if (!isObject(choice)) continue;
+    for (const slot of ['numbers', 'labels']) {
+      const v = choice[slot];
+      if (typeof v === 'string' && FONT_CHOICE_MIGRATIONS[v]) {
+        choice[slot] = FONT_CHOICE_MIGRATIONS[v];
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
+function migrateJsonKey(key: string, fn: (value: unknown) => boolean) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const value: unknown = JSON.parse(raw);
+    if (fn(value)) localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* malformed or blocked storage — leave as is */
+  }
+}
+
+/** Retired franchise-named theme ids + retired font choices → canonical. */
+function runThemeRenameMigrations(): void {
+  try {
+    const theme = localStorage.getItem(THEME_KEY);
+    if (theme && THEME_ID_MIGRATIONS[theme]) localStorage.setItem(THEME_KEY, THEME_ID_MIGRATIONS[theme]);
+    const atmosphere = localStorage.getItem(ATMOSPHERE_KEY);
+    if (atmosphere && THEME_ID_MIGRATIONS[atmosphere]) localStorage.setItem(ATMOSPHERE_KEY, THEME_ID_MIGRATIONS[atmosphere]);
+  } catch {
+    /* storage blocked */
+  }
+  migrateJsonKey(FONTS_KEY, (v) => isObject(v) && [rekeyThemeMap(v), migrateFontChoices(v)].some(Boolean));
+  migrateJsonKey(COLORS_KEY, (v) => isObject(v) && rekeyThemeMap(v));
+  migrateJsonKey(COMBINATIONS_KEY, (v) => {
+    if (!Array.isArray(v)) return false;
+    let changed = false;
+    for (const c of v) {
+      if (!isObject(c)) continue;
+      if (typeof c.skinId === 'string' && THEME_ID_MIGRATIONS[c.skinId]) {
+        c.skinId = THEME_ID_MIGRATIONS[c.skinId];
+        changed = true;
+      }
+      if (isObject(c.fonts) && [rekeyThemeMap(c.fonts), migrateFontChoices(c.fonts)].some(Boolean)) changed = true;
+      if (isObject(c.colors) && rekeyThemeMap(c.colors)) changed = true;
+    }
+    return changed;
+  });
+}
 
 function enableExperimental(packId: string) {
   try {
@@ -49,12 +165,13 @@ function enableExperimental(packId: string) {
  * Idempotent; safe to call on every boot.
  */
 export function runPackPrefMigrations(): void {
+  runThemeRenameMigrations();
   try {
     const theme = localStorage.getItem(THEME_KEY);
     if (theme && PACK_THEME_MIGRATIONS[theme]) {
       const next = PACK_THEME_MIGRATIONS[theme];
       localStorage.setItem(THEME_KEY, next);
-      enableExperimental(next);
+      if (EXPERIMENTAL_TARGETS.has(next)) enableExperimental(next);
     }
     const rawPrefs = localStorage.getItem(UI_PREFS_KEY);
     if (rawPrefs) {
@@ -63,7 +180,7 @@ export function runPackPrefMigrations(): void {
       if (id && PACK_ENGINE_MIGRATIONS[id]) {
         prefs.selectedEngineId = PACK_ENGINE_MIGRATIONS[id];
         localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
-        enableExperimental(PACK_ENGINE_MIGRATIONS[id]);
+        if (EXPERIMENTAL_TARGETS.has(PACK_ENGINE_MIGRATIONS[id])) enableExperimental(PACK_ENGINE_MIGRATIONS[id]);
       }
     }
   } catch {

@@ -379,7 +379,7 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
     params: { ...EV_DUAL_DEFAULTS } as Record<string, number | string>,
     meta: {
       blurb:
-        'Split L/R inverter beat under dense mid motor roar — Plaid-class mood, fully original synthesis.',
+        'Split L/R inverter beat under dense mid motor roar — dual-motor performance mood, fully original synthesis.',
       tags: ['ev', 'dual-motor', 'roar', 'free'],
       author: 'DriveSynth',
     },

@@ -30,7 +30,7 @@
 /* Ion Twin SPEED: prefer [data-speed-script] hooks in ion-twin.css.
  * .aurebesh remains the shared FT Aurebesh utility for brand / overlays. */
 
-@font-face {font-family:"Engli-Besh";src:url("../assets/fonts/Engli-Besh.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap;}
+/* Oswald (SIL OFL 1.1): licence in ../assets/fonts/OFL-Oswald.txt, shipped as /fonts/OFL-Oswald.txt. */
 @font-face {
   font-family: "Oswald";
   src: url("../assets/fonts/Oswald-Variable.woff2") format("woff2");

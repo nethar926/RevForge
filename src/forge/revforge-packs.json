@@ -252,11 +252,11 @@
     }
   },
   {
-    "id": "plaid",
-    "name": "Plaid",
+    "id": "dual-surge",
+    "name": "Dual-Motor Surge",
     "tagline": "Pure inverter whine, climbing fast.",
     "custom": false,
-    "scene": "plaid",
+    "scene": "surge",
     "palette": {
       "skyTop": "#0a0a0c",
       "skyBottom": "#1a0c0c",

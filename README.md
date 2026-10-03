@@ -6,7 +6,7 @@ Start in **Demo**, tap **Start engine**, and raise Throttle. Choose **Manual** t
 
 Use Node 24. Run `npm ci`, `npm test`, `npm run dev`, and `npm run build`. The production build and 30 audio/drivetrain/media-action/flight-envelope tests pass. **Tesla hardware validation is still pending.** See [merge notes](docs/revforge-merge.md) for provenance, behavior and review details. The original cockpit is retained at `#/cockpit`; its manual gear display is legacy behavior. New physical gearing is on `#/drive`.
 
-Theme Lab adds Minimal, Gauge Cluster, Cockpit and RoadView families. Galactic Enforcer and Ion Twin HUDs use FT Aurebesh numbers and Engli-Besh descriptors (OFL fonts).
+Theme Lab adds Minimal, Gauge Cluster, Cockpit and RoadView families. Galactic Enforcer and Ion Twin HUDs use FT Aurebesh numbers and Oswald descriptors (both SIL OFL 1.1; licences ship in `public/fonts/`).
 
 Experimental media controls are off by default in settings: pause upshifts in Manual when enabled, next/previous shift up/down, and pause stops in Automatic. Touch Stop always stops. Settings includes GPS and received-media-action diagnostics. The user’s Tesla field test found no media-button shifting and no background audio. These are unsupported in the tested build; use touch shifting or Automatic and keep the browser visible. GPS still needs a live speed/accuracy reading; API availability is not hardware verification.
 

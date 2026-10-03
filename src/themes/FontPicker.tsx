@@ -1,4 +1,4 @@
-export const fontOptions:Record<string,string>={default:'Theme default',system:'System sans',mono:'Monospace',serif:'Serif',aurebesh:'FT Aurebesh',enlibesh:'Engli-Besh'};
-export const fontCss:Record<string,string>={system:'system-ui, sans-serif',mono:'ui-monospace, monospace',serif:'Georgia, serif',aurebesh:'"FT Aurebesh", monospace',enlibesh:'"Engli-Besh", sans-serif'};
+export const fontOptions:Record<string,string>={default:'Theme default',system:'System sans',mono:'Monospace',serif:'Serif',aurebesh:'FT Aurebesh',oswald:'Oswald'};
+export const fontCss:Record<string,string>={system:'system-ui, sans-serif',mono:'ui-monospace, monospace',serif:'Georgia, serif',aurebesh:'"FT Aurebesh", monospace',oswald:'"Oswald", "Arial Narrow", sans-serif'};
 export interface FontChoice {numbers:string;labels:string;}
 export function FontPicker({value,onChange}:{value:FontChoice;onChange:(v:FontChoice)=>void}){return <section><h3>Fonts for this cluster</h3>{(['numbers','labels'] as const).map(k=><label key={k}>{k==='numbers'?'Instrument numbers':'Labels and descriptors'}<select aria-label={k==='numbers'?'Number font':'Label font'} value={value[k]} onChange={e=>onChange({...value,[k]:e.target.value})}>{Object.entries(fontOptions).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>)}</section>;}

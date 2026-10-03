@@ -53,7 +53,7 @@ export function NewWorldsCluster({
     <div
       className="nw"
       role="img"
-      aria-label={`Enterprise cluster: ${speedShow} ${unitShow}, ${rpmShow} RPM, gear ${gearShow}`}
+      aria-label={`Saffron Console cluster: ${speedShow} ${unitShow}, ${rpmShow} RPM, gear ${gearShow}`}
     >
       <div className="nw-main">
         <section className="nw-left" aria-label="Speed and RPM">
@@ -75,7 +75,7 @@ export function NewWorldsCluster({
           </div>
         </section>
 
-        <section className="nw-right" aria-label="Warp drive">
+        <section className="nw-right" aria-label="Drive rings">
           <div className="nw-warp">
             <span className="nw-label ent-warp-label">WARP</span>
           </div>
