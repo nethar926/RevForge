@@ -6,6 +6,8 @@ export class MediaOutput {
   this.stream=privateContext.createMediaStreamDestination();
   this.element=new Audio();this.element.setAttribute('playsinline','');this.element.srcObject=this.stream.stream;
  }
+ /** True while the mix is routed through the media element (Background audio active). */
+ get active():boolean{return this.routed;}
  attach(output:AudioNode){if(this.output===output)return;this.output=output;if(this.routed){try{output.disconnect(output.context.destination);}catch{}output.connect(this.stream);}}
  async enable(){
   await this.element.play();
