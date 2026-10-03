@@ -13,7 +13,7 @@ export interface ChronoCoupeHudProps extends PackHudProps {
    * under 11px (`'auto'` = skin self-detects from its rendered scale). Sizes are authored
    * in on-screen px so text stays ≥11px and the rail ≥48px at any host scale.
    * Keeps all three date banks (cell captions dropped, active AM/PM only), the original
-   * Y charge core + %, velocity + charge bar, engine bars + RPM + gear, output readout
+   * Y flux core + %, velocity + charge bar, engine bars + RPM + gear, output readout
    * and the rail; drops the brass needle meter. Default false = full layout.
    * Dev/test override: `?hudCompact=1|auto|0`.
    */
@@ -72,12 +72,23 @@ function useMinuteClock(): Date {
   return now;
 }
 
+/**
+ * Tinted glass in front of a segment display. The parent `.cc-glass` is the inset well;
+ * this layer adds the diagonal glare + inner edge highlight (pure CSS, no backdrop-filter).
+ */
+function Glare() {
+  return <i className="cc-glare" aria-hidden="true" />;
+}
+
 function Cell({ seg, ghost, value, label }: { seg: 7 | 14; ghost: string; value: string; label: string }) {
   return (
     <div className={`cc-cell cc-seg${seg}`}>
-      <span className="cc-digits">
-        <span className="cc-ghost">{ghost}</span>
-        <span className="cc-lit">{value}</span>
+      <span className="cc-glass">
+        <span className="cc-digits">
+          <span className="cc-ghost">{ghost}</span>
+          <span className="cc-lit">{value}</span>
+        </span>
+        <Glare />
       </span>
       <small>{label}</small>
     </div>
@@ -113,8 +124,11 @@ function ChargeCore({ charge, flash, voice }: { charge: number; flash: number; v
       <defs>
         <filter id="cc-core-blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" /></filter>
         <linearGradient id="cc-core-line" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" /><stop offset="1" stopColor="#ffe9a8" /></linearGradient>
+        <linearGradient id="cc-core-glass" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.1" /><stop offset="0.4" stopColor="#fff" stopOpacity="0.03" /><stop offset="0.41" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
       </defs>
-      <rect x="10" y="4" width="220" height="182" rx="12" fill="#0d0e10" stroke="#3b3d41" strokeWidth="3" />
+      <rect className="cc-core-window" x="10" y="4" width="220" height="182" rx="12" fill="#0d0e10" stroke="#3b3d41" strokeWidth="3" />
       <g className="cc-core-glow" filter="url(#cc-core-blur)">
         <path d="M40 30 L120 100 L200 30 M120 100 L120 170" fill="none" stroke="#ffd36b" strokeWidth="14" strokeLinecap="round" />
         <circle cx="120" cy="100" r="13" fill="#fff" />
@@ -125,7 +139,13 @@ function ChargeCore({ charge, flash, voice }: { charge: number; flash: number; v
       </g>
       <circle className="cc-core-voice" cx="120" cy="100" r="16" fill="#fff6d8" />
       {flash > 0 && <circle key={flash} className="cc-core-flash" cx="120" cy="100" r="70" fill="#fff" />}
-      <g fill="#2a2c30" stroke="#5a5d62"><circle cx="40" cy="30" r="9" /><circle cx="200" cy="30" r="9" /><circle cx="120" cy="170" r="9" /></g>
+      <g className="cc-core-nodes" fill="#2a2c30" stroke="#5a5d62"><circle cx="40" cy="30" r="9" /><circle cx="200" cy="30" r="9" /><circle cx="120" cy="170" r="9" /></g>
+      {/* glass in front of the core window: diagonal glare + inner edge (hidden under Reduce Transparency) */}
+      <g className="cc-core-glare">
+        <rect x="13" y="7" width="214" height="176" rx="10" fill="none" stroke="#000" strokeOpacity="0.55" strokeWidth="5" />
+        <rect x="10" y="4" width="220" height="182" rx="12" fill="url(#cc-core-glass)" />
+        <rect x="11.5" y="5.5" width="217" height="179" rx="11" fill="none" stroke="#fff" strokeOpacity="0.09" strokeWidth="1" />
+      </g>
     </svg>
   );
 }
@@ -255,7 +275,7 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
       data-cc-tight={cfit.compact && cfit.realH < 330 ? '' : undefined}
       style={cfit.compact ? ({ '--u': `${cfit.unit}px` } as CSSProperties) : undefined}
     >
-      <p className="rf-sr-only">{`Charge ${Math.round(charge * 100)} percent of jump threshold ${threshold} ${unit === 'kph' ? 'kilometers per hour' : 'miles per hour'}${mode === 'jump' ? ', jump sequence armed' : ''}. Core output ${output.toFixed(2)}.`}</p>
+      <p className="rf-sr-only">{`Flux ${Math.round(charge * 100)} percent of jump threshold ${threshold} ${unit === 'kph' ? 'kilometers per hour' : 'miles per hour'}${mode === 'jump' ? ', jump sequence armed' : ''}. Core output ${output.toFixed(2)}.`}</p>
       <div className="cc-left">
         <div className="cc-banks">
           <DateBank tone="dest" label="DESTINATION" date={destination} />
@@ -264,13 +284,16 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
         </div>
         <div className="cc-lower">
           <section className="cc-panel cc-charge" aria-hidden="true">
-            <h4>CHARGE CORE</h4>
+            <h4>FLUX</h4>
             <div className="cc-core-wrap"><ChargeCore charge={charge} flash={flash} voice={running ? clamp01(props.envelope ?? 0) : 0} /></div>
             <span className="cc-charge-pct">{Math.round(charge * 100)}%</span>
           </section>
           <section className="cc-panel cc-output" aria-hidden="true">
             <h4>CORE OUTPUT</h4>
-            <div className="cc-readout">{output.toFixed(2)}</div>
+            <div className="cc-readout cc-glass">
+              <span className="cc-digits"><span className="cc-ghost">8.88</span><span className="cc-lit">{output.toFixed(2)}</span></span>
+              <Glare />
+            </div>
             <div className="cc-meter-wrap"><OutputMeter value={output} /></div>
           </section>
         </div>
@@ -280,9 +303,12 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
         <section className="cc-panel cc-velocity" aria-hidden="true">
           <h4>VELOCITY</h4>
           <span className="cc-unit">{unitLabel}</span>
-          <div className="cc-big">
-            <span className="cc-ghost">{speedGhost}</span>
-            <span className="cc-lit" data-testid="cc-speed">{speedText}</span>
+          <div className="cc-big cc-glass">
+            <span className="cc-digits">
+              <span className="cc-ghost">{speedGhost}</span>
+              <span className="cc-lit" data-testid="cc-speed">{speedText}</span>
+            </span>
+            <Glare />
           </div>
           <div className="cc-thr">
             <b style={{ width: `${charge * 100}%` }} />
@@ -307,11 +333,11 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
           </div>
           <div className="cc-rpmrow">
             <div className="cc-rpm">
-              <span className="cc-digits"><span className="cc-ghost">8888</span><span className="cc-lit">{rpmText.padStart(4, '!')}</span></span>
+              <span className="cc-glass"><span className="cc-digits"><span className="cc-ghost">8888</span><span className="cc-lit">{rpmText.padStart(4, '!')}</span></span><Glare /></span>
               <small>RPM</small>
             </div>
             <div className="cc-gear">
-              <span className="cc-digits"><span className="cc-ghost">8</span><span className="cc-lit">{gearText}</span></span>
+              <span className="cc-glass"><span className="cc-digits"><span className="cc-ghost">8</span><span className="cc-lit">{gearText}</span></span><Glare /></span>
               <small>GEAR</small>
             </div>
           </div>
