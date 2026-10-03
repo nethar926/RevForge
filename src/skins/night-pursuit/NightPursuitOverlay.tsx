@@ -35,7 +35,7 @@ interface Props {
    * under 11px). Keeps scanner, speed + gear, RPM tach and the mode rail; drops the
    * bar stack, sensor pods and footer. Sizes are authored in on-screen px so text stays
    * ≥11px at any host scale. `'auto'` = self-detect. Default false = full layout.
-   * Dev/test override when omitted: `?hudCompact=1|auto`.
+   * Dev/test override (wins over the prop): `?hudCompact=1|auto|0`.
    */
   compact?: HudCompact;
 }
