@@ -34,7 +34,7 @@ import { NativeStudio } from "./NativeStudio";
 import { useDriveSimulation } from "./useDriveSimulation";
 import "./forge.css";
 import "./viewport.css";
-import { IS_PREVIEW_BUILD, storageKey } from '../lib/storageKey';
+import { IS_PACK_PREVIEW_BUILD, storageKey } from '../lib/storageKey';
 
 interface Props {
   themes: ReturnType<typeof useThemes>;
@@ -298,7 +298,7 @@ export function ForgePage({
   // Pack previews open with the pack theme selected, but the locked IGNITION
   // splash keeps main's road scene behind it: until IGNITION the stage (and
   // accent) render the default road theme, then the pack backdrop/HUD takes over.
-  const stageTheme=IS_PREVIEW_BUILD&&!ignited&&packForThemeId(theme.id)?themeForId(DEFAULT_THEME):theme;
+  const stageTheme=IS_PACK_PREVIEW_BUILD&&!ignited&&packForThemeId(theme.id)?themeForId(DEFAULT_THEME):theme;
   const panelTitle=panel==='tuner'?'TUNE':panel==='tune'?'Options':panel==='themes'||panel==='scenes'?'Visuals':panel==='garage'?'Revs':panel==='account'?'Account':'Lab';
   return (
     <div
