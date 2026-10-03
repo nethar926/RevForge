@@ -2,6 +2,7 @@ import type { EngineKind, EnginePatch, EngineParams, ParamMeta } from './types';
 import { REVFORGE_PATCHES } from '../forge/catalog';
 import { PACK_ENGINE_MIGRATIONS } from '../packs/migrations';
 import { NIGHT_PURSUIT_DEFAULTS, nightPursuitBuiltinPatch } from './nightPursuitPack';
+import { CHRONO_COUPE, CHRONO_COUPE_DEFAULTS, chronoCoupeBuiltinPatch } from './chronoCoupePack';
 
 export const V8_DEFAULTS: EngineParams = {
   // Audio Physics ICE v1 + ice-pack-firing-schedules-v1 (crossPlane)
@@ -422,6 +423,8 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
   },
   // Night Pursuit (experimental flagship): dedicated cross-plane V8 voice — see nightPursuitPack.ts
   nightPursuitBuiltinPatch(),
+  // Chrono Coupe (experimental): odd-fire 90° V6 + charge mode — see chronoCoupePack.ts
+  chronoCoupeBuiltinPatch(),
   ...REVFORGE_PATCHES,
 ];
 
@@ -448,6 +451,8 @@ export function defaultsForTopology(topology: string): EngineParams {
       return { ...F14_DEFAULTS };
     case 'night-pursuit':
       return { ...NIGHT_PURSUIT_DEFAULTS };
+    case CHRONO_COUPE.id:
+      return { ...CHRONO_COUPE_DEFAULTS };
     case 'v8-rumble':
     default:
       return { ...V8_DEFAULTS };
@@ -497,7 +502,21 @@ export const NIGHT_PURSUIT_PARAM_META: ParamMeta[] = [
   { id: 'scannerTick', label: 'Scanner Tick', min: 0, max: 1, step: 0.01, group: 'pursuit' },
 ];
 
+/** Chrono Coupe extras (appended by paramMetaForKind('ice', CHRONO_COUPE.id)). */
+export const CHRONO_COUPE_PARAM_META: ParamMeta[] = [
+  { id: 'camLope', label: 'Idle Hunt', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'bankSplit', label: 'Bank Split', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'overrunBurble', label: 'Overrun Pops', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'injectionHiss', label: 'Injection Hiss', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'shellResonance', label: 'Shell Ring', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'wheeze', label: 'Intake Wheeze', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'chargeIntensity', label: 'Charge Intensity', min: 0, max: 1, step: 0.01, group: 'charge' },
+];
+
 export function paramMetaForKind(kind: EnginePatch['kind'], topology?: string): ParamMeta[] {
+  if (kind === 'ice' && topology === CHRONO_COUPE.id) {
+    return [...paramMetaForKind('ice'), ...CHRONO_COUPE_PARAM_META];
+  }
   if (kind === 'ice' && topology === 'night-pursuit') {
     return [...paramMetaForKind('ice'), ...NIGHT_PURSUIT_PARAM_META];
   }
