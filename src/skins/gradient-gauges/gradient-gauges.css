@@ -1,0 +1,359 @@
+/*
+ * Gradient gauges — Sweep + Twin Dial (Visual Skins, pack-agnostic).
+ * Sizes use container units so the gauges fit whatever box Frontend mounts
+ * them in; every text size has a ≥12px floor (≥11px HIG minimum).
+ */
+
+.gg-sweep,
+.tdc {
+  --gg-font: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--gg-font);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+.gg-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ------------------------------ Sweep ------------------------------ */
+
+.gg-sweep {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  overflow: hidden;
+  container-type: size;
+  background-color: #0c3d94;
+  isolation: isolate;
+}
+
+.gg-sweep-ticks {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100cqmin;
+  height: 100cqmin;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Recessed pill: dark well + faint lower lip highlight (embossed, no blur). */
+.gg-tick-well {
+  fill: rgba(2, 14, 52, 0.42);
+}
+.gg-tick-lip {
+  fill: rgba(140, 196, 255, 0.2);
+}
+/* Redline: hollow outlined pill on a dark keyline — shape + outline, not hue only. */
+.gg-tick-key {
+  fill: none;
+  stroke: #000000;
+  stroke-width: 2.2;
+}
+.gg-tick-red {
+  fill: none;
+  stroke: #ff8a7e;
+  stroke-width: 1.2;
+}
+
+.gg-sweep-readout {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 15cqmin);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 1.2cqmin;
+  color: var(--gg-ink, #fff);
+  line-height: 0.8;
+  white-space: nowrap;
+}
+.gg-sweep-num {
+  font-size: 23cqmin;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+.gg-sweep-unit {
+  font-size: max(12px, 3cqmin);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.gg-sweep.is-compact .gg-sweep-readout {
+  top: calc(50% + 13cqmin);
+}
+.gg-sweep.is-compact .gg-sweep-num {
+  font-size: 19cqmin;
+}
+
+.gg-redline-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35em 0.7em;
+  border-radius: 999px;
+  border: 2px solid #ffd9d4;
+  background: #8f1119;
+  color: #ffffff;
+  font-size: max(12px, 2.4cqmin);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+.gg-sweep .gg-redline-chip {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 2.4cqmin);
+  transform: translateX(-50%);
+}
+
+/* ---------------------------- Twin Dial ---------------------------- */
+
+.tdc {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  container-type: inline-size;
+}
+
+.tdc-housing {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr minmax(18cqw, auto) 1fr;
+  align-items: center;
+  gap: 3cqw;
+  aspect-ratio: 935 / 410;
+  padding: 0 5.2cqw;
+  border-radius: 999px;
+  background: #0b1320;
+}
+.tdc.is-compact .tdc-housing {
+  aspect-ratio: 935 / 360;
+  padding: 0 4cqw;
+  gap: 2cqw;
+}
+
+.tdc-disc {
+  position: relative;
+  justify-self: center;
+  width: min(32cqw, 100%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+.tdc.is-compact .tdc-disc {
+  width: min(29cqw, 100%);
+}
+
+.tdc-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(25, 211, 255, 0.28),
+    0 0 2.2cqw rgba(25, 211, 255, 0.22);
+}
+
+.tdc-redzone {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.tdc-redzone-key {
+  fill: none;
+  stroke: #000000;
+  stroke-width: 3;
+}
+.tdc-redzone-band {
+  fill: rgba(239, 65, 70, 0.18);
+  stroke: #ff8a7e;
+  stroke-width: 1.4;
+}
+
+.tdc-needle {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 0;
+  height: 50%;
+  transform-origin: 50% 100%;
+}
+.tdc-needle > i {
+  position: absolute;
+  left: -0.8cqw;
+  top: 1.8%;
+  bottom: -0.8cqw;
+  width: 1.6cqw;
+  border-radius: 999px;
+  background: #03101e;
+  box-shadow:
+    0 0 0 0.32cqw #c8f6ff,
+    0 0 1.4cqw 0.2cqw rgba(25, 211, 255, 0.75);
+}
+.tdc-disc--rpm .tdc-needle > i {
+  background: #5a0509;
+  box-shadow:
+    0 0 0 0.32cqw #ff5a55,
+    0 0 1.4cqw 0.2cqw rgba(255, 60, 60, 0.75);
+}
+/* Redline: needle thickens (shape) in addition to the hue. */
+.tdc.is-redline .tdc-disc--rpm .tdc-needle > i {
+  left: -1.1cqw;
+  width: 2.2cqw;
+  box-shadow:
+    0 0 0 0.42cqw #ffd0cb,
+    0 0 1.8cqw 0.3cqw rgba(255, 60, 60, 0.85);
+  animation: tdc-heat 0.9s ease-in-out infinite alternate;
+}
+@keyframes tdc-heat {
+  to {
+    box-shadow:
+      0 0 0 0.42cqw #ffd0cb,
+      0 0 2.6cqw 0.5cqw rgba(255, 60, 60, 1);
+  }
+}
+
+.tdc-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6cqw;
+  min-width: 18cqw;
+  color: #ff4a4d;
+  text-align: center;
+}
+
+.tdc-speed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.82;
+}
+.tdc-speed strong {
+  font-size: 13.5cqw;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  text-shadow:
+    0 0 1.6cqw rgba(255, 60, 60, 0.55),
+    0 0 4cqw rgba(255, 60, 60, 0.25);
+}
+.tdc-speed small {
+  margin-top: 1.8cqw;
+  font-size: max(12px, 2.2cqw);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.tdc.has-gear-rpm .tdc-speed {
+  padding: 2.2cqw 2.6cqw 1.8cqw;
+  min-width: 18cqw;
+  border-radius: 2.8cqw;
+  background: #3a0b0e;
+}
+.tdc.has-gear-rpm .tdc-speed strong {
+  font-size: 10.5cqw;
+}
+.tdc.has-gear-rpm .tdc-speed small {
+  margin-top: 1.4cqw;
+  font-size: max(12px, 1.7cqw);
+}
+
+.tdc-gear {
+  min-width: 8.6cqw;
+  padding: 0.9cqw 2cqw;
+  border-radius: 999px;
+  background: #0f2236;
+  color: #19d3ff;
+  font-size: max(13px, 3.4cqw);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0 1cqw rgba(25, 211, 255, 0.55);
+}
+
+.tdc-rpm-pill {
+  padding: 1cqw 2.2cqw;
+  border-radius: 999px;
+  background: #2a0a0d;
+  border: 2px solid transparent;
+  font-size: max(12px, 2.3cqw);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-shadow: 0 0 1cqw rgba(255, 60, 60, 0.5);
+}
+.tdc.is-redline .tdc-rpm-pill {
+  border-color: #ffd0cb;
+  background: #8f1119;
+  color: #ffffff;
+  text-shadow: none;
+}
+
+.tdc .tdc-redline-chip {
+  font-size: max(12px, 1.6cqw);
+}
+
+.tdc.is-compact .tdc-speed strong {
+  font-size: 12cqw;
+}
+.tdc.is-compact.has-gear-rpm .tdc-speed strong {
+  font-size: 9.5cqw;
+}
+
+/* ------------------------- Accessibility -------------------------- */
+
+/* Reduce Motion: no pulse; values jump (JS skips smoothing). */
+@media (prefers-reduced-motion: reduce) {
+  .tdc.is-redline .tdc-disc--rpm .tdc-needle > i {
+    animation: none;
+  }
+}
+.tdc.is-rm.is-redline .tdc-disc--rpm .tdc-needle > i {
+  animation: none;
+}
+
+/* Reduce Transparency: drop glows/halos, translucent fills become solid. */
+@media (prefers-reduced-transparency: reduce) {
+  .gg-tick-well {
+    fill: #072a6b;
+  }
+  .gg-tick-lip {
+    fill: #2f6fd6;
+  }
+  .tdc-face {
+    box-shadow: 0 0 0 2px #19d3ff;
+  }
+  .tdc-needle > i,
+  .tdc-disc--rpm .tdc-needle > i,
+  .tdc.is-redline .tdc-disc--rpm .tdc-needle > i {
+    box-shadow: 0 0 0 0.36cqw #c8f6ff;
+    animation: none;
+  }
+  .tdc-disc--rpm .tdc-needle > i,
+  .tdc.is-redline .tdc-disc--rpm .tdc-needle > i {
+    box-shadow: 0 0 0 0.36cqw #ff8a83;
+  }
+  .tdc-redzone-band {
+    fill: #4a0c12;
+  }
+  .tdc-speed strong,
+  .tdc-gear,
+  .tdc-rpm-pill {
+    text-shadow: none;
+  }
+}
+
+/* PackHud adapter box for the full-bleed Sweep. */
+.gg-hud--sweep {
+  position: relative;
+  width: 100%;
+  height: min(78vh, 720px);
+  min-height: 300px;
+  border-radius: 18px;
+  overflow: hidden;
+}
