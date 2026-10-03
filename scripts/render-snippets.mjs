@@ -83,6 +83,19 @@ function scheduleParam(param, when, value) {
   param.setValueAtTime(value, when);
 }
 
+/**
+ * Quiet Current previews (~11.8 s): rest → pull-away → cruise → regen lift → gentle re-apply.
+ * Shared quietCurrentVoice.js drive model + bus (same as EngineSynthImpl); standard and Cyber.
+ */
+async function renderQuietCurrentPreview(cyber = 0) {
+  const { renderQuietCurrent, quietCurrentPreviewProfile, QC_PREVIEW_SECONDS } = await import('./quiet-current-render.mjs');
+  return renderQuietCurrent(quietCurrentPreviewProfile, QC_PREVIEW_SECONDS, {
+    sampleRate: SR,
+    params: { cyber },
+    fadeOut: 0.3,
+  });
+}
+
 async function renderPack(id, buildFn, renderFn) {
   // Packs with a dedicated offline renderer (real worklet + shared voice chain)
   if (renderFn) return bufferToWav(await renderFn());
@@ -585,6 +598,8 @@ const PACKS = [
   { id: 'aerospace-f14', file: 'aerospace-f14.wav', build: (c, m) => buildAero(c, m) },
   { id: 'ion-twin', file: 'ion-twin.wav', build: (c, m) => buildScifi(c, m) },
   { id: 'night-pursuit', file: 'night-pursuit.wav', render: renderNightPursuitPreview },
+  { id: 'quiet-current', file: 'quiet-current.wav', render: () => renderQuietCurrentPreview(0) },
+  { id: 'quiet-current-cyber', file: 'quiet-current-cyber.wav', render: () => renderQuietCurrentPreview(1) },
 ];
 // Optional filter: node scripts/render-snippets.mjs night-pursuit  (re-render only those ids)
 const ONLY = process.argv.slice(2);

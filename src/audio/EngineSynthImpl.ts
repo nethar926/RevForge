@@ -11,6 +11,13 @@ import {
   type NightPursuitDrive,
 } from './nightPursuitVoice';
 import { EnvelopeMeter } from './envelopeMeter';
+import { isQuietCurrentTopology, type QuietCurrentVariant } from './quietCurrentPack';
+import {
+  QuietCurrentBus,
+  createQuietCurrentDriveState,
+  quietCurrentCyberAmount,
+  stepQuietCurrentDrive,
+} from './quietCurrentVoice';
 import type {
   DrivingInput,
   EngineDiag,
@@ -203,6 +210,8 @@ interface GraphHandles {
   tickFilt?: BiquadFilterNode;
   /** Night Pursuit post chain + PURSUIT bus (engine → npBus.input → master) */
   npBus?: NightPursuitBus;
+  /** Quiet Current EV voice bus (whole voice for that topology → master) */
+  qcBus?: QuietCurrentBus;
 }
 
 const workletContexts = new WeakSet<BaseAudioContext>();
@@ -273,6 +282,11 @@ export class EngineSynthImpl implements EngineSynth {
   private npDriveState = createNightPursuitDriveState();
   private npDrive: NightPursuitDrive | null = null;
   private npLastMs = 0;
+  /** Quiet Current continuous drive model (motor norm, regen, reverse, cyber / boost blends). */
+  private qcDriveState = createQuietCurrentDriveState();
+  private qcLastMs = 0;
+  /** Keeps the drive model gliding when Frontend only calls setDriving on change. */
+  private qcSettleTimer: ReturnType<typeof setTimeout> | null = null;
   /** Post-gain loudness envelope (getEnvelope / getVoiceEnvelope). */
   private envelope: EnvelopeMeter;
 
@@ -468,6 +482,8 @@ export class EngineSynthImpl implements EngineSynth {
       this.teardownGraph();
       this.npDriveState = createNightPursuitDriveState(npIdleRpm(this.params));
       this.npLastMs = 0;
+      this.qcDriveState = createQuietCurrentDriveState();
+      this.qcLastMs = 0;
       this.g = this.buildGraph(patch.kind, patch.topology);
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
@@ -635,6 +651,18 @@ export class EngineSynthImpl implements EngineSynth {
     this.params.pursuitBoost = v;
     this.patchMeta.params.pursuitBoost = v;
     this.applyDriving(false);
+  }
+
+  /**
+   * Quiet Current voice variant: 'standard' | 'cyber' (or a 0..1 cyber blend). Stored as
+   * params.cyber; the bus crossfades over ~0.4 s. Harmless on other packs (param is ignored).
+   */
+  setVariant(variant: QuietCurrentVariant | number): void {
+    if (this.disposed) return;
+    const v = quietCurrentCyberAmount(variant);
+    this.params.cyber = v;
+    this.patchMeta.params.cyber = v;
+    if (this.g.qcBus) this.applyDriving(false);
   }
 
   getEngineState(): EngineStateSnapshot {
@@ -898,6 +926,9 @@ export class EngineSynthImpl implements EngineSynth {
 
     if (kind === 'ice') {
       this.buildIce(g);
+    } else if (kind === 'ev-whine' && isQuietCurrentTopology(this.patchMeta.topology)) {
+      // Quiet Current: the whole EV voice lives in its own bus (stock EV graph not built)
+      g.qcBus = new QuietCurrentBus(ctx, master);
     } else if (kind === 'ev-whine') {
       this.buildEv(g);
     } else if (kind === 'aerospace') {
@@ -1950,6 +1981,13 @@ export class EngineSynthImpl implements EngineSynth {
       /* ignore */
     }
     try {
+      g.qcBus?.dispose();
+    } catch {
+      /* ignore */
+    }
+    if (this.qcSettleTimer) clearTimeout(this.qcSettleTimer);
+    this.qcSettleTimer = null;
+    try {
       g.pulseNode?.disconnect();
       g.pulseGainOut?.disconnect();
     } catch {
@@ -2067,6 +2105,8 @@ export class EngineSynthImpl implements EngineSynth {
     if (kind === 'ice') {
       this.applyIceDriving(rpmNorm, dIce, tc);
       if (g.npBus && this.npDrive) g.npBus.update(p, this.npDrive, this.throttleLag, tc);
+    } else if (kind === 'ev-whine' && g.qcBus) {
+      this.applyQuietCurrentDriving(d, immediate, tc);
     } else if (kind === 'ev-whine') {
       this.applyEvDriving(rpmNorm, d, tc);
     } else if (kind === 'aerospace') {
@@ -2195,6 +2235,8 @@ export class EngineSynthImpl implements EngineSynth {
     const kind = this.patchMeta.kind;
     if (kind === 'scifi') return;
 
+    // Quiet Current: cues only — no decorative sounds while driving
+    if (this.g.qcBus) return;
     let scale = 1;
     if (kind === 'ev-whine') scale = 0.32;
     else if (kind === 'aerospace') scale = 0.8;
@@ -2580,6 +2622,38 @@ export class EngineSynthImpl implements EngineSynth {
     else if (thrRaw > 0.7) this.driveMood = 'pull';
     else this.driveMood = 'cruise';
     this.prevThrottle = thrRaw;
+  }
+
+  /** Quiet Current: one continuous drive step → voice bus (all layers smoothed, no cliffs). */
+  private applyQuietCurrentDriving(d: DrivingInput, immediate: boolean, tc: number): void {
+    const bus = this.g.qcBus;
+    if (!bus) return;
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const dt =
+      immediate || !this.qcLastMs ? 1 / 60 : Math.min(0.25, Math.max(0.004, (nowMs - this.qcLastMs) / 1000));
+    this.qcLastMs = nowMs;
+    const qd = stepQuietCurrentDrive(this.qcDriveState, d, dt, this.params);
+    this.hud.fundamentalHz = qd.motorHz;
+    this.hud.rpmNorm = qd.m;
+    try {
+      bus.update(this.params, qd, tc);
+    } catch {
+      /* never block drive path */
+    }
+    // Settle loop: if the smoothed drive hasn't reached its targets, step again shortly (a
+    // per-frame caller simply supersedes this; stops when settled / stopped / torn down).
+    if (this.qcSettleTimer) clearTimeout(this.qcSettleTimer);
+    this.qcSettleTimer = null;
+    if (!qd.settled && this.started && !this.disposed) {
+      this.qcSettleTimer = setTimeout(() => {
+        this.qcSettleTimer = null;
+        if (this.started && !this.disposed && this.g.qcBus) this.applyQuietCurrentDriving(this.driving, false, 0.06);
+      }, 40);
+    }
+    if (d.speed < 0.02 && d.throttle < 0.08) this.driveMood = 'idle';
+    else if (qd.regen > 0.3) this.driveMood = 'regen';
+    else if (d.throttle > 0.7) this.driveMood = 'pull';
+    else this.driveMood = 'cruise';
   }
 
   private applyEvDriving(rpmNorm: number, d: DrivingInput, tc: number): void {

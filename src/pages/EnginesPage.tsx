@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { EngineKind, EngineParams, EnginePatch } from '../audio';
-import { BUILTIN_PATCHES } from '../audio';
+import { BUILTIN_PATCHES, QUIET_CURRENT, QUIET_CURRENT_CYBER_PREVIEW_ID } from '../audio';
 import { isEngineIdVisible } from '../packs/registry';
 import type { useAudioEngine } from '../hooks/useAudioEngine';
 import type { UiPrefs } from '../hooks/useUiPrefs';
@@ -29,6 +29,9 @@ const SNIPPET_BY_ID: Record<string, string> = {
   'tie-fighter': 'snippets/ion-twin.wav', // legacy prefs / deep-link id
   'aerospace-f14': 'snippets/aerospace-f14.wav',
   'night-pursuit': 'snippets/night-pursuit.wav',
+  [QUIET_CURRENT.id]: `snippets/${QUIET_CURRENT.id}.wav`,
+  // Cyber variant preview — select with SNIPPET_BY_ID[QUIET_CURRENT_CYBER_PREVIEW_ID] when the variant is cyber
+  [QUIET_CURRENT_CYBER_PREVIEW_ID]: `snippets/${QUIET_CURRENT_CYBER_PREVIEW_ID}.wav`,
 };
 
 /** Product Research taxonomy — all free, never Launch Pack / paywall groups. */

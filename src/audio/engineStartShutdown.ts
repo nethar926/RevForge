@@ -11,6 +11,13 @@ import {
   playNightPursuitShutoff,
   playNightPursuitStarter,
 } from './nightPursuitVoice';
+import {
+  QC_POWER_OFF_SECONDS,
+  QC_POWER_ON_SECONDS,
+  playQuietCurrentPowerOff,
+  playQuietCurrentPowerOn,
+} from './quietCurrentVoice';
+import { isQuietCurrentTopology } from './quietCurrentPack';
 
 export interface StartShutdownCtx {
   ctx: AudioContext;
@@ -26,6 +33,7 @@ export interface StartShutdownCtx {
 /** Approximate audible length (seconds) so stop() can hold the bus for the tail. */
 export function starterDuration(kind: EngineKind, topology?: string): number {
   if (topology === 'night-pursuit') return NP_STARTER_SECONDS;
+  if (isQuietCurrentTopology(topology)) return QC_POWER_ON_SECONDS;
   switch (kind) {
     case 'ice':
       return 0.95;
@@ -42,6 +50,7 @@ export function starterDuration(kind: EngineKind, topology?: string): number {
 
 export function shutoffDuration(kind: EngineKind, topology?: string): number {
   if (topology === 'night-pursuit') return NP_SHUTOFF_SECONDS;
+  if (isQuietCurrentTopology(topology)) return QC_POWER_OFF_SECONDS;
   switch (kind) {
     case 'ice':
       return 0.75;
@@ -94,6 +103,10 @@ export function playEngineStarter(s: StartShutdownCtx): number {
     if (s.topology === 'night-pursuit') {
       return playNightPursuitStarter(s.ctx, s.dest, s.params, s.whiteBuf, s.pinkBuf);
     }
+    if (isQuietCurrentTopology(s.topology)) {
+      // Power-on: soft rising chime-tone (cue only)
+      return playQuietCurrentPowerOn(s.ctx, s.dest, s.params);
+    }
     switch (kind) {
       case 'ice':
         return playIceStarter(s);
@@ -120,6 +133,10 @@ export function playEngineShutoff(s: StartShutdownCtx): number {
   try {
     if (s.topology === 'night-pursuit') {
       return playNightPursuitShutoff(s.ctx, s.dest, s.params, s.whiteBuf, s.pinkBuf);
+    }
+    if (isQuietCurrentTopology(s.topology)) {
+      // Power-off: soft falling tone (cue only)
+      return playQuietCurrentPowerOff(s.ctx, s.dest, s.params);
     }
     switch (kind) {
       case 'ice':
