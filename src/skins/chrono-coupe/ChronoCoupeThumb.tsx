@@ -15,7 +15,8 @@ export function ChronoCoupeThumb() {
       <rect x="78" y="40" width="38" height="4" rx="2" fill="#2a1a10" />
       <rect x="78" y="40" width="29" height="4" rx="2" fill="#ffb21e" />
       <g className="cc-thumb-glow">
-        <path d="M14 61 L24 68 L34 61 M24 68 L24 75" stroke="#ffd36b" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+        <rect x="18" y="59" width="12" height="17" rx="6" stroke="#ffd36b" strokeWidth="1.6" fill="none" />
+        <path d="M20.5 63.5 H27.5 M20.5 67.5 H27.5 M20.5 71.5 H27.5" stroke="#ffd36b" strokeWidth="1.6" strokeLinecap="round" />
       </g>
       {Array.from({ length: 8 }, (_, i) => (
         <rect key={i} x={46 + i * 9} y={74 - (5 + i * 1.6)} width="6" height={5 + i * 1.6} fill={i < 5 ? '#3dff6e' : i < 7 ? '#ffd23e' : '#5a1d18'} />

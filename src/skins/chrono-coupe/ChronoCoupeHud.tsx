@@ -97,26 +97,52 @@ function DateBank({ tone, label, date }: { tone: 'dest' | 'present' | 'departed'
   );
 }
 
-/** Three-electrode charge glow; intensity follows charge, flash on threshold. */
+/** Coil-capsule ring positions (5 rings stacked inside the glass). */
+const CORE_RINGS = [52, 76, 100, 124, 148];
+const CORE_TOP = 32;
+const CORE_BOTTOM = 160;
+
+/**
+ * Charge core: a sealed glass capsule holding a stacked ring coil. The whole coil
+ * glows with charge (same opacity curve as before) and a light column fills the
+ * glass bottom-up to the charge level. Static SVG; motion lives in CSS only.
+ */
 function ChargeCore({ charge, flash, voice }: { charge: number; flash: number; voice: number }) {
+  const level = Math.max(0, Math.min(1, charge));
+  const levelY = CORE_BOTTOM - level * (CORE_BOTTOM - CORE_TOP);
   return (
     <svg className="cc-core-svg" viewBox="0 0 240 190" preserveAspectRatio="xMidYMid meet" aria-hidden="true" style={{ '--cc-charge': charge, '--cc-voice': voice } as CSSProperties}>
       <defs>
         <filter id="cc-core-blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" /></filter>
         <linearGradient id="cc-core-line" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" /><stop offset="1" stopColor="#ffe9a8" /></linearGradient>
+        <clipPath id="cc-core-glass"><rect x="90" y="24" width="60" height="142" rx="30" /></clipPath>
       </defs>
       <rect x="10" y="4" width="220" height="182" rx="12" fill="#0d0e10" stroke="#3b3d41" strokeWidth="3" />
+      <rect x="88" y="22" width="64" height="146" rx="32" fill="#141518" />
       <g className="cc-core-glow" filter="url(#cc-core-blur)">
-        <path d="M40 30 L120 100 L200 30 M120 100 L120 170" fill="none" stroke="#ffd36b" strokeWidth="14" strokeLinecap="round" />
+        <g clipPath="url(#cc-core-glass)">
+          <rect className="cc-core-level" x="88" y={levelY} width="64" height={CORE_BOTTOM + 8 - levelY} fill="#ffd36b" opacity="0.45" />
+        </g>
+        <g fill="none" stroke="#ffd36b" strokeWidth="10">
+          {CORE_RINGS.map((y) => <ellipse key={y} cx="120" cy={y} rx="22" ry="6" />)}
+        </g>
         <circle cx="120" cy="100" r="13" fill="#fff" />
       </g>
       <g className="cc-core-wire">
-        <path d="M40 30 L120 100 L200 30 M120 100 L120 170" fill="none" stroke="url(#cc-core-line)" strokeWidth="5" strokeLinecap="round" />
+        <line x1="120" y1="44" x2="120" y2="156" stroke="#ffe9a8" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+        <g fill="none" stroke="url(#cc-core-line)" strokeWidth="3.5">
+          {CORE_RINGS.map((y) => <ellipse key={y} cx="120" cy={y} rx="22" ry="6" />)}
+        </g>
         <circle cx="120" cy="100" r="7" fill="#fff" />
       </g>
       <circle className="cc-core-voice" cx="120" cy="100" r="16" fill="#fff6d8" />
       {flash > 0 && <circle key={flash} className="cc-core-flash" cx="120" cy="100" r="70" fill="#fff" />}
-      <g fill="#2a2c30" stroke="#5a5d62"><circle cx="40" cy="30" r="9" /><circle cx="200" cy="30" r="9" /><circle cx="120" cy="170" r="9" /></g>
+      <rect x="88" y="22" width="64" height="146" rx="32" fill="none" stroke="#5a5d62" strokeWidth="3" />
+      <rect x="97" y="38" width="5" height="114" rx="2.5" fill="#fff" opacity="0.08" />
+      <g fill="#2a2c30" stroke="#5a5d62" strokeWidth="1.5">
+        <rect x="80" y="12" width="80" height="14" rx="4" />
+        <rect x="80" y="164" width="80" height="14" rx="4" />
+      </g>
     </svg>
   );
 }
