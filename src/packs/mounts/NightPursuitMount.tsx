@@ -16,7 +16,7 @@ const BOX = { wide: { w: 880, h: 400 }, stack: { w: 600, h: 640 } } as const;
  * Visual Skins' NightPursuitOverlay (which owns all HUD art).
  * Re-renders only on the existing 80 ms HUD publish; no extra loops.
  */
-export function NightPursuitMount({ rpmNorm, speedNorm, speed, unit, load, throttle, running }: PackHudProps) {
+export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, speed, unit, load, throttle, running }: PackHudProps) {
   const [mode, setMode] = useState<NightPursuitMode>(() => getPackMode(NIGHT_PURSUIT_ID));
   useEffect(
     () =>
@@ -66,6 +66,9 @@ export function NightPursuitMount({ rpmNorm, speedNorm, speed, unit, load, throt
       <div className="np-pack-box">
       <NightPursuitOverlay
         rpmNorm={running ? rpmNorm : 0}
+        rpm={running ? rpm : 0}
+        redlineRpm={redlineRpm}
+        gear={gear}
         speedNorm={speedNorm}
         throttle={running ? throttle : 0}
         loadFeel={running ? load : 0}

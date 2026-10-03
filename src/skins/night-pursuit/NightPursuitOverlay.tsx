@@ -10,6 +10,12 @@ interface Props {
   loadFeel: number;
   /** Optional mph readout for decorative 7-seg (ThemeStage). Drive may omit — uses speedNorm×scale. */
   speedMph?: number;
+  /** Absolute engine RPM from drive state. Tach shows this, never a normalized value. */
+  rpm?: number;
+  /** Redline RPM for the tach bar scale + red zone. Default 7000. */
+  redlineRpm?: number;
+  /** Current gear, 0 = neutral. Shown as a green 7-seg digit ("N" at 0). */
+  gear?: number;
   /** Initial / controlled mode. Default NORM. */
   mode?: NightPursuitMode;
   onModeChange?: (mode: NightPursuitMode) => void;
@@ -37,6 +43,7 @@ const SEG_BITS: Record<string, number[]> = {
   '8': [1, 1, 1, 1, 1, 1, 1],
   '9': [1, 1, 1, 1, 0, 1, 1],
   '-': [0, 0, 0, 0, 0, 0, 1],
+  N: [1, 1, 1, 0, 1, 1, 0],
   ' ': [0, 0, 0, 0, 0, 0, 0],
 };
 
@@ -52,22 +59,25 @@ const SEG_PATHS = [
 
 function SevenSeg({
   value,
+  blankLeading = false,
   digits = 3,
   tone = 'crimson',
   unit,
 }: {
-  value: number;
+  value: number | string;
+  /** Show unlit segments instead of leading zeros (realistic tach). */
+  blankLeading?: boolean;
   digits?: number;
   tone?: 'crimson' | 'amber' | 'green';
   unit?: string;
 }) {
-  const text = String(Math.max(0, Math.min(10 ** digits - 1, Math.round(value)))).padStart(
-    digits,
-    '0',
-  );
+  const text =
+    typeof value === 'string'
+      ? value.padStart(digits, ' ')
+      : String(Math.max(0, Math.min(10 ** digits - 1, Math.round(value)))).padStart(digits, '0');
   return (
     <div className={`np-seg-row np-seg-${tone}`}>
-      {[...text].map((ch, i) => {
+      {[...(blankLeading ? text.replace(/^0+(?=.)/, (z) => ' '.repeat(z.length)) : text)].map((ch, i) => {
         const bits = SEG_BITS[ch] ?? SEG_BITS[' '];
         return (
           <svg key={i} className="np-seg-digit" viewBox="0 0 20 36" aria-hidden>
@@ -86,17 +96,22 @@ function SegBar({
   value,
   segments = 20,
   palette = 'gar',
+  redFrom,
 }: {
   value: number;
   segments?: number;
   palette?: string;
+  /** 0..1: segments at/after this point are drawn as a redline zone (dim red when unlit). */
+  redFrom?: number;
 }) {
   const lit = Math.round(Math.max(0, Math.min(1, value)) * segments);
   const pal = palette.split('');
   return (
     <div className="np-bar" aria-hidden>
       {Array.from({ length: segments }, (_, i) => {
-        if (i >= lit) return <i key={i} />;
+        const zone = redFrom != null && i / segments >= redFrom;
+        if (i >= lit) return <i key={i} className={zone ? 'zone' : undefined} />;
+        if (zone) return <i key={i} className="lit r" />;
         const t = i / segments;
         const c = t < 0.45 ? pal[0] : t < 0.75 ? pal[1] || pal[0] : pal[2] || pal[1] || pal[0];
         return <i key={i} className={`lit ${c}`} />;
@@ -129,6 +144,9 @@ export function NightPursuitOverlay({
   onModeChange,
   voiceEnvelope,
   onScannerPass,
+  rpm: rpmAbs,
+  redlineRpm = 7000,
+  gear,
 }: Props) {
   const [modeLocal, setModeLocal] = useState<NightPursuitMode>('norm');
   const mode = modeProp ?? modeLocal;
@@ -142,6 +160,13 @@ export function NightPursuitOverlay({
   const load = Math.max(0, Math.min(1, loadFeel));
   const spd = Math.max(0, Math.min(1, speedNorm));
   const mph = speedMph ?? Math.round(spd * 120);
+  const redline = Math.max(1000, redlineRpm);
+  // Real RPM from drive state; normalized fallback only when the host omits it.
+  const rpmReal = Math.max(0, Math.round(rpmAbs ?? rpm * redline));
+  const rpmShown = Math.round(rpmReal / 10) * 10; // last digit settles like a real counter
+  const tachMax = Math.ceil((redline * 1.1) / 1000) * 1000;
+  const tachFrac = Math.min(1, rpmReal / tachMax);
+  const gearText = gear == null ? null : gear <= 0 ? 'N' : String(Math.min(9, gear));
   const pursuitHot = mode === 'pursuit' || mode === 'power';
 
   const env = voiceEnvelope == null ? null : Math.max(0, Math.min(1, voiceEnvelope));
@@ -189,7 +214,15 @@ export function NightPursuitOverlay({
       <div className="np-dash">
         <section className="np-pod np-pod-speed" aria-hidden>
           <div className="np-pod-label">Primary · Velocity</div>
-          <SevenSeg value={mph} digits={3} tone="crimson" unit="MPH" />
+          <div className="np-readout-row">
+            <SevenSeg value={mph} digits={3} blankLeading tone="crimson" unit="MPH" />
+            {gearText ? (
+              <div className="np-gear">
+                <span className="np-mini-label">Gear</span>
+                <SevenSeg value={gearText} digits={1} tone="green" />
+              </div>
+            ) : null}
+          </div>
           <div className="np-bar-stack">
             <span className="np-bar-label">Throttle</span>
             <SegBar value={thr} palette="gar" />
@@ -202,7 +235,15 @@ export function NightPursuitOverlay({
 
         <section className="np-pod np-pod-tach" aria-hidden>
           <div className="np-pod-label">Tach · Envelope</div>
-          <SevenSeg value={Math.round(rpm * 99)} digits={2} tone="amber" unit="RPM" />
+          <SevenSeg value={rpmShown} digits={4} blankLeading tone="amber" unit="RPM" />
+          <div className="np-tach-bar">
+            <SegBar value={tachFrac} segments={22} palette="aar" redFrom={redline / tachMax} />
+            <div className="np-tach-scale">
+              {Array.from({ length: tachMax / 1000 + 1 }, (_, k) => (
+                <span key={k}>{k}</span>
+              ))}
+            </div>
+          </div>
           <div className="np-voice" aria-hidden>
             {voiceCols.map((h, ci) => {
               const n = 10;
