@@ -51,7 +51,7 @@
 .gg-tick-lip {
   fill: rgba(140, 196, 255, 0.2);
 }
-/* Redline: hollow outlined pill on a dark keyline — shape + outline, not hue only. */
+/* Redline: hollow outlined pill on a dark keyline — shape + stroke, not hue only. */
 .gg-tick-key {
   fill: none;
   stroke: #000000;

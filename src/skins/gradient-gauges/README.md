@@ -69,7 +69,7 @@ import { SweepGauge, TwinDialCluster } from '../skins/gradient-gauges';
 * **Redline not by colour alone**: Sweep redline ticks are hollow outlined
   pills (vs recessed filled ticks) on a black keyline, plus a "REDLINE" chip;
   Twin Dial draws an outlined redline band on the RPM rim, thickens the RPM
-  needle and swaps the pill to "▲ 7300 REDLINE". Coral outline (#ff8a7e) on
+  needle and swaps the pill to "▲ 7300 REDLINE". Coral stroke (#ff8a7e) on
   black keyline clears 3:1 against every arc colour (the reference's #e85a4f
   could not).
 * **Reduce Motion**: no rAF smoothing (needle = value), no redline pulse.

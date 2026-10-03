@@ -79,7 +79,7 @@ export function SweepGauge({
           <g key={t.deg} transform={`rotate(${t.deg} 100 100)`} className={t.redline ? 'gg-tick is-red' : 'gg-tick'}>
             {t.redline ? (
               <>
-                {/* dark keyline so the outline clears 3:1 on bright blue */}
+                {/* dark keyline so the coral stroke clears 3:1 on bright blue */}
                 <rect className="gg-tick-key" x="97.1" y="12.5" width="5.8" height="19" rx="2.9" />
                 <rect className="gg-tick-red" x="97.6" y="13" width="4.8" height="18" rx="2.4" />
               </>

@@ -54,14 +54,14 @@ test('twin dial centre text contrast', () => {
 
 test('graphics: needle edges and redline keylines ≥ 3:1', () => {
   assert.ok(m.contrast('#19d3ff', m.SWEEP_COLORS.filledEnd) >= 3, 'sweep hard edge');
-  // Redline marks = coral outline on a black keyline: whichever edge meets the
+  // Redline marks = coral stroke on a black keyline: whichever edge meets the
   // background must clear 3:1 against every arc/disc colour (and blends of them).
   const bgs = ['#19d3ff', '#1a6fe6', '#0f4fbf', '#0c3d94', '#03133a', '#1257c9', '#2079f5', '#1257c8', '#0a3576', '#031634', '#ef4146', '#8a2f45'];
   for (const a of bgs) for (const b of bgs) for (let s = 0; s <= 10; s++) {
     const p = m.mix(a, b, s / 10);
     assert.ok(Math.max(m.contrast('#000000', p), m.contrast('#ff8a7e', p)) >= 3, `redline mark on ${p}`);
   }
-  assert.ok(m.contrast('#c8f6ff', '#03101e') >= 3, 'speed needle outline vs core');
+  assert.ok(m.contrast('#c8f6ff', '#03101e') >= 3, 'speed needle rim vs core');
 });
 
 test('aria value text in words', () => {
