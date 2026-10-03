@@ -94,4 +94,20 @@ export {
 } from './nightPursuitPack';
 export { NIGHT_PURSUIT_PARAM_META } from './builtins';
 export { nightPursuitBoostForMode } from './nightPursuitVoice';
+export {
+  CHRONO_COUPE,
+  CHRONO_COUPE_ID,
+  CHRONO_COUPE_TOPOLOGY_ID,
+  CHRONO_COUPE_DISPLAY_NAME,
+  CHRONO_COUPE_EXPERIMENTAL,
+  CHRONO_COUPE_DEFAULTS,
+  CHRONO_COUPE_PARAM_IDS,
+  CHRONO_COUPE_FIRING_FAMILY,
+  isChronoCoupePack,
+  isChronoCoupeTopology,
+  chronoCoupeBuiltinPatch,
+  type ChronoCoupeId,
+} from './chronoCoupePack';
+export { CHRONO_COUPE_PARAM_META } from './builtins';
+export { chronoCoupeChargeIntensity, CC_DISCHARGE_COOLDOWN_S } from './chronoCoupeVoice';
 export { EnvelopeMeter } from './envelopeMeter';
