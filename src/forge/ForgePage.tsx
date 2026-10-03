@@ -27,14 +27,14 @@ import { DriveDynamicsPanel } from "../components/visuals/DriveDynamicsPanel";
 import { sceneForId, drivetrainFor } from "./catalog";
 import { ThemeStage } from "../themes/ThemeStage";
 import { ThemePicker } from "../themes/ThemePicker";
-import { themeForId } from "../themes/catalog";
+import { DEFAULT_THEME, themeForId } from "../themes/catalog";
 import type { useThemes } from "../themes/useThemes";
 import { useVehicleMedia } from "./useVehicleMedia";
 import { NativeStudio } from "./NativeStudio";
 import { useDriveSimulation } from "./useDriveSimulation";
 import "./forge.css";
 import "./viewport.css";
-import { storageKey } from '../lib/storageKey';
+import { IS_PREVIEW_BUILD, storageKey } from '../lib/storageKey';
 
 interface Props {
   themes: ReturnType<typeof useThemes>;
@@ -295,15 +295,19 @@ export function ForgePage({
   const tuneEngine=(p:EnginePatch)=>{onSavePatch(editableEngine(p));setPanel("studio");};
   // Selecting a theme pack selects its linked engine too; plain themes are unchanged.
   const selectCluster=(id:string)=>{themes.selectSkin(id);const pack=packForThemeId(id);const engine=pack&&getBuiltin(pack.engineId);if(engine&&audio.engineId!==engine.id)onSelectEngine(structuredClone(engine));};
+  // Pack previews open with the pack theme selected, but the locked IGNITION
+  // splash keeps main's road scene behind it: until IGNITION the stage (and
+  // accent) render the default road theme, then the pack backdrop/HUD takes over.
+  const stageTheme=IS_PREVIEW_BUILD&&!ignited&&packForThemeId(theme.id)?themeForId(DEFAULT_THEME):theme;
   const panelTitle=panel==='tuner'?'TUNE':panel==='tune'?'Options':panel==='themes'||panel==='scenes'?'Visuals':panel==='garage'?'Revs':panel==='account'?'Account':'Lab';
   return (
     <div
       className="forge"
-      style={{ "--forge-accent": theme.accent } as CSSProperties}
+      style={{ "--forge-accent": stageTheme.accent } as CSSProperties}
     >
       <main className={`rev-viewport ${!ignited&&source==='demo'?'is-launch':''}`} style={{'--hud-scale':scale,'--hud-opacity':opacity} as CSSProperties}>
         <section className="rev-scene" aria-label="Full-screen dashboard">
-          <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[themes.skinId]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={()=>audio.triggerUiCue('time-jump')} colors={themes.colors[themes.skinId]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={theme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
+          <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={()=>audio.triggerUiCue('time-jump')} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
         </section>
         <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{garage.active?.name??theme.name}</small>}</div><button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button></header>
         {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>
