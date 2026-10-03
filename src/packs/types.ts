@@ -69,8 +69,39 @@ export interface ThemePack {
   /** Linked engine pack id in the audio registry (BUILTIN_PATCHES). */
   engineId: string;
   engineKind: EngineKind;
+  /**
+   * Default true. False when the pack borrows a shared engine preset: that engine
+   * stays visible without the opt-in and picking it does NOT switch to the pack theme.
+   */
+  ownsEngine?: boolean;
   /** Optional RoadView atmosphere id to pair (not used by Full Screen packs). */
   sceneId?: string;
   migrations: PackMigrations;
   reducedMotion: ReducedMotionBehavior;
+  /** Optional picker thumbnail (decorative; CSS animation only, honours Reduce Motion). */
+  Thumb?: ComponentType;
+  /** gh-pages preview folder for this pack (`preview/<slug>/`); also accepted by `?pack=`. */
+  previewSlug?: string;
+}
+
+/**
+ * Pure-data identity for a glob-registered pack (`src/packs/<id>.identity.ts`,
+ * default export). ONE constant per pack: renaming a pack = editing this object.
+ * Read by the theme catalog (no component imports) and by `<id>.pack.ts`.
+ */
+export interface PackIdentity {
+  /** Canonical pack id = theme catalog id = experimental opt-in key. */
+  readonly id: string;
+  readonly displayName: string;
+  /** gh-pages preview folder Build Lead deploys to. */
+  readonly previewSlug: string;
+  readonly tagline: string;
+  /**
+   * Engine mapping. `preferred` is the pack's dedicated Audio engine id; until it
+   * is registered in BUILTIN_PATCHES the pack falls back to the shared `fallback`
+   * preset (and then does not own/gate that preset).
+   */
+  readonly engine: { readonly preferred: string; readonly fallback: string; readonly kind: EngineKind };
+  /** Theme catalog fields (Full Screen › Experimental). */
+  readonly theme: { readonly accent: string; readonly secondary: string; readonly description: string; readonly feature: string };
 }

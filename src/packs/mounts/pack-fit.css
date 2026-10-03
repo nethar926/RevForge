@@ -1,0 +1,43 @@
+/*
+ * Shared pack-HUD fit box (framework glue). Rename-proof: keyed off the mount
+ * class, not theme ids. Night Pursuit keeps its own mount CSS.
+ */
+.rf-pack-fit {
+  position: relative;
+  flex: none;
+  width: calc(var(--pf-w) * var(--pf-s));
+  height: calc(var(--pf-h) * var(--pf-s));
+  margin: 0 auto;
+}
+.rf-pack-box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--pf-w);
+  height: var(--pf-h);
+  transform: scale(var(--pf-s));
+  transform-origin: 0 0;
+  container-type: size;
+}
+/* Drive view: clear the top bar + bottom bar, and the demo throttle card (top ≈195px above the edge). */
+.rev-scene .theme-stage.is-fullscreen .skin-body:has(> .rf-pack-fit) {
+  padding: 78px 16px 96px;
+}
+.rev-viewport:has(.rev-throttle) .rev-scene .theme-stage.is-fullscreen .skin-body:has(> .rf-pack-fit) {
+  padding-bottom: 204px;
+}
+/* Touch floor that survives down-scaling: rendered size stays ≥ 48 CSS px. */
+.rf-pack-box {
+  --pf-tap: max(56px, calc(48px / var(--pf-s)));
+}
+.rf-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

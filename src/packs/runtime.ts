@@ -72,3 +72,78 @@ export function readPackEnvelope(): number | undefined {
     return undefined;
   }
 }
+
+/* ------------------------------------------------------------------------ *
+ * Optional engine commands from pack HUDs (Audio Synth owns the hooks).
+ * audioBridge forwards them to the live engine with optional chaining, so a
+ * stock engine without the hooks simply ignores them.
+ * ------------------------------------------------------------------------ */
+export type PackEngineCommand = { type: 'charge'; level: number } | { type: 'discharge' };
+type EngineCommandListener = (packId: string, cmd: PackEngineCommand) => void;
+const engineCommandListeners = new Set<EngineCommandListener>();
+
+export function sendPackEngineCommand(packId: string, cmd: PackEngineCommand): void {
+  for (const l of engineCommandListeners) l(packId, cmd);
+}
+
+export function onPackEngineCommand(listener: EngineCommandListener): () => void {
+  engineCommandListeners.add(listener);
+  return () => engineCommandListeners.delete(listener);
+}
+
+/* ------------------------------------------------------------------------ *
+ * Drive shell bridge: lets a pack HUD reach existing Drive actions (Shutdown,
+ * mute, menu panels) without new ThemeStage props. ForgePage connects a
+ * handler; elsewhere (Theme Lab previews) `connected` is false and pack
+ * controls render inert.
+ * ------------------------------------------------------------------------ */
+export type PackShellPanel = 'tuner' | 'tune' | 'scenes' | 'garage';
+export type PackShellAction =
+  | { type: 'shutdown' }
+  | { type: 'toggle-mute' }
+  | { type: 'open-panel'; panel: PackShellPanel };
+export interface PackShellState {
+  connected: boolean;
+  muted: boolean;
+  engineName: string;
+}
+type ShellListener = (state: PackShellState) => void;
+let shellHandler: ((action: PackShellAction) => void) | null = null;
+let shellState: PackShellState = { connected: false, muted: false, engineName: '' };
+const shellListeners = new Set<ShellListener>();
+
+function publishShell(next: PackShellState) {
+  shellState = next;
+  for (const l of shellListeners) l(shellState);
+}
+
+/** ForgePage registers the handler for pack actions. Returns a disposer. */
+export function connectPackShell(handler: (action: PackShellAction) => void): () => void {
+  shellHandler = handler;
+  publishShell({ ...shellState, connected: true });
+  return () => {
+    if (shellHandler !== handler) return;
+    shellHandler = null;
+    publishShell({ ...shellState, connected: false });
+  };
+}
+
+export function setPackShellState(partial: Partial<Omit<PackShellState, 'connected'>>): void {
+  const next = { ...shellState, ...partial };
+  if (next.muted === shellState.muted && next.engineName === shellState.engineName) return;
+  publishShell(next);
+}
+
+export const getPackShellState = (): PackShellState => shellState;
+
+export function onPackShellState(listener: ShellListener): () => void {
+  shellListeners.add(listener);
+  return () => shellListeners.delete(listener);
+}
+
+/** Returns false when no Drive shell is connected (action ignored). */
+export function requestPackShell(action: PackShellAction): boolean {
+  if (!shellHandler) return false;
+  shellHandler(action);
+  return true;
+}

@@ -8,6 +8,7 @@ import {ThemeColors} from '../themes/ThemeColors';
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type PointerEvent,
@@ -16,6 +17,7 @@ import { useSearchParams } from "react-router-dom";
 import { BUILTIN_PATCHES, getBuiltin } from "../audio";
 import { isEngineIdVisible, packForThemeId } from "../packs/registry";
 import { connectPackAudio } from "../packs/audioBridge";
+import { connectPackShell, setPackShellState, type PackShellAction } from "../packs/runtime";
 import type { EnginePatch } from "../audio";
 import type { useAudioEngine } from "../hooks/useAudioEngine";
 import type { useGeolocation } from "../hooks/useGeolocation";
@@ -239,6 +241,17 @@ export function ForgePage({
   // Theme-pack runtime (Night Pursuit): HUD mode ↔ pursuitBoost, scanner ↔ scannerTick, envelope → voice box.
   useEffect(() => connectPackAudio(audio.getEngine, audio.engineId), [audio.getEngine, audio.engineId, audio.running]);
   useEffect(() => () => onGpsEnabled(false), [onGpsEnabled]);
+  // Pack HUD → existing Drive actions (Shutdown / mute / menu panels). Additive; no new behaviour.
+  const packShellRef = useRef<(a: PackShellAction) => void>(() => undefined);
+  useEffect(() => {
+    packShellRef.current = (a) => {
+      if (a.type === 'shutdown') { if (audio.running) stop(); }
+      else if (a.type === 'toggle-mute') update({ masterMuted: !prefs.masterMuted });
+      else setPanel(a.panel);
+    };
+  });
+  useEffect(() => connectPackShell((a) => packShellRef.current(a)), []);
+  useEffect(() => setPackShellState({ muted: prefs.masterMuted, engineName: audio.patchName ?? '' }), [prefs.masterMuted, audio.patchName]);
   const start = () => {
     setIgnited(true);
     setMutedBeforeHide(false);

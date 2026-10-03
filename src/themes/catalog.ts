@@ -1,7 +1,8 @@
 import { PACK_THEME_MIGRATIONS, THEME_ID_MIGRATIONS } from '../packs/migrations';
+import type { PackIdentity } from '../packs/types';
 export type ThemeFamily = 'Minimal' | 'Gauge Cluster' | 'Cockpit' | 'RoadView' | 'Full Screen';
-export type ThemeLayout = 'numerical' | 'arc' | 'line' | 'bar' | 'digital' | 'analog' | 'driver' | 'scanner' | 'time' | 'jet' | 'space' | 'road' | 'custom' | 'new-worlds' | 'enterprise' | 'gradient' | 'gradient-macro';
-export interface ThemePreset { id: string; name: string; family: ThemeFamily; group: string; layout: ThemeLayout; accent: string; secondary: string; description: string; feature: string; sceneId?: string; }
+export type ThemeLayout = 'numerical' | 'arc' | 'line' | 'bar' | 'digital' | 'analog' | 'driver' | 'scanner' | 'time' | 'jet' | 'space' | 'road' | 'custom' | 'horizon' | 'saffron' | 'gradient' | 'gradient-macro';
+export interface ThemePreset { id: string; name: string; family: ThemeFamily; group: string; layout: ThemeLayout | 'pack'; accent: string; secondary: string; description: string; feature: string; sceneId?: string; }
 const skin = (id: string, name: string, family: ThemeFamily, group: string, layout: ThemeLayout, accent: string, secondary: string, description: string, feature: string): ThemePreset => ({id,name,family,group,layout,accent,secondary,description,feature});
 export const THEMES: ThemePreset[] = [
   skin('custom-grid','RF Your Grid','Gauge Cluster','Custom','custom','#8fe8f3','#faad58','Your own arrangement of instruments.','Editable instrument grid'),
@@ -24,8 +25,8 @@ export const THEMES: ThemePreset[] = [
   skin('tt','RF Splitline','Gauge Cluster','Modern','driver','#dce7f1','#ed5958','Balanced digital instruments flanking a live driving horizon.','Dual information panes'),
   skin('epoch-banks','RF Epoch Banks','Full Screen','Retro','time','#efbd64','#7cdda2','Target, current and last-jump date banks with a physical-style date keypad.','Speed-triggered date jump'),
   skin('night-pursuit','Night Pursuit','Full Screen','Experimental','scanner','#ff2a1f','#ffb000','Experimental pack: an eighties pursuit-car command dash — red scanner across the top, 7-segment SPEED/RPM, LED bar banks, twin CRT pods and a cross-plane V8.','Scanner sweep · linked V8'),
-  skin('saffron-console','RF Saffron Console','Full Screen','Retro','new-worlds','#f5820d','#7d3c98','Saffron and violet command panels — Oswald numerals, spinning drive rings and a segmented RPM bar.','Drive rings'),
-  skin('saffron-command','RF Saffron Command','Full Screen','Retro','enterprise','#f5820d','#7d3c98','Bold saffron and violet command panels — Oswald numerals, spinning drive rings and a chunky right-to-left RPM bar.','Drive rings'),
+  skin('saffron-console','RF Saffron Console','Full Screen','Retro','horizon','#f5820d','#7d3c98','Saffron and violet command panels — Oswald numerals, spinning drive rings and a segmented RPM bar.','Drive rings'),
+  skin('saffron-command','RF Saffron Command','Full Screen','Retro','saffron','#f5820d','#7d3c98','Bold saffron and violet command panels — Oswald numerals, spinning drive rings and a chunky right-to-left RPM bar.','Drive rings'),
   skin('gradient','RF Gradient Sweep','Gauge Cluster','Gradient','gradient','#ff5353','#4da6ff','Twin conic light-sweep dials — MPH left, RPM right — around a glowing center stack. Part of the Gradient pack.','Conic light sweep'),
   skin('gradient-macro','RF Gradient Macro','Gauge Cluster','Gradient','gradient-macro','#4da6ff','#ff8a3c','A single macro beam gauge — one bright sweep across a deep-blue face with etched ticks and dark-navy numerals. Part of the Gradient pack.','Macro beam gauge'),
   skin('f22','RF Peregrine','Cockpit','Jet','jet','#8eeeb0','#c8eabe','Angular HUD, paired engine-load tapes and a restrained radar panel.','Engine-load HUD'),
@@ -37,6 +38,11 @@ export const THEMES: ThemePreset[] = [
   skin('cobalt-vane','RF Cobalt Vane','Cockpit','SciFi','space','#70d9ff','#96f3ad','Angular blue viewport, luminous edge outlines and a boost meter.','Boost visualization'),
   skin('visor-arc','RF Visor Arc','Cockpit','SciFi','space','#82c8ff','#d3e7a5','A blue visor-style overlay with a curved horizon and reactor status.','Reactor status arc'),
 ];
+// Glob-registered experimental packs (src/packs/<id>.identity.ts) → Full Screen › Experimental.
+for (const m of Object.values(import.meta.glob<{ default: PackIdentity }>('../packs/*.identity.ts', { eager: true }))) {
+  const p = m.default;
+  if (p && !THEMES.some((t) => t.id === p.id)) THEMES.push({ id: p.id, name: p.displayName, family: 'Full Screen', group: 'Experimental', layout: 'pack', accent: p.theme.accent, secondary: p.theme.secondary, description: p.theme.description, feature: p.theme.feature });
+}
 const roads = [
  ['light-grid','RF Light Grid','#4ef3ff','Night'],
  ['road-66','RF Copper Mile','#eda75d','Desert'],['apex-v8','RF Apex Dusk','#ec665d','Track'],['neon-drive','RF Violet Grid','#d286fa','Night'],['italia','RF Azure Bend','#efbe81','Coast'],['miami','RF Pink Current','#fa93c6','Night'],['autobahn','RF Silver Run','#8ecad9','Road'],['dual-surge','RF Lightline','#85d8ed','Road'],['dune-runner','RF Sandwake','#f0b569','Desert'],['alpine','RF Frostpass','#b8e4e9','Mountain'],['starliner','RF Deep Transit','#a3a2fb','Space'],['sakura-gtr','RF Blossom Run','#f0aeca','Coast'],['trenchlight','RF Trenchlight','#86dfb1','Space'],

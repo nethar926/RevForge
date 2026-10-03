@@ -1,10 +1,10 @@
 import {useState, type CSSProperties, type ReactNode} from 'react';
 import {FAMILIES,THEMES as ALL_THEMES,themeForId,type ThemeFamily,type ThemeLayout} from './catalog';
-import {isThemeIdVisible,listExperimentalPacks} from '../packs/registry';
+import {isThemeIdVisible,listExperimentalPacks,packForThemeId} from '../packs/registry';
 import {isExperimentalPackEnabled,setExperimentalPackEnabled} from '../packs/experimental';
 import '../packs/packs.css';
 
-function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout; accent: string; secondary: string; uid: string}) {
+function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | 'pack'; accent: string; secondary: string; uid: string}) {
   const a = accent;
   const s = secondary;
   const common = {width: '100%', height: '100%'} as const;
@@ -183,6 +183,12 @@ function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout; ac
         </svg>
       );
       break;
+    case 'pack': {
+      // Glob-registered packs ship their own decorative thumbnail (CSS animation, Reduce Motion aware).
+      const PackThumb = packForThemeId(uid)?.Thumb;
+      body = PackThumb ? <PackThumb/> : <svg viewBox="0 0 120 78" style={common} aria-hidden="true"><rect width="120" height="78" rx="6" fill="#070b10"/><text x="60" y="44" textAnchor="middle" fill={a} fontSize="16" fontFamily="ui-monospace,monospace">68</text></svg>;
+      break;
+    }
     case 'custom':
     default:
       body = (

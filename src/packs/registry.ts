@@ -4,6 +4,17 @@ import { NIGHT_PURSUIT_ID, PACK_ENGINE_MIGRATIONS, PACK_THEME_MIGRATIONS } from 
 import type { ThemePack } from './types';
 
 /**
+ * Glob-registered packs: each `src/packs/<id>.pack.ts` default-exports a ThemePack.
+ * Adding a pack never edits this list (keeps per-pack commits independent).
+ */
+const GLOB_PACKS: ThemePack[] = Object.values(
+  import.meta.glob<{ default: ThemePack }>('./*.pack.ts', { eager: true }),
+)
+  .map((m) => m.default)
+  .filter((p): p is ThemePack => !!p && typeof p.id === 'string')
+  .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+/**
  * Theme-pack registry. Minimal + additive: only packs listed here get the
  * bound theme+engine behaviour; every other theme/engine is untouched.
  */
@@ -20,11 +31,13 @@ export const THEME_PACKS: readonly ThemePack[] = [
     migrations: { theme: PACK_THEME_MIGRATIONS, engine: PACK_ENGINE_MIGRATIONS },
     reducedMotion: 'static-glow',
   },
+  ...GLOB_PACKS,
 ];
 
 const BY_ID = new Map(THEME_PACKS.map((p) => [p.id, p]));
 const BY_THEME = new Map(THEME_PACKS.map((p) => [p.themeId, p]));
-const BY_ENGINE = new Map(THEME_PACKS.map((p) => [p.engineId, p]));
+// Only packs that own their engine bind it (shared presets keep their normal behaviour).
+const BY_ENGINE = new Map(THEME_PACKS.filter((p) => p.ownsEngine !== false).map((p) => [p.engineId, p]));
 
 export const getPack = (id: string) => BY_ID.get(id);
 export const packForThemeId = (themeId: string) => BY_THEME.get(themeId);
