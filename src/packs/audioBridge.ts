@@ -1,5 +1,6 @@
 import type { EngineParams, EngineSynth } from '../audio/types';
 import { NIGHT_PURSUIT_ID } from './migrations';
+import type { PackIdentity } from './types';
 import { getPackMode, onPackEngineCommand, onPackMode, onScannerPass, setPackEnvelopeSource, type PackMode, type ScannerEdge } from './runtime';
 
 /**
@@ -41,6 +42,19 @@ function applyBoost(eng: PackEngine | null, mode: PackMode) {
 }
 
 /**
+ * Engine id → pack id whose envelope + mode boost are wired. Glob-registered packs
+ * (src/packs/<id>.identity.ts) match on their preferred engine id string (Audio's
+ * engine constant), so this compiles and no-ops whether or not Audio's engine
+ * commit is merged, and adding a pack never edits this file. Shared fallback
+ * presets are never boosted.
+ */
+const MODE_PACKS: Record<string, string> = { [NIGHT_PURSUIT_ID]: NIGHT_PURSUIT_ID };
+for (const m of Object.values(import.meta.glob<{ default: PackIdentity }>('./*.identity.ts', { eager: true }))) {
+  const p = m.default;
+  if (p?.engine?.preferred && !(p.engine.preferred in MODE_PACKS)) MODE_PACKS[p.engine.preferred] = p.id;
+}
+
+/**
  * Connect the pack runtime bus to the live engine. Returns a disposer.
  * `getEngine` is read lazily so engine swaps (loadPatch) are picked up.
  */
@@ -57,11 +71,12 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
       /* engine not ready */
     }
   });
-  if (engineId !== NIGHT_PURSUIT_ID) {
+  const packId = MODE_PACKS[engineId];
+  if (!packId) {
     setPackEnvelopeSource(null);
     return offCommands;
   }
-  applyBoost(eng(), getPackMode(NIGHT_PURSUIT_ID));
+  applyBoost(eng(), getPackMode(packId));
   setPackEnvelopeSource(() => {
     const e = eng();
     if (!e) return undefined;
@@ -70,7 +85,7 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
     return undefined;
   });
   const offMode = onPackMode((id, mode) => {
-    if (id === NIGHT_PURSUIT_ID) applyBoost(eng(), mode);
+    if (id === packId) applyBoost(eng(), mode);
   });
   const offScan = onScannerPass((id, edge) => {
     if (id !== NIGHT_PURSUIT_ID) return;
