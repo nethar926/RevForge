@@ -18,7 +18,10 @@ const toPack = (m: RailMode): PackMode => (m === 'jump' ? 'pursuit' : m === 'off
  * uniform scale. Re-renders only on the existing HUD publish.
  */
 export function ChronoCoupeMount(props: PackHudProps) {
-  const { ref, fit } = useFitBox(1280, 520, 740, 720);
+  // Design box 1240 wide (min 500 tall) so the full layout reaches scale ≥ 1.0 at a
+  // 1280×800 Drive stage (1248 × 518 with the demo throttle card): 11px captions stay
+  // ≥ 11px and the skin's 'auto' compact (scale × 11 < 11) stays off at 1280.
+  const { ref, fit } = useFitBox(1240, 500, 740, 720);
   const shell = usePackShell();
   const [mode, setMode] = useState<RailMode>(() => toRail(getPackMode(ID.id, 'norm')));
   useEffect(
@@ -28,8 +31,6 @@ export function ChronoCoupeMount(props: PackHudProps) {
       }),
     [],
   );
-  // Short stages (e.g. ~1024×600 with the throttle card): compact spacing, 44pt floor.
-  const compact = fit.h * fit.s < 380;
   return (
     <div
       ref={ref}
@@ -40,7 +41,7 @@ export function ChronoCoupeMount(props: PackHudProps) {
       <div className="rf-pack-box">
         <ChronoCoupeHud
           {...props}
-          compact={compact}
+          compact="auto"
           storageKey={storageKey(`revforge.pack.${ID.id}`)}
           shellConnected={shell.connected}
           muted={shell.muted}
