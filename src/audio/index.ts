@@ -95,3 +95,14 @@ export {
 export { NIGHT_PURSUIT_PARAM_META } from './builtins';
 export { nightPursuitBoostForMode } from './nightPursuitVoice';
 export { EnvelopeMeter } from './envelopeMeter';
+export {
+  STELLAR_HELM_PACK,
+  STELLAR_HELM_EXPERIMENTAL,
+  STELLAR_HELM_DEFAULTS,
+  STELLAR_HELM_PARAM_IDS,
+  STELLAR_HELM_PARAM_META,
+  isStellarHelmPack,
+  isStellarHelmTopology,
+  stellarHelmBuiltinPatch,
+} from './stellarHelmPack';
+export type { StellarHelmId } from './stellarHelmPack';

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { EngineKind, EngineParams, EnginePatch } from '../audio';
-import { BUILTIN_PATCHES } from '../audio';
+import { BUILTIN_PATCHES, STELLAR_HELM_PACK } from '../audio';
 import { isEngineIdVisible } from '../packs/registry';
 import type { useAudioEngine } from '../hooks/useAudioEngine';
 import type { UiPrefs } from '../hooks/useUiPrefs';
@@ -29,6 +29,7 @@ const SNIPPET_BY_ID: Record<string, string> = {
   'tie-fighter': 'snippets/ion-twin.wav', // legacy prefs / deep-link id
   'aerospace-f14': 'snippets/aerospace-f14.wav',
   'night-pursuit': 'snippets/night-pursuit.wav',
+  [STELLAR_HELM_PACK.id]: `snippets/${STELLAR_HELM_PACK.id}.wav`,
 };
 
 /** Product Research taxonomy — all free, never Launch Pack / paywall groups. */

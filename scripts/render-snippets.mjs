@@ -112,6 +112,15 @@ async function renderNightPursuitPreview() {
   return renderNightPursuit(profile, 5.2, { sampleRate: SR });
 }
 
+/**
+ * Stellar Helm preview (~4.3 s): power-up sweep settling into the hum → cruise rising with
+ * speed → boost. Runs the real stellarHelmVoice.js graph (scripts/stellar-helm-render.mjs).
+ */
+async function renderStellarHelmPreviewBuffer() {
+  const { renderStellarHelmPreview } = await import('./stellar-helm-render.mjs');
+  return renderStellarHelmPreview(SR);
+}
+
 function bufferToWav(audioBuffer) {
   const numCh = audioBuffer.numberOfChannels;
   const len = audioBuffer.length;
@@ -585,6 +594,7 @@ const PACKS = [
   { id: 'aerospace-f14', file: 'aerospace-f14.wav', build: (c, m) => buildAero(c, m) },
   { id: 'ion-twin', file: 'ion-twin.wav', build: (c, m) => buildScifi(c, m) },
   { id: 'night-pursuit', file: 'night-pursuit.wav', render: renderNightPursuitPreview },
+  { id: 'stellar-helm', file: 'stellar-helm.wav', render: renderStellarHelmPreviewBuffer },
 ];
 // Optional filter: node scripts/render-snippets.mjs night-pursuit  (re-render only those ids)
 const ONLY = process.argv.slice(2);
