@@ -268,6 +268,7 @@ export function NightPursuitOverlay({
       <div
         ref={rootRef}
         className={`np-overlay np-compact${pursuitHot ? ' np-hot' : ''}`}
+        data-compact="true"
         data-mode={mode}
         data-np-cols={fit.realW >= 560 ? 2 : 1}
         data-np-tight={fit.realH < 345 && fit.realW < 560 ? '' : undefined}
