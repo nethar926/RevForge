@@ -19,6 +19,8 @@ export class RevForgeVoice {
     accel: number;
     shifting: boolean;
     overrun: boolean;
+    /** ICE DC guard 0..1 (iceDcGuardForRpm); omitted → 0 (no change). */
+    dcGuard?: number;
   }): void;
   dispose(): void;
   blip(): void;

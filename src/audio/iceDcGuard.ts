@@ -18,3 +18,26 @@ export function iceDcGuardForRpm(rpm: number, amount: unknown = 1): number {
   const ramp = (r - ICE_DC_GUARD_RPM_START) / (ICE_DC_GUARD_RPM_FULL - ICE_DC_GUARD_RPM_START);
   return Math.max(0, Math.min(1, ramp)) * amt;
 }
+
+/**
+ * RevForge catalogue packs excluded from the physics-bus rework (ICE_PACK_SCHEDULES, dd30cdf)
+ * stay excluded here too, so their native sound is untouched at every rpm.
+ */
+export const REVFORGE_DC_GUARD_EXCLUDED: readonly string[] = ['sakura-gtr'];
+
+/**
+ * Same rpm-gated guard for RevForge catalogue combustion voices (RevForgeSynth → RevForgeVoice).
+ * Returns 0 for non-combustion voices and excluded packs. `packId` may carry the `revforge-` prefix.
+ */
+export function revforgeDcGuardForRpm(
+  packId: string | undefined,
+  voice: string | undefined,
+  rpm: number,
+  amount: unknown = 1,
+): number {
+  if (voice !== 'combustion') return 0;
+  const id = String(packId ?? '');
+  const raw = id.startsWith('revforge-') ? id.slice('revforge-'.length) : id;
+  if (REVFORGE_DC_GUARD_EXCLUDED.includes(raw)) return 0;
+  return iceDcGuardForRpm(rpm, amount);
+}

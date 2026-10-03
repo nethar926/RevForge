@@ -64,6 +64,8 @@ export class RevForgeVoice {
   turboGain = null;
   screamGain = null;
   pulseGain = null;
+  dcDry = null;
+  dcWet = null;
   bodyFilter = null;
   raspFilter = null;
   turboFilter = null;
@@ -120,8 +122,24 @@ export class RevForgeVoice {
       this.drive = this.track(e.createWaveShaper());
       this.drive.curve = this.makeDrive(t.distortion);
       this.drive.oversample = `2x`;
-      this.driveInput = n;
-      n.connect(this.drive);
+      // ICE DC guard (iceDcGuardForRpm, rpm-gated): crossfade dry ↔ ~12 Hz one-pole DC-blocked
+      // copy ahead of the drive shaper. Wet starts at exactly 0 and stays 0 below 1500 rpm, so
+      // idle / low rpm (and every non-combustion voice) is bit-for-bit unchanged.
+      const feed = this.track(e.createGain());
+      feed.gain.value = 1;
+      this.dcDry = this.track(e.createGain());
+      this.dcDry.gain.value = 1;
+      this.dcWet = this.track(e.createGain());
+      this.dcWet.gain.value = 0;
+      const a = Math.exp((-2 * Math.PI * 12) / e.sampleRate);
+      const hp = this.track(e.createIIRFilter([a, -a], [1, -a]));
+      n.connect(this.dcDry);
+      n.connect(hp);
+      hp.connect(this.dcWet);
+      this.dcDry.connect(feed);
+      this.dcWet.connect(feed);
+      this.driveInput = feed;
+      feed.connect(this.drive);
       this.drive.connect(this.engineBus);
       this.bodyFilter = this.track(e.createBiquadFilter());
       this.bodyFilter.type = `lowpass`;
@@ -349,6 +367,9 @@ export class RevForgeVoice {
         0.05,
       );
       this.updateDrive(t.distortion * (0.22 + i * 0.3));
+      const dc = Xt(Number(e.dcGuard) || 0, 0, 1);
+      this.dcDry?.gain.setTargetAtTime(1 - dc, n, 0.05);
+      this.dcWet?.gain.setTargetAtTime(dc, n, 0.05);
     }
     let f = 0.08,
       p = 0.04,

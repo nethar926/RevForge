@@ -51,3 +51,36 @@ test('real worklet: stock V8 no longer collapses above 3k rpm; idle untouched', 
   const idle = await renderIcePack('v8-rumble', () => ({ speed: 0, throttle: 0 }), 1.2, { sampleRate: 22050 });
   assert.ok(idle.trace.every((f) => f.dc === 0), 'guard is exactly 0 at idle');
 });
+
+test('RevForge catalogue combustion voices take the same rpm-gated guard (sakura-gtr excluded)', async () => {
+  const { revforgeDcGuardForRpm, REVFORGE_DC_GUARD_EXCLUDED } = await jiti.import(join(root, 'src/audio/iceDcGuard.ts'));
+  assert.deepEqual([...REVFORGE_DC_GUARD_EXCLUDED], ['sakura-gtr']);
+  assert.equal(revforgeDcGuardForRpm('revforge-road-66', 'combustion', 900), 0, 'idle unchanged');
+  assert.equal(revforgeDcGuardForRpm('revforge-road-66', 'combustion', 6000), 1);
+  assert.equal(revforgeDcGuardForRpm('revforge-sakura-gtr', 'combustion', 6000), 0, 'sakura stays excluded');
+  assert.equal(revforgeDcGuardForRpm('revforge-plaid', 'electric', 6000), 0, 'non-combustion untouched');
+  assert.equal(revforgeDcGuardForRpm('revforge-alpine', 'combustion', 6000, 0), 0, 'params.dcGuard = 0 disables');
+  const synth = read('src/forge/RevForgeSynth.ts');
+  assert.match(synth, /dcGuard: revforgeDcGuardForRpm\(this\.patch\.id, p\.voice, rpm, this\.patch\.params\.dcGuard\)/);
+  const voice = read('src/forge/RevForgeVoice.js');
+  assert.match(voice, /this\.dcWet\.gain\.value = 0;/);
+  assert.match(voice, /this\.dcWet\?\.gain\.setTargetAtTime\(dc, n, 0\.05\)/);
+});
+
+test('real RevForgeVoice: catalogue idle bit-identical with the guard; guard engages at 6000 rpm', async () => {
+  const { renderRevforgePack } = await import(pathToFileURL(join(root, 'scripts/revforge-render.mjs')).href);
+  const idleD = () => ({ speed: 0, throttle: 0 });
+  const a = await renderRevforgePack('road-66', idleD, 0.8, { dcGuard: 'off', sampleRate: 22050 });
+  const b = await renderRevforgePack('road-66', idleD, 0.8, { sampleRate: 22050 });
+  assert.deepEqual(b.getChannelData(0), a.getChannelData(0));
+  const hi = await renderRevforgePack('road-66', () => ({ speed: 0.9, throttle: 1, load: 1, rpm: 6000 }), 0.5, { sampleRate: 22050 });
+  assert.equal(hi.trace.at(-1).dc, 1);
+});
+
+test('offline renders are seeded: same pack renders byte-identical twice', async () => {
+  const { renderIcePack } = await import(pathToFileURL(join(root, 'scripts/ice-render.mjs')).href);
+  const d = () => ({ speed: 0.3, throttle: 0.4, rpm: 2000 });
+  const x = await renderIcePack('i4-zip', d, 0.4, { sampleRate: 22050 });
+  const y = await renderIcePack('i4-zip', d, 0.4, { sampleRate: 22050 });
+  assert.deepEqual(y.getChannelData(1), x.getChannelData(1));
+});

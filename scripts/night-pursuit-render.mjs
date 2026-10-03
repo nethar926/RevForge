@@ -5,6 +5,7 @@
  * render-snippets.mjs (preview WAV) and night-pursuit-qa.mjs (idle/cruise/WOT analysis).
  * Fully procedural: nothing is loaded except code.
  */
+import { seededWorkletModule, withSeededRandom } from './seeded-random.mjs';
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -53,12 +54,18 @@ const IDLE_BAND = { rpmMin: 700, rpmMax: 900 }; // DEFAULT_IDLE_BAND
  * opts.params overrides defaults; opts.cues = [{t, type:'starter'|'shutoff'|'scanner', edge}].
  * opts.generic = true renders the stock V8 path (no Night Pursuit opt-ins/post chain) for A/B.
  */
+/** Deterministic by default (seeded main thread + worklet); opts.seed overrides. */
 export async function renderNightPursuit(profile, dur, opts = {}) {
+  const seed = opts.seed ?? 'night-pursuit';
+  return withSeededRandom(seed, () => renderNightPursuitImpl(profile, dur, { ...opts, seed }));
+}
+
+async function renderNightPursuitImpl(profile, dur, opts) {
   const SR = opts.sampleRate ?? 44100;
   const params = { ...NIGHT_PURSUIT_DEFAULTS, ...(opts.params ?? {}) };
   const generic = !!opts.generic;
   const ctx = new OfflineAudioContext(2, Math.ceil(SR * dur), SR);
-  await ctx.audioWorklet.addModule(WORKLET);
+  await ctx.audioWorklet.addModule(seededWorkletModule(WORKLET, opts.seed));
   const node = new AudioWorkletNode(ctx, 'pulse-engine-processor', {
     numberOfInputs: 0,
     numberOfOutputs: 1,
