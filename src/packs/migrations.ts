@@ -9,9 +9,11 @@
 export const NIGHT_PURSUIT_ID = 'night-pursuit' as const;
 
 /**
- * Legacy ids are stored reversed and decoded at runtime so the retired names
- * never appear as literals in the shipped bundle (Build Lead dist gate), while
- * saved prefs that still hold them keep migrating.
+ * Approved migration-only exception (Build Lead + Chief of Staff, Oct 2 2026):
+ * these legacy ids exist solely to move old saved prefs and deep links to
+ * Night Pursuit, and are never displayed. They are kept reversed so retired
+ * names stay out of the shipped bundle; any user-facing use of them is still
+ * banned.
  */
 const legacy = (reversed: string) => reversed.split('').reverse().join('');
 const LEGACY_NIGHT_IDS = [legacy('redir-thgin'), legacy('rennur-thgin'), legacy('ttik')];

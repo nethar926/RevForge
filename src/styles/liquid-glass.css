@@ -198,7 +198,8 @@
 
 .forge-eyebrow {
   letter-spacing: 0.18em;
-  opacity: 0.72;
+  /* HIG contrast: no extra opacity; base colour #929a9b on #101214 is ~6.9:1 (min 4.5:1). */
+  opacity: 1;
 }
 
 .tuner-menu {

@@ -34,7 +34,7 @@ export function DriveDynamicsPanel({ prefs, update }: Props) {
           <button
             key={n}
             type="button"
-            className={`seg-btn ${prefs.gearCount === n ? 'active' : ''}`}
+            className={`seg-btn rf-hit ${prefs.gearCount === n ? 'active' : ''}`}
             style={{ minHeight: 48 }}
             aria-pressed={prefs.gearCount === n}
             onClick={() => update({ gearCount: n })}

@@ -1292,3 +1292,16 @@ textarea {
 .rf-frontend-note code {
   color: #e8bb85;
 }
+
+/* HIG minimum hit target (44pt) for shell controls. Class-scoped so packs and
+   the IGNITION splash are untouched. */
+.rf-hit {
+  min-height: 44px !important;
+  min-width: 44px !important;
+  box-sizing: border-box;
+}
+.rf-hit-link {
+  display: inline-flex !important;
+  align-items: center;
+  padding-inline: 8px;
+}
