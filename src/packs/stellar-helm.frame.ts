@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
+import { storageKey } from '../lib/storageKey';
 import { STELLAR_HELM_FRAME, STELLAR_HELM_FRAME_KEY, type StellarHelmFrame } from './stellar-helm.identity';
 
 /**
@@ -7,13 +8,15 @@ import { STELLAR_HELM_FRAME, STELLAR_HELM_FRAME_KEY, type StellarHelmFrame } fro
  * other tabs sync through the native `storage` event.
  */
 const EVT = 'revforge:stellar-helm-frame';
+/** `revforge.pack.stellar-helm.frame` on root; `rf.preview.<slug>.…` on preview builds. */
+const FRAME_KEY = storageKey(STELLAR_HELM_FRAME_KEY);
 let memory: StellarHelmFrame | null = null; // storage blocked → session-only
 
 const isFrame = (v: unknown): v is StellarHelmFrame => v === 'classic' || v === 'helm';
 
 export function readStellarHelmFrame(): StellarHelmFrame {
   try {
-    const v = localStorage.getItem(STELLAR_HELM_FRAME_KEY);
+    const v = localStorage.getItem(FRAME_KEY);
     if (isFrame(v)) return v;
   } catch {
     /* fall through */
@@ -25,7 +28,7 @@ export function writeStellarHelmFrame(frame: StellarHelmFrame): void {
   memory = frame;
   snapshot = frame;
   try {
-    localStorage.setItem(STELLAR_HELM_FRAME_KEY, frame);
+    localStorage.setItem(FRAME_KEY, frame);
   } catch {
     /* session-only */
   }
@@ -46,7 +49,7 @@ function subscribe(cb: () => void): () => void {
     cb();
   };
   const onStorage = (e: StorageEvent) => {
-    if (e.key === null || e.key === STELLAR_HELM_FRAME_KEY) changed();
+    if (e.key === null || e.key === FRAME_KEY) changed();
   };
   window.addEventListener(EVT, changed);
   window.addEventListener('storage', onStorage);
