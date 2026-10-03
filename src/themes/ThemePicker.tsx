@@ -220,7 +220,7 @@ export function ThemePicker({selected,onSelect,mode='all'}:{selected:string;onSe
     <div className="theme-subtabs" aria-label="Theme subcategories">{['All',...groups].map(g=><button key={g} type="button" aria-pressed={group===g} onClick={()=>setGroup(g)}>{g}</button>)}</div>
     <div className="theme-card-grid">{THEMES.filter(t=>t.family===family&&(group==='All'||t.group===group)).map(t=><button className="theme-card" type="button" key={t.id} aria-pressed={selected===t.id} onClick={()=>onSelect(t.id)} style={{'--skin-accent':t.accent,'--skin-secondary':t.secondary} as CSSProperties}>
       <ThumbPreview layout={t.layout} accent={t.accent} secondary={t.secondary} uid={t.id}/>
-      <span className="theme-card-title">{t.name}<span>{selected===t.id?'✓':'↗'}</span></span><small>{t.group} · {t.feature}</small><p>{t.description}</p>
+      <span className="theme-card-title">{t.name}<span aria-hidden="true">{selected===t.id?'✓':'↗'}</span></span><small>{t.group} · {t.feature}</small><p>{t.description}</p>
     </button>)}</div>
   </div>;
 }
