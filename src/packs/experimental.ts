@@ -1,9 +1,10 @@
+import { storageKey } from '../lib/storageKey';
 /** Enabled experimental pack ids. JSON string array in localStorage. */
 export const EXPERIMENTAL_PACKS_KEY = 'revforge.packs.experimental';
 
 function readList(): string[] {
   try {
-    const raw = localStorage.getItem(EXPERIMENTAL_PACKS_KEY);
+    const raw = localStorage.getItem(storageKey(EXPERIMENTAL_PACKS_KEY));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -15,7 +16,7 @@ function readList(): string[] {
 
 function writeList(ids: string[]) {
   try {
-    localStorage.setItem(EXPERIMENTAL_PACKS_KEY, JSON.stringify([...new Set(ids)]));
+    localStorage.setItem(storageKey(EXPERIMENTAL_PACKS_KEY), JSON.stringify([...new Set(ids)]));
   } catch {
     /* session-only */
   }

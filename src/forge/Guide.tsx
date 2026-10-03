@@ -1,8 +1,9 @@
 import {useState} from 'react';
+import { storageKey } from '../lib/storageKey';
 const pages={dash:[['Build your DashLab layout','Choose an instrument, then tap an empty area of the grid. Select a placed instrument to edit its label, position and size.'],['Give every instrument room','The layout has 12 columns and 6 rows. Instruments cannot overlap. Use the active vehicle profile to scale speed instruments automatically.']],engine:[['Welcome to EngineForge','Default engines stay original. Tune This Engine creates your own copy, with all of its sound settings.'],['Place the sound','Add a component, drag its marker on the car, then select it to tune. Balance is left/right; depth simulates front/rear placement in stereo.'],['Build a mix you can keep','Solo a layer to hear it alone. Set level, pitch, response and filtering, then save your custom engine. Save the complete look and sound in Account.']]} as const;
 export function Guide({kind,children}:{kind:keyof typeof pages;children:React.ReactNode}){
- const key=`revforge.guide.${kind}.v1`;const [open,setOpen]=useState(()=>{try{return localStorage.getItem(key)!=='done';}catch{return true;}}),[page,setPage]=useState(0);
- const finish=()=>{setOpen(false);try{localStorage.setItem(key,'done');}catch{}};
+ const key=`revforge.guide.${kind}.v1`;const [open,setOpen]=useState(()=>{try{return localStorage.getItem(storageKey(key))!=='done';}catch{return true;}}),[page,setPage]=useState(0);
+ const finish=()=>{setOpen(false);try{localStorage.setItem(storageKey(key),'done');}catch{}};
  if(!open)return <><button className="guide-help" onClick={()=>{setPage(0);setOpen(true);}}>How to use {kind==='dash'?'DashLab':'EngineForge'}</button>{children}</>;
  return <section className={`lab-guide guide-${kind}`} aria-label={`${kind} introduction`}><div className="guide-orbit" aria-hidden="true">{kind==='dash'?'▦':kind==='engine'?'◉':'R'}</div><small>REVFORGE · {page+1} / {pages[kind].length}</small><h2>{pages[kind][page][0]}</h2><p>{pages[kind][page][1]}</p><div className="source-actions">{page>0&&<button onClick={()=>setPage(page-1)}>Back</button>}<button onClick={()=>page+1<pages[kind].length?setPage(page+1):finish()}>{page+1===pages[kind].length?'Let’s go':'Next'}</button><button onClick={finish}>Skip guide</button></div></section>;
 }

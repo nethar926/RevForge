@@ -4,6 +4,7 @@ import {
   DEFAULT_GEAR_COUNT,
   DEFAULT_MAX_TOP_SPEED_MPH,
 } from './gearLogic';
+import { storageKey } from '../lib/storageKey';
 
 export type ThemeId = 'night' | 'day' | 'neon' | 'mono';
 export type LayoutDensity = 'comfortable' | 'compact' | 'spacious';
@@ -194,7 +195,7 @@ function migrateIonTwinSpeedScript(parsed: Partial<UiPrefs>): IonTwinSpeedScript
   const v = parsed.ionTwinSpeedScript;
   if (v === 'aurebesh' || v === 'latin' || v === 'dual') return v;
   try {
-    const legacy = localStorage.getItem(LEGACY_AUREBESH_KEY);
+    const legacy = localStorage.getItem(storageKey(LEGACY_AUREBESH_KEY));
     if (legacy === 'false' || legacy === '0') return 'latin';
   } catch {
     /* ignore */
@@ -204,7 +205,7 @@ function migrateIonTwinSpeedScript(parsed: Partial<UiPrefs>): IonTwinSpeedScript
 
 function readLegacyNumber(key: string): number | undefined {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(storageKey(key));
     if (raw == null || raw === '') return undefined;
     const n = Number(raw);
     return Number.isFinite(n) ? n : undefined;
@@ -215,8 +216,8 @@ function readLegacyNumber(key: string): number | undefined {
 
 function load(): UiPrefs {
   try {
-    const raw = localStorage.getItem(KEY);
-    const dsUpshift = localStorage.getItem('ds-upshift-sfx') === '1';
+    const raw = localStorage.getItem(storageKey(KEY));
+    const dsUpshift = localStorage.getItem(storageKey('ds-upshift-sfx')) === '1';
     const legacyHud = readLegacyNumber('revforge.hudOpacity');
     if (!raw) {
       return {
@@ -281,16 +282,16 @@ function load(): UiPrefs {
 
 function persistMirrors(prefs: UiPrefs) {
   try {
-    localStorage.setItem(DYNAMICS_KEYS.gearCount, String(prefs.gearCount));
-    localStorage.setItem(DYNAMICS_KEYS.maxTopSpeedMph, String(prefs.maxTopSpeedMph));
-    localStorage.setItem(DYNAMICS_KEYS.idleRpmMin, String(prefs.idleRpmMin));
-    localStorage.setItem(DYNAMICS_KEYS.idleRpmMax, String(prefs.idleRpmMax));
-    localStorage.setItem(APPEARANCE_KEYS.bloomGlow, String(prefs.bloomGlow));
-    localStorage.setItem(APPEARANCE_KEYS.scanlineStrength, String(prefs.scanlineStrength));
-    localStorage.setItem(APPEARANCE_KEYS.hudOpacity, String(prefs.hudOpacity));
-    localStorage.setItem(APPEARANCE_KEYS.hudBezel, String(prefs.hudBezel));
+    localStorage.setItem(storageKey(DYNAMICS_KEYS.gearCount), String(prefs.gearCount));
+    localStorage.setItem(storageKey(DYNAMICS_KEYS.maxTopSpeedMph), String(prefs.maxTopSpeedMph));
+    localStorage.setItem(storageKey(DYNAMICS_KEYS.idleRpmMin), String(prefs.idleRpmMin));
+    localStorage.setItem(storageKey(DYNAMICS_KEYS.idleRpmMax), String(prefs.idleRpmMax));
+    localStorage.setItem(storageKey(APPEARANCE_KEYS.bloomGlow), String(prefs.bloomGlow));
+    localStorage.setItem(storageKey(APPEARANCE_KEYS.scanlineStrength), String(prefs.scanlineStrength));
+    localStorage.setItem(storageKey(APPEARANCE_KEYS.hudOpacity), String(prefs.hudOpacity));
+    localStorage.setItem(storageKey(APPEARANCE_KEYS.hudBezel), String(prefs.hudBezel));
     // Keep legacy Forge key in sync for existing HUD opacity readers.
-    localStorage.setItem('revforge.hudOpacity', String(prefs.hudOpacity));
+    localStorage.setItem(storageKey('revforge.hudOpacity'), String(prefs.hudOpacity));
   } catch {
     /* ignore */
   }
@@ -320,9 +321,9 @@ export function useUiPrefs() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(prefs));
-      if (prefs.upshiftSfx) localStorage.setItem('ds-upshift-sfx', '1');
-      else localStorage.removeItem('ds-upshift-sfx');
+      localStorage.setItem(storageKey(KEY), JSON.stringify(prefs));
+      if (prefs.upshiftSfx) localStorage.setItem(storageKey('ds-upshift-sfx'), '1');
+      else localStorage.removeItem(storageKey('ds-upshift-sfx'));
       persistMirrors(prefs);
     } catch {
       /* ignore */

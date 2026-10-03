@@ -2,6 +2,7 @@
  * Drive Dynamics idle band — consumed by EngineSynth from localStorage
  * (see docs/visual-dynamics-prefs.md). Frontend may also call setIdleBand().
  */
+import { storageKey } from '../lib/storageKey';
 
 export interface IdleBand {
   rpmMin: number;
@@ -11,9 +12,9 @@ export interface IdleBand {
 export const DEFAULT_IDLE_RPM_MIN = 700;
 export const DEFAULT_IDLE_RPM_MAX = 900;
 
-const MIRROR_MIN = 'revforge.dynamics.idleRpmMin';
-const MIRROR_MAX = 'revforge.dynamics.idleRpmMax';
-const UI_BLOB = 'drivesynth.ui.v1';
+const MIRROR_MIN = storageKey('revforge.dynamics.idleRpmMin');
+const MIRROR_MAX = storageKey('revforge.dynamics.idleRpmMax');
+const UI_BLOB = storageKey('drivesynth.ui.v1');
 
 /** Re-read localStorage at most this often (setDriving is high-rate). */
 export const IDLE_PREF_REFRESH_MS = 400;

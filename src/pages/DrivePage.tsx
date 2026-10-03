@@ -22,6 +22,7 @@ import {
   ION_LOCK_CHIP,
   type IonLockStage,
 } from '../skins/ion-twin/lockLadder';
+import { storageKey } from '../lib/storageKey';
 
 interface Props {
   audio: ReturnType<typeof useAudioEngine>;
@@ -36,7 +37,7 @@ const SPEED_SCRIPT_CYCLE: IonTwinSpeedScript[] = ['aurebesh', 'dual', 'latin'];
 
 function loadBool(key: string, fallback = false): boolean {
   try {
-    const v = localStorage.getItem(key);
+    const v = localStorage.getItem(storageKey(key));
     if (v === null) return fallback;
     return v === 'true' || v === '1';
   } catch {
@@ -380,7 +381,7 @@ export function DrivePage({ audio, gps, prefs, update, onEnableGps }: Props) {
     if (!hintUsed) {
       setHintUsed(true);
       try {
-        localStorage.setItem(AUREBESH_HINT_KEY, '1');
+        localStorage.setItem(storageKey(AUREBESH_HINT_KEY), '1');
       } catch {
         /* ignore */
       }

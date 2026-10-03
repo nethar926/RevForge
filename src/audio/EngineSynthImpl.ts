@@ -46,6 +46,7 @@ import {
   shutoffDuration,
 } from './engineStartShutdown';
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
+import { storageKey } from '../lib/storageKey';
 import pulseWorkletUrl from './worklets/pulse-engine-processor.js?url';
 
 type Kind = EnginePatch['kind'];
@@ -3259,7 +3260,7 @@ export class EngineSynthImpl implements EngineSynth {
 
 }
 
-const UPSHIFT_SFX_KEY = 'ds-upshift-sfx';
+const UPSHIFT_SFX_KEY = storageKey('ds-upshift-sfx');
 
 function readUpshiftSfxPref(): boolean {
   try {

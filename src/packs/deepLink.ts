@@ -1,4 +1,5 @@
 import { THEME_PACKS } from './registry';
+import { storageKey } from '../lib/storageKey';
 
 const THEME_KEY = 'drivesynth.theme.v2';
 const UI_PREFS_KEY = 'drivesynth.ui.v1';
@@ -47,9 +48,9 @@ export function applyPackDeepLink(): void {
   if (!want) {
     const env = String(import.meta.env.VITE_PREVIEW_PACK ?? '');
     try {
-      if (env && sessionStorage.getItem(PREVIEW_SESSION_KEY) !== env) {
+      if (env && sessionStorage.getItem(storageKey(PREVIEW_SESSION_KEY)) !== env) {
         want = env;
-        sessionStorage.setItem(PREVIEW_SESSION_KEY, env);
+        sessionStorage.setItem(storageKey(PREVIEW_SESSION_KEY), env);
       }
     } catch {
       want = env;
@@ -60,14 +61,14 @@ export function applyPackDeepLink(): void {
   if (fromUrl) stripPackParam();
   if (!pack) return;
   try {
-    const raw = localStorage.getItem(EXPERIMENTAL_KEY);
+    const raw = localStorage.getItem(storageKey(EXPERIMENTAL_KEY));
     const list: unknown = raw ? JSON.parse(raw) : [];
     const ids = Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : [];
-    if (pack.experimental && !ids.includes(pack.id)) localStorage.setItem(EXPERIMENTAL_KEY, JSON.stringify([...ids, pack.id]));
-    localStorage.setItem(THEME_KEY, pack.themeId);
-    const prefsRaw = localStorage.getItem(UI_PREFS_KEY);
+    if (pack.experimental && !ids.includes(pack.id)) localStorage.setItem(storageKey(EXPERIMENTAL_KEY), JSON.stringify([...ids, pack.id]));
+    localStorage.setItem(storageKey(THEME_KEY), pack.themeId);
+    const prefsRaw = localStorage.getItem(storageKey(UI_PREFS_KEY));
     const prefs = (prefsRaw ? JSON.parse(prefsRaw) : {}) as Record<string, unknown>;
-    localStorage.setItem(UI_PREFS_KEY, JSON.stringify({ ...prefs, selectedEngineId: pack.engineId }));
+    localStorage.setItem(storageKey(UI_PREFS_KEY), JSON.stringify({ ...prefs, selectedEngineId: pack.engineId }));
   } catch {
     /* storage blocked — normal boot */
   }

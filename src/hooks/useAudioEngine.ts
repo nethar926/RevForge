@@ -8,6 +8,7 @@ import type {
   LockStage,
 } from "../audio";
 import { createEngineSynth, getBuiltin, resolveLegacyPackId } from "../audio";
+import { storageKey } from "../lib/storageKey";
 
 export function useAudioEngine(
   initialId = "v8-rumble",
@@ -15,7 +16,7 @@ export function useAudioEngine(
 ) {
   const resolvedInitialId = resolveLegacyPackId(initialId);
   const mediaRef=useRef<MediaOutput|null>(null);
-  const [background,setBackground]=useState(()=>{try{return localStorage.getItem("revforge.background")!=="false";}catch{return true;}});
+  const [background,setBackground]=useState(()=>{try{return localStorage.getItem(storageKey("revforge.background"))!=="false";}catch{return true;}});
   const [backgroundStatus,setBackgroundStatus]=useState("Start audio to activate background playback");
   const ctxRef = useRef<AudioContext | null>(null);
   const engineRef = useRef<EngineSynth | null>(null);
@@ -187,8 +188,8 @@ export function useAudioEngine(
     engineRef.current?.setUpshiftSfxEnabled(enabled);
     // Persist even before Start so Customize toggle sticks (engine may not exist yet).
     try {
-      if (enabled) localStorage.setItem("ds-upshift-sfx", "1");
-      else localStorage.removeItem("ds-upshift-sfx");
+      if (enabled) localStorage.setItem(storageKey("ds-upshift-sfx"), "1");
+      else localStorage.removeItem(storageKey("ds-upshift-sfx"));
     } catch {
       /* ignore */
     }
@@ -197,7 +198,7 @@ export function useAudioEngine(
   const getUpshiftSfxEnabled = useCallback((): boolean => {
     if (engineRef.current) return engineRef.current.getUpshiftSfxEnabled();
     try {
-      return localStorage.getItem("ds-upshift-sfx") === "1";
+      return localStorage.getItem(storageKey("ds-upshift-sfx")) === "1";
     } catch {
       return false;
     }
@@ -232,7 +233,7 @@ export function useAudioEngine(
     };
   }, []);
 
-  useEffect(()=>{try{localStorage.setItem("revforge.background",String(background));}catch{}if(!background)mediaRef.current?.disable();},[background]);
+  useEffect(()=>{try{localStorage.setItem(storageKey("revforge.background"),String(background));}catch{}if(!background)mediaRef.current?.disable();},[background]);
   const setBackgroundEnabled=useCallback((value:boolean)=>{setBackground(value);if(value&&mediaRef.current)void mediaRef.current.enable().then(()=>setBackgroundStatus("Media output active · browser may still suspend playback")).catch(()=>setBackgroundStatus("Tap Ignition to retry background output"));},[]);
   const getMediaElement=useCallback(()=>mediaRef.current?.element??null,[]);
   return useMemo(
