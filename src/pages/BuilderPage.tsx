@@ -196,6 +196,8 @@ export function BuilderPage({ audio, onSave, userPatches, onDeleteUserPatch }: P
 
   const eng = audio.getEngine();
   const kind = useMemo(() => eng?.toPatch().kind ?? 'ice', [eng, params, audio.engineId]);
+  // Topology selects pack-specific slider sets (e.g. a dedicated pack voice); undefined → kind defaults.
+  const topology = useMemo(() => eng?.toPatch().topology, [eng, params, audio.engineId]);
   const [category, setCategory] = useState<EngineKind>('ice');
   useEffect(() => {
     setCategory(kind as EngineKind);
@@ -218,12 +220,12 @@ export function BuilderPage({ audio, onSave, userPatches, onDeleteUserPatch }: P
   );
 
   const displayMetas = useMemo(() => {
-    const metas = paramMetaForKind(kind);
+    const metas = paramMetaForKind(kind, topology);
     if (kind !== 'scifi') return metas;
     return metas.map((m) =>
       SCREAM_LABEL_OVERRIDE[m.id] ? { ...m, label: SCREAM_LABEL_OVERRIDE[m.id] } : m,
     );
-  }, [kind]);
+  }, [kind, topology]);
   const screamMetas = kind === 'scifi' ? displayMetas.filter((m) => SCREAM_PARAM_IDS.has(m.id)) : [];
   const otherMetas = kind === 'scifi' ? displayMetas.filter((m) => !SCREAM_PARAM_IDS.has(m.id)) : displayMetas;
   const selected = nodes.find((n) => n.id === selectedId) ?? null;
