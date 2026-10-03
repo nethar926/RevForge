@@ -83,7 +83,9 @@ function scheduleParam(param, when, value) {
   param.setValueAtTime(value, when);
 }
 
-async function renderPack(id, buildFn) {
+async function renderPack(id, buildFn, renderFn) {
+  // Packs with a dedicated offline renderer (real worklet + shared voice chain)
+  if (renderFn) return bufferToWav(await renderFn());
   const ctx = new OfflineAudioContext(2, Math.ceil(SR * DUR), SR);
   const master = ctx.createGain();
   master.gain.value = 0.85;
@@ -91,6 +93,23 @@ async function renderPack(id, buildFn) {
   buildFn(ctx, master);
   const rendered = await ctx.startRendering();
   return bufferToWav(rendered);
+}
+
+/**
+ * Night Pursuit preview (~5 s): lumpy idle → blip → launch through the 1-2 shift → lift-off
+ * burble. Runs the real pulse-engine-processor + nightPursuitVoice chain.
+ */
+async function renderNightPursuitPreview() {
+  const { renderNightPursuit } = await import('./night-pursuit-render.mjs');
+  const S = (mph) => mph / 120;
+  const profile = (t) => {
+    if (t < 1.5) return { speed: 0, throttle: 0 };
+    if (t < 1.85) return { speed: 0, throttle: 0.7 };
+    if (t < 2.3) return { speed: 0, throttle: 0 };
+    if (t < 4.3) return { speed: S(4 + (t - 2.3) * 22), throttle: 1, load: 0.8 };
+    return { speed: S(48 - (t - 4.3) * 3), throttle: 0, load: -0.4 };
+  };
+  return renderNightPursuit(profile, 5.2, { sampleRate: SR });
 }
 
 function bufferToWav(audioBuffer) {
@@ -565,14 +584,19 @@ const PACKS = [
   { id: 'ev-dual-motor', file: 'ev-dual-motor.wav', build: (c, m) => buildEv(c, m, { dual: true }) },
   { id: 'aerospace-f14', file: 'aerospace-f14.wav', build: (c, m) => buildAero(c, m) },
   { id: 'ion-twin', file: 'ion-twin.wav', build: (c, m) => buildScifi(c, m) },
+  { id: 'night-pursuit', file: 'night-pursuit.wav', render: renderNightPursuitPreview },
 ];
+// Optional filter: node scripts/render-snippets.mjs night-pursuit  (re-render only those ids)
+const ONLY = process.argv.slice(2);
 
 mkdirSync(OUT, { recursive: true });
 
 for (const pack of PACKS) {
-  const wav = await renderPack(pack.id, pack.build);
+  if (ONLY.length && !ONLY.includes(pack.id)) continue;
+  const wav = await renderPack(pack.id, pack.build, pack.render);
   const dest = join(OUT, pack.file);
   writeFileSync(dest, wav);
   console.log('wrote', pack.file, `(${wav.length} bytes)`);
 }
-console.log('done', PACKS.length, 'snippets →', OUT);
+console.log('done', ONLY.length || PACKS.length, 'snippets →', OUT);
+process.exit(0);

@@ -1,6 +1,16 @@
 import { CharacterEngine } from './CharacterEngine';
 import { defaultsForTopology, getBuiltin } from './builtins';
 import { RevForgeSynth } from '../forge/RevForgeSynth';
+import { isNightPursuitTopology } from './nightPursuitPack';
+import {
+  NightPursuitBus,
+  createNightPursuitDriveState,
+  nightPursuitWorkletTargets,
+  npIdleRpm,
+  stepNightPursuitDrive,
+  type NightPursuitDrive,
+} from './nightPursuitVoice';
+import { EnvelopeMeter } from './envelopeMeter';
 import type {
   DrivingInput,
   EngineDiag,
@@ -11,6 +21,7 @@ import type {
   EngineSynth,
   IceMode,
   LockStage,
+  ScannerEdge,
   SynthNodeDesc,
   TopologyId,
 } from './types';
@@ -190,6 +201,8 @@ interface GraphHandles {
   // ICE osc valvetrain tick
   tickGain?: GainNode;
   tickFilt?: BiquadFilterNode;
+  /** Night Pursuit post chain + PURSUIT bus (engine → npBus.input → master) */
+  npBus?: NightPursuitBus;
 }
 
 const workletContexts = new WeakSet<BaseAudioContext>();
@@ -256,6 +269,12 @@ export class EngineSynthImpl implements EngineSynth {
   /** When true, setIdleBand wins over localStorage refresh. */
   private idleBandFromApi = false;
   private lastIdlePrefMs = 0;
+  /** Night Pursuit continuous drive model (auto-trans fallback, overrun, spool). */
+  private npDriveState = createNightPursuitDriveState();
+  private npDrive: NightPursuitDrive | null = null;
+  private npLastMs = 0;
+  /** Post-gain loudness envelope (getEnvelope / getVoiceEnvelope). */
+  private envelope: EnvelopeMeter;
 
   constructor(ctx: AudioContext, patch?: EnginePatch) {
     this.context = ctx;
@@ -263,6 +282,7 @@ export class EngineSynthImpl implements EngineSynth {
     this.output.gain.value = 0;
     // Critical: without this, the graph never reaches the speakers (silent on all devices).
     this.output.connect(ctx.destination);
+    this.envelope = new EnvelopeMeter(ctx, this.output);
 
     this.whiteBuf = createNoiseBuffer(ctx, 2, false);
     this.pinkBuf = createNoiseBuffer(ctx, 2, true);
@@ -346,6 +366,7 @@ export class EngineSynthImpl implements EngineSynth {
     this.started = false;
     try {
       this.teardownGraph();
+      this.envelope.dispose();
       this.output.disconnect();
     } catch {
       /* ignore */
@@ -445,6 +466,8 @@ export class EngineSynthImpl implements EngineSynth {
     }
     if (kindChanged) {
       this.teardownGraph();
+      this.npDriveState = createNightPursuitDriveState(npIdleRpm(this.params));
+      this.npLastMs = 0;
       this.g = this.buildGraph(patch.kind, patch.topology);
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
@@ -501,6 +524,10 @@ export class EngineSynthImpl implements EngineSynth {
       this.playShutoff();
       return;
     }
+    if (c === 'scanner' || c === 'scanner-tick' || c === 'scanner-left' || c === 'scanner-right') {
+      this.scannerTick(c === 'scanner-left' ? 'left' : 'right');
+      return;
+    }
     if (!this.started) return;
     if (c === 'upshift') {
       if (!this.upshiftSfxEnabled) return;
@@ -522,6 +549,7 @@ export class EngineSynthImpl implements EngineSynth {
         params: this.params,
         whiteBuf: this.whiteBuf,
         pinkBuf: this.pinkBuf,
+        topology: this.patchMeta.topology,
       });
     } catch {
       /* never block drive path */
@@ -533,7 +561,7 @@ export class EngineSynthImpl implements EngineSynth {
     if (this.disposed) return;
     if (this.context.state === 'closed') return;
     const kind = this.patchMeta.kind;
-    const dur = shutoffDuration(kind);
+    const dur = shutoffDuration(kind, this.patchMeta.topology);
     const now = this.context.currentTime;
     this.shutoffUntil = Math.max(this.shutoffUntil, now + dur);
     // Hold master so stop()'s fade does not mute the tail immediately.
@@ -554,6 +582,7 @@ export class EngineSynthImpl implements EngineSynth {
         params: this.params,
         whiteBuf: this.whiteBuf,
         pinkBuf: this.pinkBuf,
+        topology: this.patchMeta.topology,
       });
     } catch {
       /* never block drive path */
@@ -574,6 +603,38 @@ export class EngineSynthImpl implements EngineSynth {
     };
     if (this.workletError) diag.workletError = this.workletError;
     return diag;
+  }
+
+  /** 0..1 post-gain loudness envelope; poll per animation frame (Visual voice box). */
+  getEnvelope(): number {
+    if (this.disposed) return 0;
+    return this.envelope.read();
+  }
+
+  /** Alias of getEnvelope() for the HUD `voiceEnvelope` prop. */
+  getVoiceEnvelope(): number {
+    return this.getEnvelope();
+  }
+
+  /**
+   * Soft original electronic tick at a scanner sweep edge (Night Pursuit).
+   * Level = params.scannerTick (default 0 → silent); panned toward the edge. No-op when stopped.
+   */
+  scannerTick(edge: ScannerEdge = 'right'): void {
+    if (this.disposed || !this.started) return;
+    const bus = this.g.npBus;
+    if (!bus) return;
+    const level = clamp(Number(this.params.scannerTick ?? 0));
+    if (level <= 0.001) return;
+    bus.scannerTick(level, edge === 'left' ? -1 : 1);
+  }
+
+  /** PURSUIT seasoning 0..1 (PURSUIT 1 · POWER 0.5 · AUTO/NORM 0). Same as setParams({pursuitBoost}). */
+  setPursuitBoost(amount: number): void {
+    const v = clamp(Number.isFinite(amount) ? amount : 0);
+    this.params.pursuitBoost = v;
+    this.patchMeta.params.pursuitBoost = v;
+    this.applyDriving(false);
   }
 
   getEngineState(): EngineStateSnapshot {
@@ -772,7 +833,7 @@ export class EngineSynthImpl implements EngineSynth {
         const pulseGainOut = this.context.createGain();
         pulseGainOut.gain.value = 1;
         node.connect(pulseGainOut);
-        pulseGainOut.connect(this.g.master);
+        pulseGainOut.connect(this.g.npBus ? this.g.npBus.input : this.g.master);
 
         // Mute oscillator ICE bus if present
         if (this.g.iceBus) {
@@ -1042,7 +1103,13 @@ export class EngineSynthImpl implements EngineSynth {
 
     muffler.connect(pan);
     pan.connect(iceBus);
-    iceBus.connect(g.master);
+    if (isNightPursuitTopology(this.patchMeta.topology)) {
+      // Night Pursuit: engine → post chain (body / load mids / tone) + PURSUIT bus → master
+      g.npBus = new NightPursuitBus(ctx, g.master);
+      iceBus.connect(g.npBus.input);
+    } else {
+      iceBus.connect(g.master);
+    }
   }
 
   private buildEv(g: GraphHandles): void {
@@ -1878,6 +1945,11 @@ export class EngineSynthImpl implements EngineSynth {
     stopOsc(g.regenOsc2);
     stopOsc(g.dualWhineR);
     try {
+      g.npBus?.dispose();
+    } catch {
+      /* ignore */
+    }
+    try {
       g.pulseNode?.disconnect();
       g.pulseGainOut?.disconnect();
     } catch {
@@ -1962,6 +2034,24 @@ export class EngineSynthImpl implements EngineSynth {
       rpmNorm = clamp(Math.max(fromSpeed, fromThr) + (d.speed >= 0.04 ? d.throttle * 0.12 : 0));
     }
 
+    // Night Pursuit: one continuous drive model. Frontend rpm/rpmNorm still win; without
+    // them a 4-speed automatic + converter maps speed/throttle → rpm (glides, no cliffs).
+    let dIce: DrivingInput = d;
+    if (kind === 'ice' && isNightPursuitTopology(this.patchMeta.topology)) {
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const dt =
+        immediate || !this.npLastMs ? 1 / 60 : Math.min(0.25, Math.max(0.004, (nowMs - this.npLastMs) / 1000));
+      this.npLastMs = nowMs;
+      const nd = stepNightPursuitDrive(this.npDriveState, d, dt, p);
+      this.npDrive = nd;
+      if (nd.modelled) {
+        rpmNorm = nd.rpmNorm;
+        dIce = { ...d, rpm: nd.rpm, rpmNorm: nd.rpmNorm };
+      }
+    } else {
+      this.npDrive = null;
+    }
+
     const loadFeel = clamp(d.throttle * 0.7 + Math.abs(d.load ?? 0) * 0.3 + d.speed * 0.15);
     this.hud.loadFeel = loadFeel;
     this.hud.rpmNorm = rpmNorm;
@@ -1975,7 +2065,8 @@ export class EngineSynthImpl implements EngineSynth {
     }
 
     if (kind === 'ice') {
-      this.applyIceDriving(rpmNorm, d, tc);
+      this.applyIceDriving(rpmNorm, dIce, tc);
+      if (g.npBus && this.npDrive) g.npBus.update(p, this.npDrive, this.throttleLag, tc);
     } else if (kind === 'ev-whine') {
       this.applyEvDriving(rpmNorm, d, tc);
     } else if (kind === 'aerospace') {
@@ -2227,12 +2318,17 @@ export class EngineSynthImpl implements EngineSynth {
       // At true idle, band already carries living jitter — clamp to idleRpmMax ceiling.
       const baseRpm = d.rpm != null && Number.isFinite(d.rpm) ? d.rpm : rpm;
       let rpmOut = baseRpm * (1 + this.liveJit.pitch * 0.012);
-      if (gate > 0.5) {
-        rpmOut = Math.min(band.rpmMax, Math.max(band.rpmMin * 0.98, rpmOut));
-      }
       const topo = this.patchMeta.topology;
+      const nightPursuit = isNightPursuitTopology(topo);
+      if (gate > 0.5) {
+        // Night Pursuit idles low in the Dynamics band (deep lope, not a fast idle)
+        const top = nightPursuit
+          ? band.rpmMin + (band.rpmMax - band.rpmMin) * 0.3
+          : band.rpmMax;
+        rpmOut = Math.min(top, Math.max(band.rpmMin * 0.98, rpmOut));
+      }
       const famDefault =
-        topo === 'v8-rumble'
+        topo === 'v8-rumble' || nightPursuit
           ? 1
           : topo === 'i6-silk' || topo === 'i4-zip'
             ? 3
@@ -2340,6 +2436,30 @@ export class EngineSynthImpl implements EngineSynth {
       this.setWorkletParam('crackle', Number(p.crackle ?? 0.35), tc);
       const presenceBoost = 0.75 + Number(p.presence ?? 0.45) * 0.4;
       this.setWorkletParam('masterGain', clamp(Number(p.masterGain ?? 0.7) * presenceBoost), tc);
+      if (nightPursuit && this.npDrive) {
+        // Cam lope / dual exhaust / overrun burble opt-ins + load-rich seasoning (overrides)
+        const t = nightPursuitWorkletTargets(p, this.npDrive, thr, {
+          growl: Number(p.growl ?? 0.6) * (0.7 + Number(p.exhaust ?? 0.5) * 0.4) * wp.growlScaleHint,
+          exhaustFeedback:
+            Number(p.exhaustFeedback ?? 0.72) * (0.85 + (1 - Number(p.muffling ?? 0.3)) * 0.15),
+          mufflerMix: clamp(muffBase * (0.55 + 0.45 * wp.mufflerMixHint), 0, 1),
+          intake: clamp(
+            Number(p.intake ?? 0.45) * (0.45 + 0.55 * Math.max(wp.intakeScaleHint, thr)),
+            0,
+            1,
+          ),
+        });
+        this.setWorkletParam('camLope', t.camLope, tc);
+        this.setWorkletParam('bankSplit', t.bankSplit, tc);
+        this.setWorkletParam('overrun', t.overrun, tc);
+        this.setWorkletParam('overrunBurble', t.overrunBurble, tc);
+        this.setWorkletParam('dcGuard', t.dcGuard, tc);
+        this.setWorkletParam('growl', t.growl, tc);
+        this.setWorkletParam('intake', t.intake, tc);
+        this.setWorkletParam('mufflerMix', t.mufflerMix, tc);
+        this.setWorkletParam('exhaustFeedback', t.exhaustFeedback, tc);
+        this.setWorkletParam('collectorDelayMs', t.collectorDelayMs, tc);
+      }
       if (d.speed < 0.04 && thrRaw < 0.12) this.driveMood = 'idle';
       else if (d.speed < 0.04) this.driveMood = 'lope';
       else if (thrRaw > 0.7) this.driveMood = 'pull';

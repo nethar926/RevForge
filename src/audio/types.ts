@@ -12,6 +12,7 @@ export type TopologyId =
   | 'ev-dual-motor'
   | 'ion-twin'
   | 'aerospace-f14'
+  | 'night-pursuit'
   | 'custom';
 
 /** Pack / builder categories. Old kinds map 1:1 (ice, ev-whine, scifi); aerospace is new. */
@@ -21,6 +22,9 @@ export type EngineKind = 'ice' | 'ev-whine' | 'aerospace' | 'scifi';
 export type LockStage = 'none' | 'identified' | 'lock' | 'kill';
 
 export type IceMode = 'worklet' | 'osc' | 'n/a';
+
+/** Scanner sweep edge reported by pack HUDs (Night Pursuit). */
+export type ScannerEdge = 'left' | 'right';
 
 export interface EngineDiag {
   /** AudioContext.state */
@@ -369,6 +373,15 @@ export interface EngineSynth {
 
   /** QA §2.5 drop-cylinder: disable slot (sets bit). */
   dropCylinder?(slot: number): void;
+
+  /** 0..1 post-gain loudness envelope (per-frame poll; HUD voice box / power ladder). */
+  getEnvelope?(): number;
+  /** Alias of getEnvelope(). */
+  getVoiceEnvelope?(): number;
+  /** Night Pursuit: soft original electronic tick at a scanner sweep edge (level = params.scannerTick). */
+  scannerTick?(edge: ScannerEdge): void;
+  /** Night Pursuit: PURSUIT seasoning 0..1 (PURSUIT 1 · POWER 0.5 · AUTO/NORM 0). */
+  setPursuitBoost?(amount: number): void;
 }
 
 export interface ParamMeta {

@@ -5,6 +5,12 @@
  */
 import type { EngineKind, EngineParams } from './types';
 import { clamp } from './utils';
+import {
+  NP_SHUTOFF_SECONDS,
+  NP_STARTER_SECONDS,
+  playNightPursuitShutoff,
+  playNightPursuitStarter,
+} from './nightPursuitVoice';
 
 export interface StartShutdownCtx {
   ctx: AudioContext;
@@ -13,10 +19,13 @@ export interface StartShutdownCtx {
   params: EngineParams;
   whiteBuf: AudioBuffer;
   pinkBuf: AudioBuffer;
+  /** Pack topology — 'night-pursuit' selects its dedicated crank→catch / rundown. */
+  topology?: string;
 }
 
 /** Approximate audible length (seconds) so stop() can hold the bus for the tail. */
-export function starterDuration(kind: EngineKind): number {
+export function starterDuration(kind: EngineKind, topology?: string): number {
+  if (topology === 'night-pursuit') return NP_STARTER_SECONDS;
   switch (kind) {
     case 'ice':
       return 0.95;
@@ -31,7 +40,8 @@ export function starterDuration(kind: EngineKind): number {
   }
 }
 
-export function shutoffDuration(kind: EngineKind): number {
+export function shutoffDuration(kind: EngineKind, topology?: string): number {
+  if (topology === 'night-pursuit') return NP_SHUTOFF_SECONDS;
   switch (kind) {
     case 'ice':
       return 0.75;
@@ -81,6 +91,9 @@ function envGain(
 export function playEngineStarter(s: StartShutdownCtx): number {
   const { kind } = s;
   try {
+    if (s.topology === 'night-pursuit') {
+      return playNightPursuitStarter(s.ctx, s.dest, s.params, s.whiteBuf, s.pinkBuf);
+    }
     switch (kind) {
       case 'ice':
         return playIceStarter(s);
@@ -105,6 +118,9 @@ export function playEngineStarter(s: StartShutdownCtx): number {
 export function playEngineShutoff(s: StartShutdownCtx): number {
   const { kind } = s;
   try {
+    if (s.topology === 'night-pursuit') {
+      return playNightPursuitShutoff(s.ctx, s.dest, s.params, s.whiteBuf, s.pinkBuf);
+    }
     switch (kind) {
       case 'ice':
         return playIceShutoff(s);

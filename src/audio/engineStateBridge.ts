@@ -224,6 +224,19 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.007,
     misfireDefault: 0.01,
   },
+  // Night Pursuit: deep 5.0-class cross-plane V8, long dual-collector burble
+  'night-pursuit': {
+    cylinders: 8,
+    firingFamily: 1,
+    bankSchedule: 'crossPlaneV8',
+    eventAnglesDeg: [...CROSS_BANK_A],
+    bankOffsetDeg: 90,
+    collectorDelayMs: 2.5,
+    tauManifold: 0.15,
+    tauExhaust: 0.3,
+    pulseJitterFrac: 0.022,
+    misfireDefault: 0.035,
+  },
   'rotary-hum': {
     cylinders: 6,
     firingFamily: 4,

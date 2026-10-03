@@ -1,6 +1,7 @@
 import type { EngineKind, EnginePatch, EngineParams, ParamMeta } from './types';
 import { REVFORGE_PATCHES } from '../forge/catalog';
 import { PACK_ENGINE_MIGRATIONS } from '../packs/migrations';
+import { NIGHT_PURSUIT_DEFAULTS, nightPursuitBuiltinPatch } from './nightPursuitPack';
 
 export const V8_DEFAULTS: EngineParams = {
   // Audio Physics ICE v1 + ice-pack-firing-schedules-v1 (crossPlane)
@@ -419,32 +420,8 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
       author: 'DriveSynth',
     },
   },
-  {
-    // TODO(Audio Synth): placeholder alias — replace in place with the real
-    // night-pursuit cross-plane 5.0 V8 (pursuitBoost / scannerTick / envelope).
-    version: 0,
-    id: 'night-pursuit',
-    name: 'Night Pursuit',
-    kind: 'ice',
-    topology: 'v8-rumble',
-    params: {
-      ...V8_DEFAULTS,
-      // 5.0 cross-plane: slightly deeper idle, lower redline, longer collector burble.
-      rpmIdle: 44,
-      rpmRedline: 236,
-      growl: 0.78,
-      exhaust: 0.82,
-      collectorDelayMs: 2.1,
-      firingFamily: 1,
-      pursuitBoost: 0,
-    } as Record<string, number | string>,
-    meta: {
-      blurb:
-        'Experimental Night Pursuit pack engine: cross-plane 5.0 V8 lope (placeholder on the V8 Rumble voice until the dedicated pack voice lands). Original synthesis only.',
-      tags: ['ice', 'v8', 'crossplane', 'experimental', 'free'],
-      author: 'DriveSynth',
-    },
-  },
+  // Night Pursuit (experimental flagship): dedicated cross-plane V8 voice — see nightPursuitPack.ts
+  nightPursuitBuiltinPatch(),
   ...REVFORGE_PATCHES,
 ];
 
@@ -469,6 +446,8 @@ export function defaultsForTopology(topology: string): EngineParams {
       return { ...TIE_DEFAULTS };
     case 'aerospace-f14':
       return { ...F14_DEFAULTS };
+    case 'night-pursuit':
+      return { ...NIGHT_PURSUIT_DEFAULTS };
     case 'v8-rumble':
     default:
       return { ...V8_DEFAULTS };
@@ -504,7 +483,24 @@ export function defaultPatchIdForKind(kind: EngineKind): string {
   }
 }
 
-export function paramMetaForKind(kind: EnginePatch['kind']): ParamMeta[] {
+/** Night Pursuit extras (appended by paramMetaForKind('ice', 'night-pursuit')). */
+export const NIGHT_PURSUIT_PARAM_META: ParamMeta[] = [
+  { id: 'camLope', label: 'Cam Lope', min: 0, max: 1, step: 0.01, group: 'nightPursuit' },
+  { id: 'bankSplit', label: 'Dual Exhaust', min: 0, max: 1, step: 0.01, group: 'nightPursuit' },
+  { id: 'overrunBurble', label: 'Overrun Burble', min: 0, max: 1, step: 0.01, group: 'nightPursuit' },
+  { id: 'loadRich', label: 'Load Richness', min: 0, max: 1, step: 0.01, group: 'nightPursuit' },
+  { id: 'bodyDepth', label: 'Body Depth', min: 0, max: 1, step: 0.01, group: 'nightPursuit' },
+  { id: 'pursuitBoost', label: 'Pursuit Boost', min: 0, max: 1, step: 0.01, group: 'pursuit' },
+  { id: 'turboWhistle', label: 'Turbo Whistle', min: 0, max: 1, step: 0.01, group: 'pursuit' },
+  { id: 'intakeWhoosh', label: 'Intake Whoosh', min: 0, max: 1, step: 0.01, group: 'pursuit' },
+  { id: 'wastegate', label: 'Blow-off', min: 0, max: 1, step: 0.01, group: 'pursuit' },
+  { id: 'scannerTick', label: 'Scanner Tick', min: 0, max: 1, step: 0.01, group: 'pursuit' },
+];
+
+export function paramMetaForKind(kind: EnginePatch['kind'], topology?: string): ParamMeta[] {
+  if (kind === 'ice' && topology === 'night-pursuit') {
+    return [...paramMetaForKind('ice'), ...NIGHT_PURSUIT_PARAM_META];
+  }
   const master: ParamMeta[] = [
     { id: 'masterGain', label: 'Master', min: 0, max: 1, step: 0.01 },
     { id: 'stereoWidth', label: 'Width', min: 0, max: 1, step: 0.01 },
