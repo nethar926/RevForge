@@ -54,6 +54,7 @@ export function CustomizePage({ prefs, update, reset }: Props) {
               key={t.id}
               type="button"
               className={`theme-card ${prefs.theme === t.id ? 'selected' : ''}`}
+              aria-pressed={prefs.theme === t.id}
               onClick={() => update({ theme: t.id, accent: t.accent })}
               style={{ ['--card-accent' as string]: t.accent, minHeight: 48 }}
             >
