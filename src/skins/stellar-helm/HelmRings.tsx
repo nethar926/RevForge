@@ -34,7 +34,7 @@ function useReducedMotion(): boolean {
  * One rAF loop integrates angle from the latest telemetry (no CSS durations, so
  * speed changes never jump). Holds still under Reduce Motion / motion off.
  */
-export function HelmRings({ rpm, mph, gear, still }: { rpm: number; mph: number; gear: string; still: boolean }) {
+export function HelmRings({ rpm, mph, gear, still, compact = false }: { rpm: number; mph: number; gear: string; still: boolean; compact?: boolean }) {
   const reduced = useReducedMotion();
   const frozen = still || reduced;
   const live = useRef({ rpm, mph });
@@ -96,8 +96,18 @@ export function HelmRings({ rpm, mph, gear, still }: { rpm: number; mph: number;
         <rect x={C - 3} y="68" width="6" height="16" className="sh-ring-mark" />
       </g>
       <circle cx={C} cy={C} r="66" fill="url(#sh-core)" className="sh-ring-core" />
-      <text x={C} y={C + 26} textAnchor="middle" className="sh-gear-num">{gear}</text>
-      <text x={C} y={C + 50} textAnchor="middle" className="sh-gear-label">GEAR</text>
+      {compact ? (
+        // Compact: label grows (rendered ≥11px down to a ~165px ring) and sits lower in the core.
+        <>
+          <text x={C} y={C + 18} textAnchor="middle" className="sh-gear-num sh-gear-num-c">{gear}</text>
+          <text x={C} y={C + 53} textAnchor="middle" className="sh-gear-label sh-gear-label-c">GEAR</text>
+        </>
+      ) : (
+        <>
+          <text x={C} y={C + 26} textAnchor="middle" className="sh-gear-num">{gear}</text>
+          <text x={C} y={C + 50} textAnchor="middle" className="sh-gear-label">GEAR</text>
+        </>
+      )}
     </svg>
   );
 }

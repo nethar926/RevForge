@@ -171,10 +171,91 @@
 @keyframes sh-thumb-cw { to { transform: rotate(360deg); } }
 @keyframes sh-thumb-ccw { to { transform: rotate(-360deg); } }
 
-/* Compact (short stage): drop the header row, tighten spacing; targets keep a 44pt floor. */
-.sh[data-compact='true'] { --pf-tap: max(44px, calc(44.5px / var(--pf-s, 1))); --sh-hdr-h: 0px; row-gap: 6px; padding: 8px 12px; }
-.sh[data-compact='true'] .sh-hdr, .sh[data-compact='true'] .shf-topbar { display: none; }
-.sh[data-compact='true'] .sh-tabs { padding-top: 4px; padding-bottom: 4px; --sh-tab-gap: 4px; }
-.sh[data-frame='classic'][data-compact='true'] .shf-elbow-top { height: 26px; }
-.sh[data-frame='classic'][data-compact='true'] .sh-tabs { padding-top: 14px; padding-bottom: 14px; }
-.sh[data-frame='classic'][data-compact='true'] .shf-elbow-bot { height: calc(100% + 14px); }
+/* ---- Compact (small Tesla window) ----
+ * --u = one on-screen px (1 / host scale, measured by useHudCompact): every size here is
+ * real screen px — text ≥11px, bar/tab targets ≥48px — whatever the host's fit.
+ * Keeps: tabs, RPM / MPH / THR, rings + gear + ring readout, power bar + REDLINE + scale,
+ * bottom bar (modes, MUTE, Frame CLASSIC/NEO, SHUTDOWN). Drops: header (title/status/clock),
+ * numbered data rows, log line, audio bus. Frame toggle + SHUTDOWN lose their fixed widths.
+ */
+.sh.sh-compact,
+.sh.sh-compact[data-frame] {
+  --pf-tap: calc(48 * var(--u, 1px));
+  --sh-hdr-h: 0px;
+  --sh-bar-t: calc(10 * var(--u, 1px));
+  --sh-c: calc(8 * var(--u, 1px));
+  --sh-tab-gap: calc(4 * var(--u, 1px));
+  grid-template-columns: calc(96 * var(--u, 1px)) minmax(0, 1fr) 0px minmax(calc(170 * var(--u, 1px)), 34%);
+  grid-template-rows: 0px minmax(0, 1fr) auto calc(48 * var(--u, 1px));
+  grid-template-areas:
+    'hdr hdr hdr hdr'
+    'tabs main main ring'
+    'tabs power power power'
+    'bar bar bar bar';
+  column-gap: calc(5 * var(--u, 1px));
+  row-gap: calc(6 * var(--u, 1px));
+  padding: calc(8 * var(--u, 1px)) calc(10 * var(--u, 1px));
+}
+.sh.sh-compact[data-frame] .sh-hdr, .sh.sh-compact[data-frame] .shf-topbar, .sh-compact .sh-data, .sh-compact .sh-log,
+.sh-compact .sh-bus-head, .sh-compact .sh-bus { display: none; }
+.rf-pack-box .sh.sh-compact .sh-tabs button { font-size: calc(15 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); min-height: calc(44 * var(--u, 1px)); }
+.sh-compact .sh-rpm-row, .sh-compact .sh-mph-row { gap: calc(8 * var(--u, 1px)); }
+.sh-compact .sh-rpm { font-size: min(calc(48 * var(--u, 1px)), 22cqh); }
+.sh-compact .sh-mph { font-size: min(calc(120 * var(--u, 1px)), 42cqh); }
+.sh-compact .sh-u { min-width: calc(34 * var(--u, 1px)); font-size: calc(13 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
+.sh-compact .sh-rule { height: calc(6 * var(--u, 1px)); margin: calc(5 * var(--u, 1px)) calc(42 * var(--u, 1px)) calc(4 * var(--u, 1px)) 0; }
+.sh-compact .sh-thr { gap: calc(8 * var(--u, 1px)); }
+.sh-compact .sh-thr-label, .sh-compact .sh-thr-val { font-size: calc(12 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
+.sh-compact .sh-thr-val { min-width: calc(34 * var(--u, 1px)); }
+.sh-compact .sh-thr-track { height: calc(14 * var(--u, 1px)); }
+.sh-compact .sh-cap { font-size: calc(14 * var(--u, 1px)); letter-spacing: calc(2 * var(--u, 1px)); }
+.sh-compact .sh-cap-r { right: calc(10 * var(--u, 1px)); top: calc(8 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.sh-compact .sh-ring-wrap { padding: calc(2 * var(--u, 1px)); }
+.sh-compact .sh-gear-num-c { font-size: 64px; }
+.sh-compact .sh-gear-label-c { font-size: 21px; letter-spacing: 2px; }
+.sh-compact .sh-power-head { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(2 * var(--u, 1px)); }
+.sh-compact .sh-segs { gap: calc(3 * var(--u, 1px)); height: calc(20 * var(--u, 1px)); margin-top: calc(16 * var(--u, 1px)); }
+.sh-compact .sh-redline-mark { top: calc(-16 * var(--u, 1px)); padding-left: calc(4 * var(--u, 1px)); border-left-width: calc(2 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); line-height: calc(14 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.sh-compact .sh-nums { margin-top: calc(2 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); }
+.sh-compact .sh-bar { gap: calc(6 * var(--u, 1px)); }
+.rf-pack-box .sh.sh-compact .sh-bar button { min-width: calc(44 * var(--u, 1px)); font-size: calc(14 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
+.rf-pack-box .sh.sh-compact .sh-bar .sh-shutdown { width: auto; flex: 1.2; }
+.sh.sh-compact .sh-frame { width: auto; flex: 2; gap: calc(4 * var(--u, 1px)); }
+.sh.sh-compact .sh-frame-cap { width: auto; padding-right: calc(2 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.rf-pack-box .sh.sh-compact .sh-bar .sh-frame button { min-width: calc(44 * var(--u, 1px)); min-height: calc(48 * var(--u, 1px)); font-size: calc(13 * var(--u, 1px)); }
+.rf-pack-box .sh.sh-compact .sh-bar .sh-frame button[aria-checked='true']::after { bottom: calc(6 * var(--u, 1px)); width: calc(22 * var(--u, 1px)); height: calc(3 * var(--u, 1px)); margin-left: calc(-11 * var(--u, 1px)); }
+.rf-pack-box .sh.sh-compact button:focus-visible { outline-width: calc(3 * var(--u, 1px)); outline-offset: calc(2 * var(--u, 1px)); }
+/* compact × classic frame */
+.sh.sh-compact[data-frame='classic'] .shf-elbow { width: calc(100% + 20 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='classic'] .shf-elbow::after { left: calc(100% - 20 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='classic'] .shf-elbow-top { height: calc(22 * var(--u, 1px)); border-radius: calc(26 * var(--u, 1px)) 0 0 0; }
+.sh.sh-compact[data-frame='classic'] .shf-elbow-top::after { border-radius: calc(13 * var(--u, 1px)) 0 0 0; }
+.sh.sh-compact[data-frame='classic'] .shf-elbow-bot { height: calc(100% + 12 * var(--u, 1px)); border-radius: 0 0 0 calc(26 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='classic'] .shf-elbow-bot::after { border-radius: 0 0 0 calc(13 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='classic'] .sh-tabs { padding: calc(14 * var(--u, 1px)) 0 calc(10 * var(--u, 1px)); }
+.rf-pack-box .sh.sh-compact[data-frame='classic'] .sh-tabs button { padding: 0 calc(8 * var(--u, 1px)) calc(4 * var(--u, 1px)); font-size: calc(15 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='classic'] .sh-main { padding-top: 0; }
+.sh.sh-compact[data-frame='classic'] .sh-screen { border-width: calc(9 * var(--u, 1px)); border-left-width: 0; border-right-width: calc(44 * var(--u, 1px)); border-radius: 0 calc(40 * var(--u, 1px)) calc(40 * var(--u, 1px)) 0; padding: calc(6 * var(--u, 1px)) calc(8 * var(--u, 1px)) calc(6 * var(--u, 1px)) 0; }
+.sh.sh-compact[data-frame='classic'] .sh-rpm-row .sh-u, .sh.sh-compact[data-frame='classic'] .sh-mph-row .sh-u { margin-right: calc(-48 * var(--u, 1px)); min-width: calc(36 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='classic'] .sh-rule { margin-right: 0; }
+.sh.sh-compact[data-frame='classic'] .sh-ring { border-radius: 0 0 calc(24 * var(--u, 1px)) calc(24 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='classic'] .sh-cap { padding: calc(8 * var(--u, 1px)) calc(8 * var(--u, 1px)) calc(2 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='classic'] .sh-cap-r { top: calc(10 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='classic'] .sh-bar { margin-left: calc(14 * var(--u, 1px)); gap: calc(5 * var(--u, 1px)); }
+.rf-pack-box .sh.sh-compact[data-frame='classic'] .sh-bar .sh-shutdown { border-radius: 0 calc(24 * var(--u, 1px)) calc(24 * var(--u, 1px)) 0; }
+/* compact × helm frame (panel children are position:relative there; pin the ring readout) */
+.sh.sh-compact[data-frame='helm'] .sh-ring > .sh-cap-r { position: absolute; top: calc(8 * var(--u, 1px)); right: calc(10 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='helm'] .sh-panel { padding: calc(6 * var(--u, 1px)) calc(8 * var(--u, 1px)); }
+.sh.sh-compact[data-frame='helm'] .sh-tabs { padding: calc(3 * var(--u, 1px)); }
+.rf-pack-box .sh.sh-compact[data-frame='helm'] .sh-tabs button { padding: 0 calc(8 * var(--u, 1px)); }
+.rf-pack-box .sh.sh-compact[data-frame='helm'] .sh-bar button { clip-path: polygon(calc(7 * var(--u, 1px)) 0, 100% 0, 100% calc(100% - 7 * var(--u, 1px)), calc(100% - 7 * var(--u, 1px)) 100%, 0 100%, 0 calc(7 * var(--u, 1px))); }
+.sh.sh-compact[data-frame='helm'] .shf-corner { width: calc(14 * var(--u, 1px)); height: calc(14 * var(--u, 1px)); }
+/* Tight (very short host, e.g. demo throttle card open): tab column folds away (the shell's
+   own Tuner / panels stay reachable); power scale header folds. */
+.sh.sh-compact[data-sh-tight] { grid-template-columns: 0px minmax(0, 1fr) 0px minmax(calc(150 * var(--u, 1px)), 34%); }
+.sh-compact[data-sh-tight] .sh-tabs, .sh-compact[data-sh-tight] .shf-elbow, .sh-compact[data-sh-tight] .sh-power-head { display: none; }
+.sh.sh-compact[data-sh-tight][data-frame='classic'] .sh-bar { margin-left: 0; }
+.sh-compact[data-sh-tight] .sh-mph { font-size: min(calc(120 * var(--u, 1px)), 34cqh); }
+.sh-compact[data-sh-tight] .sh-rpm { font-size: min(calc(48 * var(--u, 1px)), 19cqh); }
+/* small ring: caption grows so it still renders ≥11px (fits the core chord at this baseline) */
+.sh-compact[data-sh-tight] .sh-gear-label-c { font-size: 31px; letter-spacing: 1px; }
