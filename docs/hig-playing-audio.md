@@ -148,8 +148,23 @@ below the −3 dBFS knee, so the bus is a pure safety net for stacked cues and c
 | upshift / downshift bark, gearing | ≤0.3 s / 1.15 s | **gear change from the simulation** (automatic gearbox too) | not a tap; part of the engine sound |
 | lock | 0.28 s | Twin Ion rpm reaches lock (automatic) | not a tap; off by default (`ionTwinLockSfx`) |
 | scanner tick | short | Night Pursuit scanner sweep (automatic) | not a tap; level 0 by default |
-| time-jump | **2.4 s** | **crossing 88 mph** (TimeCircuits, automatic) | over ~2 s and not user-initiated. Needs a ruling: cap to 2.0 s or make it opt-in |
+| time-jump | **≤ 2.0 s** total (decay to 1.9 s, linear release to 1.96 s, sources stop 1.99 s) | automatic at its speed threshold (time-display layout) | ruling: stays automatic, capped at 2.0 s, user can switch it off (below) |
 All cues go through the master bus, so none can exceed the ceiling or rise above their current peaks.
+
+## time-jump cue: cap + on/off (CoS ruling)
+- Capped at **2.0 s total** including release: exponential decay ends at 1.9 s, a linear release reaches 0 at 1.96 s, and the sources stop at 1.99 s, so it ends in a clean fade with no click (`TIME_JUMP_CUE_SECONDS` in `ProceduralCharacter.js`).
+- It still fires automatically at its speed threshold.
+- **On by default.** Turning it off means the cue never fires; every other cue and the engine voice are unchanged. The setting is **in memory only**: the audio layer never reads or writes localStorage / sessionStorage / IndexedDB. Frontend persists it under its own per-preview-slug key: restore with `setTimeJumpCueEnabled(saved)` at boot and save from `onTimeJumpCueChange(fn)` (or from the hook's `timeJumpCue` state).
+
+```ts
+audio.setTimeJumpCueEnabled(on: boolean): void   // useAudioEngine()
+audio.getTimeJumpCueEnabled(): boolean
+audio.timeJumpCue                                // boolean state, for rendering a switch
+engine.setTimeJumpCueEnabled(on) / engine.getTimeJumpCueEnabled()   // EngineSynth (CharacterEngine)
+getPlaybackSession().setTimeJumpCueEnabled(on) / .getTimeJumpCueEnabled()   // non-React
+import { setTimeJumpCueEnabled, getTimeJumpCueEnabled, onTimeJumpCueChange } from 'src/audio/cuePrefs'  // plain module (onTimeJumpCueChange → unsubscribe)
+```
+Frontend, for the Chrono Coupe toggle: `<Switch checked={audio.timeJumpCue} onChange={audio.setTimeJumpCueEnabled} label="Time-jump sound"/>`.
 
 ## In-car manual check list (Tesla, parked)
 1. Tap **IGNITION**. Sound fades in, with no pop or click at the start.

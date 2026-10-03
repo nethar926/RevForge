@@ -7,6 +7,7 @@ import {SignalGraph} from './SignalGraph';
 import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge} from './types';
 import {EnvelopeMeter} from './envelopeMeter';
 import {ProceduralCharacter} from './ProceduralCharacter';
+import {getTimeJumpCueEnabled,setTimeJumpCueEnabled} from './cuePrefs';
 const keys=['screamTone','digitalCueLevel','tieSignature','roarOne','roarTwo','roarThree','ionCannonPitch','roarDepth','roarAir','roarWidth','roarLevel','roarVariant','roarPitch','roarThroat','roarRasp','roarPulse','roarAttack','roarRelease','interiorNoise','interiorLevel','targetingNoise','targetingLevel','gearingNoise','gearingLevel','blasterLevel','lifecycleSounds','lifecycleLevel'] as const;
 /** Keep the native engine core, with a single independently controlled procedural character bus. */
 export class CharacterEngine implements EngineSynth {
@@ -37,5 +38,8 @@ export class CharacterEngine implements EngineSynth {
  getHud(){return {...this.base.getHud(),lockStage:this.lockStage};}getDiag(){return this.base.getDiag();}getLockStage(){return this.lockStage;}
  setLockSfxEnabled(v:boolean){this.lockSfx=v;this.base.setLockSfxEnabled(false);}getLockSfxEnabled(){return this.lockSfx;}
  setUpshiftSfxEnabled(v:boolean){this.base.setUpshiftSfxEnabled(v);}getUpshiftSfxEnabled(){return this.base.getUpshiftSfxEnabled();}
- triggerUiCue(cue:string){if(cue==='time-jump')this.fx.cue('time-jump');else if(cue==='ion-cannon'||cue==='blaster')this.fx.cue('ion-cannon');else if((cue==='upshift'||cue==='downshift')&&this.base.toPatch().kind==='scifi')this.fx.cue('gearing');else this.base.triggerUiCue?.(cue);}
+ /** time-jump cue on/off (shared preference; on by default). Off = never fires. */
+ setTimeJumpCueEnabled(on:boolean){setTimeJumpCueEnabled(on);}
+ getTimeJumpCueEnabled():boolean{return getTimeJumpCueEnabled();}
+ triggerUiCue(cue:string){if(cue==='time-jump'){if(getTimeJumpCueEnabled())this.fx.cue('time-jump');}else if(cue==='ion-cannon'||cue==='blaster')this.fx.cue('ion-cannon');else if((cue==='upshift'||cue==='downshift')&&this.base.toPatch().kind==='scifi')this.fx.cue('gearing');else this.base.triggerUiCue?.(cue);}
 }

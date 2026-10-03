@@ -351,6 +351,9 @@ export interface EngineSynth {
    * - 'shutdown' | 'shutoff': per-engine Shutdown one-shot (call before stop() for full tail)
    */
   triggerUiCue?(cue: 'upshift' | 'starter' | 'shutdown' | 'shutoff' | string): void;
+  /** time-jump cue on/off (shared preference, default on). */
+  setTimeJumpCueEnabled?(on: boolean): void;
+  getTimeJumpCueEnabled?(): boolean;
 
   /** Procedural Ignition starter from active pack (alias of triggerUiCue('starter')). */
   playStarter?(): void;

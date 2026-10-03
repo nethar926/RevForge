@@ -18,6 +18,7 @@
  * Fully procedural — no samples. See docs/hig-playing-audio.md.
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { getTimeJumpCueEnabled, setTimeJumpCueEnabled } from './cuePrefs';
 
 /* ------------------------------------------------------------------ constants */
 
@@ -329,8 +330,8 @@ export function revforgeArtwork(): MediaImage[] {
   const svgUrl = `data:image/svg+xml,${encodeURIComponent(svg)}`;
   const art: MediaImage[] = [{ src: svgUrl, sizes: '512x512', type: 'image/svg+xml' }];
   try {
-    const doc = (globalThis as { document?: Document }).document;
-    const canvas = doc?.createElement?.('canvas');
+    const dom = (globalThis as { document?: Document }).document;
+    const canvas = dom?.createElement?.('canvas');
     const c = canvas?.getContext?.('2d');
     if (canvas && c) {
       canvas.width = canvas.height = 512;
@@ -430,6 +431,15 @@ export class PlaybackSession {
     }
     ctx.addEventListener('statechange', this.onContextState);
     this.applyMediaSession();
+  }
+
+  /** time-jump cue on/off for non-React callers (shared with the hook / engine; default on). */
+  setTimeJumpCueEnabled(on: boolean): void {
+    setTimeJumpCueEnabled(on);
+  }
+
+  getTimeJumpCueEnabled(): boolean {
+    return getTimeJumpCueEnabled();
   }
 
   /** HIG default true. false = keep sounding while hidden (only if Wilson opts in). */

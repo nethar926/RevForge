@@ -6,6 +6,10 @@ import {
   SWITCH_DIP_S,
   type MasterBus,
 } from "../audio/playbackSession";
+import {
+  getTimeJumpCueEnabled as readTimeJumpCue,
+  setTimeJumpCueEnabled as writeTimeJumpCue,
+} from "../audio/cuePrefs";
 import type {
   DrivingInput,
   EngineDiag,
@@ -277,6 +281,14 @@ export function useAudioEngine(
     }
   }, []);
 
+  /** time-jump cue (automatic at its speed threshold): on by default; off = never fires. */
+  const [timeJumpCue, setTimeJumpCueState] = useState(() => readTimeJumpCue());
+  const setTimeJumpCueEnabled = useCallback((on: boolean) => {
+    writeTimeJumpCue(on);
+    setTimeJumpCueState(readTimeJumpCue());
+  }, []);
+  const getTimeJumpCueEnabled = useCallback(() => readTimeJumpCue(), []);
+
   const triggerUiCue = useCallback(
     (cue: 'upshift' | 'starter' | 'shutdown' | 'shutoff' | string) => {
       engineRef.current?.triggerUiCue?.(cue);
@@ -349,6 +361,9 @@ export function useAudioEngine(
       setUpshiftSfxEnabled,
       getUpshiftSfxEnabled,
       triggerUiCue,
+      setTimeJumpCueEnabled,
+      getTimeJumpCueEnabled,
+      timeJumpCue,
       playStarter,
       playShutoff,
       ready,
@@ -378,6 +393,9 @@ export function useAudioEngine(
       setUpshiftSfxEnabled,
       getUpshiftSfxEnabled,
       triggerUiCue,
+      setTimeJumpCueEnabled,
+      getTimeJumpCueEnabled,
+      timeJumpCue,
       playStarter,
       playShutoff,
       ready,
