@@ -1,0 +1,220 @@
+/*
+ * Chrono Coupe HUD (pack-owned art). Laid out in a 1280px-wide design box whose
+ * height follows the stage (container queries: cqh = % of box height).
+ * Fonts: DSEG7/DSEG14 Classic Bold (SIL OFL 1.1, see fonts/OFL-DSEG.txt).
+ */
+@font-face { font-family: 'DSEG7 Classic'; src: url('./fonts/DSEG7Classic-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'DSEG14 Classic'; src: url('./fonts/DSEG14Classic-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+
+.cc {
+  --cc-ui: -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif;
+  --cc-red: #ff3b2f;
+  --cc-grn: #3dff6e;
+  --cc-amb: #ffb21e;
+  --cc-bank-digit: clamp(20px, 4.5cqh, 38px);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 410px;
+  grid-template-rows: minmax(0, 1fr) var(--pf-tap, 56px);
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  overflow: hidden;
+  font-family: var(--cc-ui);
+  color: #e9e6df;
+  background:
+    radial-gradient(1200px 500px at 50% 120%, #2a1608 0%, transparent 60%),
+    repeating-linear-gradient(90deg, #141416 0 2px, #101012 2px 4px);
+}
+.cc h4 { margin: 0; font-size: 12px; letter-spacing: 3px; font-weight: 700; color: #c9c6bd; }
+.cc-left, .cc-right { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.cc-banks { display: grid; gap: min(10px, 1.4cqh); flex: none; }
+.cc-lower { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 12px; }
+.cc-right .cc-velocity { flex: 1.1; }
+.cc-right .cc-engine { flex: 1; }
+
+/* ---- date banks ---- */
+.cc-bank {
+  background: linear-gradient(180deg, #5c5f63, #3a3c40 40%, #2a2b2e);
+  border-radius: 10px;
+  padding: min(8px, 1.2cqh) 14px min(7px, 1cqh);
+  box-shadow: inset 0 1px 0 #8a8d92, 0 6px 18px #000a;
+}
+.cc-cells { display: flex; gap: 10px; align-items: stretch; }
+.cc-cell { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; }
+.cc-cell .cc-digits { align-self: center; }
+.cc-cell {
+  position: relative;
+  background: #050505;
+  border-radius: 5px;
+  padding: 5px 10px 3px;
+  box-shadow: inset 0 0 0 2px #1d1d1f, inset 0 6px 14px #000;
+}
+.cc-digits { position: relative; display: block; line-height: 1; white-space: pre; }
+.cc-ghost { position: absolute; inset: 0 auto auto 0; opacity: 0.09; }
+.cc-cell .cc-digits { font-size: var(--cc-bank-digit); letter-spacing: 2px; }
+.cc-seg7 .cc-digits, .cc-rpm .cc-digits, .cc-gear .cc-digits, .cc-big, .cc-readout { font-family: 'DSEG7 Classic', ui-monospace, monospace; font-weight: 700; }
+.cc-seg14 .cc-digits { font-family: 'DSEG14 Classic', ui-monospace, monospace; font-weight: 700; }
+.cc-cell small { display: block; margin-top: min(5px, 0.6cqh); text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #d7d9dc; text-shadow: none; }
+.cc-ampm { display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 0 4px; }
+.cc-ampm span { display: flex; gap: 6px; align-items: center; font-size: 11px; font-weight: 700; color: #e4e6e9; text-shadow: none; }
+.cc-ampm i { width: 16px; height: 16px; border-radius: 50%; background: #2b2b2b; box-shadow: inset 0 2px 3px #000; }
+.cc-colon { display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.cc-colon i { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.cc-plate { margin-top: min(6px, 0.8cqh); padding: min(4px, 0.6cqh); border-radius: 3px; text-align: center; font-size: clamp(12px, 2.2cqh, 14px); font-weight: 800; letter-spacing: 5px; color: #fff; text-shadow: none; }
+.cc-dest { color: var(--cc-red); text-shadow: 0 0 10px #ff3b2f99; }
+.cc-present { color: var(--cc-grn); text-shadow: 0 0 10px #3dff6e88; }
+.cc-departed { color: var(--cc-amb); text-shadow: 0 0 10px #ffb21e88; }
+.cc-dest .cc-ampm i.on, .cc-dest .cc-colon i { background: var(--cc-red); }
+.cc-present .cc-ampm i.on, .cc-present .cc-colon i { background: var(--cc-grn); }
+.cc-departed .cc-ampm i.on, .cc-departed .cc-colon i { background: var(--cc-amb); }
+.cc-ampm i.on { box-shadow: 0 0 10px currentColor, inset 0 0 4px #fff8; }
+.cc-dest .cc-plate { background: #b51e15; }
+.cc-present .cc-plate { background: #14803a; }
+.cc-departed .cc-plate { background: #b97300; color: #111; }
+
+/* ---- panels ---- */
+.cc-panel {
+  position: relative;
+  min-height: 0;
+  border-radius: 18px;
+  padding: 14px 20px;
+  background: linear-gradient(180deg, #26282b, #17181a);
+  box-shadow: inset 0 1px 0 #444, 0 8px 24px #000a;
+  display: flex;
+  flex-direction: column;
+  container-type: size;
+}
+.cc-charge .cc-core-wrap { flex: 1; min-height: 0; display: flex; justify-content: center; padding-top: 6px; }
+.cc-core-svg { height: 100%; max-width: 100%; }
+.cc-core-glow { opacity: calc(0.12 + var(--cc-charge, 0) * 0.88); transition: opacity 0.25s linear; }
+.cc-core-wire { opacity: calc(0.35 + var(--cc-charge, 0) * 0.65); }
+/* engine envelope (when Audio exposes getEnvelope) → node shimmer; 0 otherwise */
+.cc-core-voice { opacity: calc(var(--cc-voice, 0) * 0.55); filter: blur(5px); }
+.cc-core-flash { opacity: 0; transform-origin: 120px 100px; animation: cc-flash 0.6s ease-out 1; pointer-events: none; }
+@keyframes cc-flash { 0% { opacity: 0.85; transform: scale(0.3); } 100% { opacity: 0; transform: scale(1.4); } }
+.cc-charge-pct { position: absolute; right: 18px; top: 12px; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #ffd36b; }
+
+.cc-output { background: linear-gradient(180deg, #d9b435, #b18b1e); box-shadow: inset 0 2px 0 #f5dc7a, 0 8px 24px #000a; color: #1b1406; }
+.cc-output h4 { color: #2b1f05; }
+.cc-readout { position: absolute; right: 20px; top: 12px; font-size: min(30px, 18cqh); line-height: 1; padding: 6px 10px; border-radius: 6px; background: #140f04; color: var(--cc-amb); text-shadow: 0 0 8px #ffb21e; }
+.cc-meter-wrap { flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: center; }
+.cc-meter-svg { width: 100%; height: 100%; max-height: 100%; }
+.cc-meter-text text { font-family: var(--cc-ui); font-weight: 800; font-size: 16px; fill: #2b1f05; }
+.cc-meter-text .cc-meter-units { font-size: 12px; letter-spacing: 3px; }
+.cc-meter-text .cc-meter-max { font-size: 13px; letter-spacing: 1px; }
+.cc-needle { transform-origin: 200px 145px; transform-box: view-box; transition: transform 0.18s linear; }
+
+/* velocity */
+.cc-velocity .cc-unit { position: absolute; right: 22px; top: 14px; font-size: 14px; font-weight: 800; letter-spacing: 2px; color: #ff8f86; }
+.cc-big { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: flex-end; font-size: min(150px, 46cqh); line-height: 1; color: var(--cc-red); text-shadow: 0 0 22px #ff3b2fbb; white-space: pre; }
+.cc-big .cc-ghost { inset: auto 0 auto auto; position: absolute; }
+.cc-thr { position: relative; flex: none; height: 16px; border-radius: 8px; background: #0a0a0a; box-shadow: inset 0 0 0 1px #333; overflow: hidden; }
+.cc-thr b { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #ff7a1a, #ffd23e); box-shadow: 0 0 14px #ffb21e; transition: width 0.12s linear; }
+.cc-thr em { position: absolute; right: 0; top: -1px; bottom: -1px; width: 3px; background: #fff; }
+.cc-ready .cc-thr b { background: repeating-linear-gradient(45deg, #ffd23e 0 8px, #ff7a1a 8px 16px); }
+.cc-thr-labels { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 12px; font-weight: 600; color: #c9c6bd; }
+.cc-thr-state { color: #ffd36b; font-weight: 700; letter-spacing: 1px; }
+.cc-armed-tag { position: absolute; left: 20px; top: 34px; padding: 2px 8px; border: 1px solid var(--cc-amb); border-radius: 4px; font-size: 12px; font-weight: 800; letter-spacing: 2px; color: var(--cc-amb); }
+
+/* engine */
+.cc-bars { position: relative; flex: 1; min-height: 0; display: flex; gap: 5px; align-items: flex-end; margin-top: 18px; }
+.cc-bars i { flex: 1; border-radius: 2px; background: #1f2a22; }
+.cc-bars i.zone { background: repeating-linear-gradient(135deg, #3a1512 0 4px, #24100e 4px 8px); }
+.cc-bars i.on.g { background: var(--cc-grn); box-shadow: 0 0 8px #3dff6e88; }
+.cc-bars i.on.y { background: #ffd23e; box-shadow: 0 0 8px #ffd23e88; }
+.cc-bars i.on.r { background: repeating-linear-gradient(135deg, #ff3b2f 0 5px, #ff7a6e 5px 8px); box-shadow: 0 0 8px #ff3b2f88; }
+.cc-redline-tag { position: absolute; top: -16px; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: #ff8f86; }
+.cc-rpmrow { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; flex: none; }
+.cc-rpm, .cc-gear { display: flex; align-items: baseline; gap: 6px; }
+.cc-rpm .cc-digits, .cc-gear .cc-digits { font-size: min(40px, 15cqh); }
+.cc-rpm { color: var(--cc-grn); text-shadow: 0 0 10px #3dff6e88; }
+.cc-gear { color: var(--cc-amb); text-shadow: 0 0 10px #ffb21e88; }
+.cc-rpmrow small { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: #c9c6bd; text-shadow: none; }
+
+/* ---- bottom rail ---- */
+.cc-rail { grid-column: 1 / -1; display: flex; gap: 12px; }
+.rf-pack-box .cc-rail button {
+  flex: 1;
+  min-height: var(--pf-tap, 56px);
+  min-width: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: #222326;
+  box-shadow: inset 0 1px 0 #3a3a3e;
+  color: #e9e6df;
+  font: 700 15px var(--cc-ui);
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+.rf-pack-box .cc-rail button[aria-pressed='true'] { background: var(--cc-amb); color: #111; }
+.rf-pack-box .cc-rail button[aria-disabled='true'] { cursor: default; opacity: 0.6; }
+.rf-pack-box .cc-rail button:focus-visible, .cc-dialog button:focus-visible, .cc-dialog input:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+/* ---- destination dialog (top layer, real px) ---- */
+.cc-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  border: 1px solid #4a4c50;
+  border-radius: 20px;
+  background: #18191b;
+  color: #ecebe6;
+  font-family: -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif;
+}
+.cc-dialog::backdrop { background: #000c; }
+.cc-dialog h2 { margin: 0 0 16px; font-size: 22px; font-weight: 700; }
+.cc-step-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.cc-step-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; color: #c9c6bd; text-transform: uppercase; }
+.cc-step-row { display: flex; align-items: stretch; gap: 6px; }
+.cc-dialog .cc-step-row button, .cc-dialog .cc-dialog-actions button {
+  min-width: 56px;
+  min-height: 56px;
+  border: 1px solid #45474b;
+  border-radius: 12px;
+  background: #26282b;
+  color: #ecebe6;
+  font: 700 22px -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+.cc-dialog .cc-step-row output, .cc-dialog .cc-step-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #45474b;
+  border-radius: 12px;
+  background: #050505;
+  color: #ff5a4e;
+  font: 700 24px 'DSEG7 Classic', ui-monospace, monospace;
+  text-align: center;
+}
+.cc-step:first-child .cc-step-row output { font-family: 'DSEG14 Classic', ui-monospace, monospace; }
+.cc-step-row input { -moz-appearance: textfield; appearance: textfield; }
+.cc-step-row input::-webkit-inner-spin-button, .cc-step-row input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.cc-dialog .cc-ampm-pick button { flex: 1; font-size: 18px; }
+.cc-dialog .cc-ampm-pick button[aria-pressed='true'] { background: #ff3b2f; border-color: #ff3b2f; color: #160302; }
+.cc-dialog-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
+.cc-dialog .cc-dialog-actions button { padding: 0 22px; font-size: 17px; }
+.cc-dialog .cc-dialog-actions .primary { background: var(--cc-amb, #ffb21e); border-color: #ffb21e; color: #111; }
+
+/* ---- Reduce Motion / Animated environment off: no flash, no transitions ---- */
+.cc-still .cc-core-flash { display: none; animation: none; }
+.cc-still .cc-core-glow, .cc-still .cc-needle, .cc-still .cc-thr b { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cc-core-flash { display: none; animation: none; }
+  .cc-core-glow, .cc-needle, .cc-thr b { transition: none; }
+  .cc-thumb-glow { animation: none !important; opacity: 1; }
+}
+
+/* picker thumbnail pulse (CSS only) */
+.cc-thumb-glow { animation: cc-thumb-pulse 2.2s ease-in-out infinite; }
+@keyframes cc-thumb-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cc-thumb-glow { animation: none !important; opacity: 1; } }
+
+/* Compact (short stage): tighter spacing; rail keeps a 44pt floor. */
+.cc[data-compact='true'] { --pf-tap: max(44px, calc(44.5px / var(--pf-s, 1))); gap: 8px; padding: 8px 12px; }
+.cc[data-compact='true'] .cc-left, .cc[data-compact='true'] .cc-right { gap: 8px; }
