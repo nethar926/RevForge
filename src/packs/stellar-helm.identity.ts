@@ -24,7 +24,7 @@ export default STELLAR_HELM;
 
 /**
  * Frame style for Stellar Helm. Both looks ship; the user picks one with the
- * "Frame: Classic / Helm" control in the HUD's bottom bar (persisted per pack).
+ * "Frame: CLASSIC / NEO" control in the HUD's bottom bar (persisted per pack).
  *  'classic' rounded elbow frame + colour-block bars (Wilson's original board look) — DEFAULT
  *  'helm'    graphite glass console with hairline chamfered frames
  * Content (rings, RPM/MPH block, data rows, tabs, power bar, buttons) is identical in both.

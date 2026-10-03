@@ -10,7 +10,7 @@ export interface StellarHelmHudProps extends PackHudProps {
   title: string;
   /** Frame/palette only; layout content is frame-independent. */
   frame: FrameStyle;
-  /** User frame choice (persisted by the mount); renders the Frame: Classic / Helm control. */
+  /** User frame choice (persisted by the mount); renders the Frame: CLASSIC / NEO control. */
   onFrameChange: (frame: FrameStyle) => void;
   /** Short stage: tighter spacing (touch floor stays ≥ 44pt). */
   compact?: boolean;

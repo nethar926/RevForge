@@ -3,11 +3,11 @@ import type { FrameStyle } from './StellarFrame';
 
 const OPTIONS: { id: FrameStyle; label: string }[] = [
   { id: 'classic', label: 'Classic' },
-  { id: 'helm', label: 'Helm' },
+  { id: 'helm', label: 'NEO' },
 ];
 
 /**
- * "Frame: Classic / Helm" segmented control (WAI-ARIA radio group, roving tabindex).
+ * "Frame: CLASSIC / NEO" segmented control (WAI-ARIA radio group, roving tabindex).
  * VoiceOver: "Classic, radio button, selected, 1 of 2, Stellar Helm frame".
  * Fixed width + right-anchored in the bar, so it never moves when the frame flips.
  */

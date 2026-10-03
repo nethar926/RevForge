@@ -131,7 +131,7 @@
 .rf-pack-box .sh button:focus-visible { outline: 3px solid var(--sh-focus, #fff); outline-offset: 3px; position: relative; z-index: 3; }
 
 /*
- * Frame: Classic / Helm (radio group). Fixed width and sat between MUTE and a
+ * Frame: CLASSIC / NEO (radio group). Fixed width and sat between MUTE and a
  * fixed-width SHUTDOWN, so both stay at the same spot when the frame flips (the bar's
  * right edge is shared by both frames). Switching only swaps custom properties on
  * .sh[data-frame] — no transitions, no re-measure, rings keep their angle.
