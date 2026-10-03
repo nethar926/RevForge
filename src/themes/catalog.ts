@@ -1,5 +1,5 @@
 export type ThemeFamily = 'Minimal' | 'Gauge Cluster' | 'Cockpit' | 'RoadView' | 'Full Screen';
-export type ThemeLayout = 'numerical' | 'arc' | 'line' | 'bar' | 'digital' | 'analog' | 'driver' | 'scanner' | 'time' | 'jet' | 'space' | 'road' | 'custom' | 'new-worlds' | 'enterprise';
+export type ThemeLayout = 'numerical' | 'arc' | 'line' | 'bar' | 'digital' | 'analog' | 'driver' | 'scanner' | 'time' | 'jet' | 'space' | 'road' | 'custom' | 'new-worlds' | 'enterprise' | 'gradient' | 'gradient-macro';
 export interface ThemePreset { id: string; name: string; family: ThemeFamily; group: string; layout: ThemeLayout; accent: string; secondary: string; description: string; feature: string; sceneId?: string; }
 const skin = (id: string, name: string, family: ThemeFamily, group: string, layout: ThemeLayout, accent: string, secondary: string, description: string, feature: string): ThemePreset => ({id,name,family,group,layout,accent,secondary,description,feature});
 export const THEMES: ThemePreset[] = [
@@ -25,6 +25,8 @@ export const THEMES: ThemePreset[] = [
   skin('night-rider','RF Crimson Sweep','Full Screen','PopCulture','scanner','#ff5353','#ffc16a','A red scanner sweep, LED telemetry banks and a dark command console.','Scanner sweep'),
   skin('new-worlds','RF New Worlds','Full Screen','PopCulture','new-worlds','#f5820d','#7d3c98','A free take on the LCARS command interface — Oswald numerals, warp rings and a segmented RPM bar.','Warp rings'),
   skin('enterprise','RF Enterprise','Full Screen','PopCulture','enterprise','#f5820d','#7d3c98','Strict LCARS command interface — Oswald numerals, warp rings and a chunky right-to-left RPM bar.','Warp rings'),
+  skin('gradient','RF Gradient Sweep','Gauge Cluster','Gradient','gradient','#ff5353','#4da6ff','Twin conic light-sweep dials — MPH left, RPM right — around a glowing center stack. Part of the Gradient pack.','Conic light sweep'),
+  skin('gradient-macro','RF Gradient Macro','Gauge Cluster','Gradient','gradient-macro','#4da6ff','#ff8a3c','A single macro beam gauge — one bright sweep across a deep-blue face with etched ticks and dark-navy numerals. Part of the Gradient pack.','Macro beam gauge'),
   skin('f22','RF Peregrine','Cockpit','Jet','jet','#8eeeb0','#c8eabe','Angular HUD, paired engine-load tapes and a restrained radar panel.','Engine-load HUD'),
   skin('f35','RF Glasswing','Cockpit','Jet','jet','#9ee6df','#dbecf3','A panoramic glass panel with three live instrument windows.','Panoramic instrumentation'),
   skin('f14','RF Swingwing','Cockpit','Jet','analog','#97e6b0','#efa85e','Round engine instruments, green phosphor and a sweep display.','Original jet HUD + radar sweep'),

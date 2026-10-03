@@ -9,6 +9,8 @@ import {NewWorldsCluster} from '../skins/new-worlds/NewWorldsCluster';
 import '../skins/new-worlds/new-worlds.css';
 import {EnterpriseCluster} from '../skins/enterprise/EnterpriseCluster';
 import '../skins/enterprise/enterprise.css';
+import {GradientCluster} from '../skins/gradient/GradientCluster';
+import {GradientMacro} from '../skins/gradient/GradientMacro';
 import {useMemo} from 'react';
 import {instrumentDefaults} from './ThemeColors';
 import type {CSSProperties} from 'react';
@@ -54,6 +56,8 @@ export function ThemeStage({maxSpeedMps,fonts,widgets=defaultCluster,theme,state
    {['line','bar'].includes(theme.layout)&&<><div className="skin-line-main">{hero}<Rail value={speedPct} label="SPEED" segmented={theme.layout==='bar'}/></div>{telemetry}<Rail value={rev} label="RPM" segmented={theme.layout==='bar'}/><Rail value={state.load} label="LOAD" segmented={theme.layout==='bar'}/></>}
    {theme.id==='f14'&&<><div className="f14-inherited"><AerospaceF14Overlay rpmNorm={rev} speedNorm={speedPct} throttle={state.overrun?0:state.load} loadFeel={state.load}/>{hero}</div>{telemetry}</>}
    {theme.layout==='analog'&&theme.id!=='f14'&&<><div className="skin-twin-dials"><Dial value={speed} max={speedScale(maxSpeedMps,unit)} label="SPEED" unit={unit}/><div className="dial-center">{hero}{theme.family==='Cockpit'?radar:<span className={`shift-telltale ${rev>.9?'lit':''}`}>SHIFT</span>}</div><Dial value={rpm/1000} max={redline/1000} label="RPM" unit="× 1000"/></div>{telemetry}<Rail value={rev} label="ENGINE"/></>}
+   {theme.layout==='gradient'&&<GradientCluster rpmNorm={rev} speedNorm={speedPct} rpm={rpm} speed={speed} unit={unit} gear={state.gear} load={state.load}/>}
+   {theme.layout==='gradient-macro'&&<GradientMacro speedNorm={speedPct} speed={speed} unit={unit}/>}
    {theme.layout==='digital'&&<><div className="digital-cluster"><div className="digital-bank"><Rail value={state.load} label="LOAD" segmented/><Rail value={rev} label="ENGINE" segmented/></div>{hero}<div className="digital-tach" aria-label="Tachometer">{Array.from({length:20},(_,i)=><i key={i} className={i/20<rev?'lit':''} style={{height:`${25+i*3.6}%`}}/>)}</div></div>{telemetry}<div className="skin-grid-readout"><span>ENGINE MONITOR</span><span>{state.overrun?'OVERRUN':state.shifting?'SHIFT':'STEADY'}</span><span>{Math.round(warningRpm??redline*.9)} REDLINE</span></div></>}
    {theme.layout==='driver'&&<><div className="driver-cluster"><Rail value={rev} label="RPM"/><div className="driver-horizon"><div className="driver-lanes"/><svg viewBox="0 0 80 130" aria-hidden="true"><path d="M23 8 Q40 0 57 8 L66 103 Q65 120 40 122 Q15 120 14 103 Z"/><path d="M24 34 Q40 26 56 34 L60 73 L20 73 Z"/></svg></div>{hero}</div>{telemetry}<Rail value={state.load} label="POWER"/></>}
    {theme.layout==='scanner'&&<><div className="skin-scanner"><i/></div><div className="scanner-cluster"><div className="scanner-bank"><Rail value={rev} label="ENGINE" segmented/><Rail value={state.load} label="LOAD" segmented/></div>{hero}</div>{telemetry}<div className="skin-grid-readout"><span>SYSTEM ACTIVE</span><span>{state.shifting?'SHIFTING':'MONITORING'}</span></div></>}

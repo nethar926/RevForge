@@ -5,6 +5,7 @@ import { AerospaceF14Overlay } from './aerospace-f14/AerospaceF14Overlay';
 import { IonTwinOverlay } from './ion-twin/IonTwinOverlay';
 import { IceV8Overlay } from './ice-v8/IceV8Overlay';
 import { EvInverterOverlay } from './ev-inverter/EvInverterOverlay';
+import { GradientCluster } from './gradient/GradientCluster';
 import type { IonLockStage } from './ion-twin/lockLadder';
 
 /**
@@ -112,6 +113,16 @@ export function DriveSkinSlot({
           speedNorm={speedNorm}
           throttle={throttle}
           loadFeel={loadFeel}
+        />
+      )}
+      {/* Registry stub: no engine maps to 'gradient' today; the live path is the
+          'RF Gradient Sweep' theme via ThemeStage. Kept so the skin id resolves. */}
+      {skinId === 'gradient' && (
+        <GradientCluster
+          rpmNorm={rpmNorm}
+          speedNorm={speedNorm}
+          throttle={throttle}
+          load={loadFeel}
         />
       )}
     </div>

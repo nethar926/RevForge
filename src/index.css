@@ -5,6 +5,7 @@
 @import "./skins/ice-v8/ice-v8.css";
 @import "./skins/ev-inverter/ev-inverter.css";
 @import "./skins/aerospace-f14/aerospace-f14.css";
+@import "./skins/gradient/gradient.css";
 
 :root {
   --bg: #07090d;
