@@ -9,6 +9,7 @@ import {
   STELLAR_HELM_PARAM_META,
   stellarHelmBuiltinPatch,
 } from './stellarHelmPack';
+import { QUIET_CURRENT, QUIET_CURRENT_DEFAULTS, quietCurrentBuiltinPatch } from './quietCurrentPack';
 
 export const V8_DEFAULTS: EngineParams = {
   // Audio Physics ICE v1 + ice-pack-firing-schedules-v1 (crossPlane)
@@ -433,6 +434,8 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
   chronoCoupeBuiltinPatch(),
   // Stellar Helm (experimental): dedicated starship drive hum voice — see stellarHelmPack.ts
   stellarHelmBuiltinPatch(),
+  // Quiet Current (experimental): refined EV voice + Cyber variant — see quietCurrentPack.ts
+  quietCurrentBuiltinPatch(),
   ...REVFORGE_PATCHES,
 ];
 
@@ -463,6 +466,8 @@ export function defaultsForTopology(topology: string): EngineParams {
       return { ...CHRONO_COUPE_DEFAULTS };
     case STELLAR_HELM_PACK.id:
       return { ...STELLAR_HELM_DEFAULTS };
+    case QUIET_CURRENT.id:
+      return { ...QUIET_CURRENT_DEFAULTS };
     case 'v8-rumble':
     default:
       return { ...V8_DEFAULTS };
@@ -523,9 +528,26 @@ export const CHRONO_COUPE_PARAM_META: ParamMeta[] = [
   { id: 'chargeIntensity', label: 'Charge Intensity', min: 0, max: 1, step: 0.01, group: 'charge' },
 ];
 
+/** Quiet Current controls (paramMetaForKind('ev-whine', QUIET_CURRENT.id) — replaces stock EV set). */
+export const QUIET_CURRENT_PARAM_META: ParamMeta[] = [
+  { id: 'masterGain', label: 'Level', min: 0, max: 1, step: 0.01, group: 'quietCurrent' },
+  { id: 'inverterTone', label: 'Inverter Tone', min: 0, max: 1, step: 0.01, group: 'quietCurrent' },
+  { id: 'motorHum', label: 'Motor Hum', min: 0, max: 1, step: 0.01, group: 'quietCurrent' },
+  { id: 'gearMesh', label: 'Gear Mesh', min: 0, max: 1, step: 0.01, group: 'quietCurrent' },
+  { id: 'roadNoise', label: 'Road & Tyre', min: 0, max: 1, step: 0.01, group: 'quietCurrent' },
+  { id: 'windNoise', label: 'Wind', min: 0, max: 1, step: 0.01, group: 'quietCurrent' },
+  { id: 'regenTone', label: 'Regen Tone', min: 0, max: 1, step: 0.01, group: 'quietCurrent' },
+  { id: 'lowSpeedHum', label: 'Low-Speed Hum', min: 0, max: 1, step: 0.01, group: 'quietCurrent' },
+  { id: 'cyber', label: 'Cyber', min: 0, max: 1, step: 0.01, group: 'variant' },
+  { id: 'steelRing', label: 'Steel Ring', min: 0, max: 1, step: 0.01, group: 'variant' },
+];
+
 export function paramMetaForKind(kind: EnginePatch['kind'], topology?: string): ParamMeta[] {
   if (kind === 'ice' && topology === CHRONO_COUPE.id) {
     return [...paramMetaForKind('ice'), ...CHRONO_COUPE_PARAM_META];
+  }
+  if (kind === 'ev-whine' && topology === QUIET_CURRENT.id) {
+    return [...QUIET_CURRENT_PARAM_META];
   }
   if (kind === 'ice' && topology === 'night-pursuit') {
     return [...paramMetaForKind('ice'), ...NIGHT_PURSUIT_PARAM_META];

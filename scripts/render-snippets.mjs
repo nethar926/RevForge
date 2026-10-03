@@ -99,6 +99,19 @@ async function renderChronoCoupePreview() {
   return renderChronoCoupe(profile, 6.2, { sampleRate: SR, cues: [{ t: 4.3, type: 'discharge' }] });
 }
 
+/**
+ * Quiet Current previews (~11.8 s): rest → pull-away → cruise → regen lift → gentle re-apply.
+ * Shared quietCurrentVoice.js drive model + bus (same as EngineSynthImpl); standard and Cyber.
+ */
+async function renderQuietCurrentPreview(cyber = 0) {
+  const { renderQuietCurrent, quietCurrentPreviewProfile, QC_PREVIEW_SECONDS } = await import('./quiet-current-render.mjs');
+  return renderQuietCurrent(quietCurrentPreviewProfile, QC_PREVIEW_SECONDS, {
+    sampleRate: SR,
+    params: { cyber },
+    fadeOut: 0.3,
+  });
+}
+
 async function renderPack(id, buildFn, renderFn) {
   // Packs with a dedicated offline renderer (real worklet + shared voice chain)
   if (renderFn) return bufferToWav(await renderFn());
@@ -624,6 +637,8 @@ const PACKS = [
   { id: 'night-pursuit', file: 'night-pursuit.wav', render: renderNightPursuitPreview },
   { id: 'chrono-coupe', file: 'chrono-coupe.wav', render: renderChronoCoupePreview },
   { id: 'stellar-helm', file: 'stellar-helm.wav', render: renderStellarHelmPreviewBuffer },
+  { id: 'quiet-current', file: 'quiet-current.wav', render: () => renderQuietCurrentPreview(0) },
+  { id: 'quiet-current-cyber', file: 'quiet-current-cyber.wav', render: () => renderQuietCurrentPreview(1) },
 ];
 // Optional filter: node scripts/render-snippets.mjs night-pursuit  (re-render only those ids)
 const ONLY = process.argv.slice(2);

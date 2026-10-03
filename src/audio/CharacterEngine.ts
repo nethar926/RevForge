@@ -6,6 +6,7 @@ import {JetLayers} from './JetLayers';
 import {SignalGraph} from './SignalGraph';
 import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge} from './types';
 import {EnvelopeMeter} from './envelopeMeter';
+import type {QuietCurrentEnvelope,QuietCurrentVariant} from './quietCurrentPack';
 import {ProceduralCharacter} from './ProceduralCharacter';
 const keys=['screamTone','digitalCueLevel','tieSignature','roarOne','roarTwo','roarThree','ionCannonPitch','roarDepth','roarAir','roarWidth','roarLevel','roarVariant','roarPitch','roarThroat','roarRasp','roarPulse','roarAttack','roarRelease','interiorNoise','interiorLevel','targetingNoise','targetingLevel','gearingNoise','gearingLevel','blasterLevel','lifecycleSounds','lifecycleLevel'] as const;
 /** Keep the native engine core, with a single independently controlled procedural character bus. */
@@ -22,7 +23,12 @@ export class CharacterEngine implements EngineSynth {
  playStarter(){this.base.playStarter?.();}
  playShutoff(){this.base.playShutoff?.();}
  /** Pack hooks (src/packs/audioBridge PackAudioHooks) — always present on the wrapper so typeof checks pass. */
- getEnvelope():number{return this.disposed?0:this.envelope.read();}
+ /** Number for every pack; Quiet Current: getEnvelope(true) → { level, powerKw (simulated kW-equivalent, − = regen), powerNorm, maxPowerKw, maxRegenKw, motorRpm, redlineRpm } | null. */
+ getEnvelope():number;
+ getEnvelope(detail:true):QuietCurrentEnvelope|null;
+ getEnvelope(detail?:boolean):number|QuietCurrentEnvelope|null{if(detail)return this.getPowerState();return this.disposed?0:this.envelope.read();}
+ /** Quiet Current HUD power state (same internal state as the voice); level = wrapper loudness. null on other packs. */
+ getPowerState():QuietCurrentEnvelope|null{const s=this.base.getPowerState?.()??null;return s?{...s,level:this.disposed?0:this.envelope.read()}:null;}
  getVoiceEnvelope():number{return this.getEnvelope();}
  scannerTick(edge:ScannerEdge='right'):void{if(!this.disposed&&this.running)this.base.scannerTick?.(edge);}
  setPursuitBoost(amount:number):void{const v=Math.max(0,Math.min(1,Number.isFinite(amount)?amount:0));if(typeof this.base.setPursuitBoost==='function')this.base.setPursuitBoost(v);else this.base.setParams({pursuitBoost:v});}
@@ -30,6 +36,8 @@ export class CharacterEngine implements EngineSynth {
  setChargeLevel(level:number):void{if(this.disposed)return;const v=Math.max(0,Math.min(1,Number.isFinite(level)?level:0));this.base.setChargeLevel?.(v);}
  /** Chrono Coupe discharge one-shot — only while running; base rate-limits. */
  triggerDischarge():void{if(!this.disposed&&this.running)this.base.triggerDischarge?.();}
+ /** Quiet Current variant 'standard'|'cyber' (or 0..1 cyber blend) — forwarded; safe on other packs / stopped. */
+ setVariant(variant:QuietCurrentVariant|number):void{if(this.disposed)return;const v=variant==='cyber'?1:variant==='standard'||variant==null?0:Math.max(0,Math.min(1,Number.isFinite(Number(variant))?Number(variant):0));if(typeof this.base.setVariant==='function')this.base.setVariant(v);else this.base.setParams({cyber:v});}
  setParams(params:Partial<EngineParams>){for(const k of keys)if(params[k]!==undefined)this.options[k]=Number(params[k]);const next={...params};if(this.base.toPatch().kind==='scifi')next.tieSignature=0;this.base.setParams(next);this.configure();if(params.graphEnabled!==undefined)this.routeGraph();}
  getParams(){return {...this.base.getParams(),...this.options};}
  toPatch(){return {...this.base.toPatch(),layers:this.layers,graph:this.graphDesc.length?this.graphDesc:this.base.toPatch().graph,params:this.getParams() as EnginePatch["params"]};}

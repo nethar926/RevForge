@@ -110,6 +110,27 @@ export {
 } from './chronoCoupePack';
 export { CHRONO_COUPE_PARAM_META } from './builtins';
 export { chronoCoupeChargeIntensity, CC_DISCHARGE_COOLDOWN_S } from './chronoCoupeVoice';
+export {
+  QUIET_CURRENT,
+  QUIET_CURRENT_ID,
+  QUIET_CURRENT_TOPOLOGY_ID,
+  QUIET_CURRENT_DISPLAY_NAME,
+  QUIET_CURRENT_EXPERIMENTAL,
+  QUIET_CURRENT_DEFAULTS,
+  QUIET_CURRENT_PARAM_IDS,
+  QUIET_CURRENT_VARIANTS,
+  QUIET_CURRENT_VARIANT_STORAGE_KEY,
+  QUIET_CURRENT_CYBER_PREVIEW_ID,
+  isQuietCurrentPack,
+  isQuietCurrentTopology,
+  isQuietCurrentVariant,
+  quietCurrentBuiltinPatch,
+  type QuietCurrentId,
+  type QuietCurrentVariant,
+  type QuietCurrentEnvelope,
+} from './quietCurrentPack';
+export { QUIET_CURRENT_PARAM_META } from './builtins';
+export { quietCurrentCyberAmount, quietCurrentPowerLimits } from './quietCurrentVoice';
 export { EnvelopeMeter } from './envelopeMeter';
 export {
   STELLAR_HELM_PACK,

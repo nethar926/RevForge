@@ -26,6 +26,19 @@ import {
   createStellarHelmDriveState,
   stepStellarHelmDrive,
 } from './stellarHelmVoice';
+import {
+  isQuietCurrentTopology,
+  type QuietCurrentEnvelope,
+  type QuietCurrentVariant,
+} from './quietCurrentPack';
+import {
+  QuietCurrentBus,
+  createQuietCurrentDriveState,
+  quietCurrentCyberAmount,
+  quietCurrentPowerLimits,
+  stepQuietCurrentDrive,
+  type QuietCurrentDrive,
+} from './quietCurrentVoice';
 import type {
   DrivingInput,
   EngineDiag,
@@ -223,6 +236,8 @@ interface GraphHandles {
   ccBus?: ChronoCoupeBus;
   /** Stellar Helm drive hum voice (replaces the EV whine graph for that topology) */
   helmVoice?: StellarHelmVoice;
+  /** Quiet Current EV voice bus (whole voice for that topology → master) */
+  qcBus?: QuietCurrentBus;
 }
 
 const workletContexts = new WeakSet<BaseAudioContext>();
@@ -298,6 +313,13 @@ export class EngineSynthImpl implements EngineSynth {
   private ccDrive: ChronoCoupeDrive | null = null;
   private ccLastMs = 0;
   private chargeLevel = 0;
+  /** Quiet Current continuous drive model (motor norm, regen, reverse, cyber / boost blends). */
+  private qcDriveState = createQuietCurrentDriveState();
+  private qcLastMs = 0;
+  /** Last Quiet Current drive snapshot (power / regen / rpm for getEnvelope(true)). */
+  private qcDrive: QuietCurrentDrive | null = null;
+  /** Keeps the drive model gliding when Frontend only calls setDriving on change. */
+  private qcSettleTimer: ReturnType<typeof setTimeout> | null = null;
   /** Post-gain loudness envelope (getEnvelope / getVoiceEnvelope). */
   private envelope: EnvelopeMeter;
   /** Stellar Helm lagged drive state (speed glide, throttle attack/release, reverse, boost). */
@@ -506,6 +528,9 @@ export class EngineSynthImpl implements EngineSynth {
       this.chargeLevel = 0;
       this.helmState = createStellarHelmDriveState();
       this.helmLastMs = 0;
+      this.qcDriveState = createQuietCurrentDriveState();
+      this.qcLastMs = 0;
+      this.qcDrive = null;
       this.g = this.buildGraph(patch.kind, patch.topology);
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
@@ -654,10 +679,39 @@ export class EngineSynthImpl implements EngineSynth {
     return diag;
   }
 
-  /** 0..1 post-gain loudness envelope; poll per animation frame (Visual voice box). */
-  getEnvelope(): number {
+  /**
+   * 0..1 post-gain loudness envelope; poll per animation frame (Visual voice box).
+   * Quiet Current: getEnvelope(true) returns the HUD power state (see getPowerState()); the
+   * no-argument form stays a number for every pack (src/packs audioBridge contract).
+   */
+  getEnvelope(): number;
+  getEnvelope(detail: true): QuietCurrentEnvelope | null;
+  getEnvelope(detail?: boolean): number | QuietCurrentEnvelope | null {
+    if (detail) return this.getPowerState();
     if (this.disposed) return 0;
     return this.envelope.read();
+  }
+
+  /**
+   * Quiet Current HUD state { level, powerKw, powerNorm, maxPowerKw, maxRegenKw, motorRpm,
+   * redlineRpm } from the same smoothed power / regen state that drives the inverter whine and
+   * regen tone. powerKw is a simulated kW-equivalent (not real vehicle data); negative = regen.
+   * Zero power / rpm when stopped; null on other packs.
+   */
+  getPowerState(): QuietCurrentEnvelope | null {
+    if (!isQuietCurrentTopology(this.patchMeta.topology)) return null;
+    const live = this.started && !this.disposed;
+    const q = live ? this.qcDrive : null;
+    const lim = q ?? quietCurrentPowerLimits(this.params, quietCurrentCyberAmount(Number(this.params.cyber ?? 0)));
+    return {
+      level: this.disposed ? 0 : this.envelope.read(),
+      powerKw: q ? q.powerKw : 0,
+      powerNorm: q ? q.powerNorm : 0,
+      maxPowerKw: lim.maxPowerKw,
+      maxRegenKw: lim.maxRegenKw,
+      motorRpm: q ? q.motorRpm : 0,
+      redlineRpm: lim.redlineRpm,
+    };
   }
 
   /** Alias of getEnvelope() for the HUD `voiceEnvelope` prop. */
@@ -713,6 +767,18 @@ export class EngineSynthImpl implements EngineSynth {
     } catch {
       /* never block drive path */
     }
+  }
+
+  /**
+   * Quiet Current voice variant: 'standard' | 'cyber' (or a 0..1 cyber blend). Stored as
+   * params.cyber; the bus crossfades over ~0.4 s. Harmless on other packs (param is ignored).
+   */
+  setVariant(variant: QuietCurrentVariant | number): void {
+    if (this.disposed) return;
+    const v = quietCurrentCyberAmount(variant);
+    this.params.cyber = v;
+    this.patchMeta.params.cyber = v;
+    if (this.g.qcBus) this.applyDriving(false);
   }
 
   getEngineState(): EngineStateSnapshot {
@@ -983,6 +1049,9 @@ export class EngineSynthImpl implements EngineSynth {
       if (this.started) g.helmVoice.powerUp(1.2, undefined, 0);
     } else if (kind === 'ice') {
       this.buildIce(g);
+    } else if (kind === 'ev-whine' && isQuietCurrentTopology(this.patchMeta.topology)) {
+      // Quiet Current: the whole EV voice lives in its own bus (stock EV graph not built)
+      g.qcBus = new QuietCurrentBus(ctx, master);
     } else if (kind === 'ev-whine') {
       this.buildEv(g);
     } else if (kind === 'aerospace') {
@@ -2050,6 +2119,13 @@ export class EngineSynthImpl implements EngineSynth {
       /* ignore */
     }
     try {
+      g.qcBus?.dispose();
+    } catch {
+      /* ignore */
+    }
+    if (this.qcSettleTimer) clearTimeout(this.qcSettleTimer);
+    this.qcSettleTimer = null;
+    try {
       g.pulseNode?.disconnect();
       g.pulseGainOut?.disconnect();
     } catch {
@@ -2185,6 +2261,8 @@ export class EngineSynthImpl implements EngineSynth {
       this.applyIceDriving(rpmNorm, dIce, tc);
       if (g.npBus && this.npDrive) g.npBus.update(p, this.npDrive, this.throttleLag, tc);
       if (g.ccBus && this.ccDrive) g.ccBus.update(p, this.ccDrive, this.throttleLag, tc);
+    } else if (kind === 'ev-whine' && g.qcBus) {
+      this.applyQuietCurrentDriving(d, immediate, tc);
     } else if (kind === 'ev-whine') {
       this.applyEvDriving(rpmNorm, d, tc);
     } else if (kind === 'aerospace') {
@@ -2335,6 +2413,8 @@ export class EngineSynthImpl implements EngineSynth {
     if (kind === 'scifi') return;
     if (this.g.helmVoice) return; // Stellar Helm has no gearbox to bark
 
+    // Quiet Current: cues only — no decorative sounds while driving
+    if (this.g.qcBus) return;
     let scale = 1;
     if (kind === 'ev-whine') scale = 0.32;
     else if (kind === 'aerospace') scale = 0.8;
@@ -2749,6 +2829,39 @@ export class EngineSynthImpl implements EngineSynth {
     else if (thrRaw > 0.7) this.driveMood = 'pull';
     else this.driveMood = 'cruise';
     this.prevThrottle = thrRaw;
+  }
+
+  /** Quiet Current: one continuous drive step → voice bus (all layers smoothed, no cliffs). */
+  private applyQuietCurrentDriving(d: DrivingInput, immediate: boolean, tc: number): void {
+    const bus = this.g.qcBus;
+    if (!bus) return;
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const dt =
+      immediate || !this.qcLastMs ? 1 / 60 : Math.min(0.25, Math.max(0.004, (nowMs - this.qcLastMs) / 1000));
+    this.qcLastMs = nowMs;
+    const qd = stepQuietCurrentDrive(this.qcDriveState, d, dt, this.params);
+    this.qcDrive = qd;
+    this.hud.fundamentalHz = qd.motorHz;
+    this.hud.rpmNorm = qd.m;
+    try {
+      bus.update(this.params, qd, tc);
+    } catch {
+      /* never block drive path */
+    }
+    // Settle loop: if the smoothed drive hasn't reached its targets, step again shortly (a
+    // per-frame caller simply supersedes this; stops when settled / stopped / torn down).
+    if (this.qcSettleTimer) clearTimeout(this.qcSettleTimer);
+    this.qcSettleTimer = null;
+    if (!qd.settled && this.started && !this.disposed) {
+      this.qcSettleTimer = setTimeout(() => {
+        this.qcSettleTimer = null;
+        if (this.started && !this.disposed && this.g.qcBus) this.applyQuietCurrentDriving(this.driving, false, 0.06);
+      }, 40);
+    }
+    if (d.speed < 0.02 && d.throttle < 0.08) this.driveMood = 'idle';
+    else if (qd.regen > 0.3) this.driveMood = 'regen';
+    else if (d.throttle > 0.7) this.driveMood = 'pull';
+    else this.driveMood = 'cruise';
   }
 
   private applyEvDriving(rpmNorm: number, d: DrivingInput, tc: number): void {

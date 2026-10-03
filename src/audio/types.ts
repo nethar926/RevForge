@@ -1,6 +1,7 @@
 import type { RevForgeVoiceConfig } from '../forge/voiceTypes';
 import type { ChronoCoupeId } from './chronoCoupePack';
 import type { STELLAR_HELM_PACK } from './stellarHelmPack';
+import type { QuietCurrentEnvelope, QuietCurrentId, QuietCurrentVariant } from './quietCurrentPack';
 export type EngineId = string;
 
 export type TopologyId =
@@ -17,6 +18,7 @@ export type TopologyId =
   | 'night-pursuit'
   | ChronoCoupeId
   | typeof STELLAR_HELM_PACK.id
+  | QuietCurrentId
   | 'custom';
 
 /** Pack / builder categories. Old kinds map 1:1 (ice, ev-whine, scifi); aerospace is new. */
@@ -390,6 +392,17 @@ export interface EngineSynth {
   setChargeLevel?(level: number): void;
   /** Chrono Coupe: one-shot discharge (rate-limited). Safe no-op on other packs / stopped. */
   triggerDischarge?(): void;
+  /**
+   * Quiet Current: voice variant — 'standard' | 'cyber' (or a 0..1 cyber blend). Crossfades over
+   * ~0.4 s; stored as params.cyber. Safe no-op on other packs / when stopped.
+   */
+  setVariant?(variant: QuietCurrentVariant | number): void;
+  /**
+   * Quiet Current HUD state (also via getEnvelope(true) on the engine classes): level, simulated
+   * kW-equivalent powerKw (negative = regen), powerNorm -1..1, maxPowerKw, maxRegenKw, motorRpm,
+   * redlineRpm. null on other packs.
+   */
+  getPowerState?(): QuietCurrentEnvelope | null;
 }
 
 export interface ParamMeta {
