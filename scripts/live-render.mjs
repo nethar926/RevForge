@@ -8,6 +8,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createJiti } from 'jiti';
+import { allowShaperReassign } from '../tests/fixtures/reassignable-shaper.mjs';
 
 if (!Promise.withResolvers) {
   Promise.withResolvers = function withResolvers() {
@@ -54,22 +55,7 @@ export async function renderLive(id, profile, dur, opts = {}) {
   performance.now = () => tNow * 1000;
   try {
     Object.defineProperty(ctx, 'state', { get: () => 'running', configurable: true });
-    // node-web-audio-api still enforces the old "curve can only be set once" rule; browsers
-    // allow re-assignment (EngineSynthImpl re-drives scream/howl shapers per frame). Offline
-    // we keep the first curve: levels are representative, per-frame drive tweaks are not.
-    const mkShaper = ctx.createWaveShaper.bind(ctx);
-    ctx.createWaveShaper = () => {
-      const node = mkShaper();
-      const proto = Object.getPrototypeOf(node);
-      const desc = Object.getOwnPropertyDescriptor(proto, 'curve') ?? Object.getOwnPropertyDescriptor(Object.getPrototypeOf(proto), 'curve');
-      let set = false;
-      Object.defineProperty(node, 'curve', {
-        configurable: true,
-        get: () => desc.get.call(node),
-        set: (v) => { if (!set) { desc.set.call(node, v); set = v != null; } },
-      });
-      return node;
-    };
+    allowShaperReassign(ctx);
     const eng = audio.createEngineSynth(ctx, patch);
     let bus = null;
     if (opts.master) {
