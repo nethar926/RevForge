@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import type { PackHudProps } from '../../packs/types';
 import { DestinationDialog } from './DestinationDialog';
 import { JUMP_THRESHOLD, bankParts, defaultDestination, readStoredDate, storeDate } from './chronoModel';
@@ -121,11 +121,44 @@ function ChargeCore({ charge, flash, voice }: { charge: number; flash: number; v
   );
 }
 
+/**
+ * Meter label size that ignores the SVG scale: sets `--cc-meter-scale` (on-screen px per
+ * viewBox unit, including the host fit transform) so the labels' CSS font-size can be
+ * authored in screen px. Observes the SVG and its first ancestors (host fit changes
+ * resize one of them) — nothing per frame.
+ */
+function useMeterScale() {
+  const ref = useRef<SVGSVGElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let last = 0;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const s = Math.min(r.width / 400, r.height / 160); // preserveAspectRatio meet
+      if (Math.abs(s - last) < 0.001) return;
+      last = s;
+      el.style.setProperty('--cc-meter-scale', s.toFixed(4));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    for (let a: Element | null = el, i = 0; a && i < 6; a = a.parentElement, i++) ro.observe(a);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
+  return ref;
+}
+
 /** Brass output meter: needle 0..1 with a hatched MAX zone (not colour alone). */
 function OutputMeter({ value }: { value: number }) {
   const angle = -90 + clamp01(value) * 180;
+  const ref = useMeterScale();
   return (
-    <svg className="cc-meter-svg" viewBox="0 0 400 160" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+    <svg ref={ref} className="cc-meter-svg" viewBox="0 0 400 160" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
       <defs>
         <pattern id="cc-meter-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <rect width="6" height="6" fill="#b51e15" />
@@ -140,8 +173,8 @@ function OutputMeter({ value }: { value: number }) {
       </g>
       <g className="cc-meter-text">
         <text x="56" y="151">0</text>
-        <text x="187" y="17">0.5</text>
-        <text x="328" y="151">1.0</text>
+        <text x="200" y="18" textAnchor="middle">0.5</text>
+        <text x="332" y="151">1.0</text>
         <text x="328" y="96" className="cc-meter-max">MAX</text>
         <text x="200" y="118" textAnchor="middle" className="cc-meter-units">CORE UNITS</text>
       </g>
