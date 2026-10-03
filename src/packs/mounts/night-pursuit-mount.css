@@ -29,8 +29,13 @@
 .rev-scene .theme-stage.theme-night-pursuit.is-fullscreen .skin-body {
   padding: 78px 16px 96px;
 }
+/*
+ * Throttle card = bottom 96px + ~99px tall since the 44pt slider (a14a91f/80a2c04),
+ * so its top sits ~195px above the viewport edge. 204px keeps an 8px gap above it
+ * (overlap was 19px at 176px). Night Pursuit only; other themes' Drive layout untouched.
+ */
 .rev-viewport:has(.rev-throttle) .theme-stage.theme-night-pursuit.is-fullscreen .skin-body {
-  padding-bottom: 176px;
+  padding-bottom: 204px;
 }
 /* Tesla touch floor: mode buttons stay ≥48 CSS px after down-scaling. */
 .np-pack-mount .np-mode-btn {
