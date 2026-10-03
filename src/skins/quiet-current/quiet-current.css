@@ -1,0 +1,595 @@
+/* ---------- Quiet Current: calm, flat EV instrument card ----------
+   One teal accent, monochrome neutrals, Inter (if available) with tabular
+   figures. Literal hex tokens only (no color-mix) so older Chromium works.
+   Variants: [data-variant="standard"] (default) and [data-variant="cyber"]
+   (brushed-steel frame, chamfered corners, text always on solid plates). */
+
+.qc-root {
+  /* layout */
+  --qc-radius-control: 12px;
+  --qc-radius-card: 20px;
+  --qc-radius-pill: 999px;
+  --qc-space-1: 4px;
+  --qc-space-2: 8px;
+  --qc-space-3: 12px;
+  --qc-space-4: 16px;
+  --qc-space-5: 24px;
+  --qc-space-6: 32px;
+  --qc-touch: 56px;
+  --qc-touch-min: 48px;
+  --qc-hairline: 1px;
+  --qc-font: "Inter", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+  --qc-dur-small: 160ms;
+  --qc-fade: 200ms;
+  /* type (rem so the in-app Text Size scales it) */
+  --qc-type-speed: clamp(4.5rem, 15vmin, 8rem);
+  --qc-type-meter: clamp(2.5rem, 8vmin, 4rem);
+  --qc-type-gear: 1.75rem;
+  --qc-type-callout: 0.9375rem;
+  --qc-type-caption: 0.8125rem; /* 13px: smallest text on the HUD */
+
+  /* DARK (default) */
+  --qc-bg: #111214;
+  --qc-surface: #1b1d20;
+  --qc-surface-2: #24272b;
+  --qc-divider: #2e3136;
+  --qc-control-border: #737882;
+  --qc-text: #f2f3f5;
+  --qc-text-2: #b4b8bf;
+  --qc-text-3: #8b9098;
+  --qc-accent: #3cc8b4;
+  --qc-on-accent: #06201c;
+  --qc-power: var(--qc-text);
+  --qc-regen: #5ad17f;
+  --qc-hatch: #111214;
+  --qc-track: #2e3136;
+
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: var(--qc-space-4);
+  font-family: var(--qc-font);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: var(--qc-text);
+  background-color: var(--qc-bg);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--qc-fade) linear, color var(--qc-fade) linear;
+}
+.qc-root *,
+.qc-root *::before,
+.qc-root *::after {
+  box-sizing: border-box;
+}
+
+.qc-root[data-appearance="light"] {
+  --qc-bg: #f4f5f7;
+  --qc-surface: #ffffff;
+  --qc-surface-2: #eceef1;
+  --qc-divider: #dfe2e6;
+  --qc-control-border: #7a8089;
+  --qc-text: #15171a;
+  --qc-text-2: #555b63;
+  --qc-text-3: #6a7079;
+  --qc-accent: #0b7a6d;
+  --qc-on-accent: #ffffff;
+  --qc-regen: #1d7f45;
+  --qc-hatch: #ffffff;
+  --qc-track: #dfe2e6;
+}
+
+.qc-sr {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- frame / card ---------- */
+
+.qc-frame {
+  width: 100%;
+  max-width: 1120px;
+  max-height: 780px;
+  align-self: center;
+  height: 100%;
+  display: flex;
+}
+@media (min-width: 1600px) and (min-height: 1000px) {
+  .qc-frame { max-width: 1280px; max-height: 860px; }
+}
+.qc-frame > .qc-edge {
+  flex: 1 1 auto;
+  display: flex;
+  min-width: 0;
+}
+.qc-card {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--qc-space-4);
+  padding: var(--qc-space-5);
+  background-color: var(--qc-surface);
+  border: var(--qc-hairline) solid var(--qc-divider);
+  border-radius: var(--qc-radius-card);
+  transition: background-color var(--qc-fade) linear, border-color var(--qc-fade) linear;
+}
+
+/* ---------- top row: drive state + source ---------- */
+
+.qc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qc-space-4);
+  min-height: var(--qc-touch);
+}
+.qc-gears {
+  display: flex;
+  gap: var(--qc-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.qc-gear {
+  position: relative;
+  min-width: var(--qc-touch-min);
+  min-height: var(--qc-touch-min);
+  display: grid;
+  place-items: center;
+  font-size: var(--qc-type-gear);
+  line-height: 1;
+  font-weight: 500;
+  color: var(--qc-text-3);
+}
+.qc-gear.is-active {
+  color: var(--qc-text);
+  font-weight: 600;
+}
+.qc-gear.is-active::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background-color: var(--qc-accent);
+}
+.qc-source {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--qc-space-3);
+  border: var(--qc-hairline) solid var(--qc-control-border);
+  border-radius: var(--qc-radius-pill);
+  font-size: var(--qc-type-caption);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--qc-text-2);
+}
+
+/* ---------- main: speed + motor arc ---------- */
+
+.qc-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qc-space-5);
+  min-height: 0;
+}
+.qc-speed {
+  flex: 1 1 260px;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--qc-space-3);
+  min-width: 0;
+}
+.qc-speed-num {
+  font-size: var(--qc-type-speed);
+  line-height: 0.9;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--qc-text);
+}
+.qc-speed-unit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qc-space-1);
+  padding-bottom: 0.4em;
+  font-size: var(--qc-type-caption);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--qc-text-2);
+}
+.qc-speed-caption {
+  letter-spacing: 0;
+  color: var(--qc-text-3);
+}
+
+.qc-motor-edge {
+  flex: 0 1 clamp(220px, 40vmin, 340px);
+  min-width: 0;
+}
+.qc-plate {
+  background-color: var(--qc-surface-2);
+  border-radius: var(--qc-radius-control);
+  transition: background-color var(--qc-fade) linear;
+}
+.qc-motor {
+  padding: var(--qc-space-3) var(--qc-space-4) var(--qc-space-2);
+}
+.qc-arc {
+  position: relative;
+  width: 100%;
+}
+.qc-arc svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 38vmin;
+  overflow: visible;
+}
+.qc-arc-track,
+.qc-arc-fill {
+  fill: none;
+  stroke-width: 10;
+}
+.qc-arc-track {
+  stroke: var(--qc-track);
+  stroke-linecap: round;
+}
+.qc-arc-fill {
+  stroke: var(--qc-accent);
+  stroke-linecap: round;
+}
+.qc-arc.is-peak .qc-arc-fill {
+  stroke-width: 15; /* PEAK = thicker stroke + text badge, never colour alone */
+}
+.qc-arc-ticks {
+  fill: none;
+  stroke: var(--qc-text-3);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.qc-arc-readout {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--qc-space-1);
+}
+.qc-label {
+  font-size: var(--qc-type-caption);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--qc-text-2);
+}
+.qc-meter-num {
+  font-size: var(--qc-type-meter);
+  line-height: 1;
+  font-weight: 500;
+  color: var(--qc-text);
+}
+.qc-meter-num small {
+  margin-left: 2px;
+  font-size: var(--qc-type-caption);
+  font-weight: 500;
+  color: var(--qc-text-2);
+}
+.qc-peak {
+  padding: 2px var(--qc-space-2);
+  border: 2px solid var(--qc-text);
+  border-radius: var(--qc-radius-pill);
+  font-size: var(--qc-type-caption);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--qc-text);
+}
+
+/* ---------- power / regen bar ---------- */
+
+.qc-power {
+  padding: var(--qc-space-3) var(--qc-space-4) var(--qc-space-4);
+}
+.qc-power-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qc-space-3);
+  min-height: 28px;
+  margin-bottom: var(--qc-space-2);
+}
+.qc-power-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qc-space-2);
+  font-size: var(--qc-type-caption);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--qc-text-2);
+}
+.qc-power-label.is-on {
+  font-weight: 600;
+  color: var(--qc-text);
+}
+.qc-power-value {
+  font-size: var(--qc-type-callout);
+  font-weight: 600;
+  color: var(--qc-text);
+}
+.qc-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 10px;
+  border-radius: 2px;
+}
+.qc-swatch--power {
+  background-color: var(--qc-power);
+}
+.qc-swatch--regen,
+.qc-power-fill--regen {
+  /* Hatch on top of the regen fill so regen never relies on colour alone. */
+  background-color: var(--qc-regen);
+  background-image: repeating-linear-gradient(-45deg, var(--qc-hatch) 0 2px, transparent 2px 7px);
+}
+.qc-power-bar {
+  position: relative;
+}
+.qc-power-track {
+  position: relative;
+  height: 20px;
+  border: var(--qc-hairline) solid var(--qc-control-border);
+  border-radius: var(--qc-radius-pill);
+  background-color: var(--qc-surface);
+  overflow: hidden;
+}
+.qc-power-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.qc-power-fill--power {
+  left: 50%;
+  background-color: var(--qc-power);
+}
+.qc-power-fill--regen {
+  right: 50%;
+}
+.qc-power-zero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  background-color: var(--qc-text-2);
+}
+
+/* ---------- responsive (windowed ~760x560 up to 1920x1200) ---------- */
+
+@media (max-width: 900px) {
+  .qc-root { padding: var(--qc-space-3); }
+  .qc-card { padding: var(--qc-space-4); gap: var(--qc-space-3); }
+  .qc-main { gap: var(--qc-space-4); }
+}
+@media (max-width: 620px) {
+  .qc-main { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: center; }
+  .qc-speed { flex: 0 0 auto; }
+  .qc-motor-edge { flex: 0 0 auto; align-self: center; width: min(100%, 300px); }
+}
+@media (max-height: 620px) {
+  .qc-card { gap: var(--qc-space-3); }
+  .qc-top { min-height: var(--qc-touch-min); }
+  .qc-arc svg { max-height: 34vmin; }
+}
+
+/* ---------- focus (for controls Frontend places inside the card) ---------- */
+
+.qc-root :focus-visible {
+  outline: 2px solid var(--qc-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- motion: no decorative motion; colour cross-fade only when allowed ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .qc-root,
+  .qc-root *,
+  .qc-root *::before,
+  .qc-root *::after {
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+}
+.motion-off .qc-root,
+.motion-off .qc-root *,
+.qc-root[data-motion="off"],
+.qc-root[data-motion="off"] *,
+.qc-root[data-moving="true"],
+.qc-root[data-moving="true"] * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* ---------- contrast / forced colours ---------- */
+
+@media (prefers-contrast: more) {
+  .qc-root {
+    --qc-control-border: var(--qc-text-2);
+    --qc-text-3: var(--qc-text-2);
+    --qc-hairline: 2px;
+  }
+}
+@media (forced-colors: active) {
+  .qc-root,
+  .qc-card,
+  .qc-plate {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+  }
+  .qc-arc-fill,
+  .qc-arc-ticks { stroke: Highlight; }
+  .qc-arc-track { stroke: GrayText; }
+  .qc-power-track { border-color: ButtonBorder; }
+  .qc-power-fill--power,
+  .qc-gear.is-active::after { background: Highlight; }
+  .qc-power-fill--regen { background: repeating-linear-gradient(-45deg, CanvasText 0 2px, Canvas 2px 7px); }
+}
+
+/* ======================= Cyber variant ======================= */
+
+.qc-root[data-variant="cyber"] {
+  --qc-radius-control: 0px;
+  --qc-radius-card: 0px;
+  --qc-radius-pill: 0px;
+  --cy-chamfer: 14px;
+  --cy-chamfer-sm: 8px;
+  --cy-hairline: 1px;
+  --qc-fade: 140ms;
+
+  /* Cyber dark (default) */
+  --cy-steel-1: #3a3f44;
+  --cy-steel-2: #2a2e32;
+  --cy-steel-3: #34393e;
+  --cy-steel-4: #24282c;
+  --cy-edge: #a7aeb5;
+  --qc-bg: #0e0f11;
+  --qc-surface: #16181b;
+  --qc-surface-2: #16181b;
+  --qc-text: #f5f7f8;
+  --qc-text-2: #c3c8cd;
+  --qc-text-3: #9aa1a8;
+  --qc-control-border: #8d949b;
+  --qc-accent: #3cc8b4;
+  --qc-on-accent: #06201c;
+  --qc-regen: #5ad17f;
+  --qc-hatch: #0e0f11;
+  --qc-track: #2c3035;
+}
+.qc-root[data-variant="cyber"][data-appearance="light"] {
+  /* Cyber light: brushed aluminium */
+  --cy-steel-1: #e3e6e9;
+  --cy-steel-2: #c9cdd1;
+  --cy-steel-3: #d6d9dc;
+  --cy-steel-4: #b9bec3;
+  --cy-edge: #5c636a;
+  --qc-bg: #e6e8ea;
+  --qc-surface: #f2f3f4;
+  --qc-surface-2: #f2f3f4;
+  --qc-text: #101214;
+  --qc-text-2: #41464c;
+  --qc-text-3: #50565c;
+  --qc-control-border: #5c636a;
+  --qc-accent: #0b7a6d;
+  --qc-on-accent: #ffffff;
+  --qc-regen: #1d7f45;
+  --qc-hatch: #ffffff;
+  --qc-track: #c9cdd1;
+}
+
+.qc-root[data-variant="cyber"] .qc-label,
+.qc-root[data-variant="cyber"] .qc-power-label,
+.qc-root[data-variant="cyber"] .qc-speed-unit,
+.qc-root[data-variant="cyber"] .qc-source {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.qc-root[data-variant="cyber"] .qc-speed-num,
+.qc-root[data-variant="cyber"] .qc-meter-num {
+  font-weight: 600;
+}
+
+/* Brushed steel: CSS gradients only, applied to the frame (no text sits on it). */
+.qc-root[data-variant="cyber"] .cy-steel {
+  padding: 10px;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.035) 0 1px, rgb(0 0 0 / 0.045) 1px 2px, transparent 2px 3px),
+    linear-gradient(180deg, var(--cy-steel-1) 0%, var(--cy-steel-2) 45%, var(--cy-steel-3) 55%, var(--cy-steel-4) 100%);
+}
+/* Chamfers on two opposite corners (top-left + bottom-right). The hairline is the
+   1px gap between an edge-coloured wrapper and the inner plate, so it follows the
+   chamfer instead of being clipped away like a border would be. */
+.qc-root[data-variant="cyber"] .cy-steel,
+.qc-root[data-variant="cyber"] .qc-frame > .qc-edge,
+.qc-root[data-variant="cyber"] .qc-card {
+  clip-path: polygon(var(--cy-chamfer) 0, 100% 0, 100% calc(100% - var(--cy-chamfer)), calc(100% - var(--cy-chamfer)) 100%, 0 100%, 0 var(--cy-chamfer));
+}
+.qc-root[data-variant="cyber"] .qc-edge {
+  padding: var(--cy-hairline);
+  background-color: var(--cy-edge);
+}
+.qc-root[data-variant="cyber"] .qc-card {
+  border: 0;
+  background-color: var(--qc-bg);
+}
+.qc-root[data-variant="cyber"] .qc-edge--sm,
+.qc-root[data-variant="cyber"] .qc-edge--sm > .qc-plate {
+  clip-path: polygon(var(--cy-chamfer-sm) 0, 100% 0, 100% calc(100% - var(--cy-chamfer-sm)), calc(100% - var(--cy-chamfer-sm)) 100%, 0 100%, 0 var(--cy-chamfer-sm));
+}
+.qc-root[data-variant="cyber"] .qc-plate {
+  background-color: var(--qc-surface);
+}
+
+/* Faceted arc, bevelled bar ends, chamfered gear underline. */
+.qc-root[data-variant="cyber"] .qc-arc-track,
+.qc-root[data-variant="cyber"] .qc-arc-fill {
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+.qc-root[data-variant="cyber"] .qc-power-track {
+  border: 0;
+  padding: 0;
+  background-color: var(--qc-control-border);
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%);
+}
+.qc-root[data-variant="cyber"] .qc-power-track::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  background-color: var(--qc-bg);
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%);
+}
+.qc-root[data-variant="cyber"] .qc-gear.is-active::after {
+  border-radius: 0;
+  clip-path: polygon(3px 0, calc(100% - 3px) 0, 100% 100%, 0 100%);
+}
+.qc-root[data-variant="cyber"] .qc-peak {
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  border-radius: 0;
+}
+/* Focus rings are drawn inside the chamfers so the clip never cuts them. */
+.qc-root[data-variant="cyber"] :focus-visible {
+  outline-offset: -4px;
+}
+
+/* Solid fallbacks: OS setting (where supported) or the in-app "Solid surfaces" switch. */
+@media (prefers-reduced-transparency: reduce) {
+  .qc-root[data-variant="cyber"] .cy-steel { background: var(--qc-surface); }
+}
+@media (prefers-contrast: more), (forced-colors: active) {
+  .qc-root[data-variant="cyber"] .cy-steel { background: var(--qc-surface); }
+  .qc-root[data-variant="cyber"] { --cy-hairline: 2px; --qc-control-border: var(--qc-text-2); }
+}
+.qc-root[data-variant="cyber"][data-solid="true"] .cy-steel {
+  background: var(--qc-surface);
+}
