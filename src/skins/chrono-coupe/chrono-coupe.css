@@ -217,6 +217,66 @@
 @keyframes cc-thumb-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cc-thumb-glow { animation: none !important; opacity: 1; } }
 
-/* Compact (short stage): tighter spacing; rail keeps a 44pt floor. */
-.cc[data-compact='true'] { --pf-tap: max(44px, calc(44.5px / var(--pf-s, 1))); gap: 8px; padding: 8px 12px; }
-.cc[data-compact='true'] .cc-left, .cc[data-compact='true'] .cc-right { gap: 8px; }
+/* ---- Compact (small Tesla window) ----
+ * --u = one on-screen px (1 / host scale, measured by useHudCompact), so every size
+ * here is real screen px: text ≥11px, rail ≥48px, whatever the host fit.
+ * Keeps: 3 date banks + plates, Y charge core + %, output readout, velocity + charge
+ * bar, engine bars + RPM + gear, rail. Drops: bank cell captions, inactive AM/PM,
+ * brass needle meter, the "0" threshold tick label.
+ */
+.cc.cc-compact {
+  --cc-bank-digit: calc(18 * var(--u, 1px));
+  --pf-tap: calc(48 * var(--u, 1px));
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) calc(48 * var(--u, 1px));
+  gap: calc(8 * var(--u, 1px));
+  padding: calc(8 * var(--u, 1px)) calc(10 * var(--u, 1px));
+  border-radius: calc(10 * var(--u, 1px));
+}
+.cc-compact h4 { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(2 * var(--u, 1px)); }
+.cc-compact .cc-left, .cc-compact .cc-right { gap: calc(8 * var(--u, 1px)); }
+.cc-compact .cc-banks { gap: calc(6 * var(--u, 1px)); }
+.cc-compact .cc-bank { padding: calc(5 * var(--u, 1px)) calc(8 * var(--u, 1px)); border-radius: calc(7 * var(--u, 1px)); }
+.cc-compact .cc-cells { gap: calc(5 * var(--u, 1px)); }
+.cc-compact .cc-cell { padding: calc(4 * var(--u, 1px)) calc(6 * var(--u, 1px)) calc(3 * var(--u, 1px)); border-radius: calc(4 * var(--u, 1px)); }
+.cc-compact .cc-cell .cc-digits { letter-spacing: calc(1 * var(--u, 1px)); }
+.cc-compact .cc-cell small { display: none; }
+.cc-compact .cc-ampm { gap: 0; padding: 0; }
+.cc-compact .cc-ampm span { gap: calc(4 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); }
+.cc-compact .cc-ampm span:not(:has(i.on)) { display: none; }
+.cc-compact .cc-ampm i { width: calc(10 * var(--u, 1px)); height: calc(10 * var(--u, 1px)); }
+.cc-compact .cc-colon { gap: calc(6 * var(--u, 1px)); }
+.cc-compact .cc-colon i { width: calc(5 * var(--u, 1px)); height: calc(5 * var(--u, 1px)); }
+.cc-compact .cc-plate { margin-top: calc(4 * var(--u, 1px)); padding: calc(1 * var(--u, 1px)); border-radius: calc(3 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(3 * var(--u, 1px)); }
+.cc-compact .cc-lower { grid-template-columns: minmax(0, 1fr) minmax(0, 0.62fr); gap: calc(8 * var(--u, 1px)); }
+.cc-compact .cc-panel { padding: calc(7 * var(--u, 1px)) calc(10 * var(--u, 1px)); border-radius: calc(10 * var(--u, 1px)); }
+.cc-compact .cc-charge .cc-core-wrap { padding-top: calc(4 * var(--u, 1px)); }
+.cc-compact .cc-charge-pct { right: calc(10 * var(--u, 1px)); top: calc(6 * var(--u, 1px)); font-size: calc(13 * var(--u, 1px)); }
+.cc-compact .cc-meter-wrap { display: none; }
+.cc-compact .cc-readout { position: static; align-self: center; margin: auto 0; font-size: calc(26 * var(--u, 1px)); padding: calc(5 * var(--u, 1px)) calc(8 * var(--u, 1px)); border-radius: calc(5 * var(--u, 1px)); }
+.cc-compact .cc-velocity .cc-unit { right: calc(12 * var(--u, 1px)); top: calc(7 * var(--u, 1px)); font-size: calc(12 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
+.cc-compact .cc-big { font-size: min(calc(76 * var(--u, 1px)), 52cqh); }
+.cc-compact .cc-thr { height: calc(10 * var(--u, 1px)); border-radius: calc(5 * var(--u, 1px)); }
+.cc-compact .cc-thr em { width: calc(2 * var(--u, 1px)); }
+.cc-compact .cc-thr-labels { margin-top: calc(4 * var(--u, 1px)); gap: calc(6 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); }
+.cc-compact .cc-thr-labels > span:first-child { display: none; }
+.cc-compact .cc-armed-tag { left: calc(10 * var(--u, 1px)); top: calc(24 * var(--u, 1px)); padding: calc(1 * var(--u, 1px)) calc(5 * var(--u, 1px)); border-width: var(--u, 1px); border-radius: calc(3 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
+.cc-compact .cc-bars { gap: calc(2 * var(--u, 1px)); margin-top: calc(16 * var(--u, 1px)); }
+.cc-compact .cc-redline-tag { top: calc(-15 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.cc-compact .cc-rpmrow { margin-top: calc(6 * var(--u, 1px)); }
+.cc-compact .cc-rpm, .cc-compact .cc-gear { gap: calc(4 * var(--u, 1px)); }
+.cc-compact .cc-rpm .cc-digits, .cc-compact .cc-gear .cc-digits { font-size: min(calc(28 * var(--u, 1px)), 24cqh); }
+.cc-compact .cc-rpmrow small { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
+.cc-compact .cc-rail { gap: calc(8 * var(--u, 1px)); }
+.rf-pack-box .cc.cc-compact .cc-rail button, .cc.cc-compact .cc-rail button {
+  min-height: calc(48 * var(--u, 1px));
+  min-width: calc(44 * var(--u, 1px));
+  border-radius: calc(10 * var(--u, 1px));
+  font-size: calc(12 * var(--u, 1px));
+  letter-spacing: calc(1.5 * var(--u, 1px));
+}
+.rf-pack-box .cc.cc-compact .cc-rail button:focus-visible { outline-width: calc(3 * var(--u, 1px)); outline-offset: calc(2 * var(--u, 1px)); }
+/* Tight (very short host, e.g. demo throttle card open): only the PRESENT bank stays;
+   speed digits cap to the panel so they clear the header. */
+.cc-compact[data-cc-tight] .cc-dest, .cc-compact[data-cc-tight] .cc-departed { display: none; }
+.cc-compact[data-cc-tight] .cc-big { font-size: min(calc(76 * var(--u, 1px)), 34cqh); }

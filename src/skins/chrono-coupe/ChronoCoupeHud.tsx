@@ -2,13 +2,22 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import type { PackHudProps } from '../../packs/types';
 import { DestinationDialog } from './DestinationDialog';
 import { JUMP_THRESHOLD, bankParts, defaultDestination, readStoredDate, storeDate } from './chronoModel';
+import { useHudCompact, type HudCompact } from './useHudCompact';
 import './chrono-coupe.css';
 
 export interface ChronoCoupeHudProps extends PackHudProps {
   /** localStorage prefix, e.g. `revforge.pack.<id>`. */
   storageKey: string;
-  /** Short stage: tighter spacing (touch floor stays ≥ 44pt). */
-  compact?: boolean;
+  /**
+   * Compact layout for small windows: host passes `true` once its fit would push text
+   * under 11px (`'auto'` = skin self-detects from its rendered scale). Sizes are authored
+   * in on-screen px so text stays ≥11px and the rail ≥48px at any host scale.
+   * Keeps all three date banks (cell captions dropped, active AM/PM only), the original
+   * Y charge core + %, velocity + charge bar, engine bars + RPM + gear, output readout
+   * and the rail; drops the brass needle meter. Default false = full layout.
+   * Dev/test override: `?hudCompact=1|auto|0`.
+   */
+  compact?: HudCompact;
   shellConnected: boolean;
   muted: boolean;
   onToggleSound: () => void;
@@ -191,6 +200,8 @@ const REDLINE_BAR = 19;
 
 export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
   const { speed, unit, rpm, redlineRpm, gear, load, throttle, running, motion, storageKey, shellConnected, muted } = props;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const cfit = useHudCompact(rootRef, props.compact, 11);
   const reduced = useReducedMotion();
   const still = reduced || !motion;
   const now = useMinuteClock();
@@ -269,7 +280,14 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
   const gearText = typeof gear === 'number' && gear > 0 ? String(gear) : 'N';
 
   return (
-    <div className={`cc ${still ? 'cc-still' : ''} ${mode === 'jump' ? 'cc-armed' : ''} ${charge >= 1 ? 'cc-ready' : ''}`} data-running={running ? 'true' : 'false'} data-compact={props.compact ? 'true' : undefined}>
+    <div
+      ref={rootRef}
+      className={`cc ${still ? 'cc-still' : ''} ${mode === 'jump' ? 'cc-armed' : ''} ${charge >= 1 ? 'cc-ready' : ''}${cfit.compact ? ' cc-compact' : ''}`}
+      data-running={running ? 'true' : 'false'}
+      data-compact={cfit.compact ? 'true' : undefined}
+      data-cc-tight={cfit.compact && cfit.realH < 330 ? '' : undefined}
+      style={cfit.compact ? ({ '--u': `${cfit.unit}px` } as CSSProperties) : undefined}
+    >
       <p className="rf-sr-only">{`Charge ${Math.round(charge * 100)} percent of jump threshold ${threshold} ${unit === 'kph' ? 'kilometers per hour' : 'miles per hour'}${mode === 'jump' ? ', jump sequence armed' : ''}. Core output ${output.toFixed(2)}.`}</p>
       <div className="cc-left">
         <div className="cc-banks">
@@ -306,7 +324,7 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
           <div className="cc-thr-labels">
             <span>0</span>
             <span className="cc-thr-state">{charge >= 1 ? 'JUMP READY' : `CHARGE ${Math.round(charge * 100)}%`}</span>
-            <span>JUMP THRESHOLD · {threshold}</span>
+            {cfit.compact ? <span>JUMP · {threshold}</span> : <span>JUMP THRESHOLD · {threshold}</span>}
           </div>
           {mode === 'jump' && <span className="cc-armed-tag">ARMED</span>}
         </section>
