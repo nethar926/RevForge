@@ -3,7 +3,8 @@ import type { FrameStyle } from './StellarFrame';
 
 const OPTIONS: { id: FrameStyle; label: string }[] = [
   { id: 'classic', label: 'Classic' },
-  { id: 'helm', label: 'NEO' },
+  // Sentence-case source so VoiceOver reads a word ("Neo"); CSS uppercases it on screen.
+  { id: 'helm', label: 'Neo' },
 ];
 
 /**
