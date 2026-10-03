@@ -11,6 +11,7 @@ import type {
 import { RevForgeVoice } from "./RevForgeVoice";
 import type { RevForgeVoiceConfig } from "./voiceTypes";
 import { clamp } from "./simulation";
+import { revforgeDcGuardForRpm } from "../audio/iceDcGuard";
 
 /** Adapter preserves the native RevForge sound while sharing DriveSynth's editor and output controls. */
 export class RevForgeSynth implements EngineSynth {
@@ -95,6 +96,8 @@ export class RevForgeSynth implements EngineSynth {
         accel: d.acceleration ?? 0,
         shifting: !!d.shifting,
         overrun: !!d.overrun,
+        // Same rpm-gated DC guard as the pulse-worklet ICE packs (0 below 1500 rpm → idle unchanged)
+        dcGuard: revforgeDcGuardForRpm(this.patch.id, p.voice, rpm, this.patch.params.dcGuard),
       });
   }
   getParams(): EngineParams {

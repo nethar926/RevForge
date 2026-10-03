@@ -4,6 +4,7 @@
  * lag + jitter, worklet → master → limiter). Used by render-snippets.mjs (v8/i4/i6/rotary
  * previews) and dcguard-qa.mjs (before/after levels). Fully procedural.
  */
+import { seededWorkletModule, withSeededRandom } from './seeded-random.mjs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createJiti } from 'jiti';
@@ -43,13 +44,19 @@ export function icePatch(id) {
  * profile(t) → DrivingInput { speed, throttle, load?, rpm?, rpmNorm? }.
  * opts.dcGuard: 'auto' (shipped rpm-gated guard, default) | 'off' | number (fixed).
  */
+/** Deterministic by default (seeded main thread + worklet); opts.seed overrides. */
 export async function renderIcePack(id, profile, dur, opts = {}) {
+  const seed = opts.seed ?? id;
+  return withSeededRandom(seed, () => renderIcePackImpl(id, profile, dur, { ...opts, seed }));
+}
+
+async function renderIcePackImpl(id, profile, dur, opts) {
   const SR = opts.sampleRate ?? 44100;
   const patch = icePatch(id);
   const p = { ...patch.params, ...(opts.params ?? {}) };
   const topo = patch.topology;
   const ctx = new OfflineAudioContext(2, Math.ceil(SR * dur), SR);
-  await ctx.audioWorklet.addModule(WORKLET);
+  await ctx.audioWorklet.addModule(seededWorkletModule(WORKLET, opts.seed));
   const node = new AudioWorkletNode(ctx, 'pulse-engine-processor', {
     numberOfInputs: 0,
     numberOfOutputs: 1,
