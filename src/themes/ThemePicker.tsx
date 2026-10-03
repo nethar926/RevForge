@@ -92,9 +92,8 @@ function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout; ac
           <rect width="120" height="78" rx="6" fill="#12080a"/>
           <text x="60" y="38" textAnchor="middle" fill={a} fontSize="24" fontFamily="ui-monospace,monospace">68</text>
           <rect x="20" y="52" width="80" height="8" rx="2" fill="#350c12" stroke="#ae383866"/>
-          <rect x="36" y="52" width="28" height="8" fill={a} opacity="0.85">
-            <animate attributeName="x" values="20;72;20" dur="2.4s" repeatCount="indefinite"/>
-          </rect>
+          {/* CSS animation (not SMIL) so prefers-reduced-motion can stop it. */}
+          <rect className="rf-thumb-scan" x="20" y="52" width="28" height="8" fill={a} opacity="0.85"/>
         </svg>
       );
       break;

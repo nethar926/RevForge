@@ -1305,3 +1305,15 @@ textarea {
   align-items: center;
   padding-inline: 8px;
 }
+
+/* Theme-picker scanner thumbnail: CSS (not SMIL) so Reduce Motion stops it. */
+@keyframes rf-thumb-scan { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(52px); } }
+.rf-thumb-scan { animation: rf-thumb-scan 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .rf-thumb-scan { animation: none !important; transform: translateX(16px); }
+}
+
+/* HIG: theme accent is not a text colour (NP red was 4.35:1). Value uses the
+   label colour; accent stays on the slider. Slider gets a 44pt hit area. */
+.rev-throttle span { color: #e9eff0 !important; }
+.rev-throttle input { height: 44px !important; min-height: 44px; }
