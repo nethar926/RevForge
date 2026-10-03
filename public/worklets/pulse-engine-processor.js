@@ -7,6 +7,15 @@
  * Anti-digital: soft asymmetric envelopes, noise/body dominate — no saw/square lead.
  * Self-contained (no imports) for Tesla Chromium AudioWorklet constraints.
  *
+ * Night Pursuit opt-in (all default 0 → every other pack renders bit-identical paths):
+ *   camLope        lumpy-cam idle: rpm hunt, per-slot imbalance, lazy fires, longer pulses
+ *   bankSplit      true dual exhaust: per-bank waveguides of unequal length so the
+ *                  cross-plane bank-A/B uneven trains keep their half-order burble
+ *   overrun        0..1 lift-off envelope pushed from the main thread
+ *   overrunBurble  amount of fuel-cut hollowing + irregular afterfire pops (+ light crack)
+ *   dcGuard        strip DC from the pulse excitation (~12 Hz one-pole) so overlapping
+ *                  pulses at high rpm cannot charge the waveguide → tanh → DC-block collapse
+ *
  * firingMask convention (uint8 0–255):
  *   bit i set  → cylinder/slot i DISABLED (skip that pulse event)
  *   default 0  → all slots enabled (mask-none)
@@ -38,6 +47,12 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
       // Rotary chamber-pulse: chambers/rotor (default 3) × rotors (1|2) → events/eccentric-rev
       { name: 'chambersPerRotor', defaultValue: 3, minValue: 2, maxValue: 4, automationRate: 'k-rate' },
       { name: 'rotors', defaultValue: 1, minValue: 1, maxValue: 2, automationRate: 'k-rate' },
+      // Night Pursuit opt-ins (default 0 = legacy behaviour for all other packs)
+      { name: 'camLope', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'bankSplit', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'overrun', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'overrunBurble', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'dcGuard', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
     ];
   }
 
@@ -98,6 +113,26 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
     this._burblePos = 0;
     this._burbleSamples = 48;
 
+    // Night Pursuit: per-bank dual-exhaust waveguides (bankSplit)
+    this._dA = new Float32Array(maxDelay);
+    this._dB = new Float32Array(maxDelay);
+    this._wA = 0;
+    this._wB = 0;
+    // Night Pursuit: lumpy-cam hunt + fixed per-slot combustion imbalance (camLope)
+    this._huntPhase = Math.random() * Math.PI * 2;
+    this._huntRate = 0;
+    this._slotW = new Float64Array([1.08, 0.78, 1.18, 0.88, 1.04, 0.7, 1.14, 0.84]);
+    // Night Pursuit: overrun afterfire pops (overrunBurble)
+    this._popWait = 0;
+    this._popAge = -1;
+    this._popLen = 1;
+    this._popAmp = 0;
+    this._popBank = 0;
+    this._popCrack = 0;
+    this._popLp = 0;
+    this._pdcL = 0;
+    this._pdcR = 0;
+
     this._muff = 0;
     this._bodyLp = 0;
     this._intakeLp = 0;
@@ -141,6 +176,9 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
         this._delay.fill(0);
         this._delay2.fill(0);
         this._burble.fill(0);
+        this._dA.fill(0);
+        this._dB.fill(0);
+        this._popAge = -1;
         this._muff = 0;
         this._bodyLp = 0;
         this._crackleHold = 0;
@@ -335,6 +373,19 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
     const cham0 = chamP ? (chamP.length === 1 ? chamP[0] : chamP[0]) : 3;
     const rot0 = rotP ? (rotP.length === 1 ? rotP[0] : rotP[0]) : 1;
     const chambersN = Math.max(2, Math.min(4, Math.round(cham0) || 3));
+    const camP = parameters.camLope;
+    const splitP = parameters.bankSplit;
+    const ovrP = parameters.overrun;
+    const ovrBP = parameters.overrunBurble;
+    const camLope0 = camP ? camP[0] : 0;
+    const split0 = splitP ? splitP[0] : 0;
+    const ovr0 = ovrP && ovrBP ? Math.max(0, Math.min(1, ovrP[0] * ovrBP[0])) : 0;
+    const dcP = parameters.dcGuard;
+    const dcGuard0 = dcP ? Math.max(0, Math.min(1, dcP[0])) : 0;
+    const dcK = 1 - Math.exp((-2 * Math.PI * 12) / sr);
+    // Unequal dual-exhaust pipe lengths (bank B longer) — cross-plane potato survives in mono
+    const lenA = Math.max(10, Math.min(this._delayLen - 4, Math.floor(this._delaySamples * 0.9)));
+    const lenB = Math.max(10, Math.min(this._delayLen - 4, Math.floor(this._delaySamples * 1.17)));
     const rotorsN = Math.max(1, Math.min(2, Math.round(rot0) || 1));
 
     const delayMs = 3 + exLen0 * 29;
@@ -408,9 +459,23 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
       this._rpmWander *= 0.994;
       this._timingWander += (Math.random() * 2 - 1) * (0.0002 + jit * 0.0004);
       this._timingWander *= 0.991;
+      // Lumpy cam (Night Pursuit): strongest at low rpm / closed throttle; fades out by ~2.1k rpm
+      let lope = 0;
+      let huntMul = 1;
+      if (camLope0 > 0.0005) {
+        const idleness =
+          Math.max(0, Math.min(1, 1 - (rpm - 650) / 1450)) * Math.max(0, Math.min(1, 1 - thr * 1.6));
+        lope = camLope0 * idleness;
+        this._huntRate += (Math.random() * 2 - 1) * 0.00002;
+        this._huntRate *= 0.99995;
+        this._huntPhase += (2 * Math.PI * (0.95 + this._huntRate * 40)) / sr;
+        huntMul =
+          1 +
+          lope * (0.034 * Math.sin(this._huntPhase) + 0.013 * Math.sin(this._huntPhase * 2.37 + 1.1));
+      }
       const safeRpm = Math.max(
         200,
-        Math.min(9000, rpm * (1 + this._rpmWander * (0.6 + jit * 1.4))),
+        Math.min(9000, rpm * huntMul * (1 + this._rpmWander * (0.6 + jit * 1.4))),
       );
 
       // §2.1: degPerSec = rpm * 6; integrate crankAngle
@@ -423,9 +488,12 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
       const lopeAm = 0.6 + 0.4 * Math.sin(this._lopePhase);
       const lopeAm2 = 0.75 + 0.25 * Math.sin(this._lopePhase * 0.5 + 0.7);
 
-      const pulseSamples = Math.max(8, Math.floor((0.0024 + pw * 0.0058) * (1.18 - thr * 0.28) * sr));
-      // Idle always has combustion energy
-      const energy = 0.26 + thr * 0.58 + Math.max(0, load) * 0.14;
+      const pulseSamples = Math.max(
+        8,
+        Math.floor((0.0024 + pw * 0.0058) * (1.18 - thr * 0.28) * (1 + lope * 0.7) * sr),
+      );
+      // Idle always has combustion energy; fuel-cut overrun hollows it (Night Pursuit only)
+      const energy = (0.26 + thr * 0.58 + Math.max(0, load) * 0.14) * (1 - ovr0 * 0.5);
 
       if (!this._schedInit) {
         this._theta = 0;
@@ -452,7 +520,14 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
 
         if (!disabledByMask && !disabledByCyl && !misfireSkip) {
           const bank = this._evtBank[slot];
-          const amp = 0.78 + Math.random() * (0.25 + rough * 0.25);
+          let amp = 0.78 + Math.random() * (0.25 + rough * 0.25);
+          if (lope > 0.0005) {
+            // Big-overlap cam: fixed cylinder imbalance + cycle variance + occasional lazy fire,
+            // stronger fires on the rich side of the hunt.
+            amp *= 1 + (this._slotW[slot & 7] - 1) * lope;
+            amp *= 1 + (Math.random() * 2 - 1) * 0.3 * lope + 0.22 * lope * Math.sin(this._huntPhase);
+            if (Math.random() < 0.07 * lope) amp *= 0.3;
+          }
           this._spawnPulse(bank, amp, pulseSamples);
         }
 
@@ -480,6 +555,40 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
         this._pAge[p] += 1;
       }
 
+      // Overrun afterfire pops (Night Pursuit): irregular, boomy, through the pipe waveguide
+      let crackTick = 0;
+      if (ovr0 > 0.005) {
+        this._popWait -= 1;
+        if (this._popWait <= 0) {
+          if (this._popAge < 0 && Math.random() < 0.5 + 0.4 * ovr0) {
+            this._popAge = 0;
+            this._popLen = Math.max(16, Math.floor((0.003 + Math.random() * 0.007) * sr));
+            this._popAmp = (0.45 + Math.random() * 0.95) * ovr0;
+            this._popBank = Math.random() < 0.5 ? 0 : 1;
+            this._popCrack = Math.random() < 0.18 + crack0 * 0.3 ? 1 : 0;
+          }
+          const rpmK = Math.sqrt(2400 / Math.max(1100, safeRpm));
+          this._popWait = Math.max(64, Math.floor(sr * (0.04 + Math.random() * 0.12) * rpmK));
+        }
+      }
+      if (this._popAge >= 0) {
+        const t = this._popAge / this._popLen;
+        const env = t < 0.12 ? t / 0.12 : Math.exp(-(t - 0.12) * 4.5);
+        this._popLp += 0.25 * (this._pink() - this._popLp);
+        const pop = (0.55 + this._popLp * 2.2) * env * this._popAmp;
+        if (this._popBank === 0) pulseL += pop;
+        else pulseR += pop;
+        if (this._popCrack) crackTick = (this._white() - this._popLp) * env * this._popAmp * 0.16;
+        this._popAge += 1;
+        if (this._popAge >= this._popLen) this._popAge = -1;
+      }
+
+      if (dcGuard0 > 0.0005) {
+        this._pdcL += dcK * (pulseL - this._pdcL);
+        this._pdcR += dcK * (pulseR - this._pdcR);
+        pulseL -= this._pdcL * dcGuard0;
+        pulseR -= this._pdcR * dcGuard0;
+      }
       const pulse = pulseL + pulseR;
 
       // --- Exhaust waveguide body (primary + secondary tap) ---
@@ -498,7 +607,26 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
       this._delay2[this._wPos2] = excited2 * 0.992;
       this._wPos2 = (this._wPos2 + 1) % this._delayLen;
 
-      const bodyRaw = excited * 0.72 + excited2 * 0.38;
+      let bodyRaw = excited * 0.72 + excited2 * 0.38;
+      let splitSide = 0;
+      if (split0 > 0.0005) {
+        // True dual exhaust: bank A / bank B each excite their own unequal-length pipe.
+        const rA = (this._wA - lenA + this._delayLen) % this._delayLen;
+        const rA2 = (rA - 1 + this._delayLen) % this._delayLen;
+        const avgA = 0.5 * (this._dA[rA | 0] + this._dA[rA2 | 0]);
+        const exA = pulseL * (0.75 + thr * 0.45) * 1.25 + avgA * fb * 0.96;
+        this._dA[this._wA] = exA * 0.995;
+        this._wA = (this._wA + 1) % this._delayLen;
+        const rB = (this._wB - lenB + this._delayLen) % this._delayLen;
+        const rB2 = (rB - 1 + this._delayLen) % this._delayLen;
+        const avgB = 0.5 * (this._dB[rB | 0] + this._dB[rB2 | 0]);
+        const exB = pulseR * (0.75 + thr * 0.45) * 1.25 + avgB * fb * 0.96;
+        this._dB[this._wB] = exB * 0.995;
+        this._wB = (this._wB + 1) % this._delayLen;
+        const splitBody = (exA + exB) * 0.72 + excited2 * 0.38;
+        bodyRaw = bodyRaw + (splitBody - bodyRaw) * split0;
+        splitSide = (exA - exB) * split0;
+      }
       this._bodyLp += (0.18 + thr * 0.12) * (bodyRaw - this._bodyLp);
 
       this._filtWander += (Math.random() * 2 - 1) * 0.0025;
@@ -558,6 +686,7 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
         mech +
         intakeSig +
         crackBurst +
+        crackTick +
         pulse * 0.1;
 
       // Dual-collector L/R burble: cross-feed opposite bank with short delay
@@ -567,8 +696,8 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
       this._burble[this._burblePos] = burbleIn * 0.85;
       this._burblePos = (this._burblePos + 1) % this._burbleLen;
 
-      let sampleL = mono + pulseL * 0.08 + burbleOut * 0.12;
-      let sampleR = mono + pulseR * 0.08 - burbleOut * 0.12;
+      let sampleL = mono + pulseL * 0.08 + burbleOut * 0.12 + splitSide * 0.14;
+      let sampleR = mono + pulseR * 0.08 - burbleOut * 0.12 - splitSide * 0.14;
 
       sampleL = Math.tanh(sampleL * (0.95 + growl * 0.35 + thr * 0.15));
       sampleR = Math.tanh(sampleR * (0.95 + growl * 0.35 + thr * 0.15));

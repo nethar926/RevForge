@@ -78,3 +78,20 @@ export {
 export type { IonTwinLayerId } from './ionTwinLayers';
 export { TIE_FULL_STACK } from './builtins';
 
+
+export type { ScannerEdge } from './types';
+export {
+  NIGHT_PURSUIT_PACK_ID,
+  NIGHT_PURSUIT_TOPOLOGY_ID,
+  NIGHT_PURSUIT_SKIN_ID,
+  NIGHT_PURSUIT_DISPLAY_NAME,
+  NIGHT_PURSUIT_EXPERIMENTAL,
+  NIGHT_PURSUIT_DEFAULTS,
+  NIGHT_PURSUIT_PARAM_IDS,
+  isNightPursuitPack,
+  isNightPursuitTopology,
+  nightPursuitBuiltinPatch,
+} from './nightPursuitPack';
+export { NIGHT_PURSUIT_PARAM_META } from './builtins';
+export { nightPursuitBoostForMode } from './nightPursuitVoice';
+export { EnvelopeMeter } from './envelopeMeter';

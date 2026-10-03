@@ -28,6 +28,7 @@ const SNIPPET_BY_ID: Record<string, string> = {
   'ion-twin': 'snippets/ion-twin.wav',
   'tie-fighter': 'snippets/ion-twin.wav', // legacy prefs / deep-link id
   'aerospace-f14': 'snippets/aerospace-f14.wav',
+  'night-pursuit': 'snippets/night-pursuit.wav',
 };
 
 /** Product Research taxonomy — all free, never Launch Pack / paywall groups. */
