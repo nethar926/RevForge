@@ -6,7 +6,7 @@ import {JetLayers} from './JetLayers';
 import {SignalGraph} from './SignalGraph';
 import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge} from './types';
 import {EnvelopeMeter} from './envelopeMeter';
-import type {QuietCurrentVariant} from './quietCurrentPack';
+import type {QuietCurrentEnvelope,QuietCurrentVariant} from './quietCurrentPack';
 import {ProceduralCharacter} from './ProceduralCharacter';
 const keys=['screamTone','digitalCueLevel','tieSignature','roarOne','roarTwo','roarThree','ionCannonPitch','roarDepth','roarAir','roarWidth','roarLevel','roarVariant','roarPitch','roarThroat','roarRasp','roarPulse','roarAttack','roarRelease','interiorNoise','interiorLevel','targetingNoise','targetingLevel','gearingNoise','gearingLevel','blasterLevel','lifecycleSounds','lifecycleLevel'] as const;
 /** Keep the native engine core, with a single independently controlled procedural character bus. */
@@ -23,7 +23,12 @@ export class CharacterEngine implements EngineSynth {
  playStarter(){this.base.playStarter?.();}
  playShutoff(){this.base.playShutoff?.();}
  /** Pack hooks (src/packs/audioBridge PackAudioHooks) — always present on the wrapper so typeof checks pass. */
- getEnvelope():number{return this.disposed?0:this.envelope.read();}
+ /** Number for every pack; Quiet Current: getEnvelope(true) → { level, powerKw (simulated kW-equivalent, − = regen), powerNorm, maxPowerKw, maxRegenKw, motorRpm, redlineRpm } | null. */
+ getEnvelope():number;
+ getEnvelope(detail:true):QuietCurrentEnvelope|null;
+ getEnvelope(detail?:boolean):number|QuietCurrentEnvelope|null{if(detail)return this.getPowerState();return this.disposed?0:this.envelope.read();}
+ /** Quiet Current HUD power state (same internal state as the voice); level = wrapper loudness. null on other packs. */
+ getPowerState():QuietCurrentEnvelope|null{const s=this.base.getPowerState?.()??null;return s?{...s,level:this.disposed?0:this.envelope.read()}:null;}
  getVoiceEnvelope():number{return this.getEnvelope();}
  scannerTick(edge:ScannerEdge='right'):void{if(!this.disposed&&this.running)this.base.scannerTick?.(edge);}
  setPursuitBoost(amount:number):void{const v=Math.max(0,Math.min(1,Number.isFinite(amount)?amount:0));if(typeof this.base.setPursuitBoost==='function')this.base.setPursuitBoost(v);else this.base.setParams({pursuitBoost:v});}

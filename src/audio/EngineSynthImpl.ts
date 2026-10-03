@@ -11,12 +11,18 @@ import {
   type NightPursuitDrive,
 } from './nightPursuitVoice';
 import { EnvelopeMeter } from './envelopeMeter';
-import { isQuietCurrentTopology, type QuietCurrentVariant } from './quietCurrentPack';
+import {
+  isQuietCurrentTopology,
+  type QuietCurrentEnvelope,
+  type QuietCurrentVariant,
+} from './quietCurrentPack';
 import {
   QuietCurrentBus,
   createQuietCurrentDriveState,
   quietCurrentCyberAmount,
+  quietCurrentPowerLimits,
   stepQuietCurrentDrive,
+  type QuietCurrentDrive,
 } from './quietCurrentVoice';
 import type {
   DrivingInput,
@@ -285,6 +291,8 @@ export class EngineSynthImpl implements EngineSynth {
   /** Quiet Current continuous drive model (motor norm, regen, reverse, cyber / boost blends). */
   private qcDriveState = createQuietCurrentDriveState();
   private qcLastMs = 0;
+  /** Last Quiet Current drive snapshot (power / regen / rpm for getEnvelope(true)). */
+  private qcDrive: QuietCurrentDrive | null = null;
   /** Keeps the drive model gliding when Frontend only calls setDriving on change. */
   private qcSettleTimer: ReturnType<typeof setTimeout> | null = null;
   /** Post-gain loudness envelope (getEnvelope / getVoiceEnvelope). */
@@ -484,6 +492,7 @@ export class EngineSynthImpl implements EngineSynth {
       this.npLastMs = 0;
       this.qcDriveState = createQuietCurrentDriveState();
       this.qcLastMs = 0;
+      this.qcDrive = null;
       this.g = this.buildGraph(patch.kind, patch.topology);
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
@@ -621,10 +630,39 @@ export class EngineSynthImpl implements EngineSynth {
     return diag;
   }
 
-  /** 0..1 post-gain loudness envelope; poll per animation frame (Visual voice box). */
-  getEnvelope(): number {
+  /**
+   * 0..1 post-gain loudness envelope; poll per animation frame (Visual voice box).
+   * Quiet Current: getEnvelope(true) returns the HUD power state (see getPowerState()); the
+   * no-argument form stays a number for every pack (src/packs audioBridge contract).
+   */
+  getEnvelope(): number;
+  getEnvelope(detail: true): QuietCurrentEnvelope | null;
+  getEnvelope(detail?: boolean): number | QuietCurrentEnvelope | null {
+    if (detail) return this.getPowerState();
     if (this.disposed) return 0;
     return this.envelope.read();
+  }
+
+  /**
+   * Quiet Current HUD state { level, powerKw, powerNorm, maxPowerKw, maxRegenKw, motorRpm,
+   * redlineRpm } from the same smoothed power / regen state that drives the inverter whine and
+   * regen tone. powerKw is a simulated kW-equivalent (not real vehicle data); negative = regen.
+   * Zero power / rpm when stopped; null on other packs.
+   */
+  getPowerState(): QuietCurrentEnvelope | null {
+    if (!isQuietCurrentTopology(this.patchMeta.topology)) return null;
+    const live = this.started && !this.disposed;
+    const q = live ? this.qcDrive : null;
+    const lim = q ?? quietCurrentPowerLimits(this.params, quietCurrentCyberAmount(Number(this.params.cyber ?? 0)));
+    return {
+      level: this.disposed ? 0 : this.envelope.read(),
+      powerKw: q ? q.powerKw : 0,
+      powerNorm: q ? q.powerNorm : 0,
+      maxPowerKw: lim.maxPowerKw,
+      maxRegenKw: lim.maxRegenKw,
+      motorRpm: q ? q.motorRpm : 0,
+      redlineRpm: lim.redlineRpm,
+    };
   }
 
   /** Alias of getEnvelope() for the HUD `voiceEnvelope` prop. */
@@ -2633,6 +2671,7 @@ export class EngineSynthImpl implements EngineSynth {
       immediate || !this.qcLastMs ? 1 / 60 : Math.min(0.25, Math.max(0.004, (nowMs - this.qcLastMs) / 1000));
     this.qcLastMs = nowMs;
     const qd = stepQuietCurrentDrive(this.qcDriveState, d, dt, this.params);
+    this.qcDrive = qd;
     this.hud.fundamentalHz = qd.motorHz;
     this.hud.rpmNorm = qd.m;
     try {

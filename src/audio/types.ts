@@ -1,5 +1,5 @@
 import type { RevForgeVoiceConfig } from '../forge/voiceTypes';
-import type { QuietCurrentId, QuietCurrentVariant } from './quietCurrentPack';
+import type { QuietCurrentEnvelope, QuietCurrentId, QuietCurrentVariant } from './quietCurrentPack';
 export type EngineId = string;
 
 export type TopologyId =
@@ -389,6 +389,12 @@ export interface EngineSynth {
    * ~0.4 s; stored as params.cyber. Safe no-op on other packs / when stopped.
    */
   setVariant?(variant: QuietCurrentVariant | number): void;
+  /**
+   * Quiet Current HUD state (also via getEnvelope(true) on the engine classes): level, simulated
+   * kW-equivalent powerKw (negative = regen), powerNorm -1..1, maxPowerKw, maxRegenKw, motorRpm,
+   * redlineRpm. null on other packs.
+   */
+  getPowerState?(): QuietCurrentEnvelope | null;
 }
 
 export interface ParamMeta {

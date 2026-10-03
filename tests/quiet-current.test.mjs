@@ -180,13 +180,14 @@ test('identity: ONE constant carries id + display name; builtin, defaults, meta 
 test('hooks: getEnvelope / getVoiceEnvelope / setPursuitBoost / setVariant on wrapper + impl (optional, safe)', async () => {
   const ce = read('src/audio/CharacterEngine.ts');
   const impl = read('src/audio/EngineSynthImpl.ts');
-  for (const m of ['getEnvelope()', 'getVoiceEnvelope()', 'setPursuitBoost(amount', 'setVariant(variant']) {
+  for (const m of ['getEnvelope()', 'getEnvelope(detail', 'getPowerState()', 'getVoiceEnvelope()', 'setPursuitBoost(amount', 'setVariant(variant']) {
     assert.ok(ce.includes(m), `CharacterEngine missing ${m}`);
     assert.ok(impl.includes(m), `EngineSynthImpl missing ${m}`);
   }
   const types = read('src/audio/types.ts');
   assert.match(types, /setVariant\?\(variant: QuietCurrentVariant \| number\): void;/);
   assert.match(types, /getEnvelope\?\(\): number;/);
+  assert.match(types, /getPowerState\?\(\): QuietCurrentEnvelope \| null;/);
   assert.match(types, /setPursuitBoost\?\(amount: number\): void;/);
 
   const { OfflineAudioContext } = await import('node-web-audio-api');
@@ -198,6 +199,12 @@ test('hooks: getEnvelope / getVoiceEnvelope / setPursuitBoost / setVariant on wr
   const wrapper = createEngineSynth(ctx, pack.quietCurrentBuiltinPatch());
   assert.equal(wrapper.getEnvelope(), 0);
   assert.equal(wrapper.getVoiceEnvelope(), 0);
+  const idle = wrapper.getEnvelope(true);
+  assert.deepEqual(
+    { ...idle },
+    { level: 0, powerKw: 0, powerNorm: 0, maxPowerKw: 300, maxRegenKw: 120, motorRpm: 0, redlineRpm: 18000 },
+    'HUD power state is safe (zeros) when inactive',
+  );
   wrapper.setVariant('cyber');
   assert.equal(wrapper.getParams().cyber, 1);
   wrapper.setVariant(0.25);
@@ -218,6 +225,8 @@ test('hooks: getEnvelope / getVoiceEnvelope / setPursuitBoost / setVariant on wr
   other.setVariant('cyber');
   other.setPursuitBoost(1);
   assert.equal(other.toPatch().topology, 'ev-whine');
+  assert.equal(other.getPowerState(), null, 'power state only on Quiet Current');
+  assert.equal(typeof other.getEnvelope(), 'number');
   base.dispose();
   other.dispose();
   base.setVariant('standard'); // after dispose: still safe
@@ -229,6 +238,19 @@ test('hooks: getEnvelope / getVoiceEnvelope / setPursuitBoost / setVariant on wr
   wrapper.triggerUiCue('starter');
   await new Promise((r) => setTimeout(r, 900));
   assert.ok(Math.abs(wrapper.getHud().rpmNorm - 0.5) < 0.01, `settled rpmNorm ${wrapper.getHud().rpmNorm}`);
+  assert.equal(typeof wrapper.getEnvelope(), 'number', 'no-arg form stays a number (audioBridge contract)');
+  const drive = wrapper.getEnvelope(true);
+  assert.ok(drive.powerKw > 0 && drive.powerKw <= drive.maxPowerKw, `drive powerKw ${drive.powerKw}`);
+  assert.ok(Math.abs(drive.powerNorm - drive.powerKw / drive.maxPowerKw) < 1e-9);
+  assert.ok(Math.abs(drive.motorRpm - 0.5 * drive.redlineRpm) < 200, `motorRpm ${drive.motorRpm}`);
+  // Regen on lift-off → negative powerKw / powerNorm (same state as the regen tone)
+  wrapper.setDriving({ speed: 0.5, throttle: 0 });
+  await new Promise((r) => setTimeout(r, 700));
+  const lift = wrapper.getPowerState();
+  assert.ok(lift.powerKw < 0 && lift.powerKw >= -lift.maxRegenKw, `regen powerKw ${lift.powerKw}`);
+  assert.ok(lift.powerNorm < -0.5 && lift.powerNorm >= -1, `regen powerNorm ${lift.powerNorm}`);
+  assert.ok(Math.abs(lift.powerNorm - lift.powerKw / lift.maxRegenKw) < 1e-9);
+  wrapper.setDriving({ speed: 0.5, throttle: 0.3 });
   const buf = await ctx.startRendering();
   const x = buf.getChannelData(0);
   let peak = 0;
@@ -323,6 +345,24 @@ test('drive model: continuous (no cliffs), stepped carrier at low speed, regen /
   assert.ok(at(0.05).lowHum > 0.5);
   assert.ok(at(31 / v.QC_SPEED_FULL_KPH).lowHum < 0.01);
   assert.ok(at(0.4).mesh < 0.01 && at(0.9).mesh > 0.9);
+  // HUD power (simulated kW-equivalent): drive > 0, lift-off regen < 0, powerNorm -1..1
+  {
+    const pw = v.createQuietCurrentDriveState();
+    let q;
+    for (let i = 0; i < 120; i++) q = v.stepQuietCurrentDrive(pw, { speed: 0.6, throttle: 1 }, 1 / 60, P);
+    assert.ok(q.powerKw > 250 && q.powerKw <= 300, `full drive ${q.powerKw}`);
+    assert.ok(q.powerNorm > 0.8 && q.powerNorm <= 1);
+    assert.equal(q.redlineRpm, 18000);
+    assert.ok(Math.abs(q.motorRpm - q.m * 18000) < 1e-6);
+    for (let i = 0; i < 90; i++) q = v.stepQuietCurrentDrive(pw, { speed: 0.6, throttle: 0 }, 1 / 60, P);
+    assert.ok(q.powerKw < -100 && q.powerKw >= -120, `regen on lift-off ${q.powerKw}`);
+    assert.ok(Math.abs(q.powerNorm - q.powerKw / 120) < 1e-9 && q.powerNorm >= -1);
+    assert.ok(q.regen > 0.9, 'same regen state drives the tone');
+    const lc = v.quietCurrentPowerLimits({}, 1);
+    assert.deepEqual(lc, { maxPowerKw: 390, maxRegenKw: 150, redlineRpm: 18000 }, 'Cyber limits');
+    const ov = v.quietCurrentPowerLimits({ maxPowerKw: 200 }, 0);
+    assert.equal(ov.maxPowerKw, 200, 'params override');
+  }
   // Variant: names map, numbers blend; switching crossfades (never a jump)
   assert.equal(v.quietCurrentCyberAmount('cyber'), 1);
   assert.equal(v.quietCurrentCyberAmount('standard'), 0);

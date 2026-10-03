@@ -39,6 +39,8 @@ The hooks exist on both `CharacterEngine` (wrapper) and `EngineSynthImpl`. They'
 
 ```ts
 getEnvelope(): number                 // 0..1 post-gain loudness (0 when stopped / disposed)
+getEnvelope(true): QuietCurrentEnvelope | null   // HUD power state (below); null on other packs
+getPowerState(): QuietCurrentEnvelope | null     // same object
 getVoiceEnvelope(): number            // alias
 setPursuitBoost(amount: number): void // 0..1, clamped (NaN → 0); stored as params.pursuitBoost
 setVariant(variant: 'standard' | 'cyber' | number): void
@@ -46,7 +48,25 @@ setVariant(variant: 'standard' | 'cyber' | number): void
   // Crossfades; harmless on other packs (param ignored); no-op after dispose.
 ```
 
-`EngineSynth` (types.ts) gains `setVariant?(variant: QuietCurrentVariant | number): void`.
+`EngineSynth` (types.ts) gains `setVariant?(variant: QuietCurrentVariant | number): void` and `getPowerState?(): QuietCurrentEnvelope | null`.
+
+### HUD power state (`getEnvelope(true)` / `getPowerState()`)
+
+These fields feed the Visual Quiet Current HUD (`powerKw`, `maxPowerKw`, `maxRegenKw`, `rpm`, `redlineRpm`). They come from the **same smoothed throttle / regen / motor-speed state** that drives the inverter whine and the regen tone, so what the HUD shows and what you hear always agree.
+
+| Field | Meaning |
+| --- | --- |
+| `level` | 0..1 loudness, the same as `getEnvelope()`. |
+| `powerKw` | **Simulated kW-equivalent** (not real vehicle data). Positive = drive, **negative = regen** on lift-off (or `overrun` / negative `load`). Drive = maxPowerKw × smoothed throttle × min(1, (m + 0.05) / 0.35) (constant torque, then constant power) × (0.92 + 0.08 × boost). Regen = maxRegenKw × regen × min(1, m / 0.3), fading at a crawl. |
+| `powerNorm` | −1..1: `powerKw / maxPowerKw` when ≥ 0, `powerKw / maxRegenKw` when < 0. Use it for a %-only HUD. |
+| `maxPowerKw` | Standard 300 · Cyber 390. Blends with `cyber`. |
+| `maxRegenKw` | Standard 120 · Cyber 150 (a positive number). |
+| `motorRpm` | Motor-norm × redlineRpm. Map it to the HUD's `rpm`. |
+| `redlineRpm` | 18000 (both variants). |
+
+- The limits are plausible dual-motor figures. Override them with the params `maxPowerKw`, `maxRegenKw`, `redlineRpm` and `cyberMaxPowerKw`, `cyberMaxRegenKw`, `cyberRedlineRpm`.
+- When stopped, `powerKw`, `powerNorm` and `motorRpm` are 0 and the limits are still reported.
+- The no-argument `getEnvelope()` stays a number for every pack. This is because `src/packs/audioBridge.ts` types it as `(): number` and feeds it straight to the voice box.
 
 The cues use the existing dispatch: `triggerUiCue('starter')` / `playStarter()` plays the **power-on** cue, a soft rising chime-tone (392→523 Hz, then 659→784 Hz, a faint octave, about 1.5 s). `triggerUiCue('shutdown')` / `playShutoff()` plays the **power-off** cue, a soft falling tone (659→330 Hz with a 5th above, about 1.1 s). Cyber adds one faint bright triangle partial. These are cues only. There are no decorative sounds while driving: the upshift bark is skipped for this voice. The pack sets `lifecycleSounds: 0` so the generic character lifecycle one-shots don't stack on top of its own cues.
 
@@ -97,6 +117,7 @@ Offline renders through the real voice, engine master / limiter and EV acoustic 
 
 - **Variant toggle:** call `engine.setVariant('standard' | 'cyber')`. Persist it at `QUIET_CURRENT_VARIANT_STORAGE_KEY` (`revforge.pack.<id>.variant`, per the brief) and re-apply it after a patch load. `setParams({ cyber })` also works, and the Sound Lab `Cyber` slider blends it.
 - **Previews:** `SNIPPET_BY_ID` has `[QUIET_CURRENT.id]` (standard) and `[QUIET_CURRENT_CYBER_PREVIEW_ID]` (`<id>-cyber`). The Engines card looks up `SNIPPET_BY_ID[p.id]`, so it plays the standard preview. To play the Cyber preview when the variant is Cyber, select `SNIPPET_BY_ID[QUIET_CURRENT_CYBER_PREVIEW_ID]`. No card has that id, so the entry is inert until Frontend uses it.
+- **HUD power:** poll `engine.getEnvelope(true)` (or `getPowerState()`) per frame. Pass `powerKw`, `maxPowerKw`, `maxRegenKw`, `motorRpm` → `rpm`, and `redlineRpm` to the HUD, or show `powerNorm` as % only. Label it as simulated, not real vehicle data.
 - **Boost:** `setPursuitBoost(1)` for the sport-style mode (0.5 for a milder step, 0 normal).
 - **Regen:** sending `overrun: true` (or negative `load`) on lift-off gives the regen tone a clean cue. Lift-off while rolling engages it anyway.
 - **Reverse:** send `reverse: true`.

@@ -65,11 +65,42 @@ export const QUIET_CURRENT_DEFAULTS: EngineParams = {
   pursuitBoost: 0,
   // Generic lifecycle one-shots off: this pack's own power-on / power-off cues play instead
   lifecycleSounds: 0,
+  // HUD power / rpm limits (plausible dual-motor figures; Cyber blends to its own set)
+  maxPowerKw: 300,
+  maxRegenKw: 120,
+  redlineRpm: 18000,
+  cyberMaxPowerKw: 390,
+  cyberMaxRegenKw: 150,
+  cyberRedlineRpm: 18000,
   // Frontend drivetrain hints (single-speed reduction)
   gearCount: 1,
-  maxRpm: 16000,
+  maxRpm: 18000,
   topSpeedKph: 200,
 };
+
+/**
+ * getEnvelope(true) / getPowerState() on the Quiet Current voice — HUD + audio agree because these
+ * come from the same smoothed power / regen state that drives the inverter whine and regen tone.
+ */
+export interface QuietCurrentEnvelope {
+  /** 0..1 post-gain loudness — same value as getEnvelope(). */
+  level: number;
+  /**
+   * Simulated kW-equivalent power (NOT real vehicle data): positive = drive, negative = regen.
+   * 0 when stopped.
+   */
+  powerKw: number;
+  /** -1..1: powerKw / maxPowerKw when ≥ 0, powerKw / maxRegenKw when < 0 (for %-only HUDs). */
+  powerNorm: number;
+  /** Drive power at full scale, kW (standard 300 · Cyber 390). */
+  maxPowerKw: number;
+  /** Regen power at full scale, kW, positive number (standard 120 · Cyber 150). */
+  maxRegenKw: number;
+  /** Motor speed, rpm (motor-norm × redlineRpm). 0 when stopped. */
+  motorRpm: number;
+  /** Motor redline, rpm (18000). */
+  redlineRpm: number;
+}
 
 /** Quiet Current param ids that are not part of the shared EV slider set. */
 export const QUIET_CURRENT_PARAM_IDS = [

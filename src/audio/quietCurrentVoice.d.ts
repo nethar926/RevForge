@@ -40,12 +40,26 @@ export interface QuietCurrentDrive {
   motorHz: number;
   inverterHz: number;
   stepAmt: number;
+  /** Simulated kW-equivalent power (not real vehicle data); negative = regen. Same state as the voice. */
+  powerKw: number;
+  /** powerKw / maxPowerKw when ≥ 0, powerKw / maxRegenKw when < 0 → -1..1. */
+  powerNorm: number;
+  maxPowerKw: number;
+  maxRegenKw: number;
+  motorRpm: number;
+  redlineRpm: number;
   lowHum: number;
   mesh: number;
 }
 
 type Params = Partial<EngineParams> & Record<string, unknown>;
 
+export declare const QC_POWER_DEFAULTS: { maxPowerKw: number; maxRegenKw: number; redlineRpm: number };
+export declare const QC_CYBER_POWER_DEFAULTS: { maxPowerKw: number; maxRegenKw: number; redlineRpm: number };
+export declare function quietCurrentPowerLimits(
+  params?: Params,
+  cyber?: number,
+): { maxPowerKw: number; maxRegenKw: number; redlineRpm: number };
 export declare function quietCurrentCyberAmount(v: 'standard' | 'cyber' | number | null | undefined): number;
 export declare function qcMotorHz(m: number): number;
 export declare function qcInverterHz(m: number): number;

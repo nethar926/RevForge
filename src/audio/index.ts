@@ -111,7 +111,8 @@ export {
   quietCurrentBuiltinPatch,
   type QuietCurrentId,
   type QuietCurrentVariant,
+  type QuietCurrentEnvelope,
 } from './quietCurrentPack';
 export { QUIET_CURRENT_PARAM_META } from './builtins';
-export { quietCurrentCyberAmount } from './quietCurrentVoice';
+export { quietCurrentCyberAmount, quietCurrentPowerLimits } from './quietCurrentVoice';
 export { EnvelopeMeter } from './envelopeMeter';

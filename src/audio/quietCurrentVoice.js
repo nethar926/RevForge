@@ -52,6 +52,23 @@ export function qcInverterHz(m) {
   return 560 * Math.pow(2, 2.6 * clip(m));
 }
 
+/**
+ * Power / rpm limits for the HUD (plausible dual-motor figures). Cyber blends to its own set.
+ * Params override: maxPowerKw / maxRegenKw / redlineRpm and cyberMaxPowerKw / cyberMaxRegenKw /
+ * cyberRedlineRpm.
+ */
+export const QC_POWER_DEFAULTS = { maxPowerKw: 300, maxRegenKw: 120, redlineRpm: 18000 };
+export const QC_CYBER_POWER_DEFAULTS = { maxPowerKw: 390, maxRegenKw: 150, redlineRpm: 18000 };
+export function quietCurrentPowerLimits(params = {}, cyber = 0) {
+  const c = clip(num(cyber, 0));
+  const pick = (k, ck, d, cd) => lerp(Math.max(1, num(params[k], d)), Math.max(1, num(params[ck], cd)), c);
+  return {
+    maxPowerKw: pick('maxPowerKw', 'cyberMaxPowerKw', QC_POWER_DEFAULTS.maxPowerKw, QC_CYBER_POWER_DEFAULTS.maxPowerKw),
+    maxRegenKw: pick('maxRegenKw', 'cyberMaxRegenKw', QC_POWER_DEFAULTS.maxRegenKw, QC_CYBER_POWER_DEFAULTS.maxRegenKw),
+    redlineRpm: pick('redlineRpm', 'cyberRedlineRpm', QC_POWER_DEFAULTS.redlineRpm, QC_CYBER_POWER_DEFAULTS.redlineRpm),
+  };
+}
+
 export function createQuietCurrentDriveState() {
   return {
     time: 0,
@@ -122,6 +139,14 @@ export function stepQuietCurrentDrive(state, input, dt, params = {}) {
 
   const kph = s.speed * QC_SPEED_FULL_KPH;
   const presence = Math.pow(clip(s.thr), 1.3 - 0.5 * c);
+  // Power / regen (HUD; simulated kW-equivalent, not real vehicle data) from the SAME smoothed throttle + regen state that drives the voice:
+  // constant-torque region below ~35 % motor speed, then constant power; regen fades at crawl.
+  const lim = quietCurrentPowerLimits(params, c);
+  const drivePow = lim.maxPowerKw * clip(s.thr) * Math.min(1, (m + 0.05) / 0.35) * (0.92 + 0.08 * s.boost);
+  const regenPow = lim.maxRegenKw * clip(s.regen) * Math.min(1, m / 0.3);
+  // Simulated kW-equivalent (not real vehicle data); powerNorm -1..1 for %-only HUDs
+  const powerKw = drivePow - regenPow;
+  const powerNorm = clip(powerKw >= 0 ? powerKw / lim.maxPowerKw : powerKw / lim.maxRegenKw, -1, 1);
   const regenTone = clip(num(params.regenTone, 0.6));
   // Pitch ratio: regen a touch lower (with glide), reverse lower still
   const ratio = (1 - 0.06 * s.glide * (0.5 + regenTone)) * (1 - 0.16 * s.rev);
@@ -154,6 +179,12 @@ export function stepQuietCurrentDrive(state, input, dt, params = {}) {
     motorHz: qcMotorHz(m) * ratio,
     inverterHz: lerp(qcInverterHz(m), s.stepHz, stepAmt) * ratio,
     stepAmt,
+    powerKw,
+    powerNorm,
+    maxPowerKw: lim.maxPowerKw,
+    maxRegenKw: lim.maxRegenKw,
+    motorRpm: m * lim.redlineRpm,
+    redlineRpm: lim.redlineRpm,
     lowHum: 1 - sstep(kph / QC_LOW_HUM_FADE_KPH),
     mesh: sstep((m - 0.55) / 0.3),
   };
