@@ -26,6 +26,10 @@ export class CharacterEngine implements EngineSynth {
  getVoiceEnvelope():number{return this.getEnvelope();}
  scannerTick(edge:ScannerEdge='right'):void{if(!this.disposed&&this.running)this.base.scannerTick?.(edge);}
  setPursuitBoost(amount:number):void{const v=Math.max(0,Math.min(1,Number.isFinite(amount)?amount:0));if(typeof this.base.setPursuitBoost==='function')this.base.setPursuitBoost(v);else this.base.setParams({pursuitBoost:v});}
+ /** Chrono Coupe charge 0..1 — forwarded (base ignores it on other packs). Safe when stopped. */
+ setChargeLevel(level:number):void{if(this.disposed)return;const v=Math.max(0,Math.min(1,Number.isFinite(level)?level:0));this.base.setChargeLevel?.(v);}
+ /** Chrono Coupe discharge one-shot — only while running; base rate-limits. */
+ triggerDischarge():void{if(!this.disposed&&this.running)this.base.triggerDischarge?.();}
  setParams(params:Partial<EngineParams>){for(const k of keys)if(params[k]!==undefined)this.options[k]=Number(params[k]);const next={...params};if(this.base.toPatch().kind==='scifi')next.tieSignature=0;this.base.setParams(next);this.configure();if(params.graphEnabled!==undefined)this.routeGraph();}
  getParams(){return {...this.base.getParams(),...this.options};}
  toPatch(){return {...this.base.toPatch(),layers:this.layers,graph:this.graphDesc.length?this.graphDesc:this.base.toPatch().graph,params:this.getParams() as EnginePatch["params"]};}

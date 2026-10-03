@@ -11,6 +11,15 @@ import {
   type NightPursuitDrive,
 } from './nightPursuitVoice';
 import { EnvelopeMeter } from './envelopeMeter';
+import { isChronoCoupeTopology } from './chronoCoupePack';
+import {
+  ChronoCoupeBus,
+  ccIdleRpm,
+  chronoCoupeWorkletTargets,
+  createChronoCoupeDriveState,
+  stepChronoCoupeDrive,
+  type ChronoCoupeDrive,
+} from './chronoCoupeVoice';
 import type {
   DrivingInput,
   EngineDiag,
@@ -203,6 +212,8 @@ interface GraphHandles {
   tickFilt?: BiquadFilterNode;
   /** Night Pursuit post chain + PURSUIT bus (engine → npBus.input → master) */
   npBus?: NightPursuitBus;
+  /** Chrono Coupe post chain + charge bus (engine → ccBus.input → master) */
+  ccBus?: ChronoCoupeBus;
 }
 
 const workletContexts = new WeakSet<BaseAudioContext>();
@@ -273,6 +284,11 @@ export class EngineSynthImpl implements EngineSynth {
   private npDriveState = createNightPursuitDriveState();
   private npDrive: NightPursuitDrive | null = null;
   private npLastMs = 0;
+  /** Chrono Coupe continuous drive model (5-speed manual fallback) + charge level. */
+  private ccDriveState = createChronoCoupeDriveState();
+  private ccDrive: ChronoCoupeDrive | null = null;
+  private ccLastMs = 0;
+  private chargeLevel = 0;
   /** Post-gain loudness envelope (getEnvelope / getVoiceEnvelope). */
   private envelope: EnvelopeMeter;
 
@@ -468,6 +484,9 @@ export class EngineSynthImpl implements EngineSynth {
       this.teardownGraph();
       this.npDriveState = createNightPursuitDriveState(npIdleRpm(this.params));
       this.npLastMs = 0;
+      this.ccDriveState = createChronoCoupeDriveState(ccIdleRpm(this.params));
+      this.ccLastMs = 0;
+      this.chargeLevel = 0;
       this.g = this.buildGraph(patch.kind, patch.topology);
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
@@ -522,6 +541,10 @@ export class EngineSynthImpl implements EngineSynth {
       // Allow after stop() flipped started — Frontend may cue then stop for the tail.
       if (this.context.state === 'closed') return;
       this.playShutoff();
+      return;
+    }
+    if (c === 'discharge' || c === 'charge-discharge') {
+      this.triggerDischarge();
       return;
     }
     if (c === 'scanner' || c === 'scanner-tick' || c === 'scanner-left' || c === 'scanner-right') {
@@ -635,6 +658,35 @@ export class EngineSynthImpl implements EngineSynth {
     this.params.pursuitBoost = v;
     this.patchMeta.params.pursuitBoost = v;
     this.applyDriving(false);
+  }
+
+  /**
+   * Chrono Coupe charge level 0..1 (Frontend: speed ÷ jump threshold). Drives the electrical
+   * whine + crackle. Stored always; audible only while the Chrono Coupe voice is running.
+   */
+  setChargeLevel(level: number): void {
+    if (this.disposed) return;
+    this.chargeLevel = clamp(Number.isFinite(level) ? level : 0);
+    const bus = this.g.ccBus;
+    if (!bus) return;
+    try {
+      bus.setCharge(this.chargeLevel);
+      if (this.started) bus.updateCharge(this.params, this.context.currentTime, 0.06);
+    } catch {
+      /* never block drive path */
+    }
+  }
+
+  /** Chrono Coupe discharge one-shot (rate-limited). No-op when stopped / other packs. */
+  triggerDischarge(): void {
+    if (this.disposed || !this.started) return;
+    const bus = this.g.ccBus;
+    if (!bus) return;
+    try {
+      bus.discharge(this.params);
+    } catch {
+      /* never block drive path */
+    }
   }
 
   getEngineState(): EngineStateSnapshot {
@@ -833,7 +885,9 @@ export class EngineSynthImpl implements EngineSynth {
         const pulseGainOut = this.context.createGain();
         pulseGainOut.gain.value = 1;
         node.connect(pulseGainOut);
-        pulseGainOut.connect(this.g.npBus ? this.g.npBus.input : this.g.master);
+        pulseGainOut.connect(
+          this.g.npBus ? this.g.npBus.input : this.g.ccBus ? this.g.ccBus.input : this.g.master,
+        );
 
         // Mute oscillator ICE bus if present
         if (this.g.iceBus) {
@@ -1107,6 +1161,11 @@ export class EngineSynthImpl implements EngineSynth {
       // Night Pursuit: engine → post chain (body / load mids / tone) + PURSUIT bus → master
       g.npBus = new NightPursuitBus(ctx, g.master);
       iceBus.connect(g.npBus.input);
+    } else if (isChronoCoupeTopology(this.patchMeta.topology)) {
+      // Chrono Coupe: engine → shell / wheeze / injection-hiss chain + charge bus → master
+      g.ccBus = new ChronoCoupeBus(ctx, g.master);
+      g.ccBus.setCharge(this.chargeLevel);
+      iceBus.connect(g.ccBus.input);
     } else {
       iceBus.connect(g.master);
     }
@@ -1950,6 +2009,11 @@ export class EngineSynthImpl implements EngineSynth {
       /* ignore */
     }
     try {
+      g.ccBus?.dispose();
+    } catch {
+      /* ignore */
+    }
+    try {
       g.pulseNode?.disconnect();
       g.pulseGainOut?.disconnect();
     } catch {
@@ -2051,6 +2115,21 @@ export class EngineSynthImpl implements EngineSynth {
     } else {
       this.npDrive = null;
     }
+    // Chrono Coupe: same contract — Frontend rpm/rpmNorm win; else a 5-speed manual model.
+    if (kind === 'ice' && isChronoCoupeTopology(this.patchMeta.topology)) {
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const dt =
+        immediate || !this.ccLastMs ? 1 / 60 : Math.min(0.25, Math.max(0.004, (nowMs - this.ccLastMs) / 1000));
+      this.ccLastMs = nowMs;
+      const cd = stepChronoCoupeDrive(this.ccDriveState, d, dt, p);
+      this.ccDrive = cd;
+      if (cd.modelled) {
+        rpmNorm = cd.rpmNorm;
+        dIce = { ...d, rpm: cd.rpm, rpmNorm: cd.rpmNorm };
+      }
+    } else {
+      this.ccDrive = null;
+    }
 
     const loadFeel = clamp(d.throttle * 0.7 + Math.abs(d.load ?? 0) * 0.3 + d.speed * 0.15);
     this.hud.loadFeel = loadFeel;
@@ -2067,6 +2146,7 @@ export class EngineSynthImpl implements EngineSynth {
     if (kind === 'ice') {
       this.applyIceDriving(rpmNorm, dIce, tc);
       if (g.npBus && this.npDrive) g.npBus.update(p, this.npDrive, this.throttleLag, tc);
+      if (g.ccBus && this.ccDrive) g.ccBus.update(p, this.ccDrive, this.throttleLag, tc);
     } else if (kind === 'ev-whine') {
       this.applyEvDriving(rpmNorm, d, tc);
     } else if (kind === 'aerospace') {
@@ -2334,7 +2414,9 @@ export class EngineSynthImpl implements EngineSynth {
             ? 3
             : topo === 'rotary-hum'
               ? 4
-              : 0;
+              : isChronoCoupeTopology(topo)
+                ? 5
+                : 0;
       const fam = Number(p.firingFamily ?? famDefault);
       const now =
         typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -2449,6 +2531,31 @@ export class EngineSynthImpl implements EngineSynth {
             1,
           ),
         });
+        this.setWorkletParam('camLope', t.camLope, tc);
+        this.setWorkletParam('bankSplit', t.bankSplit, tc);
+        this.setWorkletParam('overrun', t.overrun, tc);
+        this.setWorkletParam('overrunBurble', t.overrunBurble, tc);
+        this.setWorkletParam('dcGuard', t.dcGuard, tc);
+        this.setWorkletParam('growl', t.growl, tc);
+        this.setWorkletParam('intake', t.intake, tc);
+        this.setWorkletParam('mufflerMix', t.mufflerMix, tc);
+        this.setWorkletParam('exhaustFeedback', t.exhaustFeedback, tc);
+        this.setWorkletParam('collectorDelayMs', t.collectorDelayMs, tc);
+      }
+      if (isChronoCoupeTopology(topo) && this.ccDrive) {
+        // Odd-fire V6 family + light opt-ins (overrides the generic pushes above)
+        const t = chronoCoupeWorkletTargets(p, this.ccDrive, thr, {
+          growl: Number(p.growl ?? 0.6) * (0.7 + Number(p.exhaust ?? 0.5) * 0.4) * wp.growlScaleHint,
+          exhaustFeedback:
+            Number(p.exhaustFeedback ?? 0.72) * (0.85 + (1 - Number(p.muffling ?? 0.3)) * 0.15),
+          mufflerMix: clamp(muffBase * (0.55 + 0.45 * wp.mufflerMixHint), 0, 1),
+          intake: clamp(
+            Number(p.intake ?? 0.45) * (0.45 + 0.55 * Math.max(wp.intakeScaleHint, thr)),
+            0,
+            1,
+          ),
+        });
+        this.setWorkletParam('firingFamily', t.firingFamily, tc);
         this.setWorkletParam('camLope', t.camLope, tc);
         this.setWorkletParam('bankSplit', t.bankSplit, tc);
         this.setWorkletParam('overrun', t.overrun, tc);
