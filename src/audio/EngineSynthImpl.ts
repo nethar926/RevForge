@@ -40,6 +40,7 @@ import {
 } from './idleBand';
 import { clamp, createNoiseBuffer, lerp, makeShaper, rpmCurve, smooth, smoothstep } from './utils';
 import { EngineStateBridge, workletJitterToPhysics } from './engineStateBridge';
+import { iceDcGuardForRpm } from './iceDcGuard';
 import {
   playEngineShutoff,
   playEngineStarter,
@@ -2436,6 +2437,8 @@ export class EngineSynthImpl implements EngineSynth {
       this.setWorkletParam('crackle', Number(p.crackle ?? 0.35), tc);
       const presenceBoost = 0.75 + Number(p.presence ?? 0.45) * 0.4;
       this.setWorkletParam('masterGain', clamp(Number(p.masterGain ?? 0.7) * presenceBoost), tc);
+      // High-rpm collapse fix for every ICE pack (rpm-gated: idle/low rpm unchanged)
+      this.setWorkletParam('dcGuard', iceDcGuardForRpm(wp.rpm, p.dcGuard), tc);
       if (nightPursuit && this.npDrive) {
         // Cam lope / dual exhaust / overrun burble opt-ins + load-rich seasoning (overrides)
         const t = nightPursuitWorkletTargets(p, this.npDrive, thr, {
