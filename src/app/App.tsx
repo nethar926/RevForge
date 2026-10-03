@@ -15,6 +15,7 @@ import { EnginesPage } from "../pages/EnginesPage";
 import type { EnginePatch } from "../audio";
 import { getBuiltin } from "../audio";
 import { skinIdForEngine } from "../skins/DriveSkinSlot";
+import { packForEngineId } from "../packs/registry";
 
 export default function App() {
   const { prefs, update, reset } = useUiPrefs();
@@ -47,8 +48,11 @@ export default function App() {
     (patch: EnginePatch) => {
       audio.loadPatch(patch);
       update({ selectedEngineId: patch.id });
+      // Theme packs bind engine + cluster: picking the pack engine selects its theme too.
+      const pack = packForEngineId(patch.id);
+      if (pack) themes.selectSkin(pack.themeId);
     },
-    [audio, update],
+    [audio, update, themes],
   );
 
   const onSavePatch = useCallback(

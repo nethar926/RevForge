@@ -14,6 +14,8 @@ import {
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BUILTIN_PATCHES, getBuiltin } from "../audio";
+import { isEngineIdVisible, packForThemeId } from "../packs/registry";
+import { connectPackAudio } from "../packs/audioBridge";
 import type { EnginePatch } from "../audio";
 import type { useAudioEngine } from "../hooks/useAudioEngine";
 import type { useGeolocation } from "../hooks/useGeolocation";
@@ -234,6 +236,8 @@ export function ForgePage({
     () => () => setDriving({ speed: 0, throttle: 0, load: 0 }),
     [setDriving],
   );
+  // Theme-pack runtime (Night Pursuit): HUD mode ↔ pursuitBoost, scanner ↔ scannerTick, envelope → voice box.
+  useEffect(() => connectPackAudio(audio.getEngine, audio.engineId), [audio.getEngine, audio.engineId, audio.running]);
   useEffect(() => () => onGpsEnabled(false), [onGpsEnabled]);
   const start = () => {
     setIgnited(true);
@@ -275,6 +279,8 @@ export function ForgePage({
           ? "GPS stale"
           : "Waiting for GPS";
   const tuneEngine=(p:EnginePatch)=>{onSavePatch(editableEngine(p));setPanel("studio");};
+  // Selecting a theme pack selects its linked engine too; plain themes are unchanged.
+  const selectCluster=(id:string)=>{themes.selectSkin(id);const pack=packForThemeId(id);const engine=pack&&getBuiltin(pack.engineId);if(engine&&audio.engineId!==engine.id)onSelectEngine(structuredClone(engine));};
   const panelTitle=panel==='tuner'?'TUNE':panel==='tune'?'Options':panel==='themes'||panel==='scenes'?'Visuals':panel==='garage'?'Revs':panel==='account'?'Account':'Lab';
   return (
     <div
@@ -340,8 +346,8 @@ export function ForgePage({
               </button>
             </div>
             {panel==='tuner'&&<div className="tuner-menu">{([['tune','Options','Base UI, Demo mode and playback'],['themes','Visuals','Themes and Clusters'],['garage','Revs','Original engine collection'],['dashlab','Lab','DashLab and EngineForge'],['account','Account','Vehicles and saved configurations']] as const).map(([id,label,hint])=><button key={id} onClick={()=>setPanel(id)}><strong>{label}</strong><small>{hint}</small><span>↗</span></button>)}</div>}
-            {(panel==='themes'||panel==='scenes')&&<><div role="tablist" aria-label="Visuals tabs"><button role="tab" aria-selected={panel==='themes'} onClick={()=>setPanel('themes')}>Themes</button><button role="tab" aria-selected={panel==='scenes'} onClick={()=>setPanel('scenes')}>Clusters</button></div>{panel==='themes'?<ThemePicker key="atmosphere" mode="atmosphere" selected={themes.atmosphereId} onSelect={themes.selectAtmosphere}/>:<><button onClick={()=>themes.selectSkin(themes.atmosphereId)}>Simple RevForge HUD</button><ThemePicker key="cluster" mode="cluster" selected={themes.skinId} onSelect={themes.selectSkin}/></>}<section className="theme-builder-panel" style={{marginTop:18}}><h2>Appearance</h2><AppearanceKnobs prefs={prefs} update={update}/></section><section className="theme-builder-panel"><h2>Drive Dynamics</h2><DriveDynamicsPanel prefs={prefs} update={update}/><p className="rf-frontend-note">Also on <code>/customize</code>. Frontend: fold under ☰ → Interface Options → Visuals when hamburger lands.</p></section></>}
-            {panel==='garage'&&<><p>Choose an original engine. Create an editable copy with Tune This Engine.</p><details className="garage-colors"><summary>Garage appearance · recolor</summary><ThemeColors themes={themes}/></details><div className="forge-garage-list">{BUILTIN_PATCHES.map(p=><article className="rev-engine-card" key={p.id}><button aria-pressed={audio.engineId===p.id} onClick={()=>onSelectEngine(structuredClone(p))}><strong>{p.name}</strong><small>{{ice:"Combustion",scifi:"Sci-fi",aerospace:"Jet",'ev-whine':"Electric"}[p.kind]} · Original preset</small></button><button onClick={()=>tuneEngine(p)}>Tune This Engine<span className="sr-only"> · {p.name}</span></button></article>)}</div></>}
+            {(panel==='themes'||panel==='scenes')&&<><div role="tablist" aria-label="Visuals tabs"><button role="tab" aria-selected={panel==='themes'} onClick={()=>setPanel('themes')}>Themes</button><button role="tab" aria-selected={panel==='scenes'} onClick={()=>setPanel('scenes')}>Clusters</button></div>{panel==='themes'?<ThemePicker key="atmosphere" mode="atmosphere" selected={themes.atmosphereId} onSelect={themes.selectAtmosphere}/>:<><button onClick={()=>themes.selectSkin(themes.atmosphereId)}>Simple RevForge HUD</button><ThemePicker key="cluster" mode="cluster" selected={themes.skinId} onSelect={selectCluster}/></>}<section className="theme-builder-panel" style={{marginTop:18}}><h2>Appearance</h2><AppearanceKnobs prefs={prefs} update={update}/></section><section className="theme-builder-panel"><h2>Drive Dynamics</h2><DriveDynamicsPanel prefs={prefs} update={update}/><p className="rf-frontend-note">Also on <code>/customize</code>. Frontend: fold under ☰ → Interface Options → Visuals when hamburger lands.</p></section></>}
+            {panel==='garage'&&<><p>Choose an original engine. Create an editable copy with Tune This Engine.</p><details className="garage-colors"><summary>Garage appearance · recolor</summary><ThemeColors themes={themes}/></details><div className="forge-garage-list">{BUILTIN_PATCHES.filter(p=>isEngineIdVisible(p.id)||audio.engineId===p.id).map(p=><article className="rev-engine-card" key={p.id}><button aria-pressed={audio.engineId===p.id} onClick={()=>onSelectEngine(structuredClone(p))}><strong>{p.name}</strong><small>{{ice:"Combustion",scifi:"Sci-fi",aerospace:"Jet",'ev-whine':"Electric"}[p.kind]} · Original preset</small></button><button onClick={()=>tuneEngine(p)}>Tune This Engine<span className="sr-only"> · {p.name}</span></button></article>)}</div></>}
             {(panel==='studio'||panel==='dashlab')&&<><div role="tablist" aria-label="Lab tabs"><button role="tab" aria-selected={panel==='dashlab'} onClick={()=>setPanel('dashlab')}>DashLab</button><button role="tab" aria-selected={panel==='studio'} onClick={()=>setPanel('studio')}>EngineForge</button></div>{panel==='dashlab'?<Guide kind="dash"><ClusterBuilder widgets={themes.widgets} onChange={themes.saveWidgets} onUse={()=>{themes.selectSkin('custom-grid');setPanel(null);}}/></Guide>:<Guide kind="engine">{patch&&(!isCustomEngine(patch)?<section className="locked-engine"><h3>{patch.name}</h3><p>This is an original preset. Create a custom engine to tune its components.</p><button onClick={()=>tuneEngine(patch)}>Tune This Engine</button></section>:<><h3>{patch.name}</h3>{userPatches.length>0&&<label>Custom engine<select aria-label="Custom engine" value={patch.id} onChange={e=>{const p=userPatches.find(p=>p.id===e.target.value);if(p)onSelectEngine(p);}}>{userPatches.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}<button disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Stop audition':'Audition sound'}</button><NativeStudio key={patch.id} patch={patch} onChange={next=>{onSelectEngine(next);setRevision(r=>r+1);}} onSave={onSavePatch}/></>)}</Guide>}</>}
             {panel==='account'&&<AccountPanel garage={garage} themes={themes} patch={patch} userPatches={userPatches} onEngine={onSavePatch} onLoad={id=>{const c=themes.combinations.find(c=>c.id===id);if(c){themes.loadAppearance(c);onSavePatch(c.sound);}}}/>}
             {panel === "tune" && (

@@ -1,5 +1,8 @@
 import {useState, type CSSProperties, type ReactNode} from 'react';
-import {FAMILIES,THEMES,themeForId,type ThemeFamily,type ThemeLayout} from './catalog';
+import {FAMILIES,THEMES as ALL_THEMES,themeForId,type ThemeFamily,type ThemeLayout} from './catalog';
+import {isThemeIdVisible,listExperimentalPacks} from '../packs/registry';
+import {isExperimentalPackEnabled,setExperimentalPackEnabled} from '../packs/experimental';
+import '../packs/packs.css';
 
 function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout; accent: string; secondary: string; uid: string}) {
   const a = accent;
@@ -197,11 +200,17 @@ function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout; ac
 }
 
 export function ThemePicker({selected,onSelect,mode='all'}:{selected:string;onSelect:(id:string)=>void;mode?:'all'|'atmosphere'|'cluster'}) {
+  // Experimental theme packs stay hidden until opted in (Experimental group only).
+  const experimentalPacks=listExperimentalPacks();
+  const [experimentalOn,setExperimentalOn]=useState(()=>experimentalPacks.some(p=>isExperimentalPackEnabled(p.id)));
+  const THEMES=ALL_THEMES.filter(t=>isThemeIdVisible(t.id)||t.id===selected);
+  const toggleExperimental=(on:boolean)=>{for(const p of experimentalPacks)setExperimentalPackEnabled(p.id,on);setExperimentalOn(on);if(on&&families.includes('Full Screen')){setFamily('Full Screen');setGroup('Experimental');}else if(!on&&group==='Experimental')setGroup('All');};
   const families=FAMILIES.filter(f=>mode==='all'||(mode==='atmosphere'?f==='RoadView':f!=='RoadView'));
   const [family,setFamily]=useState<ThemeFamily>(()=>families.includes(themeForId(selected).family)?themeForId(selected).family:families[0]);
   const [group,setGroup]=useState('All');
   const groups=[...new Set(THEMES.filter(t=>t.family===family).map(t=>t.group))];
   return <div className="theme-picker">
+    {mode!=='atmosphere'&&experimentalPacks.length>0&&<label className="theme-experimental-toggle"><input type="checkbox" checked={experimentalOn} onChange={e=>toggleExperimental(e.target.checked)}/><span><strong>Experimental packs</strong><small>{experimentalPacks.map(p=>p.displayName).join(' · ')} — theme + engine selected together. Full Screen › Experimental.</small></span></label>}
     <div className="theme-tabs" aria-label="Theme families">{families.map(f=><button key={f} type="button" aria-pressed={family===f} onClick={()=>{setFamily(f);setGroup('All');}}>{f}</button>)}</div>
     <div className="theme-subtabs" aria-label="Theme subcategories">{['All',...groups].map(g=><button key={g} type="button" aria-pressed={group===g} onClick={()=>setGroup(g)}>{g}</button>)}</div>
     <div className="theme-card-grid">{THEMES.filter(t=>t.family===family&&(group==='All'||t.group===group)).map(t=><button className="theme-card" type="button" key={t.id} aria-pressed={selected===t.id} onClick={()=>onSelect(t.id)} style={{'--skin-accent':t.accent,'--skin-secondary':t.secondary} as CSSProperties}>

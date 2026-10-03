@@ -1,0 +1,5 @@
+/* Theme-pack framework chrome (picker opt-in only). Scoped; no global restyle. */
+.theme-experimental-toggle{display:flex;align-items:center;gap:14px;min-height:56px;margin:0 0 15px;padding:10px 14px;border:1px dashed #ff5a4a55;border-radius:10px;background:#ff3b2a0a;cursor:pointer}
+.theme-experimental-toggle input{width:22px;height:22px;flex:none;accent-color:#ff3b2a}
+.theme-experimental-toggle strong{display:block;font-size:13px;font-weight:500;color:#f1d6cf}
+.theme-experimental-toggle small{display:block;margin-top:3px;font-size:11px;line-height:1.45;color:#a99}

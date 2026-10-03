@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { EngineKind, EngineParams, EnginePatch } from '../audio';
 import { BUILTIN_PATCHES } from '../audio';
+import { isEngineIdVisible } from '../packs/registry';
 import type { useAudioEngine } from '../hooks/useAudioEngine';
 import type { UiPrefs } from '../hooks/useUiPrefs';
 
@@ -88,6 +89,7 @@ export function EnginesPage({
     const map = new Map<EngineKind, EnginePatch[]>();
     for (const c of CATEGORIES) map.set(c.kind, []);
     for (const p of BUILTIN_PATCHES) {
+      if (!isEngineIdVisible(p.id) && p.id !== selectedId) continue;
       const list = map.get(p.kind) ?? [];
       list.push(p);
       map.set(p.kind, list);

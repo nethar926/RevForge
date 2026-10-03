@@ -1,0 +1,38 @@
+/*
+ * Night Pursuit pack mount (framework glue, not HUD art — Visual owns
+ * skins/night-pursuit/*). Lays the overlay out in a fixed design box and
+ * scales it uniformly to fill the Full Screen stage. Scoped to this pack.
+ */
+.np-pack-mount {
+  position: relative;
+  flex: none;
+  width: calc(var(--np-box-w) * var(--np-fit));
+  height: calc(var(--np-box-h) * var(--np-fit));
+  margin: 0 auto;
+}
+.np-pack-box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--np-box-w);
+  height: var(--np-box-h);
+  transform: scale(var(--np-fit));
+  transform-origin: 0 0;
+}
+.theme-night-pursuit .np-pack-box .np-overlay {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  border-radius: 10px;
+}
+/* Drive view: keep the cluster clear of the demo throttle card + dock. */
+.rev-scene .theme-stage.theme-night-pursuit.is-fullscreen .skin-body {
+  padding: 78px 16px 96px;
+}
+.rev-viewport:has(.rev-throttle) .theme-stage.theme-night-pursuit.is-fullscreen .skin-body {
+  padding-bottom: 176px;
+}
+/* Tesla touch floor: mode buttons stay ≥48 CSS px after down-scaling. */
+.np-pack-mount .np-mode-btn {
+  min-height: max(48px, calc(48px / var(--np-fit)));
+}

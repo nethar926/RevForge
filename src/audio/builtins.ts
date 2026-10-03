@@ -1,5 +1,6 @@
 import type { EngineKind, EnginePatch, EngineParams, ParamMeta } from './types';
 import { REVFORGE_PATCHES } from '../forge/catalog';
+import { PACK_ENGINE_MIGRATIONS } from '../packs/migrations';
 
 export const V8_DEFAULTS: EngineParams = {
   // Audio Physics ICE v1 + ice-pack-firing-schedules-v1 (crossPlane)
@@ -418,6 +419,32 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
       author: 'DriveSynth',
     },
   },
+  {
+    // TODO(Audio Synth): placeholder alias — replace in place with the real
+    // night-pursuit cross-plane 5.0 V8 (pursuitBoost / scannerTick / envelope).
+    version: 0,
+    id: 'night-pursuit',
+    name: 'Night Pursuit',
+    kind: 'ice',
+    topology: 'v8-rumble',
+    params: {
+      ...V8_DEFAULTS,
+      // 5.0 cross-plane: slightly deeper idle, lower redline, longer collector burble.
+      rpmIdle: 44,
+      rpmRedline: 236,
+      growl: 0.78,
+      exhaust: 0.82,
+      collectorDelayMs: 2.1,
+      firingFamily: 1,
+      pursuitBoost: 0,
+    } as Record<string, number | string>,
+    meta: {
+      blurb:
+        'Experimental Night Pursuit pack engine: cross-plane 5.0 V8 lope (placeholder on the V8 Rumble voice until the dedicated pack voice lands). Original synthesis only.',
+      tags: ['ice', 'v8', 'crossplane', 'experimental', 'free'],
+      author: 'DriveSynth',
+    },
+  },
   ...REVFORGE_PATCHES,
 ];
 
@@ -609,6 +636,7 @@ export function paramMetaForKind(kind: EnginePatch['kind']): ParamMeta[] {
 export const LEGACY_PACK_IDS: Record<string, string> = {
   'tie-fighter': 'ion-twin',
   'revforge-tie-fighter': 'revforge-trenchlight',
+  ...PACK_ENGINE_MIGRATIONS,
 };
 
 export function resolveLegacyPackId(id: string): string {

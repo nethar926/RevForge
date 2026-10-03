@@ -1,3 +1,4 @@
+import { PACK_THEME_MIGRATIONS } from '../packs/migrations';
 export type ThemeFamily = 'Minimal' | 'Gauge Cluster' | 'Cockpit' | 'RoadView' | 'Full Screen';
 export type ThemeLayout = 'numerical' | 'arc' | 'line' | 'bar' | 'digital' | 'analog' | 'driver' | 'scanner' | 'time' | 'jet' | 'space' | 'road' | 'custom' | 'new-worlds' | 'enterprise' | 'gradient' | 'gradient-macro';
 export interface ThemePreset { id: string; name: string; family: ThemeFamily; group: string; layout: ThemeLayout; accent: string; secondary: string; description: string; feature: string; sceneId?: string; }
@@ -22,7 +23,7 @@ export const THEMES: ThemePreset[] = [
   skin('lfa','RF Crescendo','Gauge Cluster','Modern','arc','#f1f3ef','#e86257','A large central tach ring with sequential shift lamps and a gear core.','Sequential shift lamps'),
   skin('tt','RF Splitline','Gauge Cluster','Modern','driver','#dce7f1','#ed5958','Balanced digital instruments flanking a live driving horizon.','Dual information panes'),
   skin('time-machine','RF Chrono Banks','Full Screen','PopCulture','time','#efbd64','#7cdda2','Destination, present and departure time circuits with a physical-style date keypad.','88 MPH temporal transition'),
-  skin('night-rider','RF Crimson Sweep','Full Screen','PopCulture','scanner','#ff5353','#ffc16a','A red scanner sweep, LED telemetry banks and a dark command console.','Scanner sweep'),
+  skin('night-pursuit','Night Pursuit','Full Screen','Experimental','scanner','#ff2a1f','#ffb000','Experimental pack: an eighties pursuit-car command dash — red scanner across the top, 7-segment SPEED/RPM, LED bar banks, twin CRT pods and a cross-plane V8.','Scanner sweep · linked V8'),
   skin('new-worlds','RF New Worlds','Full Screen','PopCulture','new-worlds','#f5820d','#7d3c98','A free take on the LCARS command interface — Oswald numerals, warp rings and a segmented RPM bar.','Warp rings'),
   skin('enterprise','RF Enterprise','Full Screen','PopCulture','enterprise','#f5820d','#7d3c98','Strict LCARS command interface — Oswald numerals, warp rings and a chunky right-to-left RPM bar.','Warp rings'),
   skin('gradient','RF Gradient Sweep','Gauge Cluster','Gradient','gradient','#ff5353','#4da6ff','Twin conic light-sweep dials — MPH left, RPM right — around a glowing center stack. Part of the Gradient pack.','Conic light sweep'),
@@ -48,6 +49,8 @@ export const RETIRED_THEME_IDS: Record<string, string> = {
   tie: 'galactic-enforcer',
   xwing: 'galactic-enforcer',
   'road-tie-fighter': 'road-trenchlight',
+  // Pack-owned legacy ids (decoded at runtime; see packs/migrations.ts).
+  ...PACK_THEME_MIGRATIONS,
 };
 export const themeForId = (id: string) => {
   const resolved = RETIRED_THEME_IDS[id] ?? id;

@@ -12,6 +12,7 @@ import '../skins/enterprise/enterprise.css';
 import {GradientCluster} from '../skins/gradient/GradientCluster';
 import {GradientMacro} from '../skins/gradient/GradientMacro';
 import {useMemo} from 'react';
+import {packForThemeId} from '../packs/registry';
 import {instrumentDefaults} from './ThemeColors';
 import type {CSSProperties} from 'react';
 import {SceneCanvas} from '../forge/SceneCanvas';
@@ -41,6 +42,7 @@ export function ThemeStage({maxSpeedMps,fonts,widgets=defaultCluster,theme,state
  const rev=Math.max(0,Math.min(1,rpm/redline)), speedPct=Math.min(1,speed/speedScale(maxSpeedMps,unit));
  const spaceFont=theme.id==='galactic-enforcer';
  const fullscreen=theme.family==='Full Screen';
+ const pack=packForThemeId(theme.id);
  const style={...(fonts?.numbers!=='default'&&fontCss[fonts?.numbers??'']?{'--number-font':fontCss[fonts!.numbers]}:{}),...(fonts?.labels!=='default'&&fontCss[fonts?.labels??'']?{'--label-font':fontCss[fonts!.labels]}:{}),...Object.fromEntries(Object.entries(palette).map(([k,v])=>['--skin-'+k,v])),'--rev':rev,'--speed':speedPct,'--flow-time':`${Math.max(.4,3-state.speedMps/25)}s`} as CSSProperties;
  const hero=<div className="skin-speed"><strong className="skin-number" data-testid="speed" aria-label={`${Math.round(speed)} ${unit}`}>{Math.round(speed).toString().padStart(2,'0')}</strong><span className="skin-descriptor">{unit==='kph'?'KM/H':'MPH'}</span><small className={`skin-source ${demo?'is-demo':''}`}>{demo?'DEMO':gpsLabel}</small></div>;
  const telemetry=<div className="skin-telemetry"><div><small className="skin-descriptor">ENGINE RPM</small><b className="skin-number" data-testid="rpm">{Math.round(rpm).toLocaleString()}</b></div><div><small className="skin-descriptor">GEAR</small><b className="skin-number" data-testid="gear">{state.gear===0?'N':state.gear}</b></div><div><small className="skin-descriptor">LOAD</small><b className="skin-number">{Math.round(state.load*100)}<em>%</em></b></div></div>;
@@ -60,7 +62,8 @@ export function ThemeStage({maxSpeedMps,fonts,widgets=defaultCluster,theme,state
    {theme.layout==='gradient-macro'&&<GradientMacro speedNorm={speedPct} speed={speed} unit={unit}/>}
    {theme.layout==='digital'&&<><div className="digital-cluster"><div className="digital-bank"><Rail value={state.load} label="LOAD" segmented/><Rail value={rev} label="ENGINE" segmented/></div>{hero}<div className="digital-tach" aria-label="Tachometer">{Array.from({length:20},(_,i)=><i key={i} className={i/20<rev?'lit':''} style={{height:`${25+i*3.6}%`}}/>)}</div></div>{telemetry}<div className="skin-grid-readout"><span>ENGINE MONITOR</span><span>{state.overrun?'OVERRUN':state.shifting?'SHIFT':'STEADY'}</span><span>{Math.round(warningRpm??redline*.9)} REDLINE</span></div></>}
    {theme.layout==='driver'&&<><div className="driver-cluster"><Rail value={rev} label="RPM"/><div className="driver-horizon"><div className="driver-lanes"/><svg viewBox="0 0 80 130" aria-hidden="true"><path d="M23 8 Q40 0 57 8 L66 103 Q65 120 40 122 Q15 120 14 103 Z"/><path d="M24 34 Q40 26 56 34 L60 73 L20 73 Z"/></svg></div>{hero}</div>{telemetry}<Rail value={state.load} label="POWER"/></>}
-   {theme.layout==='scanner'&&<><div className="skin-scanner"><i/></div><div className="scanner-cluster"><div className="scanner-bank"><Rail value={rev} label="ENGINE" segmented/><Rail value={state.load} label="LOAD" segmented/></div>{hero}</div>{telemetry}<div className="skin-grid-readout"><span>SYSTEM ACTIVE</span><span>{state.shifting?'SHIFTING':'MONITORING'}</span></div></>}
+   {pack&&<pack.Hud rpmNorm={rev} rpm={rpm} speedNorm={speedPct} speed={speed} unit={unit} load={state.load} throttle={state.overrun?0:state.load} gear={state.gear} distanceM={state.distance} shifting={state.shifting} overrun={state.overrun} running={running} demo={demo} redlineRpm={redline} motion={motion}/>}
+   {theme.layout==='scanner'&&!pack&&<><div className="skin-scanner"><i/></div><div className="scanner-cluster"><div className="scanner-bank"><Rail value={rev} label="ENGINE" segmented/><Rail value={state.load} label="LOAD" segmented/></div>{hero}</div>{telemetry}<div className="skin-grid-readout"><span>SYSTEM ACTIVE</span><span>{state.shifting?'SHIFTING':'MONITORING'}</span></div></>}
    {theme.layout==='time'&&<TimeCircuits speedMps={state.speedMps} running={running} motion={motion} onJump={onTimeJump}/>}
    {theme.layout==='new-worlds'&&<NewWorldsCluster rpmNorm={rev} speedNorm={speedPct} rpm={rpm} speed={speed} unit={unit} gear={state.gear}/>}
    {theme.layout==='enterprise'&&<EnterpriseCluster rpmNorm={rev} speedNorm={speedPct} rpm={rpm} speed={speed} unit={unit} gear={state.gear}/>}
