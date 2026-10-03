@@ -3281,12 +3281,20 @@ function writeUpshiftSfxPref(enabled: boolean): void {
 }
 
 export function createEngineSynth(ctx: AudioContext, patch?: EnginePatch): EngineSynth {
+  return createCharacterSynth(ctx, patch, false);
+}
+
+/** `layer`: the voice plays inside another pack's LayerMixer (no per-voice live trim there). */
+function createCharacterSynth(ctx: AudioContext, patch: EnginePatch | undefined, layer: boolean): EngineSynth {
   // RevForge native packs → RevForgeSynth; DriveSynth packs → EngineSynthImpl.
   // CharacterEngine always wraps so setDriving / soft-cues / layers keep forwarding.
   const base = patch?.revforge
     ? new RevForgeSynth(ctx, patch)
     : new EngineSynthImpl(ctx, patch);
-  return new CharacterEngine(base, patch ?? base.toPatch(), (p) =>
-    createEngineSynth(ctx, { ...p, layers: [] }),
+  return new CharacterEngine(
+    base,
+    patch ?? base.toPatch(),
+    (p) => createCharacterSynth(ctx, { ...p, layers: [] }, true),
+    { layer },
   );
 }

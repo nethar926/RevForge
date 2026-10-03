@@ -25,7 +25,7 @@ export const PREVIEW_TRIM_INFO: Readonly<Record<string, PreviewTrimInfo>> = {
   'ev-whine': {liveCruiseLufs: -18.5, previewLufs: -25.34, previewPeakDb: -13.96, exactDb: 6.84, trimDb: 6.84, clamped: false},
   'i4-zip': {liveCruiseLufs: -30.26, previewLufs: -23.52, previewPeakDb: -9.81, exactDb: -6.74, trimDb: -6.74, clamped: false},
   'i6-silk': {liveCruiseLufs: -29.47, previewLufs: -20.52, previewPeakDb: -7.37, exactDb: -8.96, trimDb: -8.96, clamped: false},
-  'ion-twin': {liveCruiseLufs: -13.52, previewLufs: -20.4, previewPeakDb: -14.18, exactDb: 6.89, trimDb: 6.89, clamped: false},
+  'ion-twin': {liveCruiseLufs: -15.52, previewLufs: -20.4, previewPeakDb: -14.18, exactDb: 4.89, trimDb: 4.89, clamped: false},
   'night-pursuit': {liveCruiseLufs: -19.7, previewLufs: -15.3, previewPeakDb: -2.14, exactDb: -4.4, trimDb: -4.4, clamped: false},
   'rotary-hum': {liveCruiseLufs: -22.03, previewLufs: -17.86, previewPeakDb: -6.59, exactDb: -4.16, trimDb: -4.16, clamped: false},
   'v8-rumble': {liveCruiseLufs: -25.73, previewLufs: -20.69, previewPeakDb: -9.74, exactDb: -5.04, trimDb: -5.04, clamped: false},

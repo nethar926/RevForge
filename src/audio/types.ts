@@ -36,6 +36,8 @@ export interface EngineDiag {
   engineId: EngineId;
   /** Present when AudioWorklet load/init failed */
   workletError?: string;
+  /** Active live level trim marker (e.g. 'ion-twin-live-trim:-2dB'); absent when untrimmed. */
+  liveTrim?: string;
 }
 
 /** ICE EngineState snapshot from Audio Physics bridge (HUD / QA). */

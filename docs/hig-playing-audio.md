@@ -177,7 +177,7 @@ Optional: show a stop state with `audio.previewingId === id` and call `audio.sto
 | ev-whine | -18.50 | -25.34 | -13.96 | +6.84 |
 | i4-zip | -30.26 | -23.52 | -9.81 | -6.74 |
 | i6-silk | -29.47 | -20.52 | -7.37 | -8.96 |
-| ion-twin | -13.52 | -20.40 | -14.18 | +6.89 |
+| ion-twin | -15.52 | -20.40 | -14.18 | +4.89 (with the −2 dB live cut; +6.89 without) |
 | night-pursuit | -19.70 | -15.30 | -2.14 | -4.40 |
 | rotary-hum | -22.03 | -17.86 | -6.59 | -4.16 |
 | v8-rumble | -25.73 | -20.69 | -9.74 | -5.04 |
@@ -231,3 +231,20 @@ Frontend, for the Chrono Coupe toggle: `<Switch checked={audio.timeJumpCue} onCh
 8. Turn the **volume knob** all the way through its range while running. It controls the level the whole time, and RevForge never gets louder by itself.
 9. Hold to rev to the redline with Pulse Burst and a gear change at once. Loud but clean, and no harsh clipping.
 10. Media card or notification: shows the pack name, "RevForge", and Automatic/Manual gearbox.
+
+## Twin Ion live level −2 dB (separate commit, droppable)
+`audio(ion-twin): -2 dB live level (HIG loudness; preview/hig only, pending Wilson A/B)`.
+`src/audio/liveTrim.ts` sets `LIVE_TRIM_DB['ion-twin'] = -2`, applied on `CharacterEngine.output`
+after every dynamics stage, so it moves the level only and leaves timbre and dynamics alone. It
+isn't applied when Twin Ion is used as a layer inside another pack. Offline live render
+(`node scripts/hig-level-check.mjs ion-twin`): idle −33.49 → −35.49, cruise −13.52 → −15.52,
+WOT −6.71 → −8.71 LUFS, with peaks also exactly −2.00 dB. The Engines preview `ion-twin.wav` comes
+from the `buildScifi` approximation, not the live voice, so it's unaffected and stays at
+−20.4 LUFS (the preview median). Its generated preview trim follows the live level: +4.89 dB
+with the cut (+6.89 dB without), so the preview is never louder than the live voice at cruise.
+To revert, drop the commit (it is the last commit on `audio/hig-preview`; `audio/hig-hooks`
+never had it).
+
+**Build marker.** `LIVE_TRIM_MARKERS['ion-twin'] = 'ion-twin-live-trim:-2dB'` is read at runtime
+(`getDiag().liveTrim` on a Twin Ion engine), so the literal survives minification:
+`grep -rF 'ion-twin-live-trim:-2dB' dist` finds it only in builds that include the cut.
