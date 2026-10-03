@@ -44,10 +44,8 @@ const roads = [
 for(const [id,name,accent,group] of roads) THEMES.push({...skin(`road-${id}`,name,'RoadView',group,'road',accent,'#9caac3','Procedural RevForge environment with speed-linked motion and atmospheric effects.','Reactive road atmosphere'),sceneId:id});
 export const FAMILIES: ThemeFamily[] = ['Minimal','Gauge Cluster','Cockpit','RoadView','Full Screen'];
 export const DEFAULT_THEME = 'road-road-66';
-/** Legacy Tie/X-wing-named Theme Lab ids → Galactic Enforcer / Trenchlight. */
+/** Legacy Theme Lab ids → Trenchlight (craft-named Galactic Enforcer ids live reversed in packs/migrations.ts). */
 export const RETIRED_THEME_IDS: Record<string, string> = {
-  tie: 'galactic-enforcer',
-  xwing: 'galactic-enforcer',
   'road-tie-fighter': 'road-trenchlight',
   // Pack-owned legacy ids (decoded at runtime; see packs/migrations.ts).
   ...PACK_THEME_MIGRATIONS,

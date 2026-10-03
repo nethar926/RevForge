@@ -61,6 +61,9 @@ const LEGACY_THEME_RENAMES: ReadonlyArray<readonly [string, string]> = [
   [legacy('xofrats'), 'cobalt-vane'],
   [legacy('olah'), 'visor-arc'],
   [legacy('dialp-daor'), 'road-dual-surge'],
+  // Craft-named Theme Lab ids (formerly plain in themes/catalog.ts) → Galactic Enforcer.
+  [legacy('eit'), 'galactic-enforcer'],
+  [legacy('gniwx'), 'galactic-enforcer'],
 ];
 
 /** Theme ids → canonical for retired franchise-named (non-pack) themes. */
