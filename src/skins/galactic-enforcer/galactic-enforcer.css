@@ -1,0 +1,507 @@
+/*
+ * Galactic Enforcer — targeting-computer HUD (Visual Skins).
+ * Container units scale everything from the HUD width; every text size has a
+ * ≥12px floor. Data = Inter/system digits; labels = Oswald (OFL);
+ * decorative glyph lines only = FT Aurebesh (OFL).
+ */
+
+.ge-hud {
+  --ge-cyan: #58b8d8;
+  --ge-cyan-text: #7fd3ee;
+  --ge-red: #ff2a3d;
+  --ge-red-text: #ff5a5a;
+  --ge-pink: #ff7a96;
+  --ge-yellow: #ffd84a;
+  --ge-amber: #ff8a00;
+  --ge-blue: #6f8cff;
+  --ge-data: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --ge-label: 'Oswald', 'Arial Narrow', -apple-system, system-ui, sans-serif;
+  --ge-glyph: 'FT Aurebesh', ui-monospace, monospace;
+  container-type: inline-size;
+  /* Fit the Drive stage height (Tesla 1280×800 viewport minus app chrome). */
+  width: min(100%, 1220px, calc((100dvh - 170px) / 0.62));
+  margin: 0 auto;
+  padding: 1.2cqw 1.4cqw 1.4cqw;
+  box-sizing: border-box;
+  background: #000;
+  border: 2px solid #1a222b;
+  border-radius: 1.4cqw;
+  color: var(--ge-cyan-text);
+  font-family: var(--ge-data);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+.ge-hud *,
+.ge-hud *::before,
+.ge-hud *::after {
+  box-sizing: border-box;
+}
+
+.ge-caption {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 0.8cqw;
+  font-family: var(--ge-label);
+  font-size: max(12px, 1.25cqw);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--ge-cyan-text);
+}
+
+.ge-main {
+  display: grid;
+  grid-template-columns: 10cqw minmax(0, 1fr) 9cqw;
+  gap: 1.4cqw;
+  align-items: stretch;
+}
+
+/* ------------------------------ ladder ------------------------------ */
+
+.ge-ladder {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6cqw;
+}
+.ge-ladder-frame {
+  --row: 5.4cqw;
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  border: 2px solid var(--ge-red);
+  border-radius: 0.4cqw;
+  background: #0a0002;
+  clip-path: polygon(0 0, 100% 2.5%, 100% 97.5%, 0 100%);
+}
+.ge-ladder-track {
+  position: absolute;
+  inset: 0;
+  transform: translateY(calc(var(--ge-off, 0) * var(--row) * -1));
+  transition: transform 0.12s linear;
+}
+.ge-ladder-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + var(--ge-k) * var(--row));
+  height: var(--row);
+}
+.ge-ladder-num {
+  position: absolute;
+  left: 9%;
+  top: 0;
+  transform: translateY(-50%);
+  font-size: max(12px, 1.55cqw);
+  font-weight: 700;
+  color: var(--ge-red-text);
+  line-height: 1;
+}
+.ge-ladder-major,
+.ge-ladder-minor {
+  position: absolute;
+  right: 10%;
+  height: 2px;
+  background: var(--ge-red);
+}
+.ge-ladder-major {
+  top: -1px;
+  width: 28%;
+}
+.ge-ladder-minor {
+  width: 13%;
+  background: #e6d03a;
+}
+.ge-ladder-minor.m1 { top: 20%; }
+.ge-ladder-minor.m2 { top: 40%; }
+.ge-ladder-minor.m3 { top: 60%; }
+.ge-ladder-minor.m4 { top: 80%; }
+
+.ge-ladder-hl {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  padding: 0.35cqw 0;
+  border: 2px solid var(--ge-amber);
+  border-radius: 0.3cqw;
+  background: #3d0a00;
+  box-shadow: 0 0 0 2px #000;
+}
+.ge-ladder-hl span {
+  font-size: max(16px, 2.3cqw);
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--ge-yellow);
+}
+.ge-ladder-unit {
+  text-align: center;
+  font-family: var(--ge-label);
+  font-size: max(12px, 1.2cqw);
+  letter-spacing: 0.1em;
+  color: var(--ge-red-text);
+}
+
+/* ------------------------------ scope ------------------------------ */
+
+.ge-scope {
+  position: relative;
+  aspect-ratio: 800 / 440;
+  background: #000;
+  border: 2px solid #18232c;
+  border-radius: 0.8cqw;
+  overflow: hidden;
+}
+.ge-scope-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ge-eye path {
+  fill: var(--ge-cyan);
+}
+.ge-cross path {
+  fill: none;
+  stroke: var(--ge-cyan);
+  stroke-width: 3.2;
+  stroke-linecap: square;
+}
+.ge-terrain {
+  fill: none;
+  stroke: #9fd6e6;
+  stroke-width: 1.6;
+  opacity: 0.75;
+}
+
+.ge-craft-hull path,
+.ge-craft-hull {
+  fill: rgba(255, 122, 150, 0.1);
+  stroke: var(--ge-pink);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+.ge-craft-wire path {
+  fill: none;
+  stroke: var(--ge-pink);
+  stroke-width: 1.1;
+  opacity: 0.85;
+}
+.ge-craft-eye {
+  fill: none;
+  stroke: #ffc2cf;
+  stroke-width: 1.6;
+}
+.ge-craft {
+  filter: drop-shadow(0 0 3px rgba(255, 90, 125, 0.75));
+}
+.ge-target-art {
+  animation: ge-drift 8s ease-in-out infinite;
+}
+.ge-hud.is-locked .ge-target-art {
+  animation: none;
+}
+@keyframes ge-drift {
+  50% {
+    transform: translate(10px, -6px) rotate(6deg);
+  }
+}
+
+/* Lock = brackets appear (shape) + stage text, not colour alone. */
+.ge-brackets path {
+  fill: none;
+  stroke: var(--ge-yellow);
+  stroke-width: 3;
+  opacity: 0;
+}
+.ge-hud.is-locked .ge-brackets path {
+  opacity: 1;
+}
+
+.ge-badge {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: max(20px, 1.9cqw);
+  height: max(20px, 1.9cqw);
+  border-radius: 50%;
+  background: var(--ge-red);
+  color: #000;
+  font-size: max(12px, 1.05cqw);
+  font-weight: 800;
+  line-height: 1;
+}
+.ge-badge.b1 { left: 7%; top: 30%; }
+.ge-badge.b2 { left: 22%; bottom: 38%; }
+
+.ge-stage {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+  bottom: 4%;
+  padding: 0.25cqw 0.9cqw;
+  background: #000;
+  font-family: var(--ge-label);
+  font-size: max(12px, 1.35cqw);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: var(--ge-cyan-text);
+  white-space: nowrap;
+}
+.ge-stage-mark {
+  width: max(10px, 1cqw);
+  height: max(10px, 1cqw);
+  border: 2px solid currentColor;
+}
+.ge-hud.is-locked .ge-stage {
+  color: var(--ge-yellow);
+}
+.ge-hud.is-locked .ge-stage-mark {
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+.ge-glyphs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 27%;
+  display: flex;
+  justify-content: center;
+  font-family: var(--ge-glyph);
+  font-weight: 500;
+  font-size: max(12px, 1.5cqw);
+  letter-spacing: 0.06em;
+  color: #f2f2f2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.ge-glyph-plate {
+  padding: 0.3em 0.7em;
+  background: #000;
+}
+
+/* ------------------------------ column ------------------------------ */
+
+.ge-column {
+  display: grid;
+  grid-template-rows: 1fr 2.2fr 1fr 2.2fr 1fr;
+  gap: 0.7cqw;
+}
+.ge-column > * {
+  min-height: 0;
+}
+.ge-tri {
+  position: relative;
+  background: var(--ge-red);
+  border-radius: 0.3cqw;
+  clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 0 100%);
+}
+.ge-tri.down {
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
+}
+/* Triangle: outlined when idle, solid when active (shape change, not hue). */
+.ge-tri > i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  aspect-ratio: 1.15;
+  transform: translate(-50%, -50%);
+  background: #000;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.ge-tri.down > i {
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.ge-tri > i::after {
+  content: '';
+  position: absolute;
+  inset: 26% 22% 12%;
+  background: var(--ge-red);
+  clip-path: inherit;
+}
+.ge-tri.down > i::after {
+  inset: 12% 22% 26%;
+}
+.ge-tri.on > i::after {
+  display: none;
+}
+
+.ge-slot-wrap {
+  position: relative;
+  display: flex;
+  gap: 0.5cqw;
+  align-items: stretch;
+}
+.ge-slot-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  font-family: var(--ge-label);
+  font-size: max(12px, 1.05cqw);
+  letter-spacing: 0.12em;
+  color: var(--ge-red-text);
+}
+.ge-slot {
+  position: relative;
+  flex: 1;
+  border: 0.6cqw solid var(--ge-red);
+  border-radius: 0.3cqw;
+  background: #000;
+}
+.ge-slot > i {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 6%;
+  height: calc(var(--v, 0) * 88%);
+  background: linear-gradient(#e9e9e9, #7d7d7d);
+  transition: height 0.15s linear;
+}
+
+.ge-gear-block {
+  display: grid;
+  place-items: center;
+  background: var(--ge-red);
+  border-radius: 0.3cqw;
+}
+.ge-gear-block span {
+  font-size: max(16px, 2.4cqw);
+  font-weight: 900;
+  line-height: 1;
+  color: #000;
+}
+
+/* ------------------------------ strip ------------------------------ */
+
+.ge-strip {
+  display: grid;
+  grid-template-columns: 10cqw auto auto auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2.2cqw;
+  width: 78%;
+  margin: 1cqw auto 0;
+  padding: 0.8cqw 1.4cqw;
+  border: 2px solid #18232c;
+  border-radius: 0.8cqw;
+  background: #020507;
+}
+.ge-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3cqw;
+}
+.ge-status svg {
+  width: 100%;
+  aspect-ratio: 1;
+}
+.ge-ring {
+  fill: #000;
+  stroke: #26303a;
+  stroke-width: 3;
+}
+.ge-ring-ticks path,
+.ge-ring-cross {
+  fill: none;
+  stroke: var(--ge-blue);
+  stroke-width: 1.6;
+}
+.ge-status-art .ge-craft-hull,
+.ge-status-art .ge-craft-hull path {
+  stroke: #ff4d5e;
+  fill: rgba(255, 77, 94, 0.12);
+  stroke-width: 3;
+}
+.ge-status-art .ge-craft-wire path {
+  stroke: #ff4d5e;
+  stroke-width: 1.6;
+}
+
+.ge-strip-label {
+  display: block;
+  font-family: var(--ge-label);
+  font-size: max(12px, 1.15cqw);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--ge-cyan-text);
+  white-space: nowrap;
+}
+.ge-speed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.ge-speed strong {
+  font-size: max(40px, 6.4cqw);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: #e8fbff;
+}
+.ge-tele b {
+  display: block;
+  font-size: max(18px, 2.6cqw);
+  font-weight: 700;
+  line-height: 1.05;
+  color: #e8fbff;
+}
+.ge-glyphs--strip {
+  position: static;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4cqw;
+}
+.ge-glyphs--strip > span:first-child {
+  max-width: 100%;
+  overflow: hidden;
+}
+.ge-glyphs--strip .ge-latin {
+  font-family: var(--ge-label);
+  color: var(--ge-red-text);
+}
+
+/* --------------------------- accessibility --------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ge-target-art {
+    animation: none;
+  }
+  .ge-ladder-track,
+  .ge-slot > i {
+    transition: none;
+  }
+}
+.ge-hud.is-still .ge-target-art,
+.motion-off .ge-target-art {
+  animation: none;
+}
+.ge-hud.is-still .ge-ladder-track,
+.ge-hud.is-still .ge-slot > i,
+.motion-off .ge-ladder-track,
+.motion-off .ge-slot > i {
+  transition: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ge-craft {
+    filter: none;
+  }
+  .ge-craft-hull,
+  .ge-craft-hull path,
+  .ge-status-art .ge-craft-hull,
+  .ge-status-art .ge-craft-hull path {
+    fill: #000;
+  }
+  .ge-craft-wire path,
+  .ge-terrain {
+    opacity: 1;
+  }
+}
