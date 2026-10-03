@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { PackShellAction, PackShellPanel } from '../../packs/runtime';
 import type { PackHudProps } from '../../packs/types';
+import { FrameToggle } from './FrameToggle';
 import { HelmRings } from './HelmRings';
 import { StellarFrame, type FrameStyle } from './StellarFrame';
 import './stellar-helm.css';
@@ -9,6 +10,8 @@ export interface StellarHelmHudProps extends PackHudProps {
   title: string;
   /** Frame/palette only; layout content is frame-independent. */
   frame: FrameStyle;
+  /** User frame choice (persisted by the mount); renders the Frame: Classic / Helm control. */
+  onFrameChange: (frame: FrameStyle) => void;
   /** Short stage: tighter spacing (touch floor stays ≥ 44pt). */
   compact?: boolean;
   engineName: string;
@@ -194,6 +197,7 @@ export function StellarHelmHud(p: StellarHelmHudProps) {
         >
           MUTE
         </button>
+        <FrameToggle frame={p.frame} onChange={p.onFrameChange} />
         <button
           type="button"
           className="sh-shutdown"

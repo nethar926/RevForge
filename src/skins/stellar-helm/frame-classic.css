@@ -103,3 +103,9 @@
 .rf-pack-box .sh[data-frame='classic'] .sh-bar button { background: var(--sh-l); color: #000; border-radius: 0; }
 .rf-pack-box .sh[data-frame='classic'] .sh-bar button[aria-pressed='true'] { background: var(--sh-o); }
 .rf-pack-box .sh[data-frame='classic'] .sh-bar .sh-shutdown { background: var(--sh-red); border-radius: 0 28px 28px 0; }
+
+/* Frame toggle: blue blocks, selected = white; bar gap here is 6px (helm 8px) → 2px keeps it put */
+.sh[data-frame='classic'] .sh-frame { margin-right: 2px; }
+.sh[data-frame='classic'] .sh-frame-cap { color: var(--sh-peach); }
+.rf-pack-box .sh[data-frame='classic'] .sh-bar .sh-frame button { background: var(--sh-blue); color: #000; }
+.rf-pack-box .sh[data-frame='classic'] .sh-bar .sh-frame button[aria-checked='true'] { background: #fff; }

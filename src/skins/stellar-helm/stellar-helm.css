@@ -126,13 +126,42 @@
   text-transform: uppercase;
 }
 .rf-pack-box .sh-bar .sh-mute { flex: 1; }
-.rf-pack-box .sh-bar .sh-shutdown { flex: 1.2; }
+.rf-pack-box .sh-bar .sh-shutdown { flex: none; width: 220px; }
 .rf-pack-box .sh-bar button[aria-disabled='true'] { cursor: default; }
 .rf-pack-box .sh button:focus-visible { outline: 3px solid var(--sh-focus, #fff); outline-offset: 3px; position: relative; z-index: 3; }
+
+/*
+ * Frame: Classic / Helm (radio group). Fixed width and sat between MUTE and a
+ * fixed-width SHUTDOWN, so both stay at the same spot when the frame flips (the bar's
+ * right edge is shared by both frames). Switching only swaps custom properties on
+ * .sh[data-frame] — no transitions, no re-measure, rings keep their angle.
+ */
+.sh-frame { flex: none; width: 300px; display: flex; gap: 6px; }
+.sh-frame-cap { flex: none; align-self: center; width: 60px; padding-right: 4px; text-align: right; font: 400 16px var(--sh-display); letter-spacing: 2px; color: var(--sh-frame-cap, var(--sh-muted)); }
+.rf-pack-box .sh-bar .sh-frame button {
+  position: relative;
+  flex: 1 1 0;
+  min-width: max(44px, calc(46px / var(--pf-s, 1)));
+  min-height: max(var(--pf-tap, 56px), calc(46px / var(--pf-s, 1)));
+  font-size: 18px;
+  transition: none;
+}
+/* selected = colour + a bar under the label (not colour alone) */
+.rf-pack-box .sh-bar .sh-frame button[aria-checked='true']::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  width: 30px;
+  height: 4px;
+  margin-left: -15px;
+  background: currentColor;
+}
 
 /* Reduce Motion / Animated environment off: rings are held by HelmRings; kill transitions. */
 @media (prefers-reduced-motion: reduce) {
   .sh-thr-track b { transition: none; }
+  .rf-pack-box .sh-frame button { transition: none !important; animation: none !important; }
   .sh-thumb-outer, .sh-thumb-inner { animation: none !important; }
 }
 

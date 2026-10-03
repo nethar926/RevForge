@@ -1,22 +1,13 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { getBuiltin } from '../../audio/builtins';
 import { StellarHelmHud, type HelmMode } from '../../skins/stellar-helm/StellarHelmHud';
-import ID, { STELLAR_HELM_FRAME, type StellarHelmFrame } from '../stellar-helm.identity';
+import ID from '../stellar-helm.identity';
+import { useStellarHelmFrame } from '../stellar-helm.frame';
 import { getPackMode, onPackMode, readPackEnvelope, requestPackShell, setPackMode, type PackMode } from '../runtime';
 import type { PackHudProps } from '../types';
 import { useFitBox } from './useFitBox';
 import { usePackShell } from './usePackShell';
 import './pack-fit.css';
-
-function frameFor(): StellarHelmFrame {
-  try {
-    const o = localStorage.getItem(`revforge.pack.${ID.id}.frame`);
-    if (o === 'helm' || o === 'classic') return o;
-  } catch {
-    /* default */
-  }
-  return STELLAR_HELM_FRAME;
-}
 
 // Runtime modes drive the audio boost: BOOST → pursuit (1), SPORT → power (0.5), CRUISE → norm (0).
 const toHelm = (m: PackMode): HelmMode => (m === 'pursuit' ? 'boost' : m === 'power' ? 'sport' : 'cruise');
@@ -33,6 +24,8 @@ export function StellarHelmMount(props: PackHudProps) {
   const shell = usePackShell();
   // Short stages (e.g. ~1024×600 with the throttle card): compact spacing, 44pt floor.
   const compact = fit.h * fit.s < 380;
+  // Frame look (classic default / helm): persisted user choice, switched from the HUD bar.
+  const [frame, setFrame] = useStellarHelmFrame();
   const [mode, setMode] = useState<HelmMode>(() => toHelm(getPackMode(ID.id, 'norm')));
   useEffect(
     () =>
@@ -53,7 +46,8 @@ export function StellarHelmMount(props: PackHudProps) {
           {...props}
           compact={compact}
           title={ID.displayName}
-          frame={frameFor()}
+          frame={frame}
+          onFrameChange={setFrame}
           engineName={shell.engineName || fallbackEngineName()}
           shellConnected={shell.connected}
           muted={shell.muted}
