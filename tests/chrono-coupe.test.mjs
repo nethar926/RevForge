@@ -62,6 +62,8 @@ test('identity: ONE constant carries id + display name; builtin derives from it'
       return statSync(full).isDirectory() ? walk(full) : [full];
     });
   for (const file of walk(join(root, 'src'))) {
+    // Frontend's per-pack identity files (src/packs/*.identity.ts) legitimately carry the id.
+    if (/[\\/]src[\\/]packs[\\/][^\\/]+\.identity\.ts$/.test(file)) continue;
     if (file.endsWith('chronoCoupePack.ts') || !/\.(ts|tsx|js)$/.test(file)) continue;
     const src = readFileSync(file, 'utf8');
     assert.doesNotMatch(src, /['"`]chrono-coupe['"`]|Chrono Coupe['"`]/, file);
