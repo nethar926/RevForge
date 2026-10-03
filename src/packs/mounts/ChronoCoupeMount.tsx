@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { ChronoCoupeHud, type RailMode } from '../../skins/chrono-coupe/ChronoCoupeHud';
 import ID from '../chrono-coupe.identity';
 import type { PackHudProps } from '../types';
+import { storageKey } from '../../lib/storageKey';
 import { useFitBox } from './useFitBox';
 import { usePackShell } from './usePackShell';
 import { getPackMode, onPackMode, readPackEnvelope, requestPackShell, sendPackEngineCommand, setPackMode, type PackMode } from '../runtime';
@@ -40,7 +41,7 @@ export function ChronoCoupeMount(props: PackHudProps) {
         <ChronoCoupeHud
           {...props}
           compact={compact}
-          storageKey={`revforge.pack.${ID.id}`}
+          storageKey={storageKey(`revforge.pack.${ID.id}`)}
           shellConnected={shell.connected}
           muted={shell.muted}
           mode={mode}
