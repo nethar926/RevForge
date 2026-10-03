@@ -247,7 +247,7 @@ test('no Media Session support → no-op, state machine still works', () => {
 async function renderThrough(build, seconds = 1, sr = 44100) {
   const ctx = new OfflineAudioContext(1, Math.round(seconds * sr), sr);
   const bus = PS.createMasterBus(ctx);
-  bus.input.gain.value = 1;
+  bus.fade.gain.value = 1;
   build(ctx, bus.input);
   const buf = await ctx.startRendering();
   return buf.getChannelData(0);
@@ -315,7 +315,7 @@ test('fadeOut reaches silence within 150 ms', async () => {
   const sr = 44100;
   const ctx = new OfflineAudioContext(1, sr, sr);
   const bus = PS.createMasterBus(ctx);
-  bus.input.gain.value = 1;
+  bus.fade.gain.value = 1;
   sine(ctx, bus.input, 0.25);
   ctx.suspend(0.2).then(() => { bus.fadeOut(); ctx.resume(); });
   const y = await ctx.startRendering();
@@ -357,7 +357,7 @@ test('no AudioContext is created or resumed on import or mount (mocked AudioCont
   }
 });
 
-test('useAudioEngine: context creation and resume live only on the start() (gesture) path', () => {
+test('useAudioEngine: context creation and resume live only on gesture paths (start / playPreview)', () => {
   const src = readFileSync(join(root, 'src/hooks/useAudioEngine.ts'), 'utf8');
   assert.equal((src.match(/new AC\(\)/g) ?? []).length, 1);
   const ensureCalls = [...src.matchAll(/\bensure\(\)/g)].map((m) => m.index);
@@ -367,6 +367,13 @@ test('useAudioEngine: context creation and resume live only on the start() (gest
     assert.ok(inStart, 'ensure() called outside start()');
   }
   assert.match(startBody, /\.resume\(\)/);
+  // ensureContext() (the only `new AC()`) is reached only from ensure() (start) and playPreview (tap).
+  const span = (from, to) => [src.indexOf(from), src.indexOf(to, src.indexOf(from))];
+  const allowed = [span('const ensure = useCallback', '}, [ensureContext]'), span('const playPreview = useCallback', '}, [ensureContext, session]')];
+  const ctxCalls = [...src.matchAll(/\bensureContext\(\)/g)].map((m) => m.index);
+  assert.ok(ctxCalls.length >= 2);
+  for (const i of ctxCalls) assert.ok(allowed.some(([a, b]) => a >= 0 && i > a && i < b), 'ensureContext() called outside ensure()/playPreview()');
+  assert.ok(src.indexOf('new AC()') > src.indexOf('const ensureContext = useCallback') && src.indexOf('new AC()') < src.indexOf('const ensure = useCallback'));
   // hardware play while idle only restarts a context that is already running (no new unlock)
   assert.match(src, /start: \(\) => \{\s*if \(ctxRef\.current\?\.state === "running"\) void startRef\.current\(\);/);
   const session = readFileSync(join(root, 'src/audio/playbackSession.ts'), 'utf8');

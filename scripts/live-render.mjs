@@ -1,14 +1,16 @@
 /**
  * Live-engine offline renderer: the SHIPPED createEngineSynth graph (CharacterEngine wrapping
  * EngineSynthImpl / RevForgeSynth, real pulse worklet for ICE) driven at 60 Hz through
- * setDriving, exactly like the app. Main-thread Math.random is seeded per pack (worklet noise
- * is not). Optional HIG master bus (src/audio/playbackSession.ts) on the output.
+ * setDriving, exactly like the app. Math.random is seeded per pack on the main thread AND in the
+ * pulse worklet (seeded temp copy via seededWorkletModule) → byte-deterministic renders.
+ * Optional HIG master bus (src/audio/playbackSession.ts) on the output.
  * Used by scripts/hig-level-check.mjs. Fully procedural — nothing is loaded except code.
  */
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createJiti } from 'jiti';
 import { allowShaperReassign } from '../tests/fixtures/reassignable-shaper.mjs';
+import { seededWorkletModule } from './seeded-random.mjs';
 
 if (!Promise.withResolvers) {
   Promise.withResolvers = function withResolvers() {
@@ -20,6 +22,7 @@ if (!Promise.withResolvers) {
 const { OfflineAudioContext, AudioWorkletNode } = await import('node-web-audio-api');
 globalThis.AudioWorkletNode ??= AudioWorkletNode;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const WORKLET = join(ROOT, 'src/audio/worklets/pulse-engine-processor.js');
 const jiti = createJiti(join(ROOT, 'package.json'), {
   alias: { './worklets/pulse-engine-processor.js?url': join(ROOT, 'tests/fixtures/worklet-url-stub.mjs') },
 });
@@ -56,11 +59,15 @@ export async function renderLive(id, profile, dur, opts = {}) {
   try {
     Object.defineProperty(ctx, 'state', { get: () => 'running', configurable: true });
     allowShaperReassign(ctx);
+    // Pulse worklet runs in its own realm: load a seeded copy of the shipped processor.
+    const worklet = ctx.audioWorklet;
+    const addModule = worklet.addModule.bind(worklet);
+    worklet.addModule = () => addModule(seededWorkletModule(WORKLET, opts.seed ?? id));
     const eng = audio.createEngineSynth(ctx, patch);
     let bus = null;
     if (opts.master) {
       bus = PS.createMasterBus(ctx);
-      bus.input.gain.value = 1;
+      bus.fade.gain.value = 1;
       eng.output.disconnect();
       eng.output.connect(bus.input);
     }
@@ -97,7 +104,7 @@ export async function masterLatency(sr = 44100) {
   const src = ctx.createBufferSource();
   src.buffer = b;
   const bus = PS.createMasterBus(ctx);
-  bus.input.gain.value = 1;
+  bus.fade.gain.value = 1;
   src.connect(bus.input);
   src.start();
   const y = (await ctx.startRendering()).getChannelData(0);
@@ -114,7 +121,7 @@ export async function throughMaster(buf) {
   const src = ctx.createBufferSource();
   src.buffer = buf;
   const bus = PS.createMasterBus(ctx);
-  bus.input.gain.value = 1;
+  bus.fade.gain.value = 1;
   src.connect(bus.input);
   src.start();
   const out = await ctx.startRendering();

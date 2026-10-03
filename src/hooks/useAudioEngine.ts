@@ -8,8 +8,10 @@ import {
 } from "../audio/playbackSession";
 import {
   getTimeJumpCueEnabled as readTimeJumpCue,
+  onTimeJumpCueChange,
   setTimeJumpCueEnabled as writeTimeJumpCue,
 } from "../audio/cuePrefs";
+import { PreviewPlayer, type PreviewPlayOptions, type PreviewState } from "../audio/previewPlayer";
 import type {
   DrivingInput,
   EngineDiag,
@@ -36,6 +38,10 @@ export function useAudioEngine(
   const resumedAtRef = useRef(-Infinity);
   const startRef = useRef<() => Promise<void>>(async () => {});
   const stopRef = useRef<() => void>(() => {});
+  /** Pack previews through the master chain (created with the context). */
+  const previewRef = useRef<PreviewPlayer | null>(null);
+  const [previewState, setPreviewState] = useState<PreviewState>("idle");
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
   const engineRef = useRef<EngineSynth | null>(null);
   const pendingPatchRef = useRef<EnginePatch | null>(
     savedPatches.find((p) => p.id === resolvedInitialId) ?? null,
@@ -67,7 +73,8 @@ export function useAudioEngine(
     eng.output.connect(master.input);
   };
 
-  const ensure = useCallback(() => {
+  /** Context + master bus + media output + session. Call only from a user gesture. */
+  const ensureContext = useCallback(() => {
     if (!ctxRef.current) {
       const AC =
         window.AudioContext ||
@@ -92,28 +99,45 @@ export function useAudioEngine(
             if (ctxRef.current?.state === "running") void startRef.current();
           },
           stop: () => stopRef.current(),
+          stopPreview: () => previewRef.current?.stop(),
           onMediaBlocked: () => {
             mediaRef.current?.disable();
             setBackgroundStatus("Background output paused by the browser · direct audio active");
           },
         },
       });
+      previewRef.current = new PreviewPlayer({
+        ctx,
+        master: masterRef.current,
+        engineAudible: () => !!engineRef.current && wantsRunning.current && session.getSnapshot().state === "running",
+        onState: (state, id) => {
+          setPreviewState(state);
+          setPreviewingId(id);
+          if (state === "idle") session.setPreview(null);
+        },
+      });
     }
+    return ctxRef.current;
+  }, [session]);
+
+  const ensure = useCallback(() => {
+    ensureContext();
     if (!engineRef.current) {
       const patch =
         pendingPatchRef.current ??
         getBuiltin(selectedIdRef.current) ??
         getBuiltin("v8-rumble")!;
       pendingPatchRef.current = null;
-      engineRef.current = createEngineSynth(ctxRef.current, patch);
+      engineRef.current = createEngineSynth(ctxRef.current!, patch);
       routeToMaster(engineRef.current);
       setEngineId(patch.id);
       setPatchName(patch.name);
     }
     return engineRef.current;
-  }, [session]);
+  }, [ensureContext]);
 
   const start = useCallback(async () => {
+    previewRef.current?.stop(); // Ignition ends any pack preview
     // Paused by an interruption → this tap is the explicit resume (no re-ignition).
     if (session.getSnapshot().state === "paused" && engineRef.current && wantsRunning.current) {
       setStarting(true);
@@ -227,6 +251,40 @@ export function useAudioEngine(
     } else engineRef.current.fromPatch(patch);
   }, [session]);
 
+  /**
+   * Pack preview (EnginesPage snippet tap). Accepts a pack id or the SNIPPETS path
+   * ('snippets/v8-rumble.wav'). Call from the tap: creates/resumes the context synchronously.
+   * Plays through the master limiter + background output, level-matched to the live engine,
+   * ducking a running engine. Resolves when it ends or is stopped; rejects if it can't play.
+   */
+  const playPreview = useCallback((packIdOrUrl: string, opts?: PreviewPlayOptions) => {
+    let player: PreviewPlayer | null = null;
+    try {
+      ensureContext();
+      player = previewRef.current;
+    } catch (e) {
+      return Promise.reject(e instanceof Error ? e : new Error(String(e)));
+    }
+    if (!player) return Promise.reject(new Error("Audio unavailable"));
+    // Background output routed but its element paused (e.g. after an OS pause): restart it in the tap.
+    const media = mediaRef.current;
+    if (media?.active && media.element.paused) {
+      void media.element.play().catch(() => {
+        media.disable();
+        setBackgroundStatus("Background output paused by the browser · direct audio active");
+      });
+    }
+    const p = player.play(packIdOrUrl, opts);
+    const id = player.previewingId;
+    const name = id ? getBuiltin(id)?.name : undefined;
+    session.setPreview({ title: name ? `${name} — preview` : "Preview" });
+    return p;
+  }, [ensureContext, session]);
+
+  const stopPreview = useCallback(() => {
+    previewRef.current?.stop();
+  }, []);
+
   /** Engine exists only after Start — null beforehand (mobile-safe). */
   const getEngine = useCallback(() => engineRef.current, []);
   const getPatch = useCallback(
@@ -288,6 +346,8 @@ export function useAudioEngine(
     setTimeJumpCueState(readTimeJumpCue());
   }, []);
   const getTimeJumpCueEnabled = useCallback(() => readTimeJumpCue(), []);
+  // In memory only (no storage): mirror changes made via the engine / session / module API.
+  useEffect(() => onTimeJumpCueChange((on) => setTimeJumpCueState(on)), []);
 
   const triggerUiCue = useCallback(
     (cue: 'upshift' | 'starter' | 'shutdown' | 'shutoff' | string) => {
@@ -312,8 +372,11 @@ export function useAudioEngine(
       wantsRunning.current = false;
       startVersion.current++;
       if (ctxRef.current) ctxRef.current.onstatechange = null;
+      previewRef.current?.dispose();
+      previewRef.current = null;
       engineRef.current?.dispose();
       engineRef.current = null;
+      session.setPreview(null);
       session.detach();
       session.markStopped();
       mediaRef.current?.dispose();
@@ -366,6 +429,10 @@ export function useAudioEngine(
       timeJumpCue,
       playStarter,
       playShutoff,
+      playPreview,
+      stopPreview,
+      previewState,
+      previewingId,
       ready,
       running: audible,
       engineId,
@@ -398,6 +465,10 @@ export function useAudioEngine(
       timeJumpCue,
       playStarter,
       playShutoff,
+      playPreview,
+      stopPreview,
+      previewState,
+      previewingId,
       ready,
       audible,
       engineId,

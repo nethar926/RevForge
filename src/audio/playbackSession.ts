@@ -76,8 +76,12 @@ export function softCeilingCurve(points = 8193, kneeDb = LIMITER_THRESHOLD_DB, c
 /* ------------------------------------------------------------------ master bus */
 
 export interface MasterBus {
-  /** Engines connect here (the fade gain). */
+  /** Engines connect here: engine duck gain (unity unless a preview is playing) → fade. */
   readonly input: GainNode;
+  /** Start / resume / interruption fade (0..1). */
+  readonly fade: GainNode;
+  /** Previews connect here: joins after the fade, before the limiter (shares limiter + output). */
+  readonly auxInput: GainNode;
   /** Post-limiter output (unity gain node). Connected to ctx.destination on creation. */
   readonly output: GainNode;
   readonly limiter: DynamicsCompressorNode | null;
@@ -90,6 +94,10 @@ export interface MasterBus {
   fadeOut(seconds?: number): number;
   /** Pack switch: short dip to silence, then ramp in. */
   switchRamp(dipSeconds?: number, rampSeconds?: number): void;
+  /** Duck the engine voices (not aux) to silence while a preview plays. */
+  duck(seconds?: number): void;
+  /** Bring the engine voices back from a duck (ramp in from silence). */
+  unduck(seconds?: number): void;
   /** Current fade gain value (0..1). Never above 1. */
   level(): number;
   dispose(): void;
@@ -115,7 +123,16 @@ function holdParam(p: AudioParam, now: number): number {
 /** Build the master bus. Safe on any BaseAudioContext; falls back to a pass-through. */
 export function createMasterBus(ctx: BaseAudioContext, opts: { connect?: boolean } = {}): MasterBus {
   const input = ctx.createGain();
-  input.gain.value = 0;
+  input.gain.value = 1;
+  const fade = ctx.createGain();
+  fade.gain.value = 0;
+  input.connect(fade);
+  const sum = ctx.createGain();
+  sum.gain.value = 1;
+  fade.connect(sum);
+  const auxInput = ctx.createGain();
+  auxInput.gain.value = 1;
+  auxInput.connect(sum);
   const output = ctx.createGain();
   output.gain.value = 1;
   let limiter: DynamicsCompressorNode | null = null;
@@ -141,7 +158,7 @@ export function createMasterBus(ctx: BaseAudioContext, opts: { connect?: boolean
   } catch {
     ceiling = null;
   }
-  let node: AudioNode = input;
+  let node: AudioNode = sum;
   if (limiter && trim) {
     node.connect(limiter);
     limiter.connect(trim);
@@ -154,9 +171,12 @@ export function createMasterBus(ctx: BaseAudioContext, opts: { connect?: boolean
   node.connect(output);
   if (opts.connect !== false) output.connect(ctx.destination);
 
-  const g = input.gain;
+  const g = fade.gain;
+  const d = input.gain;
   return {
     input,
+    fade,
+    auxInput,
     output,
     limiter,
     ceiling,
@@ -191,11 +211,21 @@ export function createMasterBus(ctx: BaseAudioContext, opts: { connect?: boolean
       g.linearRampToValueAtTime(0, dipEnd);
       g.linearRampToValueAtTime(1, dipEnd + Math.max(0.005, rampSeconds));
     },
+    duck(seconds = FADE_OUT_S) {
+      const now = ctx.currentTime;
+      holdParam(d, now);
+      d.linearRampToValueAtTime(0, now + Math.max(0.005, seconds));
+    },
+    unduck(seconds = RAMP_IN_S) {
+      const now = ctx.currentTime;
+      holdParam(d, now);
+      d.linearRampToValueAtTime(1, now + Math.max(0.005, seconds));
+    },
     level() {
       return Math.max(0, Math.min(1, g.value));
     },
     dispose() {
-      for (const n of [input, limiter, trim, ceiling, output]) {
+      for (const n of [input, fade, sum, auxInput, limiter, trim, ceiling, output]) {
         try {
           n?.disconnect();
         } catch {
@@ -242,6 +272,8 @@ export interface PlaybackHost {
   stop?: () => void;
   /** The routed media element failed to play() on resume — fall back to direct output. */
   onMediaBlocked?: () => void;
+  /** Stop a pack preview (hardware pause/stop, page hidden, interruption). */
+  stopPreview?: () => void;
 }
 
 interface EventTargetLike {
@@ -394,6 +426,7 @@ export class PlaybackSession {
   private snap: PlaybackSnapshot = { state: 'idle', reason: null, canResume: false, pageVisible: true };
   private listeners = new Set<(s: PlaybackSnapshot) => void>();
   private info: MediaInfo = {};
+  private preview: MediaInfo | null = null;
   private overrides: MediaActionHandlers = {};
   private claimed = 0;
   private everRan = false;
@@ -580,6 +613,30 @@ export class PlaybackSession {
 
   /* ---- Media Session ---- */
 
+  /**
+   * A pack preview started (info) or ended (null). While the engine is not running, Media
+   * Session shows the preview (album 'Preview') and hardware pause/stop end it.
+   */
+  setPreview(info: MediaInfo | null): void {
+    this.preview = info ? { album: 'Preview', ...info } : null;
+    if (this.snap.state === 'idle') {
+      if (info) {
+        this.everRan = true;
+        this.ensureCarrier();
+      } else this.stopCarrier(false);
+    }
+    this.applyMediaSession();
+  }
+
+  /** True while a preview is registered via setPreview. */
+  hasPreview(): boolean {
+    return this.preview !== null;
+  }
+
+  private endPreview(): void {
+    if (this.preview) this.host.stopPreview?.();
+  }
+
   setMediaInfo(info: MediaInfo): void {
     this.info = { ...this.info, ...info };
     this.applyMediaSession();
@@ -606,6 +663,10 @@ export class PlaybackSession {
     const now = this.env.now();
     if (now - this.lastAction < MEDIA_ACTION_DEBOUNCE_MS) return;
     this.lastAction = now;
+    if ((action === 'pause' || action === 'stop') && this.preview) {
+      this.endPreview();
+      if (this.snap.state !== 'running') return;
+    }
     const o = this.overrides[action];
     if (action === 'play' && this.snap.state === 'paused') {
       void this.resume();
@@ -620,6 +681,10 @@ export class PlaybackSession {
 
   /** Built-in behaviour for a media action (no Frontend override). */
   defaultAction(action: MediaAction): void {
+    if ((action === 'pause' || action === 'stop') && this.preview) {
+      this.endPreview();
+      if (this.snap.state !== 'running') return;
+    }
     if (action === 'play' && this.snap.state === 'paused') {
       void this.resume();
       return;
@@ -669,11 +734,15 @@ export class PlaybackSession {
   private onVisibility = () => {
     const hidden = this.env.document?.visibilityState === 'hidden';
     this.set({ pageVisible: !hidden });
-    if (hidden && this.opts.pauseWhenHidden) this.pause('hidden');
+    if (hidden && this.opts.pauseWhenHidden) {
+      this.endPreview();
+      this.pause('hidden');
+    }
     else this.applyMediaSession(); // visible again: re-assert handlers, stay paused
   };
 
   private onPageHide = () => {
+    this.endPreview();
     this.pause('pagehide');
   };
 
@@ -684,7 +753,9 @@ export class PlaybackSession {
       this.markStopped();
       return;
     }
-    if (this.snap.state !== 'running' || this.selfSuspending) return;
+    if (this.selfSuspending) return;
+    if (ctx.state === 'interrupted' || ctx.state === 'suspended') this.endPreview();
+    if (this.snap.state !== 'running') return;
     if (ctx.state === 'interrupted') this.pause('interrupted');
     else if (ctx.state === 'suspended') this.pause('suspended');
   };
@@ -791,13 +862,15 @@ export class PlaybackSession {
       }
     try {
       const s = this.snap.state;
-      ms.playbackState = s === 'running' ? 'playing' : s === 'paused' ? 'paused' : 'none';
+      const pv = s !== 'running' ? this.preview : null;
+      ms.playbackState = s === 'running' || pv ? 'playing' : s === 'paused' ? 'paused' : 'none';
       if (this.env.MediaMetadata && (s !== 'idle' || this.everRan)) {
+        const info = pv ?? this.info;
         ms.metadata = new this.env.MediaMetadata({
-          title: this.info.title || 'RevForge',
-          artist: this.info.artist || 'RevForge',
-          album: this.info.album || albumForMode(),
-          artwork: this.info.artwork ?? revforgeArtwork(),
+          title: info.title || 'RevForge',
+          artist: info.artist || 'RevForge',
+          album: info.album || albumForMode(),
+          artwork: info.artwork ?? revforgeArtwork(),
         });
       }
     } catch {

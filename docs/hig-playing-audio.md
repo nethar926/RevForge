@@ -130,6 +130,60 @@ and output stability. If Wilson wants engine sound to keep playing behind other 
 line restores it: `audio.playback.setPauseWhenHidden(!audio.background)`. Interruptions
 (calls, other audio) always pause.
 
+## Pack previews through the master chain (`playPreview`)
+Previews (`public/snippets/<id>.wav`) now play through the **same** AudioContext and master chain as the engine instead of a separate `new Audio()` element:
+- they share the safety limiter (−1 dBFS ceiling) and the output, including the background media element when Background audio is on, so there is one audio session, not two competing ones;
+- each preview is **level-matched to the live engine at cruise** (speed .5 / throttle .35 / load .3) by a generated per-pack trim (`src/audio/previewTrims.ts`, from `scripts/gen-preview-trims.mjs`; `--check` exits 1 when stale). The trim is capped so a trimmed preview never peaks above −3 dBFS (the limiter knee), keeping the limiter transparent on previews;
+- a preview **ducks a running engine** (0.15 s) and un-ducks it (0.25 s) when it ends or is stopped. The duck is on the engine input only; the preview joins after the start/resume fade;
+- one at a time: a new preview stops the previous one with a 0.12 s fade; Ignition stops any preview;
+- `ctx.resume()` is called synchronously inside the tap; buffers are decoded with `decodeAudioData` and cached (no `<audio>` element, no extra autoplay policy);
+- Media Session shows "<Pack> — preview" (album "Preview") while the engine isn't running; hardware pause/stop, hiding the page, pagehide and interruptions stop the preview;
+- no storage: preview state lives in memory only (`previewState`, `previewingId`).
+
+```ts
+audio.playPreview(packIdOrSnippetPath: string, opts?: { gainDb?: number; duckEngine?: boolean }): Promise<void>
+  // 'v8-rumble' | legacy 'tie-fighter' | 'snippets/v8-rumble.wav' (the SNIPPETS value) | absolute URL
+  // resolves when the preview ends / is stopped / is replaced; rejects if it can't load or play
+audio.stopPreview(): void
+audio.previewState: 'idle' | 'loading' | 'playing'
+audio.previewingId: string | null
+// non-React: new PreviewPlayer({ ctx, master, engineAudible?, onState? }) from src/audio/previewPlayer.ts
+```
+
+### Frontend swap (EnginesPage.tsx:81–87, quoted, not edited)
+Current:
+```ts
+const playSnippet = (src: string) => {
+  if (!audioRef.current) audioRef.current = new Audio();
+  const a = audioRef.current;
+  a.pause();
+  a.src = `${import.meta.env.BASE_URL}${src}`;
+  void a.play().catch(() => {});
+};
+```
+Replace with (the SNIPPETS map at EnginesPage.tsx:20–31 stays as is; `audioRef` can go):
+```ts
+const playSnippet = (src: string) => { void audio.playPreview(src).catch(() => {}); };
+```
+Optional: show a stop state with `audio.previewingId === id` and call `audio.stopPreview()`.
+
+### Preview trims (generated; LUFS integrated, live = shipped engine at cruise, 2–6 s)
+| pack | live cruise LUFS | preview LUFS | preview peak dBFS | applied trim dB |
+|---|---|---|---|---|
+| aerospace-f14 | -29.21 | -19.72 | -7.53 | -9.49 |
+| ev-dual-motor | -19.65 | -21.66 | -10.90 | +2.01 |
+| ev-inverter-climb | -16.80 | -28.18 | -14.88 | +11.38 |
+| ev-regen-howl | -16.08 | -25.23 | -14.71 | +9.16 |
+| ev-whine | -18.50 | -25.34 | -13.96 | +6.84 |
+| i4-zip | -30.26 | -23.52 | -9.81 | -6.74 |
+| i6-silk | -29.47 | -20.52 | -7.37 | -8.96 |
+| ion-twin | -13.52 | -20.40 | -14.18 | +6.89 |
+| night-pursuit | -19.70 | -15.30 | -2.14 | -4.40 |
+| rotary-hum | -22.03 | -17.86 | -6.59 | -4.16 |
+| v8-rumble | -25.73 | -20.69 | -9.74 | -5.04 |
+
+No trim needed the peak cap on this base. Re-run `node scripts/gen-preview-trims.mjs` after changing a preview WAV or a pack's live level.
+
 ## Levels: no surprise loudness (measured)
 `node scripts/hig-level-check.mjs` renders the **shipped** engine graph offline
 (`scripts/live-render.mjs`: createEngineSynth + real pulse worklet, driven by setDriving at
