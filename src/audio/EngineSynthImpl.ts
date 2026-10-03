@@ -20,6 +20,12 @@ import {
   stepChronoCoupeDrive,
   type ChronoCoupeDrive,
 } from './chronoCoupeVoice';
+import { isStellarHelmTopology } from './stellarHelmPack';
+import {
+  StellarHelmVoice,
+  createStellarHelmDriveState,
+  stepStellarHelmDrive,
+} from './stellarHelmVoice';
 import type {
   DrivingInput,
   EngineDiag,
@@ -215,6 +221,8 @@ interface GraphHandles {
   npBus?: NightPursuitBus;
   /** Chrono Coupe post chain + charge bus (engine → ccBus.input → master) */
   ccBus?: ChronoCoupeBus;
+  /** Stellar Helm drive hum voice (replaces the EV whine graph for that topology) */
+  helmVoice?: StellarHelmVoice;
 }
 
 const workletContexts = new WeakSet<BaseAudioContext>();
@@ -292,6 +300,9 @@ export class EngineSynthImpl implements EngineSynth {
   private chargeLevel = 0;
   /** Post-gain loudness envelope (getEnvelope / getVoiceEnvelope). */
   private envelope: EnvelopeMeter;
+  /** Stellar Helm lagged drive state (speed glide, throttle attack/release, reverse, boost). */
+  private helmState = createStellarHelmDriveState();
+  private helmLastMs = 0;
 
   constructor(ctx: AudioContext, patch?: EnginePatch) {
     this.context = ctx;
@@ -354,6 +365,11 @@ export class EngineSynthImpl implements EngineSynth {
 
     smooth(this.output.gain, 1, 0.08, this.context);
     this.started = true;
+    if (this.g.helmVoice) {
+      // Stellar Helm: the hum itself powers up (no combustion chuff on a starship drive)
+      this.g.helmVoice.powerUp(1.6, undefined, 0);
+      return;
+    }
     // Unmistakable idle chuff/tick through the same output → destination bus
     // so the user knows audio unlocked even at speed=0 throttle=0.
     this.playIdleChuff();
@@ -488,6 +504,8 @@ export class EngineSynthImpl implements EngineSynth {
       this.ccDriveState = createChronoCoupeDriveState(ccIdleRpm(this.params));
       this.ccLastMs = 0;
       this.chargeLevel = 0;
+      this.helmState = createStellarHelmDriveState();
+      this.helmLastMs = 0;
       this.g = this.buildGraph(patch.kind, patch.topology);
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
@@ -565,6 +583,9 @@ export class EngineSynthImpl implements EngineSynth {
     const now = this.context.currentTime;
     if (this.lastStarterAt >= 0 && now - this.lastStarterAt < 0.45) return;
     this.lastStarterAt = now;
+    const helm = this.g.helmVoice;
+    // Stellar Helm: a starter after a power-down cue brings the hum back up under the sweep
+    if (helm && helm.powerTarget < 0.5) helm.powerUp(1.6);
     try {
       playEngineStarter({
         ctx: this.context,
@@ -574,6 +595,7 @@ export class EngineSynthImpl implements EngineSynth {
         whiteBuf: this.whiteBuf,
         pinkBuf: this.pinkBuf,
         topology: this.patchMeta.topology,
+        coreHz: helm?.coreHz(),
       });
     } catch {
       /* never block drive path */
@@ -598,6 +620,8 @@ export class EngineSynthImpl implements EngineSynth {
     } catch {
       /* ignore */
     }
+    // Stellar Helm: the hum winds down (pitch falls, level fades) under the shutoff sweep
+    this.g.helmVoice?.powerDown(dur * 0.85);
     try {
       playEngineShutoff({
         ctx: this.context,
@@ -607,6 +631,7 @@ export class EngineSynthImpl implements EngineSynth {
         whiteBuf: this.whiteBuf,
         pinkBuf: this.pinkBuf,
         topology: this.patchMeta.topology,
+        coreHz: this.g.helmVoice?.coreHz(),
       });
     } catch {
       /* never block drive path */
@@ -951,7 +976,12 @@ export class EngineSynthImpl implements EngineSynth {
     pinkSrc.start();
     g.pinkSrc = pinkSrc;
 
-    if (kind === 'ice') {
+    if (isStellarHelmTopology(_topology)) {
+      // Stellar Helm: compact starship drive hum graph (shares the engine's pink noise buffer)
+      g.helmVoice = new StellarHelmVoice(ctx, master, { noiseBuffer: this.pinkBuf });
+      // Switched to this pack while running → power the new hum up instead of leaving it silent
+      if (this.started) g.helmVoice.powerUp(1.2, undefined, 0);
+    } else if (kind === 'ice') {
       this.buildIce(g);
     } else if (kind === 'ev-whine') {
       this.buildEv(g);
@@ -2015,6 +2045,11 @@ export class EngineSynthImpl implements EngineSynth {
       /* ignore */
     }
     try {
+      g.helmVoice?.dispose();
+    } catch {
+      /* ignore */
+    }
+    try {
       g.pulseNode?.disconnect();
       g.pulseGainOut?.disconnect();
     } catch {
@@ -2144,7 +2179,9 @@ export class EngineSynthImpl implements EngineSynth {
       smooth(g.panL.pan, this.loadLag * width * 0.6, tc, ctx);
     }
 
-    if (kind === 'ice') {
+    if (g.helmVoice) {
+      this.applyStellarHelmDriving(d, immediate);
+    } else if (kind === 'ice') {
       this.applyIceDriving(rpmNorm, dIce, tc);
       if (g.npBus && this.npDrive) g.npBus.update(p, this.npDrive, this.throttleLag, tc);
       if (g.ccBus && this.ccDrive) g.ccBus.update(p, this.ccDrive, this.throttleLag, tc);
@@ -2157,6 +2194,27 @@ export class EngineSynthImpl implements EngineSynth {
     }
     this.hud.driveMood = this.driveMood;
     this.updateLockStage(rpmNorm);
+  }
+
+  /**
+   * Stellar Helm: one continuous drive step (speed glide, throttle warmth, reverse, boost) →
+   * voice. Frontend rpm / rpmNorm are not used, so gear simulations can't put cliffs in the hum.
+   */
+  private applyStellarHelmDriving(d: DrivingInput, immediate: boolean): void {
+    const v = this.g.helmVoice;
+    if (!v) return;
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const dt =
+      immediate || !this.helmLastMs ? 1 / 60 : Math.min(1, Math.max(0.004, (nowMs - this.helmLastMs) / 1000));
+    this.helmLastMs = nowMs;
+    const drv = stepStellarHelmDrive(this.helmState, d, dt, this.params);
+    v.update(this.params, drv, immediate ? 0.02 : 0.08);
+    this.hud.rpmNorm = drv.x;
+    this.hud.fundamentalHz = v.coreHz();
+    if (drv.rev > 0.5) this.driveMood = 'reverse';
+    else if (drv.speed < 0.04 && drv.thr < 0.12) this.driveMood = 'idle';
+    else if (drv.thr > 0.7 || drv.boost > 0.5) this.driveMood = 'pull';
+    else this.driveMood = 'cruise';
   }
 
   private supportsLockLadder(): boolean {
@@ -2275,6 +2333,7 @@ export class EngineSynthImpl implements EngineSynth {
     if (this.disposed) return;
     const kind = this.patchMeta.kind;
     if (kind === 'scifi') return;
+    if (this.g.helmVoice) return; // Stellar Helm has no gearbox to bark
 
     let scale = 1;
     if (kind === 'ev-whine') scale = 0.32;

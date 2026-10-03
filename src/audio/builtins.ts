@@ -3,6 +3,12 @@ import { REVFORGE_PATCHES } from '../forge/catalog';
 import { PACK_ENGINE_MIGRATIONS } from '../packs/migrations';
 import { NIGHT_PURSUIT_DEFAULTS, nightPursuitBuiltinPatch } from './nightPursuitPack';
 import { CHRONO_COUPE, CHRONO_COUPE_DEFAULTS, chronoCoupeBuiltinPatch } from './chronoCoupePack';
+import {
+  STELLAR_HELM_DEFAULTS,
+  STELLAR_HELM_PACK,
+  STELLAR_HELM_PARAM_META,
+  stellarHelmBuiltinPatch,
+} from './stellarHelmPack';
 
 export const V8_DEFAULTS: EngineParams = {
   // Audio Physics ICE v1 + ice-pack-firing-schedules-v1 (crossPlane)
@@ -425,6 +431,8 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
   nightPursuitBuiltinPatch(),
   // Chrono Coupe (experimental): odd-fire 90° V6 + charge mode — see chronoCoupePack.ts
   chronoCoupeBuiltinPatch(),
+  // Stellar Helm (experimental): dedicated starship drive hum voice — see stellarHelmPack.ts
+  stellarHelmBuiltinPatch(),
   ...REVFORGE_PATCHES,
 ];
 
@@ -453,6 +461,8 @@ export function defaultsForTopology(topology: string): EngineParams {
       return { ...NIGHT_PURSUIT_DEFAULTS };
     case CHRONO_COUPE.id:
       return { ...CHRONO_COUPE_DEFAULTS };
+    case STELLAR_HELM_PACK.id:
+      return { ...STELLAR_HELM_DEFAULTS };
     case 'v8-rumble':
     default:
       return { ...V8_DEFAULTS };
@@ -519,6 +529,9 @@ export function paramMetaForKind(kind: EnginePatch['kind'], topology?: string): 
   }
   if (kind === 'ice' && topology === 'night-pursuit') {
     return [...paramMetaForKind('ice'), ...NIGHT_PURSUIT_PARAM_META];
+  }
+  if (topology === STELLAR_HELM_PACK.id) {
+    return STELLAR_HELM_PARAM_META.map((m) => ({ ...m }));
   }
   const master: ParamMeta[] = [
     { id: 'masterGain', label: 'Master', min: 0, max: 1, step: 0.01 },

@@ -1,5 +1,6 @@
 import type { RevForgeVoiceConfig } from '../forge/voiceTypes';
 import type { ChronoCoupeId } from './chronoCoupePack';
+import type { STELLAR_HELM_PACK } from './stellarHelmPack';
 export type EngineId = string;
 
 export type TopologyId =
@@ -15,6 +16,7 @@ export type TopologyId =
   | 'aerospace-f14'
   | 'night-pursuit'
   | ChronoCoupeId
+  | typeof STELLAR_HELM_PACK.id
   | 'custom';
 
 /** Pack / builder categories. Old kinds map 1:1 (ice, ev-whine, scifi); aerospace is new. */
