@@ -14,13 +14,18 @@ export interface QuietCurrentOverlayProps {
   /** Display units. Default 'mph'. (`unit` is accepted as an alias for PackHudProps.) */
   units?: QcUnits;
   unit?: QcUnits;
-  /** Signed electrical power in kW: positive = power, negative = regen. */
+  /** Simulated signed power fraction -1..1 (negative = regen). Takes priority over every other power prop. */
+  powerNorm?: number;
+  /**
+   * Back-compat: simulated kW equivalent (positive = power, negative = regen), only used to derive
+   * `powerNorm` when it is absent. Never shown as kW; the browser cannot read real vehicle power.
+   */
   powerKw?: number;
-  /** Full-scale power for the bar (kW). Default 250. */
+  /** Back-compat: full scale of the simulated kW equivalent on the power side. Default 250. */
   maxPowerKw?: number;
-  /** Full-scale regen for the bar (kW). Default 80. */
+  /** Back-compat: full scale of the simulated kW equivalent on the regen side. Default 80. */
   maxRegenKw?: number;
-  /** Signed power fraction -1..1 (negative = regen). Used when `powerKw` is absent. */
+  /** Legacy signed fraction -1..1; used when neither `powerNorm` nor `powerKw` is given. */
   power?: number;
   /** PRND state. Wins over `gear`. */
   driveState?: QcDriveState;
@@ -28,6 +33,8 @@ export interface QuietCurrentOverlayProps {
   gear?: number;
   /** Motor speed; the arc shows rpm / redlineRpm as "motor output %". */
   rpm?: number;
+  /** Alias for `rpm` (matches Audio getEnvelope().motorRpm). `rpm` wins if both are given. */
+  motorRpm?: number;
   /** Full-scale motor speed. Default 7000. */
   redlineRpm?: number;
   /** 0..1 motor output; wins over rpm/redlineRpm when given (PackHudProps `rpmNorm`). */
@@ -139,12 +146,17 @@ function MotorArc({ value, cyber, peak }: { value: number; cyber: boolean; peak:
   );
 }
 
-function PowerBar({ value, kw, showValue }: { value: number; kw?: number; showValue: boolean }) {
+/** Signed percent for display: "42%", "\u221218%" (true minus sign), "0%". */
+function formatSignedPercent(value: number): string {
+  const pct = Math.round(clamp(value, -1, 1) * 100);
+  return pct < 0 ? `\u2212${Math.abs(pct)}%` : `${pct}%`;
+}
+
+function PowerBar({ value, showValue }: { value: number; showValue: boolean }) {
   const pct = Math.round(value * 100);
   const regen = value < -0.005;
-  const state = regen ? 'Regenerating' : value > 0.005 ? 'Power' : 'Coasting';
-  const valueText =
-    kw != null ? `${state}, ${Math.abs(Math.round(kw))} kilowatts` : `${state}, ${Math.abs(pct)} percent`;
+  const state = regen ? 'Simulated regen' : value > 0.005 ? 'Simulated power' : 'Coasting';
+  const valueText = `${state}, ${regen ? 'minus ' : ''}${Math.abs(pct)} percent`;
   return (
     <div className="qc-power" data-state={regen ? 'regen' : value > 0.005 ? 'power' : 'idle'}>
       <div className="qc-power-labels" aria-hidden="true">
@@ -153,8 +165,8 @@ function PowerBar({ value, kw, showValue }: { value: number; kw?: number; showVa
           REGEN
         </span>
         {showValue && (
-          <span className="qc-power-value">
-            {kw != null ? `${Math.abs(Math.round(kw))} kW` : `${Math.abs(pct)} %`}
+          <span className="qc-power-value" data-testid="qc-power-value">
+            {formatSignedPercent(value)}
           </span>
         )}
         <span className={`qc-power-label qc-power-label--power${value > 0.005 ? ' is-on' : ''}`}>
@@ -165,7 +177,7 @@ function PowerBar({ value, kw, showValue }: { value: number; kw?: number; showVa
       <div
         className="qc-power-bar"
         role="meter"
-        aria-label="Power and regeneration"
+        aria-label="Simulated power and regeneration, percent"
         aria-valuemin={-100}
         aria-valuemax={100}
         aria-valuenow={pct}
@@ -186,6 +198,7 @@ export function QuietCurrentOverlay({
   speedMph,
   units,
   unit,
+  powerNorm,
   powerKw,
   maxPowerKw = 250,
   maxRegenKw = 80,
@@ -193,6 +206,7 @@ export function QuietCurrentOverlay({
   driveState,
   gear,
   rpm,
+  motorRpm,
   redlineRpm = 7000,
   rpmNorm,
   appearance = 'dark',
@@ -211,21 +225,35 @@ export function QuietCurrentOverlay({
   const unitLabel = u === 'kph' ? 'KM/H' : 'MPH';
   const unitWords = u === 'kph' ? 'kilometres per hour' : 'miles per hour';
 
-  const powerFrac =
-    powerKw != null
-      ? clamp(powerKw >= 0 ? powerKw / Math.max(1, maxPowerKw) : powerKw / Math.max(1, maxRegenKw), -1, 1)
+  const powerFrac = Number.isFinite(powerNorm)
+    ? clamp(powerNorm as number, -1, 1)
+    : Number.isFinite(powerKw)
+      ? clamp(
+          (powerKw as number) >= 0
+            ? (powerKw as number) / Math.max(1, maxPowerKw)
+            : (powerKw as number) / Math.max(1, maxRegenKw),
+          -1,
+          1,
+        )
       : clamp(power ?? 0, -1, 1);
 
   const state: QcDriveState =
     driveState ?? (gear == null ? 'P' : gear === 0 ? 'N' : gear < 0 ? 'R' : 'D');
 
-  const motorNorm = clamp(rpmNorm ?? (rpm != null ? rpm / Math.max(1, redlineRpm) : 0), 0, 1);
+  const rpmIn = rpm ?? motorRpm;
+  const motorNorm = clamp(rpmNorm ?? (rpmIn != null ? rpmIn / Math.max(1, redlineRpm) : 0), 0, 1);
   const peak = motorNorm >= 0.9;
   const cyber = variant === 'cyber';
   const motorPct = Math.round(motorNorm * 100);
 
   /* Polite, rate-limited VoiceOver summary: at most every 5 s, or at once on a drive-state change. */
-  const powerWord = powerFrac < -0.005 ? 'Regenerating' : powerFrac > 0.005 ? 'Power' : 'Coasting';
+  const powerPct = Math.abs(Math.round(powerFrac * 100));
+  const powerWord =
+    powerFrac < -0.005
+      ? `Simulated regen ${powerPct} percent`
+      : powerFrac > 0.005
+        ? `Simulated power ${powerPct} percent`
+        : 'Coasting';
   const candidate = `${DRIVE_WORDS[state]}. ${spd} ${unitWords}. Motor ${motorPct} percent. ${powerWord}.`;
   const [summary, setSummary] = useState(candidate);
   const last = useRef({ at: 0, state });
@@ -291,7 +319,7 @@ export function QuietCurrentOverlay({
 
             <div className="qc-edge qc-edge--sm qc-power-edge">
               <div className="qc-plate">
-                <PowerBar value={powerFrac} kw={powerKw} showValue={!isMoving} />
+                <PowerBar value={powerFrac} showValue={!isMoving} />
               </div>
             </div>
 

@@ -17,7 +17,8 @@ controls.
 import { QuietCurrentOverlay } from './skins/quiet-current';
 
 <QuietCurrentOverlay
-  speed={47} units="mph" powerKw={62} driveState="D" rpmNorm={0.42}
+  speed={47} units="mph" powerNorm={0.25} driveState="D"
+  motorRpm={env.motorRpm} redlineRpm={env.redlineRpm}
   appearance={settings.appearance} variant="standard"
   solidSurfaces={settings.solidSurfaces} isMoving={useIsMoving()}
   motion={settings.animatedEnvironment}
@@ -31,24 +32,34 @@ import { QuietCurrentOverlay } from './skins/quiet-current';
 | `speed` | number | — | Speed already in `units`. Wins over `speedMph`. |
 | `speedMph` | number | — | Converted to km/h when `units="kph"`. |
 | `units` / `unit` | `'mph' \| 'kph'` | `'mph'` | `unit` is an alias. |
-| `powerKw` | number | — | Signed: positive = power, negative = regen. |
-| `maxPowerKw` | number | 250 | Full scale for the power side. |
-| `maxRegenKw` | number | 80 | Full scale for the regen side. |
-| `power` | number | — | Signed fraction -1..1, used when `powerKw` is absent. |
+| `powerNorm` | number | — | Simulated power, -1..1 (negative = regen). Takes priority over the props below. |
+| `powerKw` | number | — | Back-compat only: a *simulated* kW equivalent (negative = regen), used to derive `powerNorm` when it is absent. Never displayed as kW. |
+| `maxPowerKw` | number | 250 | Back-compat: full scale of the simulated kW equivalent, power side. |
+| `maxRegenKw` | number | 80 | Back-compat: full scale of the simulated kW equivalent, regen side. |
+| `power` | number | — | Legacy signed fraction -1..1, used when neither `powerNorm` nor `powerKw` is given. |
 | `driveState` | `'P' \| 'R' \| 'N' \| 'D'` | — | Wins over `gear`. |
 | `gear` | number | — | 0 = N, > 0 = D, < 0 = R. |
 | `rpm` / `redlineRpm` | number | — / 7000 | Arc = rpm / redlineRpm. |
+| `motorRpm` | number | — | Alias for `rpm` (Audio `getEnvelope()` returns `motorRpm` and `redlineRpm`). `rpm` wins if both are set. |
 | `rpmNorm` | number | — | 0..1, wins over rpm. |
 | `appearance` | `'auto' \| 'light' \| 'dark'` | `'dark'` | From app settings. `auto` follows `prefers-color-scheme` live. |
 | `variant` | `'standard' \| 'cyber'` | `'standard'` | |
 | `solidSurfaces` | boolean | false | From app settings. Replaces the steel texture with a solid plate. |
-| `isMoving` | boolean | false | From `useIsMoving()`. Hides the kW readout (at most 3 numbers) and turns off all transitions. |
+| `isMoving` | boolean | false | From `useIsMoving()`. Hides the power percent readout (at most 3 numbers) and turns off all transitions. |
 | `motion` | boolean | true | `false` = no transitions (same as a `.motion-off` ancestor). |
 | `demo` | boolean | false | Caption reads "Demo" instead of "GPS". |
 
 `appearance`, `solidSurfaces` and `isMoving` are read-only inputs. The
 component only reflects them as `data-appearance`, `data-solid` and
 `data-moving` on `.qc-root`.
+
+## Power is simulated
+
+The browser cannot read the vehicle's real power, so the bar never shows a
+physical unit. Its centre readout is a signed percent of full scale: "42%"
+for power, "−18%" (true minus sign) for regen, next to the POWER / REGEN
+labels and the regen hatch. The meter's accessible name and the VoiceOver
+summary say "simulated power / regen … percent".
 
 ## Design notes
 
