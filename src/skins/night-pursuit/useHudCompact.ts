@@ -8,7 +8,7 @@ import { useLayoutEffect, useState, type RefObject } from 'react';
  */
 export type HudCompact = boolean | 'auto';
 
-/** Dev/test override when the host passes nothing: `?hudCompact=1 | auto | 0`. */
+/** Dev/test override: `?hudCompact=1 | auto | 0` (wins over the host prop when present). */
 export function hudCompactFromQuery(): HudCompact | undefined {
   if (typeof window === 'undefined') return undefined;
   const v = new URLSearchParams(window.location.search).get('hudCompact');
@@ -42,7 +42,7 @@ export function useHudCompact(
   requested: HudCompact | undefined,
   minDesignPx: number,
 ): HudCompactState {
-  const req = requested ?? hudCompactFromQuery() ?? false;
+  const req = hudCompactFromQuery() ?? requested ?? false;
   const [state, setState] = useState<HudCompactState>(OFF);
   useLayoutEffect(() => {
     const el = ref.current;
