@@ -1,8 +1,10 @@
 /* ---------- RF Enterprise — strict LCARS command cluster ----------
    Each arrangement is a fixed pixel-perfect design traced from the mockup.
    The drive view uniformly scales the design to fit the stage, so the
-   geometry can never distort. Three arrangements:
+   geometry can never distort. Four arrangements:
    - 16:9 landscape (1600x900): 3-column + strip, the mockup itself.
+   - 16:9 QHD (2560x1440): strict 1.6x reflow of the 1600x900 design,
+     served to large 16:9 viewports (the 2560x1440 Tesla Model 3 panel).
    - 5:4 (1200x960): tall left hero; rings over a wide orange block.
    - Portrait (760x1500): full-width speed mass, rings + block, strip. */
 
@@ -304,6 +306,114 @@
   padding-top: 20px;
   transform: scale(var(--ent-s));
   transform-origin: top left;
+}
+
+/* ================= 16:9 QHD — 2560x1440 (large 16:9 panels) =================
+   Strict 1.6x reflow of the 1600x900 design: identical layout, every
+   measurement scaled by 2560/1600 = 1.6. Served when the viewport is
+   both wide (min-width 1921px — so 1920x1080 and smaller keep the
+   1600x900 design) and in the 16:9 arrangement zone (e.g. Tesla's
+   2560x1440 Model 3 panel). Placed before the 5:4 and portrait blocks,
+   which still win at their aspect ratios (later in the cascade at
+   equal specificity). */
+
+@media (min-width: 1921px) and (min-aspect-ratio: 16/10) {
+  .rev-scene .theme-stage.is-fullscreen .ent {
+    --ent-dw: 2560;
+    --ent-dh: 1440;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-inner {
+    padding-top: 32px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-main {
+    height: 1104px;
+    gap: 38.4px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-left {
+    width: 944px;
+    height: 1104px;
+    border-radius: 19.2px 272px 76.8px 19.2px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-inset {
+    right: 160px;
+    top: 364.8px;
+    bottom: 110.4px;
+    border-radius: 0 43.2px 43.2px 0;
+    padding: 28.8px 57.6px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-top {
+    gap: 35.2px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-rpm-num {
+    font-size: 179.2px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-top .ent-label {
+    font-size: 60.8px;
+    padding-bottom: 16px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-rule {
+    height: 22.4px;
+    margin: 19.2px -156.8px 19.2px 0;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-line {
+    gap: 35.2px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-speed-num {
+    font-size: 422.4px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-line .ent-label {
+    font-size: 60.8px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-bar {
+    gap: 22.4px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-bar i {
+    height: 60.8px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-bar i.on {
+    box-shadow: 0 0 28.8px rgba(139, 195, 74, 0.5);
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-center {
+    width: 560px;
+    height: 480px;
+    border-radius: 72px 19.2px 19.2px 72px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-right {
+    width: 800px;
+    height: 1104px;
+    border-radius: 19.2px 19.2px 89.6px 89.6px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-warp {
+    height: 232px;
+    padding: 0 64px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-warp-label {
+    font-size: 67.2px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-rings,
+  .rev-scene .theme-stage.is-fullscreen .ent-gear {
+    top: 110.4px;
+    width: 728px;
+    height: 728px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-gear .ent-num {
+    font-size: 192px;
+    text-shadow: 0 0 51.2px rgba(199, 125, 255, 0.5);
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-foot {
+    height: 160px;
+    margin-top: 144px;
+    padding: 22.4px 0 22.4px 332.8px;
+  }
+  .rev-scene .theme-stage.is-fullscreen .ent-foot i {
+    border-radius: 51.2px 0 0 51.2px;
+  }
+  .rev-scene .theme-stage.is-fullscreen.at-redline .ent-rpm-num {
+    text-shadow: 0 0 41.6px rgba(255, 59, 48, 0.65);
+  }
+  .rev-scene .theme-stage.is-fullscreen.at-redline .ent-bar i.on {
+    box-shadow: 0 0 28.8px rgba(255, 59, 48, 0.55);
+  }
 }
 
 /* ================= 5:4 — 1200x960 ================= */
