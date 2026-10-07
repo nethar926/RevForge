@@ -7,7 +7,10 @@ import './night-pursuit-mount.css';
 
 /**
  * Design boxes the overlay is laid out in before uniform scale-to-fit.
- * 'wide' matches the overlay's 4-column grid; 'stack' its ≤900px 2-column grid.
+ * 'wide' carries the overlay's 4-column grid; 'stack' its 2-column grid.
+ * The box is picked from the stage's measured aspect, not the window, and
+ * the overlay's grid follows the box via a container query on .np-pack-box —
+ * box and grid can no longer disagree when window and stage shapes diverge.
  */
 const BOX = { wide: { w: 880, h: 400 }, stack: { w: 600, h: 640 } } as const;
 
@@ -38,9 +41,9 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
       const w = host.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       const h = host.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       if (w <= 0) return;
-      const box: keyof typeof BOX = window.innerWidth <= 900 ? 'stack' : 'wide';
+      const box: keyof typeof BOX = h > 0 && w / h < 1.4 ? 'stack' : 'wide';
       const d = BOX[box];
-      const s = Math.max(0.5, drive && h > 0 ? Math.min(w / d.w, h / d.h) : w / d.w);
+      const s = Math.max(0.35, drive && h > 0 ? Math.min(w / d.w, h / d.h) : w / d.w);
       setFit((prev) => (prev.box === box && Math.abs(prev.s - s) < 0.002 ? prev : { s, box }));
     };
     measure();

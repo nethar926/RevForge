@@ -546,7 +546,34 @@
   display: none;
 }
 
+/*
+ * Compact (2-column) arrangement, two contexts:
+ * - Legacy DrivePage skin slot (.drive-skin): still keyed to window width,
+ *   exactly as before.
+ * - Pack mount: keyed to the design box via container query (.np-pack-box),
+ *   so the grid always matches the box NightPursuitMount picked for the
+ *   stage — even when the window is narrow but the stage is wide.
+ */
 @media (max-width: 900px) {
+  .drive-skin .np-dash {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+  .drive-skin .np-mode-rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+  }
+  .drive-skin .np-mode-btn {
+    flex: 1;
+    min-width: 72px;
+  }
+  .drive-skin .np-seg-digit {
+    width: 22px;
+    height: 38px;
+  }
+}
+@container (max-width: 700px) {
   .np-dash {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto;

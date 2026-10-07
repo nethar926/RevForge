@@ -11,6 +11,9 @@
   margin: 0 auto;
 }
 .np-pack-box {
+  /* The overlay's compact grid keys off this box (container query in
+     night-pursuit.css), so grid and box always agree. */
+  container-type: inline-size;
   position: absolute;
   left: 0;
   top: 0;
