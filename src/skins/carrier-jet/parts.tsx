@@ -76,7 +76,7 @@ export function Planform({ cx, cy, s, P, ghosts = false, arc = false, glow = fal
   const pt = (a: number, r: number): Pt => [pivR[0] + r * Math.cos((a * Math.PI) / 180), pivR[1] + r * Math.sin((a * Math.PI) / 180)];
   const [ax, ay] = pt(20, R), [bx, by] = pt(68, R), [ox, oy] = pt(75, R);
   return (
-    <g className="cj-planform">
+    <g className="cj-planform" data-cj-el="planform">
       {glow && (
         <defs>
           <filter id={`${id}g`} x="-20%" y="-20%" width="140%" height="140%">
@@ -155,7 +155,7 @@ export function SweepTape({ x, y, w, P, cmd, mode, windows = true, tall = 22, pl
   const ww = (w - 3 * 6) / 4;
   const barX = x + 1.5;
   return (
-    <g className="cj-tape">
+    <g className="cj-tape" data-cj-el="sweep-tape">
       {plate && <rect x={f1(x - 14)} y={f1(y - 4)} width={f1(w + 28)} height={windows ? 116 : 84} rx="6" fill={plate} stroke={P.winEdge} strokeWidth="1" />}
       <defs>
         <pattern id={`${id}h`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -179,8 +179,9 @@ export function SweepTape({ x, y, w, P, cmd, mode, windows = true, tall = 22, pl
           {v}
         </T>
       ))}
-      {windows &&
-        (['AUTO', 'MAN', 'EMER', 'OVER'] as const).map((n, i) => {
+      {windows && (
+        <g data-cj-el="mode-windows">
+        {(['AUTO', 'MAN', 'EMER', 'OVER'] as const).map((n, i) => {
           const wx = x + i * (ww + 6), wy = by + 38, lit = n === mode;
           const col = n === 'OVER' ? P.overFill : P.litFill;
           return (
@@ -192,6 +193,8 @@ export function SweepTape({ x, y, w, P, cmd, mode, windows = true, tall = 22, pl
             </g>
           );
         })}
+        </g>
+      )}
     </g>
   );
 }
@@ -204,7 +207,7 @@ export function Ladder({ x, y, w, h, P, pitch = 0, bank = 0 }: { x: number; y: n
   const bt = ((-bank - 90) * Math.PI) / 180;
   const bx = cx + (R - 2) * Math.cos(bt), byy = cy + (R - 2) * Math.sin(bt);
   return (
-    <g>
+    <g data-cj-el="ladder">
       <defs>
         <clipPath id={`${id}c`}>
           <rect x={x} y={y} width={w} height={h} />
@@ -251,7 +254,7 @@ export function Rose({ x, y, w, h, P, heading }: { x: number; y: number; w: numb
   const hd = heading ?? 0;
   const cx = x + w / 2, R = Math.min(w * 0.46, h * 0.9), cy = y + R + 34;
   return (
-    <g>
+    <g data-cj-el="heading">
       <defs>
         <clipPath id={`${id}c`}>
           <rect x={x} y={y + 30} width={w} height={h - 30} />
@@ -290,7 +293,7 @@ export function HeadingTape({ x, y, w, P, heading, span = 60 }: { x: number; y: 
   const ticks: number[] = [];
   for (let d = Math.floor((hd - span) / 5) * 5; d <= hd + span; d += 5) ticks.push(d);
   return (
-    <g>
+    <g data-cj-el="heading">
       <defs>
         <clipPath id={`${id}c`}>
           <rect x={x} y={y} width={w} height="50" />
@@ -318,10 +321,11 @@ export function HeadingTape({ x, y, w, P, heading, span = 60 }: { x: number; y: 
 }
 
 // ------------------------------------------------------------------ AoA tape 0-30 (from load) + indexer
-export function AoaTape({ x, y, h, P, aoa, active }: { x: number; y: number; h: number; P: CjPalette; aoa: number; active: boolean }) {
-  const top = y + 26, bot = y + h - 8, Y = (v: number) => bot - (v / 30) * (bot - top);
+/** `head` = room above the tape for the AOA caption (compact passes more so the >= 11px caption clears the 30 label). */
+export function AoaTape({ x, y, h, P, aoa, active, head = 26 }: { x: number; y: number; h: number; P: CjPalette; aoa: number; active: boolean; head?: number }) {
+  const top = y + head, bot = y + h - 8, Y = (v: number) => bot - (v / 30) * (bot - top);
   return (
-    <g>
+    <g data-cj-el="aoa">
       <T x={x + 22} y={y + 13} fill={P.text} weight={700} ls={0.1}>AOA</T>
       <rect x={x + 14} y={f1(top)} width="14" height={f1(bot - top)} fill={P.tapeBg} stroke={P.edge} strokeWidth="1.5" />
       {active && <rect x={x + 17} y={f1(Y(aoa))} width="8" height={f1(bot - Y(aoa))} fill={P.fill} />}
@@ -343,7 +347,7 @@ export function Indexer({ x, y, P, state, s = 1 }: { x: number; y: number; P: Cj
   const on = (k: IndexerState) => state === k;
   const c = (k: IndexerState, col: string) => (on(k) ? { fill: col, stroke: col } : { fill: 'none', stroke: P.idxOff });
   return (
-    <g data-indexer={state}>
+    <g data-indexer={state} data-cj-el="indexer">
       <path d={`M${x} ${y} l${18 * s} ${14 * s} l${18 * s} ${-14 * s} l0 ${8 * s} l${-18 * s} ${14 * s} l${-18 * s} ${-14 * s} z`} {...c('high', P.idxHigh)} strokeWidth="2" strokeLinejoin="round" />
       <circle cx={x + 18 * s} cy={y + 42 * s} r={11 * s} fill="none" stroke={on('on') ? P.idxOn : P.idxOff} strokeWidth={on('on') ? 7 * s : 2} />
       <path d={`M${x} ${y + 84 * s} l${18 * s} ${-14 * s} l${18 * s} ${14 * s} l0 ${-8 * s} l${-18 * s} ${-14 * s} l${-18 * s} ${14 * s} z`} {...c('low', P.idxLow)} strokeWidth="2" strokeLinejoin="round" />
@@ -356,7 +360,7 @@ export function Approach({ x, y, w, h, P, cell, active, label }: { x: number; y:
   const cx = x + w / 2, lensW = 30, cellH = (h - 40) / 5, ly = y + 4;
   const dy = ly + cellH * 2.5;
   return (
-    <g>
+    <g data-cj-el="accel">
       <rect x={f1(cx - lensW / 2)} y={f1(ly)} width={lensW} height={f1(cellH * 5)} fill={P.lensBg} stroke={P.edge} strokeWidth="1.5" />
       {[1, 2, 3, 4].map((i) => (
         <line key={i} x1={f1(cx - lensW / 2)} y1={f1(ly + i * cellH)} x2={f1(cx + lensW / 2)} y2={f1(ly + i * cellH)} stroke={P.edge} strokeWidth="1" />
@@ -384,7 +388,7 @@ export function Engines({ x, y, w, h, P, rpmN, load, ab, rpm, horizontal = false
     ];
     const lx = x + 8 + barW + 12, lw = w - 2 * (8 + barW + 12), zh = (bh - 4 * 5) / 5;
     return (
-      <g data-ab={ab}>
+      <g data-ab={ab} data-cj-el="engines">
         {cols.map((c) => (
           <g key={c.lab}>
             <T x={c.x + barW / 2} y={y + 13} size={12} fill={P.text} weight={700}>{c.lab}</T>
@@ -396,6 +400,7 @@ export function Engines({ x, y, w, h, P, rpmN, load, ab, rpm, horizontal = false
             <T x={c.x + barW / 2} y={y + h - 8} size={14} fill={P.text} weight={700}>{c.val}</T>
           </g>
         ))}
+        <g data-cj-el="ab-ladder">
         <T x={lx + lw / 2} y={y + 13} size={12} fill={P.text} weight={700} ls={0.1}>AB</T>
         {[1, 2, 3, 4, 5].map((z) => {
           const zy = bot - z * zh - (z - 1) * 5, lit = z <= ab;
@@ -407,6 +412,7 @@ export function Engines({ x, y, w, h, P, rpmN, load, ab, rpm, horizontal = false
           );
         })}
         <T x={lx + lw / 2} y={y + h - 8} fill={ab ? P.abLabel : P.text} weight={800}>{abWord}</T>
+        </g>
       </g>
     );
   }
@@ -417,7 +423,7 @@ export function Engines({ x, y, w, h, P, rpmN, load, ab, rpm, horizontal = false
   ];
   const zy = y + 64, zw = (bw - 4 * 6) / 5;
   return (
-    <g data-ab={ab}>
+    <g data-ab={ab} data-cj-el="engines">
       {rows.map((r, i) => {
         const ry = y + i * 30;
         return (
@@ -429,6 +435,7 @@ export function Engines({ x, y, w, h, P, rpmN, load, ab, rpm, horizontal = false
           </g>
         );
       })}
+      <g data-cj-el="ab-ladder">
       <T x={x} y={zy + 18} fill={ab ? P.abLabel : P.text} weight={800} anchor="start">{abWord}</T>
       {[1, 2, 3, 4, 5].map((z) => {
         const zx = x + labW + (z - 1) * (zw + 6), lit = z <= ab;
@@ -439,6 +446,7 @@ export function Engines({ x, y, w, h, P, rpmN, load, ab, rpm, horizontal = false
           </g>
         );
       })}
+      </g>
     </g>
   );
 }
@@ -447,7 +455,7 @@ export function Engines({ x, y, w, h, P, rpmN, load, ab, rpm, horizontal = false
 export function DeckMarks({ w, h, cx }: { w: number; h: number; cx: number }) {
   const rows = Math.floor(h / 38);
   return (
-    <g className="cj-deckmarks">
+    <g className="cj-deckmarks" data-cj-el="deck-marks">
       <line x1={cx} y1={0} x2={cx} y2={h} stroke="#4c5561" strokeWidth="3" strokeDasharray="26 18" />
       <line x1={0} y1={h * 0.86} x2={w} y2={h * 0.62} stroke="#8a7425" strokeWidth="3" strokeDasharray="14 8" />
       {Array.from({ length: rows }, (_, i) => [12, w - 12].map((ex) => <circle key={`${i}${ex}`} cx={ex} cy={20 + i * 38} r="3.5" fill="#4592e0" />))}

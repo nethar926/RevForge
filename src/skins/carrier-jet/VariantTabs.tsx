@@ -6,7 +6,7 @@ import { CARRIER_JET_VARIANTS, type CarrierJetVariant } from './model';
  * FrameToggle: WAI-ARIA radio group with roving tabindex and arrow / Home / End keys.
  * Each tab reads the same name as that variant's header label.
  * Selected = solid fill + heavier weight + a bar under the label (never colour alone).
- * Not rendered in the drive window or compact layout (same as the Stellar Helm toggle).
+ * Rendered in every layout (full, compact, drive window); targets stay >= 44px after any scaling.
  */
 export function VariantTabs({ variant, onChange }: { variant: CarrierJetVariant; onChange: (v: CarrierJetVariant) => void }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -24,7 +24,7 @@ export function VariantTabs({ variant, onChange }: { variant: CarrierJetVariant;
     refs.current[next]?.focus();
   };
   return (
-    <div className="cj-tabs" role="radiogroup" aria-label="Carrier Jet look" onKeyDown={onKey}>
+    <div className="cj-tabs" data-cj-el="tabs" role="radiogroup" aria-label="Carrier Jet look" onKeyDown={onKey}>
       <span className="cj-tabs-cap" aria-hidden="true">Look</span>
       {CARRIER_JET_VARIANTS.map((o, i) => {
         const on = variant === o.id;
