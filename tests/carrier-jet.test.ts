@@ -4,17 +4,19 @@ import { readdirSync, readFileSync, statSync, mkdtempSync, writeFileSync, rmSync
 import { dirname, join, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  AB_THRESHOLDS,
   CARRIER_JET_DEFAULT_VARIANT,
   CARRIER_JET_VARIANTS,
   CARRIER_JET_VARIANT_KEY,
+  MACH_MAX,
   SWEEP_DECK_DEG,
   SWEEP_FULL_MPH,
   SWEEP_KNEE_MPH,
   SWEEP_MAX_DEG,
   SWEEP_MIN_DEG,
   SWEEP_RATE_DEG_S,
-  abZoneFromLoad,
+  machLabel,
+  machText,
+  mphToMach,
   resolveAbZone,
   scheduledSweep,
   statusText,
@@ -65,19 +67,39 @@ test('drawn sweep is rate limited to 7.5°/s and snaps under Reduce Motion', () 
   assert.ok(Math.abs(n / 60 - 55 / 7.5) < 0.05);
 });
 
-test('AB zone: abZone prop wins as-is; else load thresholds; else throttle', () => {
-  assert.deepEqual([...AB_THRESHOLDS], [0.6, 0.7, 0.8, 0.88, 0.95]);
-  assert.equal(abZoneFromLoad(0.9), 4);
-  assert.equal(abZoneFromLoad(0.59), 0);
-  assert.equal(resolveAbZone(3, 0, 0), 3);
-  assert.equal(resolveAbZone(0, 0.99, 0.99), 0, 'Audio Synth zone is not overridden by load');
-  assert.equal(resolveAbZone(7, 0, 0), 5);
-  assert.equal(resolveAbZone(undefined, 0.9, 0), 4);
-  assert.equal(resolveAbZone(undefined, undefined, 0.72), 2);
-  assert.equal(resolveAbZone(undefined, undefined, undefined), 0);
+test('AB zone: follows abZone only (rounded, clamped, same render); no skin-side load thresholds', () => {
+  assert.equal(resolveAbZone(3), 3);
+  assert.equal(resolveAbZone(0), 0);
+  assert.equal(resolveAbZone(3.6), 4);
+  assert.equal(resolveAbZone(7), 5);
+  assert.equal(resolveAbZone(-2), 0);
+  assert.equal(resolveAbZone(undefined), 0, 'no Audio zone → AB OFF');
+  assert.equal(resolveAbZone(NaN), 0);
+  const model = readFileSync(join(SKIN, 'model.ts'), 'utf8');
+  assert.doesNotMatch(model, /AB_THRESHOLDS|abZoneFromLoad/, 'no AB thresholds in the skin');
+  assert.match(readFileSync(join(SKIN, 'CarrierJetHud.tsx'), 'utf8'), /resolveAbZone\(p\.abZone\)/, 'AB display reads abZone only');
   assert.equal(statusText(false, 4), 'AB 4 · SWEEP AUTO');
   assert.equal(statusText(false, 0), 'AB OFF · SWEEP AUTO');
   assert.equal(statusText(true, 0), 'ON DECK · WINGS 75°');
+});
+
+test('Mach: piecewise linear mph → Mach (0..75 → 0..1.00, 75..120 → 1.00..2.30, clamped), `M 0.85` text', () => {
+  const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≈ ${b}`);
+  assert.equal(mphToMach(0), 0);
+  near(mphToMach(37.5), 0.5);
+  near(mphToMach(75), 1);
+  near(mphToMach(120), 2.3);
+  near(mphToMach(150), 2.3);
+  assert.equal(MACH_MAX, 2.3);
+  near(mphToMach(97.5), 1.65);
+  near(mphToMach(63.75), 0.85);
+  assert.equal(mphToMach(-5), 0);
+  assert.equal(mphToMach(NaN), 0);
+  assert.equal(machText(mphToMach(63.75)), 'M 0.85');
+  assert.equal(machText(mphToMach(150)), 'M 2.30');
+  assert.equal(machText(0), 'M 0.00');
+  assert.equal(machLabel(0.85, false), 'Mach 0.85');
+  assert.equal(machLabel(1.14, true), 'Mach 1.14, supersonic');
 });
 
 test('variants: ids, labels (tab = header), default swing-wing, storage key shape', () => {
@@ -119,6 +141,9 @@ async function renderVariants(): Promise<Record<string, string>> {
     out[`dwc:${v.id}`] = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 45, rpm: 2150, gear: 4, load: 0.34, compact: true, driveWindow: true, variant: v.id, onVariantChange: () => {} }));
   }
   out.ab3 = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 90, rpm: 5650, gear: 6, load: 0.1, abZone: 3, variant: 'swing-wing', onVariantChange: () => {} }));
+  out.loadNoZone = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 90, rpm: 5650, gear: 6, load: 0.99, throttle: 0.99, variant: 'tomcat', onVariantChange: () => {} }));
+  out.zoneLowLoad = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 80, rpm: 3000, load: 0.05, throttle: 0.05, abZone: 5, compact: true, variant: 'carrier-jet', onVariantChange: () => {} }));
+  out.zoneSlow = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 50, rpm: 3000, load: 0.3, abZone: 2, variant: 'tomcat', onVariantChange: () => {} }));
   return out;
 }
 
@@ -165,7 +190,7 @@ test('rendered: tabs in every layout (full, compact, drive window); compact keep
     for (const k of [`compact:${v.id}`, `dwc:${v.id}`]) {
       assert.match(html[k], /data-layout="reflow"/);
       assert.deepEqual(elements(html[k]), full, `${k}: same elements (and counts) as the full ${v.id} board`);
-      for (const el of ['speed', 'gear', 'rpm', 'rpm-bar', 'sweep-digits', 'planform', 'sweep-tape', 'mode-windows', 'ladder', 'heading', 'aoa', 'indexer', 'accel', 'engines', 'ab-ladder', 'tabs', 'label', 'designation', 'gps-pill', 'status-pill'])
+      for (const el of ['speed', 'mach', 'mach-tape', 'mach-barrier', 'supersonic', 'rpm', 'rpm-bar', 'sweep-digits', 'planform', 'sweep-tape', 'mode-windows', 'ladder', 'heading', 'aoa', 'indexer', 'accel', 'engines', 'ab-ladder', 'tabs', 'label', 'designation', 'gps-pill', 'status-pill'])
         assert.ok(elements(html[k]).includes(el), `${k}: ${el}`);
       assert.equal((html[k].match(/class="cj-ab" data-lit="/g) ?? []).length, 5, `${k}: five AB lights`);
     }
@@ -173,6 +198,35 @@ test('rendered: tabs in every layout (full, compact, drive window); compact keep
   assert.match(html.dw, /AB 4 · SWEEP AUTO/);
   // secondary blocks stay aria-hidden in every layout
   for (const h of Object.values(html)) for (const m of h.matchAll(/<div class="cj-sec[^"]*"([^>]*)>/g)) assert.match(m[1], /aria-hidden="true"/);
+});
+
+const machOf = (h: string) => {
+  const m = h.match(/<div class="cj-mach" data-cj-el="mach" data-supersonic="(true|false)" role="img" aria-label="([^"]+)">/);
+  return m ? { sup: m[1] === 'true', label: m[2], text: h.match(/class="cj-k-num cj-mach-num"[^>]*>([^<]*)</)?.[1], tag: h.match(/data-cj-el="supersonic" data-on="(true|false)"/)?.[1], cone: /data-cj-el="vapor-cone"/.test(h), n: (h.match(/data-cj-el="mach"/g) ?? []).length } : null;
+};
+test('rendered: MACH slot in every look and layout; SUPERSONIC tag + vapor cone follow abZone, not speed', async () => {
+  const html = await renderVariants();
+  for (const v of CARRIER_JET_VARIANTS) for (const k of [v.id, `compact:${v.id}`, `dwc:${v.id}`]) {
+    const m = machOf(html[k]);
+    assert.ok(m, `${k}: MACH block`);
+    assert.equal(m.n, 1, `${k}: one MACH block`);
+    assert.equal(m.text, 'M 0.60', `${k}: 45 mph = M 0.60`);
+    assert.equal(m.label, 'Mach 0.60');
+    assert.equal(m.sup, false); assert.equal(m.tag, 'false'); assert.equal(m.cone, false);
+    assert.match(html[k], /data-cj-el="mach-barrier"/, `${k}: fixed M 1.0 barrier mark`);
+  }
+  const on = machOf(html.dw)!;
+  assert.deepEqual([on.text, on.label, on.sup, on.tag, on.cone], ['M 1.43', 'Mach 1.43, supersonic', true, 'true', true], '90 mph + zone 4');
+  const fast = machOf(html.loadNoZone)!;
+  assert.deepEqual([fast.text, fast.label, fast.sup, fast.tag, fast.cone], ['M 1.43', 'Mach 1.43', false, 'false', false], '90 mph without an AB zone: number only, no tag');
+  const slow = machOf(html.zoneSlow)!;
+  assert.deepEqual([slow.text, slow.label, slow.sup, slow.tag, slow.cone], ['M 0.67', 'Mach 0.67, supersonic', true, 'true', true], 'zone on at 50 mph: tag follows the zone');
+  const z5 = machOf(html.zoneLowLoad)!;
+  assert.deepEqual([z5.text, z5.sup], ['M 1.14', true], 'compact 80 mph + zone 5');
+  // static: no animation or transition anywhere on the MACH slot
+  const css = readFileSync(join(SKIN, 'carrier-jet.css'), 'utf8');
+  for (const m of css.matchAll(/[^{}]*cj-mach[^{]*\{([^}]*)\}/g)) assert.doesNotMatch(m[1], /animation|transition/, 'MACH slot is static');
+  assert.match(readFileSync(join(SKIN, 'CarrierJetHud.tsx'), 'utf8'), /mach: mphToMach\(mph\)/, 'number from speed');
 });
 
 test('compact CSS: container units, >= 11px floors, >= 44px tabs, no transform scale', () => {
@@ -188,8 +242,20 @@ test('compact CSS: container units, >= 11px floors, >= 44px tabs, no transform s
   assert.doesNotMatch(css, /@media[^{]*max-width/, 'no width-only media rules');
 });
 
+test('rendered: no gear anywhere (every look, full and compact)', async () => {
+  const html = await renderVariants();
+  for (const [k, h] of Object.entries(html)) {
+    assert.doesNotMatch(h, /GEAR|cj-gear|data-cj-el="gear"|>Gear /i, `${k}: no gear readout`);
+  }
+  for (const f of ['CarrierJetHud.tsx', 'carrier-jet.css']) assert.doesNotMatch(readFileSync(join(SKIN, f), 'utf8'), /GearBlock|cj-gear|shift/i, f);
+});
+
 test('rendered: AB lights follow the abZone prop in the same render (no smoothing)', async () => {
   const html = await renderVariants();
+  assert.equal((html.loadNoZone.match(/class="cj-ab" data-lit="true"/g) ?? []).length, 0, 'high load without an Audio zone lights nothing');
+  assert.match(html.loadNoZone, /AB OFF · SWEEP AUTO/);
+  assert.equal((html.zoneLowLoad.match(/class="cj-ab" data-lit="true"/g) ?? []).length, 5, 'zone 5 at low load lights all five (compact)');
+  assert.match(html.zoneLowLoad, /data-ab="5"/);
   assert.match(html.ab3, /data-ab="3"/);
   assert.equal((html.ab3.match(/class="cj-ab" data-lit="true"/g) ?? []).length, 3);
   assert.match(html.ab3, /AB 3 · SWEEP AUTO/);

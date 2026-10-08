@@ -74,21 +74,31 @@ export function stepSweep(actual: number, cmd: number, dt: number, snap = false)
 /** 'AUTO' while scheduled, 'OVER' when parked on deck. */
 export type SweepMode = 'AUTO' | 'OVER';
 
-// ---------------------------------------------------------------- afterburner zones
-/** Load thresholds for AB zones 1..5. */
-export const AB_THRESHOLDS: readonly number[] = [0.6, 0.7, 0.8, 0.88, 0.95];
-export const abZoneFromLoad = (load: number): number => (finite(load) ? AB_THRESHOLDS.filter((t) => load >= t).length : 0);
-
+// ---------------------------------------------------------------- afterburner zone
 /**
- * AB zone 0..5: Audio Synth's `abZone` when provided (used as-is, same frame, no smoothing),
- * otherwise derived from load, falling back to throttle.
+ * AB zone 0..5 straight from Audio's `abZone` (getAfterburnerZone / onAfterburnerZoneChange): rounded and
+ * clamped, used in the same render, no smoothing. The skin has no AB thresholds of its own (Audio decides
+ * when the burner engages, e.g. by speed); no Audio zone → 0 (AB OFF).
  */
-export function resolveAbZone(abZone: number | undefined, load: number | undefined, throttle: number | undefined): number {
-  if (finite(abZone)) return clamp(Math.round(abZone), 0, 5);
-  if (finite(load)) return abZoneFromLoad(load);
-  if (finite(throttle)) return abZoneFromLoad(throttle);
-  return 0;
+export function resolveAbZone(abZone: number | undefined): number {
+  return finite(abZone) ? clamp(Math.round(abZone), 0, 5) : 0;
 }
+
+// ---------------------------------------------------------------- Mach readout
+/** Display Mach band (the old gear slot): M 1.00 at 75 mph (where Audio engages the burner), M 2.30 cap at 120 mph. */
+export const MACH_ONE_MPH = 75;
+export const MACH_CAP_MPH = 120;
+export const MACH_MAX = 2.3;
+/** Piecewise linear: 0..75 mph → M = mph / 75; 75..120 mph → M 1.00..2.30; clamped at 2.30 (and at 0). Number only; the SUPERSONIC tag follows abZone. */
+export function mphToMach(mph: number): number {
+  const v = finite(mph) ? Math.max(0, mph) : 0;
+  if (v <= MACH_ONE_MPH) return v / MACH_ONE_MPH;
+  return Math.min(MACH_MAX, 1 + ((v - MACH_ONE_MPH) / (MACH_CAP_MPH - MACH_ONE_MPH)) * (MACH_MAX - 1));
+}
+/** Readout text, two decimals: `M 0.85`. */
+export const machText = (mach: number) => `M ${mach.toFixed(2)}`;
+/** Screen-reader label: `Mach 0.85`, plus `, supersonic` while the afterburner zone is on. */
+export const machLabel = (mach: number, supersonic: boolean) => `Mach ${mach.toFixed(2)}${supersonic ? ', supersonic' : ''}`;
 
 /** Secondary cues (decorative, aria-hidden). AoA 0..30 = load × 30; on-speed 15. */
 export const aoaUnits = (load: number) => Math.round(clamp(finite(load) ? load : 0, 0, 1) * 300) / 10;
