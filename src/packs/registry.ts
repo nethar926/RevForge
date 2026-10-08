@@ -4,7 +4,7 @@ import { NIGHT_PURSUIT_ID, PACK_ENGINE_MIGRATIONS, PACK_THEME_MIGRATIONS } from 
 import type { ThemePack } from './types';
 import { BUILTIN_PATCHES, getBuiltin } from '../audio/builtins';
 import type { EnginePatch } from '../audio/types';
-import { FALLBACK_ENGINE_ID, isEngineListed, isThemeListed, resolveListedEngineId } from '../themes/visibility';
+import { FALLBACK_ENGINE_ID, FORCED_VISIBLE_IDS, isEngineListed, isThemeListed, resolveListedEngineId } from '../themes/visibility';
 
 /**
  * Glob-registered packs: each `src/packs/<id>.pack.ts` default-exports a ThemePack.
@@ -68,6 +68,9 @@ export function isEngineIdVisible(engineId: string): boolean {
 }
 
 const isBuiltinEngine = (id: string) => !!getBuiltin(id);
+
+/** VITE_FORCE_VISIBLE ids that matched a built-in engine on this build (empty when unset). */
+export const FORCED_ENGINE_IDS: readonly string[] = FORCED_VISIBLE_IDS.filter(isBuiltinEngine);
 
 /** Saved / deep-linked engine id → visible id (hidden built-ins → Night Pursuit's engine). */
 export const resolveVisibleEngineId = (id: string): string => resolveListedEngineId(id, isBuiltinEngine);
