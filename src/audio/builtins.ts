@@ -134,26 +134,30 @@ export const TIE_DEFAULTS: EngineParams = {
   ionSpark: 0.3,
   hum: 0.42,
   ionHum: 0.42,
+  // No digital acceleration sine on the craft voice (the refs carry no tonal cue line)
+  digitalCueLevel: 0,
 };
 
 /** Optional full-stack preset (ref-E DNA): balanced combination defaults. */
 export const TIE_FULL_STACK: EngineParams = {
   ...TIE_DEFAULTS,
-  motorMix: 0.55,
-  howlMix: 0.85,
-  formantHowl: 0.85,
-  screamMix: 0.45,
+  // Stack keeps the twin low hum level with the howl (ref-E LTAS is flat 30 Hz–1 kHz)
+  motorMix: 1,
+  noiseBody: 0.75,
+  howlMix: 0.55,
+  formantHowl: 0.55,
+  screamMix: 0.15,
   screamBright: 0.5,
   surgeMix: 0.75,
-  airMix: 0.7,
-  wetHiss: 0.7,
-  air: 0.7,
-  gritMix: 0.48,
-  grit: 0.48,
+  airMix: 0.95,
+  wetHiss: 0.95,
+  air: 0.95,
+  gritMix: 0.5,
+  grit: 0.5,
   formantSpread: 0.48,
   formantShift: 0.52,
   phraseDepth: 0.16,
-  body: 0.55,
+  body: 0.7,
   wetDry: 0.22,
 };
 
