@@ -8,8 +8,16 @@ import './night-pursuit-mount.css';
 /**
  * Design boxes the overlay is laid out in before uniform scale-to-fit.
  * 'wide' matches the overlay's 4-column grid; 'stack' its ≤900px 2-column grid.
+ * 'flex' is drive-window mode only: 600 wide, height elastic between minH and maxH, so the
+ * HUD spans the full-width strip above the Throttle card (the skin's container queries go
+ * two-column at that size) instead of a 600×640 box squeezed beside it.
  */
-const BOX = { wide: { w: 880, h: 400 }, stack: { w: 600, h: 640 } } as const;
+const BOX = {
+  wide: { w: 880, h: 400, minH: 400, maxH: 400 },
+  stack: { w: 600, h: 640, minH: 640, maxH: 640 },
+  flex: { w: 600, h: 640, minH: 280, maxH: 640 },
+} as const;
+type BoxKind = keyof typeof BOX;
 
 /**
  * Framework adapter: telemetry from ThemeStage + pack runtime bus →
@@ -27,7 +35,7 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
   );
   // Uniform scale-to-fit (ResizeObserver only; nothing measured per frame).
   const hostRef = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState({ s: 1, box: 'wide' as keyof typeof BOX });
+  const [fit, setFit] = useState({ s: 1, box: 'wide' as BoxKind, h: BOX.wide.h as number });
   useLayoutEffect(() => {
     const el = hostRef.current;
     const host = el?.parentElement;
@@ -38,10 +46,25 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
       const w = host.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       const h = host.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       if (w <= 0) return;
-      const box: keyof typeof BOX = window.innerWidth <= 900 ? 'stack' : 'wide';
-      const d = BOX[box];
-      const s = Math.max(0.5, drive && h > 0 ? Math.min(w / d.w, h / d.h) : w / d.w);
-      setFit((prev) => (prev.box === box && Math.abs(prev.s - s) < 0.002 ? prev : { s, box }));
+      let box: BoxKind;
+      let bh: number;
+      let s: number;
+      if (drive && driveWindow && h > 0) {
+        // Drive window: the stage hands us the free rect (useDriveWindow, from data-fit-box).
+        // Fixed 600 design width; height follows the rect's aspect within 280..640 (unrounded,
+        // so the box meets the rect edge to edge), then the largest uniform scale that fits both ways.
+        box = 'flex';
+        const d = BOX.flex;
+        bh = Math.max(d.minH, Math.min(d.maxH, (d.w * h) / w));
+        s = Math.min(w / d.w, h / bh);
+      } else {
+        box = window.innerWidth <= 900 ? 'stack' : 'wide';
+        const d = BOX[box];
+        bh = d.h;
+        s = drive && h > 0 ? Math.min(w / d.w, h / d.h) : w / d.w;
+      }
+      s = Math.max(0.5, s);
+      setFit((prev) => (prev.box === box && Math.abs(prev.h - bh) < 0.5 && Math.abs(prev.s - s) < 0.002 ? prev : { s, box, h: bh }));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -51,8 +74,11 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
       ro.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, []);
+  }, [driveWindow]);
   const d = BOX[fit.box];
+  // Advertised to useDriveWindow straight from the prop (not the measured box) so the stage
+  // picks the full-width strip above the Throttle card on the very first drive-window pass.
+  const spec = driveWindow ? BOX.flex : d;
   const mph = unit === 'kph' ? speed / 1.609344 : speed;
   return (
     <div
@@ -61,9 +87,9 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
       data-skin="night-pursuit"
       data-box={fit.box}
       data-drive-window={driveWindow ? 'true' : undefined}
-      data-fit-box={`${d.w},${d.h},${d.h}`}
+      data-fit-box={`${spec.w},${spec.minH},${spec.maxH}`}
       data-running={running ? 'true' : 'false'}
-      style={{ '--np-fit': fit.s, '--np-box-w': `${d.w}px`, '--np-box-h': `${d.h}px` } as CSSProperties}
+      style={{ '--np-fit': fit.s, '--np-box-w': `${d.w}px`, '--np-box-h': `${fit.h}px` } as CSSProperties}
     >
       <div className="np-pack-box">
       <NightPursuitOverlay
