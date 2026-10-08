@@ -731,8 +731,8 @@
 /* ——— Sensor-pod radar (green CRT screen) ———
  * Additive: the scope fills the existing .np-crt-a screen (absolute, inset 0), so the pod's box
  * and every other element keep their exact geometry. No canvas and no promoted layers: the
- * scope paints into the pod's own layer. Scanlines and the CRT inset shade sit above the
- * phosphor. Geometry (face box, beam, blip size) is set from the screen's box by
+ * scope paints into the pod's own layer. Scanlines sit above the phosphor; the screen's own
+ * inset shade shows around the scope face. Geometry (face box, beam, blip size) is set from the screen's box by
  * NightPursuitRadar.tsx on resize; per frame it only writes the wedge gradient, the beam
  * angle and blip transform/opacity.
  * Palette: --skin-green #00c853 = rgb(0, 200, 83); highlight rgb(170, 255, 205).
@@ -743,14 +743,6 @@
 }
 .np-radar-scope::before {
   z-index: 1;
-}
-.np-radar-scope::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.9);
 }
 .np-radar {
   position: absolute;
