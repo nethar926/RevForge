@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import {
   createMasterBus,
   getPlaybackSession,
+  RAMP_IN_S,
   SWITCH_DIP_S,
   type MasterBus,
 } from "../audio/playbackSession";
@@ -20,6 +21,7 @@ import type {
   LockStage,
 } from "../audio";
 import { createEngineSynth, getBuiltin, resolveLegacyPackId } from "../audio";
+import { liveTrimDb } from "../audio/liveTrim";
 
 export function useAudioEngine(
   initialId = "v8-rumble",
@@ -130,6 +132,8 @@ export function useAudioEngine(
       pendingPatchRef.current = null;
       engineRef.current = createEngineSynth(ctxRef.current!, patch);
       routeToMaster(engineRef.current);
+      // New engine is not sounding yet: set the active pack's post-limiter trim immediately.
+      masterRef.current?.setLiveTrimDb(liveTrimDb(patch), 0);
       setEngineId(patch.id);
       setPatchName(patch.name);
     }
@@ -205,8 +209,12 @@ export function useAudioEngine(
   const loadPatch = useCallback((patch: EnginePatch) => {
     // Pack switch (not a knob edit of the same pack) while audible → dip + ramp in from silence.
     const packSwitch = patch.id !== selectedIdRef.current;
-    if (packSwitch && engineRef.current && session.getSnapshot().state === "running")
-      masterRef.current?.switchRamp();
+    const audibleSwitch = packSwitch && !!engineRef.current && session.getSnapshot().state === "running";
+    if (audibleSwitch) masterRef.current?.switchRamp();
+    // Post-limiter live trim of the new pack: ramps in with the switch (from the bottom of the
+    // dip, same 250 ms as the fade); otherwise a plain 250 ms ramp (a shutoff tail may still sound).
+    if (audibleSwitch) masterRef.current?.setLiveTrimDb(liveTrimDb(patch), RAMP_IN_S, SWITCH_DIP_S);
+    else if (packSwitch) masterRef.current?.setLiveTrimDb(liveTrimDb(patch), RAMP_IN_S);
     setEngineId(patch.id);
     setPatchName(patch.name);
     selectedIdRef.current = patch.id;

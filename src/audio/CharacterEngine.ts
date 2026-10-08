@@ -8,7 +8,7 @@ import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNo
 import {EnvelopeMeter} from './envelopeMeter';
 import {ProceduralCharacter} from './ProceduralCharacter';
 import {getTimeJumpCueEnabled,setTimeJumpCueEnabled} from './cuePrefs';
-import {liveTrimGain,liveTrimMarker} from './liveTrim';
+import {liveTrimMarker} from './liveTrim';
 /** CharacterEngine output level before any per-voice live trim. */
 export const CHARACTER_OUTPUT_GAIN=.65;
 const keys=['screamTone','digitalCueLevel','tieSignature','roarOne','roarTwo','roarThree','ionCannonPitch','roarDepth','roarAir','roarWidth','roarLevel','roarVariant','roarPitch','roarThroat','roarRasp','roarPulse','roarAttack','roarRelease','interiorNoise','interiorLevel','targetingNoise','targetingLevel','gearingNoise','gearingLevel','blasterLevel','lifecycleSounds','lifecycleLevel'] as const;
@@ -33,9 +33,9 @@ export class CharacterEngine implements EngineSynth {
  setParams(params:Partial<EngineParams>){for(const k of keys)if(params[k]!==undefined)this.options[k]=Number(params[k]);const next={...params};if(this.base.toPatch().kind==='scifi')next.tieSignature=0;this.base.setParams(next);this.configure();if(params.graphEnabled!==undefined)this.routeGraph();}
  getParams(){return {...this.base.getParams(),...this.options};}
  toPatch(){return {...this.base.toPatch(),layers:this.layers,graph:this.graphDesc.length?this.graphDesc:this.base.toPatch().graph,params:this.getParams() as EnginePatch["params"]};}
- /** Post-dynamics live level trim (liveTrim.ts); layers inside another pack stay untrimmed. */
+ /** Live level trim marker only (liveTrim.ts): the trim itself is applied post-limiter by the master bus. */
  private isLayer=false;private trimApplied=false;
- private liveTrimTag:string|undefined;private applyLiveTrim(p:EnginePatch){this.liveTrimTag=this.isLayer?undefined:liveTrimMarker(p);const g=CHARACTER_OUTPUT_GAIN*(this.isLayer?1:liveTrimGain(p));if(!this.trimApplied){this.output.gain.value=g;this.trimApplied=true;return;}this.output.gain.setTargetAtTime(g,this.context.currentTime,.02);}
+ private liveTrimTag:string|undefined;private applyLiveTrim(p:EnginePatch){this.liveTrimTag=this.isLayer?undefined:liveTrimMarker(p);if(!this.trimApplied){this.output.gain.value=CHARACTER_OUTPUT_GAIN;this.trimApplied=true;}}
  fromPatch(p:EnginePatch){this.layers=p.layers??[];this.applyLiveTrim(p);this.mixer.configure(this.layers);this.options={};for(const k of keys)if(p.params[k]!==undefined)this.options[k]=Number(p.params[k]);this.base.fromPatch(p.kind==='scifi'?{...p,params:{...p.params,tieSignature:0}}:p);this.configure();this.graphDesc=p.graph??[];this.routeGraph();}
  private configure(){setPosition(this.mainSpatial,Number(this.getParams().mainPan??0),Number(this.getParams().mainDepth??0),this.context.currentTime);this.mainBus.gain.setTargetAtTime(this.layers.some(l=>l.solo&&!l.muted)?0:Math.max(0,Math.min(1,Number(this.getParams().mainLayerLevel??1))),this.context.currentTime,.04);const kind=this.base.toPatch().kind;this.legacyGate.gain.value=Math.max(0,Math.min(1,Number(this.getParams().baseLayerLevel??1)));this.fx.configure(this.getParams(),kind);this.jet.configure({...this.getParams(),jetIdleRpm:this.base.toPatch().revforge?.idleRpm??800});const jetOn=kind==='aerospace'&&Number(this.getParams().jetSimulation??0)!==0;if(!jetOn)this.jet.stop();else if(this.running)this.jet.start();}
  private graphActive(){return this.getParams().graphEnabled===1&&this.graphDesc.some(n=>n.type==='Output');}

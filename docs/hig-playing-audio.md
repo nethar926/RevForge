@@ -232,18 +232,28 @@ Frontend, for the Chrono Coupe toggle: `<Switch checked={audio.timeJumpCue} onCh
 9. Hold to rev to the redline with Pulse Burst and a gear change at once. Loud but clean, and no harsh clipping.
 10. Media card or notification: shows the pack name, "RevForge", and Automatic/Manual gearbox.
 
-## Twin Ion live level −2 dB (separate commit, droppable)
-`audio(ion-twin): -2 dB live level (HIG loudness; preview/hig only, pending Wilson A/B)`.
-`src/audio/liveTrim.ts` sets `LIVE_TRIM_DB['ion-twin'] = -2`, applied on `CharacterEngine.output`
-after every dynamics stage, so it moves the level only and leaves timbre and dynamics alone. It
-isn't applied when Twin Ion is used as a layer inside another pack. Offline live render
-(`node scripts/hig-level-check.mjs ion-twin`): idle −33.49 → −35.49, cruise −13.52 → −15.52,
-WOT −6.71 → −8.71 LUFS, with peaks also exactly −2.00 dB. The Engines preview `ion-twin.wav` comes
-from the `buildScifi` approximation, not the live voice, so it's unaffected and stays at
-−20.4 LUFS (the preview median). Its generated preview trim follows the live level: +4.89 dB
-with the cut (+6.89 dB without), so the preview is never louder than the live voice at cruise.
-To revert, drop the commit (it is the last commit on `audio/hig-preview`; `audio/hig-hooks`
-never had it).
+## Twin Ion live level −2 dB (separate commits, droppable)
+`audio(ion-twin): -2 dB live level …` plus `audio(ion-twin): apply the -2 dB trim after the master limiter …`.
+`src/audio/liveTrim.ts` sets `LIVE_TRIM_DB['ion-twin'] = -2`. The master bus applies it as a gain
+stage **after the limiter and soft ceiling** (`MasterBus.setLiveTrimDb`), keyed by the active pack
+id, so the change is exactly −2.00 dB at every operating point, even when the voice drives the
+limiter (a pre-limiter cut is partly absorbed there). Timbre, dynamics and the voice graph are
+untouched (`CharacterEngine.output` stays at 0.65). It's only applied to the `ion-twin` pack (and
+the legacy `tie-fighter` id): a Twin Ion layer inside another pack and `revforge-trenchlight`,
+which shares the topology, are not trimmed. Trims only attenuate (> 0 dB is clamped to 0).
+- Pack switch while audible: the trim ramps over 250 ms from the bottom of the 30 ms switch dip,
+  alongside the fade-in. New engine (before it sounds): set immediately. Otherwise: 250 ms ramp.
+- Previews: while the trim is active, a preview ducks the engine path and holds the trim at unity,
+  so a preview of another pack isn't attenuated; un-duck restores it. Both ramps run in the same
+  direction as the duck, so the level change is monotonic with no click.
+- Measured on the full live chain including the master limiter (offline, seeded, 2–6 s window),
+  vs untrimmed `audio/hig-hooks`: ion-twin idle −33.49 → −35.49, cruise −13.52 → −15.52, full
+  −6.71 → −8.71 LUFS (−2.00 everywhere; true peak −2.00). The other 23 builtins: Δ 0.00 (bit-identical through the bus).
+- The generated preview trim follows the trimmed live level: +4.89 dB with the cut (+6.89 dB
+  without), so the preview is never louder than the live voice at cruise.
+
+To revert, drop both commits (they are the last commits on `audio/hig-preview`; `audio/hig-hooks`
+never had them).
 
 **Build marker.** `LIVE_TRIM_MARKERS['ion-twin'] = 'ion-twin-live-trim:-2dB'` is read at runtime
 (`getDiag().liveTrim` on a Twin Ion engine), so the literal survives minification:

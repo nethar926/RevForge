@@ -127,6 +127,16 @@ test('one at a time: a new preview stops the previous (fade) and resolves it; st
   assert.deepEqual(master.calls, [['duck', PP.PREVIEW_DUCK_S], ['unduck', PP.PREVIEW_UNDUCK_S]]);
 });
 
+test('active post-limiter live trim: preview ducks (trim held at unity) even with the engine stopped', async () => {
+  const ctx = fakeCtx(), master = Object.assign(fakeMaster(), { liveTrimDb: () => -2 });
+  const p = new PP.PreviewPlayer({ ctx, master, engineAudible: () => false, fetch: okFetch([]) });
+  const d = p.play('v8-rumble');
+  await tick(); await tick();
+  p.stop();
+  await d;
+  assert.deepEqual(master.calls, [['duck', PP.PREVIEW_DUCK_S], ['unduck', PP.PREVIEW_UNDUCK_S]]);
+});
+
 test('load failure rejects and returns to idle (no duck)', async () => {
   const ctx = fakeCtx(), master = fakeMaster();
   const p = new PP.PreviewPlayer({ ctx, master, engineAudible: () => true, fetch: () => Promise.resolve({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) }) });

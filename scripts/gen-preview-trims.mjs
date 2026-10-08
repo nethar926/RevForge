@@ -5,6 +5,7 @@
  *
  *   live   = integrated LUFS of the shipped createEngineSynth graph at cruise
  *            (speed .5 / throttle .35 / load .3), settled 2–6 s window, seeded (scripts/live-render.mjs)
+ *            + the pack's post-limiter live trim (liveTrim.ts; exact, applied by the master bus)
  *   file   = integrated LUFS + sample peak of the WAV
  *   exact  = live − file
  *   applied = min(exact, PEAK_CEILING_DB − peak) → a trimmed preview never peaks above the
@@ -18,7 +19,7 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { integratedLufs, readWav16, samplePeakDb } from './loudness.mjs';
-import { renderLive } from './live-render.mjs';
+import { liveTrimDb, renderLive } from './live-render.mjs';
 import { createJiti } from 'jiti';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -37,7 +38,7 @@ const rows = [];
 for (const id of ids) {
   const buf = await renderLive(id, CRUISE, DUR);
   const s = Math.round(FROM * buf.sampleRate);
-  const live = integratedLufs(Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c).subarray(s)), buf.sampleRate);
+  const live = liveTrimDb(id) + integratedLufs(Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c).subarray(s)), buf.sampleRate);
   const { fs, channels } = readWav16(readFileSync(join(dir, `${id}.wav`)));
   const file = integratedLufs(channels, fs);
   const peak = samplePeakDb(channels);

@@ -82,6 +82,8 @@ export interface MasterBus {
   readonly fade: GainNode;
   /** Previews connect here: joins after the fade, before the limiter (shares limiter + output). */
   readonly auxInput: GainNode;
+  /** Per-pack live trim, AFTER the limiter + ceiling (exact level change; ≤ unity). */
+  readonly liveTrim: GainNode;
   /** Post-limiter output (unity gain node). Connected to ctx.destination on creation. */
   readonly output: GainNode;
   readonly limiter: DynamicsCompressorNode | null;
@@ -94,9 +96,18 @@ export interface MasterBus {
   fadeOut(seconds?: number): number;
   /** Pack switch: short dip to silence, then ramp in. */
   switchRamp(dipSeconds?: number, rampSeconds?: number): void;
-  /** Duck the engine voices (not aux) to silence while a preview plays. */
+  /**
+   * Active pack's live trim in dB (liveTrim.ts), applied post-limiter. Clamped to ≤ 0 dB.
+   * seconds = linear ramp time (0 = immediate, only while silent); delaySeconds = ramp start
+   * (pack switch: start at the bottom of the switch dip). While ducked the trim is held at unity
+   * (the engine is silent and a preview must not inherit it) and re-applied on unduck.
+   */
+  setLiveTrimDb(db: number, seconds?: number, delaySeconds?: number): void;
+  /** Target live trim in dB (0 = none). */
+  liveTrimDb(): number;
+  /** Duck the engine voices (not aux) to silence while a preview plays (live trim → unity). */
   duck(seconds?: number): void;
-  /** Bring the engine voices back from a duck (ramp in from silence). */
+  /** Bring the engine voices back from a duck (ramp in from silence; live trim restored). */
   unduck(seconds?: number): void;
   /** Current fade gain value (0..1). Never above 1. */
   level(): number;
@@ -135,6 +146,8 @@ export function createMasterBus(ctx: BaseAudioContext, opts: { connect?: boolean
   auxInput.connect(sum);
   const output = ctx.createGain();
   output.gain.value = 1;
+  const liveTrim = ctx.createGain();
+  liveTrim.gain.value = 1;
   let limiter: DynamicsCompressorNode | null = null;
   let ceiling: WaveShaperNode | null = null;
   let trim: GainNode | null = null;
@@ -168,15 +181,32 @@ export function createMasterBus(ctx: BaseAudioContext, opts: { connect?: boolean
     node.connect(ceiling);
     node = ceiling;
   }
-  node.connect(output);
+  node.connect(liveTrim);
+  liveTrim.connect(output);
   if (opts.connect !== false) output.connect(ctx.destination);
 
   const g = fade.gain;
   const d = input.gain;
+  const lt = liveTrim.gain;
+  let trimDb = 0;
+  let ducked = false;
+  const rampTrim = (target: number, seconds: number, delay = 0) => {
+    const now = ctx.currentTime;
+    if (seconds <= 0 && delay <= 0) {
+      lt.cancelScheduledValues(now);
+      lt.setValueAtTime(target, now);
+      return;
+    }
+    const v = holdParam(lt, now);
+    const start = now + Math.max(0, delay);
+    if (start > now) lt.setValueAtTime(v, start);
+    lt.linearRampToValueAtTime(target, start + Math.max(0.005, seconds));
+  };
   return {
     input,
     fade,
     auxInput,
+    liveTrim,
     output,
     limiter,
     ceiling,
@@ -211,21 +241,34 @@ export function createMasterBus(ctx: BaseAudioContext, opts: { connect?: boolean
       g.linearRampToValueAtTime(0, dipEnd);
       g.linearRampToValueAtTime(1, dipEnd + Math.max(0.005, rampSeconds));
     },
+    setLiveTrimDb(db: number, seconds = RAMP_IN_S, delaySeconds = 0) {
+      trimDb = Number.isFinite(db) ? Math.min(0, db) : 0;
+      if (ducked) return;
+      rampTrim(dbToGain(trimDb), seconds, delaySeconds);
+    },
+    liveTrimDb() {
+      return trimDb;
+    },
     duck(seconds = FADE_OUT_S) {
       const now = ctx.currentTime;
       holdParam(d, now);
       d.linearRampToValueAtTime(0, now + Math.max(0.005, seconds));
+      ducked = true;
+      // engine fades out while the trim returns to unity: the product falls monotonically.
+      if (trimDb !== 0) rampTrim(1, seconds);
     },
     unduck(seconds = RAMP_IN_S) {
       const now = ctx.currentTime;
       holdParam(d, now);
       d.linearRampToValueAtTime(1, now + Math.max(0.005, seconds));
+      ducked = false;
+      if (trimDb !== 0) rampTrim(dbToGain(trimDb), seconds);
     },
     level() {
       return Math.max(0, Math.min(1, g.value));
     },
     dispose() {
-      for (const n of [input, fade, sum, auxInput, limiter, trim, ceiling, output]) {
+      for (const n of [input, fade, sum, auxInput, limiter, trim, ceiling, liveTrim, output]) {
         try {
           n?.disconnect();
         } catch {

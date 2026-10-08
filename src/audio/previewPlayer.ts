@@ -65,7 +65,10 @@ export function resolvePreview(packIdOrUrl: string, base = baseUrl()): PreviewTa
 export interface PreviewPlayOptions {
   /** Extra gain (dB) on top of the generated trim. */
   gainDb?: number;
-  /** Duck the engine while the preview plays (default: true when engineAudible()). */
+  /**
+   * Duck the engine while the preview plays. Default: when engineAudible(), or when the active
+   * pack has a post-limiter live trim (ducking holds it at unity so the preview isn't trimmed).
+   */
   duckEngine?: boolean;
 }
 
@@ -160,7 +163,7 @@ export class PreviewPlayer {
           gain.connect(master.auxInput);
           a.src = src;
           a.gain = gain;
-          const duck = opts.duckEngine ?? !!this.deps.engineAudible?.();
+          const duck = opts.duckEngine ?? (!!this.deps.engineAudible?.() || (master.liveTrimDb?.() ?? 0) !== 0);
           if (duck) {
             master.duck(PREVIEW_DUCK_S);
             a.ducked = true;

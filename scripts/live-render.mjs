@@ -30,6 +30,8 @@ globalThis.window ??= globalThis;
 globalThis.location ??= { href: pathToFileURL(join(ROOT, 'public', 'index.html')).href };
 const audio = await jiti.import(join(ROOT, 'src/audio/index.ts'));
 const PS = await jiti.import(join(ROOT, 'src/audio/playbackSession.ts'));
+const LT = await jiti.import(join(ROOT, 'src/audio/liveTrim.ts'));
+export const liveTrimDb = (id) => LT.liveTrimDb(audio.getBuiltin(id));
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -43,7 +45,8 @@ function mulberry32(seed) {
 const seedOf = (s) => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 
 /**
- * profile(t) → DrivingInput. opts.master: insert the HIG master bus (already at unity).
+ * profile(t) → DrivingInput. opts.master: insert the HIG master bus (already at unity) with the
+ * pack's post-limiter live trim, like the app (opts.liveTrim === false → untrimmed).
  * Returns the stereo AudioBuffer.
  */
 export async function renderLive(id, profile, dur, opts = {}) {
@@ -68,6 +71,7 @@ export async function renderLive(id, profile, dur, opts = {}) {
     if (opts.master) {
       bus = PS.createMasterBus(ctx);
       bus.fade.gain.value = 1;
+      if (opts.liveTrim !== false) bus.setLiveTrimDb(LT.liveTrimDb(patch), 0);
       eng.output.disconnect();
       eng.output.connect(bus.input);
     }
@@ -114,14 +118,18 @@ export async function masterLatency(sr = 44100) {
   return latency;
 }
 
-/** Pass an existing buffer through the HIG master bus (unity, no ramp), latency-aligned. */
-export async function throughMaster(buf) {
+/**
+ * Pass an existing buffer through the HIG master bus (unity, no ramp), latency-aligned.
+ * opts.liveTrimDb: post-limiter live trim (default 0 = none).
+ */
+export async function throughMaster(buf, opts = {}) {
   const lat = await masterLatency(buf.sampleRate);
   const ctx = new OfflineAudioContext(buf.numberOfChannels, buf.length + lat, buf.sampleRate);
   const src = ctx.createBufferSource();
   src.buffer = buf;
   const bus = PS.createMasterBus(ctx);
   bus.fade.gain.value = 1;
+  if (opts.liveTrimDb) bus.setLiveTrimDb(opts.liveTrimDb, 0);
   src.connect(bus.input);
   src.start();
   const out = await ctx.startRendering();
