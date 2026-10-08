@@ -132,7 +132,9 @@ test('wiring sources: old jet skin CSS/overlay out of ThemeStage + index.css; mo
   const mount = src('packs/mounts/CarrierJetMount.tsx');
   assert.match(mount, /useFitBox\(/);
   // Drive window = the full board (Wilson): explicit compact={false}, never the skin's essential layout.
-  assert.match(mount, /driveWindow \? false : props\.compact === true \? true : 'auto'/);
+  assert.match(mount, /fullBoard = driveWindow \|\| layout === 'portrait' \|\| layout === 'phone-landscape'/);
+  assert.match(mount, /fullBoard \? false : props\.compact === true \? true : 'auto'/);
+  assert.match(mount, /data-rf-layout=\{layout\}/);
   assert.match(mount, /<CarrierJetHud \{\.\.\.props\} compact=\{compact\} driveWindow=\{false\} abZone=\{abZone\} \/>/);
   assert.match(mount, /useSyncExternalStore\(subscribePackAbZone, readPackAbZone/);
   assert.match(mount, /useSyncExternalStore\(subscribePackAbZone, readPackAbZone/);
