@@ -12,3 +12,13 @@
   min-width: 0;
   min-height: 0;
 }
+/*
+ * Phone layouts (packs/layout.ts → data-rf-layout): keep the board inside the safe area
+ * (notch / home indicator; index.html has viewport-fit=cover). Tesla / desktop ('window' /
+ * 'board') untouched. Native 16:9 board CSS for phone-landscape is Visual Skins'.
+ */
+.cjm[data-rf-layout='portrait'] > .cjm-fill,
+.cjm[data-rf-layout='phone-landscape'] > .cjm-fill {
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
