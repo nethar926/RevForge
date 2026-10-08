@@ -34,8 +34,20 @@ export function readMediaButtons(storage:Pick<Storage,'getItem'|'removeItem'>|nu
  }catch{return true;}
 }
 export const MEDIA_ARTWORK_SIZES=[96,192,512] as const;
-export interface MediaMetadataFields {title:string;artist:string;album:string;artwork:{src:string;sizes:string;type:string}[];}
-export function mediaMetadataFields(name:string, manual:boolean, artwork:{src:string;sizes:string;type:string}[]=[]):MediaMetadataFields {
+/** Static RevForge icon PNG committed in public/icons (rendered from public/favicon.svg). */
+export const mediaArtworkPath=(size:number)=>`icons/revforge-${size}.png`;
+export const MEDIA_ARTWORK_SVG='favicon.svg';
+export interface MediaArtwork {src:string;sizes:string;type:string;}
+/**
+ * Media Session artwork: static PNGs at 96/192/512 (car media hubs may not accept data: URLs or decode SVG),
+ * then the SVG last. Resolved against `base` (document.baseURI) so it works under /RevForge/ and /RevForge/preview/<slug>/.
+ */
+export function mediaArtwork(base:string):MediaArtwork[] {
+ const sizes=MEDIA_ARTWORK_SIZES.map(s=>`${s}x${s}`);
+ return [...MEDIA_ARTWORK_SIZES.map((s,i)=>({src:new URL(mediaArtworkPath(s),base).href,sizes:sizes[i],type:'image/png'})),{src:new URL(MEDIA_ARTWORK_SVG,base).href,sizes:sizes.join(' '),type:'image/svg+xml'}];
+}
+export interface MediaMetadataFields {title:string;artist:string;album:string;artwork:MediaArtwork[];}
+export function mediaMetadataFields(name:string, manual:boolean, artwork:MediaArtwork[]=[]):MediaMetadataFields {
  return {title:name||'RevForge',artist:'RevForge',album:manual?'Manual gearbox':'Automatic gearbox',artwork};
 }
 /** True only for an element Chromium can treat as playing media (Audio's MediaOutput element may exist but never play). */
