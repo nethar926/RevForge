@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {mediaCommand,type VehicleMediaAction} from './mediaActions';
-interface Options {getMediaElement?:()=>HTMLAudioElement|null;blasters?:boolean;fire?:()=>void;enabled:boolean;running:boolean;manual:boolean;pauseShifts:boolean;name:string;start:()=>void;stop:()=>void;shift:(direction:number)=>void;}
+interface Options {getMediaElement?:()=>HTMLAudioElement|null;blasters?:boolean;fire?:()=>void;enabled:boolean;running:boolean;manual:boolean;/** false = the pack has no gearbox (Carrier Jet): no gearbox wording, never shifts. */gearbox?:boolean;pauseShifts:boolean;name:string;start:()=>void;stop:()=>void;shift:(direction:number)=>void;}
 function carrierUrl() {
  // Original one-second silent PCM clip. It activates a native media element without duplicating the synth output.
  const bytes=new ArrayBuffer(16044),v=new DataView(bytes);
@@ -40,8 +40,8 @@ export function useVehicleMedia(options:Options) {
  },[options.enabled,arm]);
  useEffect(()=>{
   if(!options.enabled||!('mediaSession' in navigator))return;
-  if(options.running){if(current.current.getMediaElement?.())element.current?.pause();if(typeof MediaMetadata!=='undefined')navigator.mediaSession.metadata=new MediaMetadata({title:options.name,artist:'RevForge',album:options.manual?'Manual gearbox':'Automatic gearbox'});navigator.mediaSession.playbackState='playing';}
+  if(options.running){if(current.current.getMediaElement?.())element.current?.pause();if(typeof MediaMetadata!=='undefined')navigator.mediaSession.metadata=new MediaMetadata({title:options.name,artist:'RevForge',album:options.gearbox===false?'No gearbox':options.manual?'Manual gearbox':'Automatic gearbox'});navigator.mediaSession.playbackState='playing';}
   else{element.current?.pause();navigator.mediaSession.playbackState='none';setCarrier('Not activated');}
- },[options.enabled,options.running,options.name,options.manual]);
+ },[options.enabled,options.running,options.name,options.manual,options.gearbox]);
  return {arm,accepted,lastEvent,carrier};
 }

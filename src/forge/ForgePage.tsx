@@ -18,6 +18,7 @@ import { BUILTIN_PATCHES, getBuiltin } from "../audio";
 import { isEngineIdVisible, packForThemeId, resolveVisibleEnginePatch } from "../packs/registry";
 import { connectPackAudio } from "../packs/audioBridge";
 import { connectPackShell, setPackShellState, type PackShellAction } from "../packs/runtime";
+import { effectiveDriveMode, effectiveGearCount, packHasGears } from "../packs/gears";
 import type { EnginePatch } from "../audio";
 import type { useAudioEngine } from "../hooks/useAudioEngine";
 import type { useGeolocation } from "../hooks/useGeolocation";
@@ -144,23 +145,29 @@ export function ForgePage({
       getBuiltin(audio.engineId),
     [audio, userPatches, revision],
   );
+  // Per-pack gearbox (packs/gears.ts): Carrier Jet has no gears, whatever prefs.gearCount says.
+  // Only the effective values change; the saved gearCount and the Auto/Manual choice are kept,
+  // so other packs behave exactly as before when you switch back.
+  const activePackId = packForThemeId(theme.id)?.id;
+  const hasGears = packHasGears(activePackId);
+  const driveMode = effectiveDriveMode(activePackId, mode);
   const config = useMemo(() => {
     const base = drivetrainFor(patch, sceneForId("road-66"));
     const topFromGarage = garage.active ? garage.active.topSpeedKph / 3.6 : undefined;
     const topFromPrefs = prefs.maxTopSpeedMph / 2.2369362920544; // mph → m/s
     return {
       ...base,
-      gears: prefs.gearCount,
+      gears: effectiveGearCount(activePackId, prefs.gearCount),
       idleRpm: prefs.idleRpmMin,
       topSpeedMps: topFromGarage ?? topFromPrefs ?? base.topSpeedMps,
     };
-  }, [patch, garage.active, prefs.gearCount, prefs.maxTopSpeedMph, prefs.idleRpmMin]);
+  }, [patch, garage.active, activePackId, prefs.gearCount, prefs.maxTopSpeedMph, prefs.idleRpmMin]);
   const { simulation, hud, shift, neutral, reset } = useDriveSimulation(
     audio,
     gps,
     config,
     source,
-    mode,
+    driveMode,
     pedal,
     brake,
     jitterEnabled?jitterAmount:0,
@@ -217,7 +224,7 @@ export function ForgePage({
       }
       if (e.key.toLowerCase() === "b" && source === "demo")
         setBrake(e.type === "keydown");
-      if (mode === "manual" && e.type === "keydown" && !e.repeat) {
+      if (driveMode === "manual" && e.type === "keydown" && !e.repeat) {
         if (["ArrowUp", ".", "="].includes(e.key)) {
           e.preventDefault();
           shift(1);
@@ -234,7 +241,7 @@ export function ForgePage({
       window.removeEventListener("keydown", key);
       window.removeEventListener("keyup", key);
     };
-  }, [audio.running, panel, source, mode, shift]);
+  }, [audio.running, panel, source, driveMode, shift]);
   const setDriving = audio.setDriving;
   useEffect(
     () => () => setDriving({ speed: 0, throttle: 0, load: 0 }),
@@ -270,7 +277,7 @@ export function ForgePage({
     audio.stop();
     reset();
   };
-  const media = useVehicleMedia({blasters:patch?.kind==='scifi',fire:()=>audio.triggerUiCue('ion-cannon'),getMediaElement:audio.getMediaElement,enabled:mediaEnabled,running:audio.running,manual:mode==='manual' && config.gears>1,pauseShifts,name:audio.patchName,start:()=>{void audio.start().then(()=>audio.playStarter?.());if(source==='gps')onGpsEnabled(true);},stop,shift});
+  const media = useVehicleMedia({blasters:patch?.kind==='scifi',fire:()=>audio.triggerUiCue('ion-cannon'),getMediaElement:audio.getMediaElement,enabled:mediaEnabled,running:audio.running,manual:hasGears && driveMode==='manual' && config.gears>1,gearbox:hasGears,pauseShifts,name:audio.patchName,start:()=>{void audio.start().then(()=>audio.playStarter?.());if(source==='gps')onGpsEnabled(true);},stop,shift:(d:number)=>{if(hasGears)shift(d);}});
   const sourceChange = (next: "demo" | "gps") => {
     setSource(next);
     setPedal(0);
@@ -318,8 +325,8 @@ export function ForgePage({
         {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>
           {source==='demo'&&<label className="rev-throttle">Throttle <span>{Math.round(pedal*100)}%</span><input aria-label="Throttle" type="range" min="0" max="1" step=".01" disabled={!revReady} value={pedal} onChange={e=>setPedal(Number(e.target.value))}/></label>}
           <footer className="rev-dock" aria-label="Drive controls">
-            <div className="rev-segment"><button aria-pressed={mode==='auto'} onClick={()=>setMode('auto')}>Auto</button><button aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>Manual</button></div>
-            {mode==='manual'&&<><button className="rev-chip" disabled={!audio.running} aria-label="Downshift" onClick={()=>shift(-1)}>−</button><button className="rev-chip" disabled={!audio.running} onClick={neutral}>N</button><button className="rev-chip" disabled={!audio.running} aria-label="Upshift" onClick={()=>shift(1)}>+</button></>}
+            {hasGears&&<div className="rev-segment"><button aria-pressed={mode==='auto'} onClick={()=>setMode('auto')}>Auto</button><button aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>Manual</button></div>}
+            {driveMode==='manual'&&<><button className="rev-chip" disabled={!audio.running} aria-label="Downshift" onClick={()=>shift(-1)}>−</button><button className="rev-chip" disabled={!audio.running} onClick={neutral}>N</button><button className="rev-chip" disabled={!audio.running} aria-label="Upshift" onClick={()=>shift(1)}>+</button></>}
             {source==='demo'&&<button className="rev-chip" disabled={!revReady} onPointerDown={e=>hold(e,'throttle')} onPointerUp={()=>setPedal(0)} onPointerCancel={()=>setPedal(0)} onLostPointerCapture={()=>setPedal(0)}>Hold to rev</button>}
             {patch?.kind==='scifi'&&<button className="rev-chip rev-blaster" disabled={!audio.running} onClick={()=>audio.triggerUiCue('ion-cannon')}>Pulse Burst</button>}
             <button className="rev-chip rev-stop" disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Shutdown':mutedBeforeHide?'Resume':'Ignition'}</button>
@@ -379,9 +386,10 @@ export function ForgePage({
                 <label>Background audio<input aria-label="Background audio" type="checkbox" checked={audio.background} onChange={e=>audio.setBackgroundEnabled(e.target.checked)}/></label><p role="status">{audio.backgroundStatus} · Audio context: {audio.getDiag().contextState}</p><label>Demo mode<input aria-label="Demo mode" type="checkbox" checked={source==='demo'} onChange={e=>sourceChange(e.target.checked?'demo':'gps')}/></label>
                 <p className="forge-control-hint">Turn Demo off to use browser GPS. Location permission is required.</p>{source==='gps'&&<div role="status"><p>{gpsLabel} · {gps.accuracy===null?'No fix':`Accuracy ±${Math.round(gps.accuracy)} m`}</p><p>{gps.errorMessage}</p><button onClick={gps.start}>Retry GPS</button></div>}
                 <label>Idle jitter<input aria-label="Idle jitter" type="checkbox" checked={jitterEnabled} onChange={e=>setJitterEnabled(e.target.checked)}/></label><label>Idle jitter intensity · {Math.round(jitterAmount*100)}%<input aria-label="Idle jitter intensity" type="range" min="0" max="1" step=".01" disabled={!jitterEnabled} value={jitterAmount} onChange={e=>setJitterAmount(Number(e.target.value))}/></label><p className="forge-control-hint">Adds subtle RPM wander at idle. Fades out as you accelerate.</p>
-                <p className="forge-control-hint">Background playback and wheel events depend on the browser. If interrupted, tap Ignition to resume; touch shifting remains available.</p><label>Experimental media-button controls<input type="checkbox" checked={mediaEnabled} onChange={e=>setMediaEnabled(e.target.checked)}/></label>
-                <label>Play/pause button upshifts in Manual<input type="checkbox" checked={pauseShifts} onChange={e=>setPauseShifts(e.target.checked)}/></label>
-                <p className="forge-control-hint">Twin-Ion: received play/pause events fire a pulse burst. Other engines: pause can upshift in Manual. Next/previous shift gears. Touch Shutdown always stops.</p>
+                <p className="forge-control-hint">Background playback and wheel events depend on the browser. If interrupted, tap Ignition to resume{hasGears?'; touch shifting remains available':''}.</p><label>Experimental media-button controls<input type="checkbox" checked={mediaEnabled} onChange={e=>setMediaEnabled(e.target.checked)}/></label>
+                {hasGears?<><label>Play/pause button upshifts in Manual<input type="checkbox" checked={pauseShifts} onChange={e=>setPauseShifts(e.target.checked)}/></label>
+                <p className="forge-control-hint">Twin-Ion: received play/pause events fire a pulse burst. Other engines: pause can upshift in Manual. Next/previous shift gears. Touch Shutdown always stops.</p></>
+                :<p className="forge-control-hint">{theme.name} has no gearbox: play starts the engine, pause stops it, next/previous do nothing. Touch Shutdown always stops.</p>}
                 <div className="compatibility-box"><h3>Tesla input check</h3><dl><dt>Location API</dt><dd>{typeof navigator!=='undefined'&&'geolocation' in navigator?'Available':'Unavailable'}</dd><dt>GPS status</dt><dd>{gps.status}</dd><dt>Position accuracy</dt><dd>{gps.accuracy===null?'No reading':`±${Math.round(gps.accuracy)} m`}</dd><dt>Speed reading</dt><dd>{gps.timestamp===null?'Not received':`${gps.mph.toFixed(1)} mph`}</dd><dt>Media handlers</dt><dd>{media.accepted.length}/4 registered</dd><dt>Media session</dt><dd>{media.carrier}</dd></dl><p className="input-check-log" role="status">{media.lastEvent}</p><button className="forge-text-button" disabled={!mediaEnabled || !audio.running} onClick={media.arm}>Enable controls / recheck</button><p>While parked, start the engine and press your media buttons. An event appearing here confirms delivery to this browser. Button registration alone does not mean Tesla delivers the event. GPS speed requires an actual location reading.</p></div>
 
                 <label>
