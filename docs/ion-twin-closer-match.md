@@ -2,7 +2,7 @@
 
 **Pack:** `ion-twin` (kind `scifi`) · **Branch:** `audio/ion-twin-closer` from `audio/packs-integration` (e2ace06)
 **Legal / method:** the six reference clips were used as *listening targets only*. Nothing from
-them is in the repo or product: no samples, slices, wavetables, impulse responses or
+them is in the repo or product: no samples, slices, wavetables, convolution IRs or
 sample-by-sample derived data. Only summary analysis (pitch / formant centres and bandwidths,
 spectral slopes, modulation rates, attack / decay times) was used to choose synthesis
 parameters. The voice is 100 % procedural Web Audio.
