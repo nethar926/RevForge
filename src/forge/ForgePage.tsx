@@ -30,6 +30,7 @@ import { ThemePicker } from "../themes/ThemePicker";
 import { LISTED_THEMES, SPLASH_BACKDROP_THEME, isThemeListed, themeForId } from "../themes/catalog";
 import type { useThemes } from "../themes/useThemes";
 import { useVehicleMedia } from "./useVehicleMedia";
+import { LEGACY_MEDIA_OPT_IN_KEY, MEDIA_BUTTONS_KEY, readMediaButtons } from "./mediaActions";
 import { NativeStudio } from "./NativeStudio";
 import { useDriveSimulation } from "./useDriveSimulation";
 import "./forge.css";
@@ -133,8 +134,8 @@ export function ForgePage({
   const [pedal, setPedal] = useState(0);
   const [brake, setBrake] = useState(false);
   const [motion, setMotion] = useState(() => storedFlag("drivesynth.motion", true));
-  const [mediaEnabled,setMediaEnabled] = useState(() => storedFlag("revforge.media.experimental", false));
   const [pauseShifts,setPauseShifts] = useState(() => storedFlag("drivesynth.pauseShifts", true));
+  const [mediaButtons,setMediaButtons] = useState(() => readMediaButtons(typeof localStorage==='undefined'?null:localStorage, storageKey(MEDIA_BUTTONS_KEY), storageKey(LEGACY_MEDIA_OPT_IN_KEY)));
   const [mutedBeforeHide, setMutedBeforeHide] = useState(false);
   const [revision, setRevision] = useState(0);
   const patch = useMemo(
@@ -167,7 +168,7 @@ export function ForgePage({
   );
   const revReady = audio.running && source === "demo";
 
-  useEffect(() => {try {localStorage.setItem(storageKey("drivesynth.demo"),String(source==='demo'));localStorage.setItem(storageKey("drivesynth.motion"),String(motion));localStorage.setItem(storageKey("revforge.media.experimental"),String(mediaEnabled));localStorage.setItem(storageKey("drivesynth.pauseShifts"),String(pauseShifts));}catch{/* preferences remain available this session */}},[source,motion,mediaEnabled,pauseShifts]);
+  useEffect(() => {try {localStorage.setItem(storageKey("drivesynth.demo"),String(source==='demo'));localStorage.setItem(storageKey("drivesynth.motion"),String(motion));localStorage.setItem(storageKey("drivesynth.pauseShifts"),String(pauseShifts));localStorage.setItem(storageKey(MEDIA_BUTTONS_KEY),String(mediaButtons));}catch{/* preferences remain available this session */}},[source,motion,pauseShifts,mediaButtons]);
   useEffect(() => {
     audio.setUpshiftSfxEnabled(prefs.upshiftSfx);
     audio.setLockSfxEnabled(prefs.ionTwinLockSfx);
@@ -270,7 +271,18 @@ export function ForgePage({
     audio.stop();
     reset();
   };
-  const media = useVehicleMedia({blasters:patch?.kind==='scifi',fire:()=>audio.triggerUiCue('ion-cannon'),getMediaElement:audio.getMediaElement,enabled:mediaEnabled,running:audio.running,manual:mode==='manual' && config.gears>1,pauseShifts,name:audio.patchName,start:()=>{void audio.start().then(()=>audio.playStarter?.());if(source==='gps')onGpsEnabled(true);},stop,shift});
+  // Paddle (on-screen −/+ and steering-wheel next/previous): in Auto a tap takes Manual and shifts, like a paddle override.
+  const pendingShift = useRef(0);
+  const paddle = (direction: number) => {
+    if (mode === "manual") { shift(direction); return; }
+    pendingShift.current = direction;
+    setMode("manual");
+  };
+  useEffect(() => {
+    // Runs after useDriveSimulation has seen mode=manual, so the queued shift is not dropped by the Auto step.
+    if (mode === "manual" && pendingShift.current) { shift(pendingShift.current); pendingShift.current = 0; }
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const media = useVehicleMedia({blasters:patch?.kind==='scifi',fire:()=>audio.triggerUiCue('ion-cannon'),getMediaElement:audio.getMediaElement,enabled:mediaButtons,running:audio.running,starting:audio.starting,manual:mode==='manual' && config.gears>1,canShift:config.gears>1,pauseShifts,name:audio.patchName,stop,shift:paddle});
   const sourceChange = (next: "demo" | "gps") => {
     setSource(next);
     setPedal(0);
@@ -319,7 +331,7 @@ export function ForgePage({
           {source==='demo'&&<label className="rev-throttle">Throttle <span>{Math.round(pedal*100)}%</span><input aria-label="Throttle" type="range" min="0" max="1" step=".01" disabled={!revReady} value={pedal} onChange={e=>setPedal(Number(e.target.value))}/></label>}
           <footer className="rev-dock" aria-label="Drive controls">
             <div className="rev-segment"><button aria-pressed={mode==='auto'} onClick={()=>setMode('auto')}>Auto</button><button aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>Manual</button></div>
-            {mode==='manual'&&<><button className="rev-chip" disabled={!audio.running} aria-label="Downshift" onClick={()=>shift(-1)}>−</button><button className="rev-chip" disabled={!audio.running} onClick={neutral}>N</button><button className="rev-chip" disabled={!audio.running} aria-label="Upshift" onClick={()=>shift(1)}>+</button></>}
+            {mode==='manual'&&<><button className="rev-chip" disabled={!audio.running} aria-label="Downshift" onClick={()=>paddle(-1)}>−</button><button className="rev-chip" disabled={!audio.running} onClick={neutral}>N</button><button className="rev-chip" disabled={!audio.running} aria-label="Upshift" onClick={()=>paddle(1)}>+</button></>}
             {source==='demo'&&<button className="rev-chip" disabled={!revReady} onPointerDown={e=>hold(e,'throttle')} onPointerUp={()=>setPedal(0)} onPointerCancel={()=>setPedal(0)} onLostPointerCapture={()=>setPedal(0)}>Hold to rev</button>}
             {patch?.kind==='scifi'&&<button className="rev-chip rev-blaster" disabled={!audio.running} onClick={()=>audio.triggerUiCue('ion-cannon')}>Pulse Burst</button>}
             <button className="rev-chip rev-stop" disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Shutdown':mutedBeforeHide?'Resume':'Ignition'}</button>
@@ -379,10 +391,11 @@ export function ForgePage({
                 <label>Background audio<input aria-label="Background audio" type="checkbox" checked={audio.background} onChange={e=>audio.setBackgroundEnabled(e.target.checked)}/></label><p role="status">{audio.backgroundStatus} · Audio context: {audio.getDiag().contextState}</p><label>Demo mode<input aria-label="Demo mode" type="checkbox" checked={source==='demo'} onChange={e=>sourceChange(e.target.checked?'demo':'gps')}/></label>
                 <p className="forge-control-hint">Turn Demo off to use browser GPS. Location permission is required.</p>{source==='gps'&&<div role="status"><p>{gpsLabel} · {gps.accuracy===null?'No fix':`Accuracy ±${Math.round(gps.accuracy)} m`}</p><p>{gps.errorMessage}</p><button onClick={gps.start}>Retry GPS</button></div>}
                 <label>Idle jitter<input aria-label="Idle jitter" type="checkbox" checked={jitterEnabled} onChange={e=>setJitterEnabled(e.target.checked)}/></label><label>Idle jitter intensity · {Math.round(jitterAmount*100)}%<input aria-label="Idle jitter intensity" type="range" min="0" max="1" step=".01" disabled={!jitterEnabled} value={jitterAmount} onChange={e=>setJitterAmount(Number(e.target.value))}/></label><p className="forge-control-hint">Adds subtle RPM wander at idle. Fades out as you accelerate.</p>
-                <p className="forge-control-hint">Background playback and wheel events depend on the browser. If interrupted, tap Ignition to resume; touch shifting remains available.</p><label>Experimental media-button controls<input type="checkbox" checked={mediaEnabled} onChange={e=>setMediaEnabled(e.target.checked)}/></label>
+                <label>Steering-wheel media buttons shift gears<input type="checkbox" checked={mediaButtons} onChange={e=>setMediaButtons(e.target.checked)}/></label>
+                <p className="forge-control-hint">While the engine runs, RevForge takes the media controls (Miniplayer and steering wheel). Shutdown hands them back to your music. Background playback and wheel events depend on the browser. If interrupted, tap Ignition to resume; touch shifting remains available.</p>
                 <label>Play/pause button upshifts in Manual<input type="checkbox" checked={pauseShifts} onChange={e=>setPauseShifts(e.target.checked)}/></label>
-                <p className="forge-control-hint">Twin-Ion: received play/pause events fire a pulse burst. Other engines: pause can upshift in Manual. Next/previous shift gears. Touch Shutdown always stops.</p>
-                <div className="compatibility-box"><h3>Tesla input check</h3><dl><dt>Location API</dt><dd>{typeof navigator!=='undefined'&&'geolocation' in navigator?'Available':'Unavailable'}</dd><dt>GPS status</dt><dd>{gps.status}</dd><dt>Position accuracy</dt><dd>{gps.accuracy===null?'No reading':`±${Math.round(gps.accuracy)} m`}</dd><dt>Speed reading</dt><dd>{gps.timestamp===null?'Not received':`${gps.mph.toFixed(1)} mph`}</dd><dt>Media handlers</dt><dd>{media.accepted.length}/4 registered</dd><dt>Media session</dt><dd>{media.carrier}</dd></dl><p className="input-check-log" role="status">{media.lastEvent}</p><button className="forge-text-button" disabled={!mediaEnabled || !audio.running} onClick={media.arm}>Enable controls / recheck</button><p>While parked, start the engine and press your media buttons. An event appearing here confirms delivery to this browser. Button registration alone does not mean Tesla delivers the event. GPS speed requires an actual location reading.</p></div>
+                <p className="forge-control-hint">Twin-Ion: received play/pause events fire a pulse burst. Other engines: pause stops (or upshifts in Manual). Next/previous shift gears like the paddles (in Auto they switch to Manual). Touch Shutdown always stops.</p>
+                <div className="compatibility-box"><h3>Tesla input check</h3><dl><dt>Location API</dt><dd>{typeof navigator!=='undefined'&&'geolocation' in navigator?'Available':'Unavailable'}</dd><dt>GPS status</dt><dd>{gps.status}</dd><dt>Position accuracy</dt><dd>{gps.accuracy===null?'No reading':`±${Math.round(gps.accuracy)} m`}</dd><dt>Speed reading</dt><dd>{gps.timestamp===null?'Not received':`${gps.mph.toFixed(1)} mph`}</dd><dt>Media handlers</dt><dd>{media.accepted.length}/4 registered</dd><dt>Media session</dt><dd>{media.carrier}</dd><dt>Engine output element</dt><dd>{media.outputPlaying?'Playing':'Direct Web Audio'}</dd></dl><p className="input-check-log" role="status">{media.lastEvent}</p>{media.history.length>1&&<p className="input-check-log">{media.history.slice(1).map((line,i)=><span key={i} style={{display:'block'}}>{line}</span>)}</p>}<button className="forge-text-button" disabled={!mediaButtons || !audio.running} onClick={media.arm}>Enable controls / recheck</button><p>While parked, start the engine and press your media buttons. An event appearing here confirms delivery to this browser. Button registration alone does not mean Tesla delivers the event. GPS speed requires an actual location reading.</p></div>
 
                 <label>
                   Speed units
