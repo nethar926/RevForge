@@ -1,7 +1,17 @@
 import type { EngineParams, EngineSynth } from '../audio/types';
 import { NIGHT_PURSUIT_ID } from './migrations';
 import type { PackIdentity } from './types';
-import { getPackMode, onPackEngineCommand, onPackMode, onScannerPass, setPackEnvelopeSource, type PackMode, type ScannerEdge } from './runtime';
+import { packBoostTarget } from './boost';
+import {
+  getPackAutoEngaged,
+  getPackMode,
+  onPackAutoEngaged,
+  onPackEngineCommand,
+  onPackMode,
+  onScannerPass,
+  setPackEnvelopeSource,
+  type ScannerEdge,
+} from './runtime';
 
 /**
  * Optional audio hooks a pack engine may expose (Audio Synth owns them).
@@ -23,12 +33,13 @@ export interface PackAudioHooks {
 
 type PackEngine = EngineSynth & PackAudioHooks;
 
-/** PURSUIT → full boost; POWER → partial seasoning; AUTO/NORM → stock. */
-export const boostForMode = (mode: PackMode) => (mode === 'pursuit' ? 1 : mode === 'power' ? 0.5 : 0);
+/** PURSUIT → full boost; POWER → partial seasoning; AUTO/NORM → stock (pure, in ./boost). */
+export { boostForMode } from './boost';
 
-function applyBoost(eng: PackEngine | null, mode: PackMode) {
+/** Set the engine's boost target for the pack's current mode (+ NP auto-engage state). */
+function applyBoost(eng: PackEngine | null, packId: string) {
   if (!eng) return;
-  const amount = boostForMode(mode);
+  const amount = packBoostTarget(packId, getPackMode(packId), getPackAutoEngaged(packId));
   if (typeof eng.setPursuitBoost === 'function') {
     eng.setPursuitBoost(amount);
     return;
@@ -76,7 +87,7 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
     setPackEnvelopeSource(null);
     return offCommands;
   }
-  applyBoost(eng(), getPackMode(packId));
+  applyBoost(eng(), packId);
   setPackEnvelopeSource(() => {
     const e = eng();
     if (!e) return undefined;
@@ -84,8 +95,12 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
     if (typeof e.getVoiceEnvelope === 'function') return e.getVoiceEnvelope();
     return undefined;
   });
-  const offMode = onPackMode((id, mode) => {
-    if (id === packId) applyBoost(eng(), mode);
+  const offMode = onPackMode((id) => {
+    if (id === packId) applyBoost(eng(), packId);
+  });
+  // NP AUTO: engaged → Pursuit boost, disengaged → Cruise (packBoostTarget ignores it elsewhere).
+  const offAuto = onPackAutoEngaged((id) => {
+    if (id === packId) applyBoost(eng(), packId);
   });
   const offScan = onScannerPass((id, edge) => {
     if (id !== NIGHT_PURSUIT_ID) return;
@@ -95,6 +110,7 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
   return () => {
     offCommands();
     offMode();
+    offAuto();
     offScan();
     setPackEnvelopeSource(null);
   };

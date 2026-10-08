@@ -1,9 +1,24 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ComponentType, type CSSProperties } from 'react';
 import { NightPursuitOverlay, type NightPursuitMode } from '../../skins/night-pursuit/NightPursuitOverlay';
 import { NIGHT_PURSUIT_ID } from '../migrations';
-import { emitScannerPass, getPackMode, onPackMode, readPackEnvelope, setPackMode } from '../runtime';
+import { emitScannerPass, getPackMode, onPackMode, readPackEnvelope, setPackAutoEngaged, setPackMode } from '../runtime';
 import type { PackHudProps } from '../types';
+import { useAutoPursuit } from './useAutoPursuit';
 import './night-pursuit-mount.css';
+
+/**
+ * Overlay props + `autoEngaged` (true while AUTO has engaged Pursuit). Visual Skins adds
+ * `autoEngaged?: boolean` to NightPursuitOverlay's Props in their skin commit; until then this
+ * narrow local extension lets the mount pass it (the overlay ignores unknown props). The
+ * assignment needs no cast — a component taking Props accepts Props & { autoEngaged } — and
+ * keeps compiling after Visual's commit. Once that commit lands, drop this and render
+ * NightPursuitOverlay with `autoEngaged` as a plain prop.
+ */
+type NightPursuitOverlayWithAuto = ComponentProps<typeof NightPursuitOverlay> & { autoEngaged?: boolean };
+const Overlay: ComponentType<NightPursuitOverlayWithAuto> = NightPursuitOverlay;
+
+/** Polite live-region copy (mount-owned; the skin must not announce auto changes itself). */
+const AUTO_ANNOUNCE = { engaged: 'Auto: Pursuit engaged', disengaged: 'Auto: back to Cruise' } as const;
 
 /**
  * Design boxes the overlay is laid out in before uniform scale-to-fit.
@@ -36,6 +51,15 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
       }),
     [],
   );
+  // AUTO: engage Pursuit on sustained hard throttle, back to Cruise on a sustained lift
+  // (thresholds in ../autoPursuit). Resets when the mode leaves auto, the engine stops, or unmount.
+  const autoActive = mode === 'auto' && running;
+  const { engaged: autoEngaged, transition: autoTransition } = useAutoPursuit(autoActive, throttle);
+  useEffect(() => setPackAutoEngaged(NIGHT_PURSUIT_ID, autoEngaged), [autoEngaged]);
+  useEffect(() => () => setPackAutoEngaged(NIGHT_PURSUIT_ID, false), []);
+  // Announced once per throttle-driven transition; a reset (mode change / engine stop) is the
+  // driver's own action, so it stays silent rather than claiming "back to Cruise".
+  const announce = autoTransition ? AUTO_ANNOUNCE[autoTransition] : '';
   // Uniform scale-to-fit (ResizeObserver only; nothing measured per frame).
   const hostRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState({ s: 1, box: 'wide' as BoxKind, w: BOX.wide.w as number, h: BOX.wide.h as number });
@@ -96,10 +120,11 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
       data-drive-window={driveWindow ? 'true' : undefined}
       data-fit-box={`${spec.w},${spec.minH},${spec.maxH}`}
       data-running={running ? 'true' : 'false'}
+      data-auto-engaged={autoEngaged ? 'true' : 'false'}
       style={{ '--np-fit': fit.s, '--np-box-w': `${fit.w}px`, '--np-box-h': `${fit.h}px` } as CSSProperties}
     >
       <div className="np-pack-box">
-      <NightPursuitOverlay
+      <Overlay
         rpmNorm={running ? rpmNorm : 0}
         rpm={running ? rpm : 0}
         redlineRpm={redlineRpm}
@@ -110,6 +135,7 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
         speedMph={Math.round(mph)}
         mode={mode}
         onModeChange={(next) => setPackMode(NIGHT_PURSUIT_ID, next)}
+        autoEngaged={autoEngaged}
         voiceEnvelope={running ? readPackEnvelope() : 0}
         onScannerPass={(edge) => emitScannerPass(NIGHT_PURSUIT_ID, edge)}
         // Drive-window mode: always the FULL design (explicit false, so neither the host's
@@ -119,6 +145,10 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
         compact={driveWindow ? false : compact === true ? true : 'auto'}
       />
       </div>
+      {/* Mount-owned polite announcer for AUTO transitions (outside the skin; text only, no visuals). */}
+      <span className="np-sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announce}
+      </span>
     </div>
   );
 }

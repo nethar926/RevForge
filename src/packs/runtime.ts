@@ -4,7 +4,9 @@
  * out of ThemeStage props and away from the locked IGNITION splash markup.
  */
 import { storageKey } from '../lib/storageKey';
+import { NIGHT_PURSUIT_ID } from './migrations';
 
+/** 'power' stays in the union so old saves still parse; Night Pursuit retires it (see RETIRED_MODES). */
 export type PackMode = 'power' | 'auto' | 'norm' | 'pursuit';
 export type ScannerEdge = 'left' | 'right';
 
@@ -19,23 +21,37 @@ let envelopeSource: (() => number | undefined) | null = null;
 const modeKey = (packId: string) => `revforge.pack.${packId}.mode`;
 const isMode = (v: unknown): v is PackMode => v === 'power' || v === 'auto' || v === 'norm' || v === 'pursuit';
 
+/**
+ * Per-pack retired modes → replacement. Night Pursuit's rail is Auto / Cruise
+ * (norm) / Pursuit (Wilson, Oct 8 2026): a saved or requested POWER becomes
+ * Cruise. Other packs are untouched.
+ */
+const RETIRED_MODES: Record<string, Partial<Record<PackMode, PackMode>>> = {
+  [NIGHT_PURSUIT_ID]: { power: 'norm' },
+};
+const liveMode = (packId: string, mode: PackMode): PackMode => RETIRED_MODES[packId]?.[mode] ?? mode;
+
 export function getPackMode(packId: string, fallback: PackMode = 'norm'): PackMode {
   const cached = modes.get(packId);
   if (cached) return cached;
   try {
     const raw = localStorage.getItem(storageKey(modeKey(packId)));
     if (isMode(raw)) {
-      modes.set(packId, raw);
-      return raw;
+      const mode = liveMode(packId, raw);
+      modes.set(packId, mode);
+      // Write the migration back so the retired value never resurfaces.
+      if (mode !== raw) localStorage.setItem(storageKey(modeKey(packId)), mode);
+      return mode;
     }
   } catch {
     /* session only */
   }
-  return fallback;
+  return liveMode(packId, fallback);
 }
 
-export function setPackMode(packId: string, mode: PackMode): void {
-  if (!isMode(mode)) return;
+export function setPackMode(packId: string, requested: PackMode): void {
+  if (!isMode(requested)) return;
+  const mode = liveMode(packId, requested);
   modes.set(packId, mode);
   try {
     localStorage.setItem(storageKey(modeKey(packId)), mode);
@@ -48,6 +64,29 @@ export function setPackMode(packId: string, mode: PackMode): void {
 export function onPackMode(listener: ModeListener): () => void {
   modeListeners.add(listener);
   return () => modeListeners.delete(listener);
+}
+
+/* ------------------------------------------------------------------------ *
+ * AUTO engage signal (Night Pursuit). The pack mount runs the auto-pursuit
+ * state machine and publishes engaged/disengaged here; audioBridge listens
+ * and retargets the boost. Session-only: never written to the stored mode.
+ * ------------------------------------------------------------------------ */
+type AutoEngagedListener = (packId: string, engaged: boolean) => void;
+const autoEngagedListeners = new Set<AutoEngagedListener>();
+const autoEngaged = new Map<string, boolean>();
+
+export const getPackAutoEngaged = (packId: string): boolean => autoEngaged.get(packId) === true;
+
+export function setPackAutoEngaged(packId: string, engaged: boolean): void {
+  if (getPackAutoEngaged(packId) === engaged) return;
+  if (engaged) autoEngaged.set(packId, true);
+  else autoEngaged.delete(packId);
+  for (const l of autoEngagedListeners) l(packId, engaged);
+}
+
+export function onPackAutoEngaged(listener: AutoEngagedListener): () => void {
+  autoEngagedListeners.add(listener);
+  return () => autoEngagedListeners.delete(listener);
 }
 
 export function emitScannerPass(packId: string, edge: ScannerEdge): void {

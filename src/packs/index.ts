@@ -19,10 +19,13 @@ export { NIGHT_PURSUIT_ID, PACK_ENGINE_MIGRATIONS, PACK_THEME_MIGRATIONS, runPac
 export type { PackMode, ScannerEdge } from './runtime';
 export {
   emitScannerPass,
+  getPackAutoEngaged,
   getPackMode,
+  onPackAutoEngaged,
   onPackMode,
   onScannerPass,
   readPackEnvelope,
+  setPackAutoEngaged,
   setPackEnvelopeSource,
   setPackMode,
 } from './runtime';
