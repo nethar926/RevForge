@@ -12,6 +12,13 @@ import {
   playNightPursuitStarter,
 } from './nightPursuitVoice';
 import {
+  CC_SHUTOFF_SECONDS,
+  CC_STARTER_SECONDS,
+  playChronoCoupeShutoff,
+  playChronoCoupeStarter,
+} from './chronoCoupeVoice';
+import { isChronoCoupeTopology } from './chronoCoupePack';
+import {
   SH_SHUTOFF_SECONDS,
   SH_STARTER_SECONDS,
   playStellarHelmShutoff,
@@ -35,6 +42,7 @@ export interface StartShutdownCtx {
 /** Approximate audible length (seconds) so stop() can hold the bus for the tail. */
 export function starterDuration(kind: EngineKind, topology?: string): number {
   if (topology === 'night-pursuit') return NP_STARTER_SECONDS;
+  if (isChronoCoupeTopology(topology)) return CC_STARTER_SECONDS;
   if (isStellarHelmTopology(topology)) return SH_STARTER_SECONDS;
   switch (kind) {
     case 'ice':
@@ -52,6 +60,7 @@ export function starterDuration(kind: EngineKind, topology?: string): number {
 
 export function shutoffDuration(kind: EngineKind, topology?: string): number {
   if (topology === 'night-pursuit') return NP_SHUTOFF_SECONDS;
+  if (isChronoCoupeTopology(topology)) return CC_SHUTOFF_SECONDS;
   if (isStellarHelmTopology(topology)) return SH_SHUTOFF_SECONDS;
   switch (kind) {
     case 'ice':
@@ -105,6 +114,9 @@ export function playEngineStarter(s: StartShutdownCtx): number {
     if (s.topology === 'night-pursuit') {
       return playNightPursuitStarter(s.ctx, s.dest, s.params, s.whiteBuf, s.pinkBuf);
     }
+    if (isChronoCoupeTopology(s.topology)) {
+      return playChronoCoupeStarter(s.ctx, s.dest, s.params, s.whiteBuf, s.pinkBuf);
+    }
     if (isStellarHelmTopology(s.topology)) {
       return playStellarHelmStarter(s.ctx, s.dest, s.params, s.pinkBuf, s.coreHz);
     }
@@ -134,6 +146,9 @@ export function playEngineShutoff(s: StartShutdownCtx): number {
   try {
     if (s.topology === 'night-pursuit') {
       return playNightPursuitShutoff(s.ctx, s.dest, s.params, s.whiteBuf, s.pinkBuf);
+    }
+    if (isChronoCoupeTopology(s.topology)) {
+      return playChronoCoupeShutoff(s.ctx, s.dest, s.params, s.whiteBuf, s.pinkBuf);
     }
     if (isStellarHelmTopology(s.topology)) {
       return playStellarHelmShutoff(s.ctx, s.dest, s.params, s.pinkBuf, s.coreHz);

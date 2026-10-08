@@ -7,6 +7,7 @@
  * (exclude sakura-gtr). Family 4 = rotary chamber-pulse (docs/rotary-chamber-pulse-v1.md).
  */
 import type { EngineStateSnapshot } from './types';
+import { CHRONO_COUPE } from './chronoCoupePack';
 
 export type FiringFamilyName =
   | 'crossPlane'
@@ -16,6 +17,7 @@ export type FiringFamilyName =
   | 'evenI4'
   | 'even'
   | 'rotary'
+  | 'oddFireV6'
   | 'auto';
 
 export interface EngineStatePackHints {
@@ -90,6 +92,8 @@ const I6_EVEN = [0, 120, 240, 360, 480, 600] as const;
 const ROTARY_TWIN = [0, 60, 120, 180, 240, 300] as const;
 /** Single-rotor 3-chamber eccentric. */
 const ROTARY_SINGLE = [0, 120, 240] as const;
+/** Odd-fire 90° V6 (common crank pins): 150°/90° alternating → family 5. */
+const ODD_FIRE_V6 = [0, 150, 240, 390, 480, 630] as const;
 
 export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
   'v8-rumble': {
@@ -237,6 +241,19 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.022,
     misfireDefault: 0.035,
   },
+  // Chrono Coupe: rear-mounted 2.85 L odd-fire 90° V6, short crossover collector
+  [CHRONO_COUPE.id]: {
+    cylinders: 6,
+    firingFamily: 5,
+    bankSchedule: 'oddFireV6',
+    eventAnglesDeg: [...ODD_FIRE_V6],
+    bankOffsetDeg: 90,
+    collectorDelayMs: 1.4,
+    tauManifold: 0.11,
+    tauExhaust: 0.22,
+    pulseJitterFrac: 0.016,
+    misfireDefault: 0.015,
+  },
   'rotary-hum': {
     cylinders: 6,
     firingFamily: 4,
@@ -262,6 +279,7 @@ const FAMILY_NUM: Record<string, number> = {
   evenI4: 3,
   even: 3,
   rotary: 4,
+  oddFireV6: 5,
 };
 
 /** Physics jitter fraction (0…0.03) → worklet AudioParam (0…0.5). */
@@ -385,6 +403,7 @@ export class EngineStateBridge {
     if (f === 1) return 'crossPlane';
     if (f === 2) return 'flatPlane';
     if (f === 4) return 'rotary';
+    if (f === 5) return 'oddFireV6';
     if (f === 3 && this.cylinders === 6) return 'i6Even';
     if (f === 3 && this.cylinders === 4) return 'evenI4';
     if (f === 3) return 'even';

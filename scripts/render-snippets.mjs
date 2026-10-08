@@ -83,6 +83,21 @@ function scheduleParam(param, when, value) {
   param.setValueAtTime(value, when);
 }
 
+/**
+ * Chrono Coupe preview (~6 s): odd-fire idle → pull away and cruise while the charge builds
+ * (whine + crackle) → discharge at full charge → cruise on. Real worklet + chronoCoupeVoice chain.
+ */
+async function renderChronoCoupePreview() {
+  const { renderChronoCoupe } = await import('./chrono-coupe-render.mjs');
+  const ramp = (t, a, b) => Math.max(0, Math.min(1, (t - a) / (b - a)));
+  const profile = (t) => {
+    const speed = 0.76 * ramp(t, 0.8, 4.2);
+    const throttle = t < 0.8 ? 0 : t < 4.2 ? 0.55 : 0.35;
+    return { speed, throttle, load: throttle * 0.4, charge: Math.min(1, speed / 0.73) };
+  };
+  return renderChronoCoupe(profile, 6.2, { sampleRate: SR, cues: [{ t: 4.3, type: 'discharge' }] });
+}
+
 async function renderPack(id, buildFn, renderFn) {
   // Packs with a dedicated offline renderer (real worklet + shared voice chain)
   if (renderFn) return bufferToWav(await renderFn());
@@ -594,6 +609,7 @@ const PACKS = [
   { id: 'aerospace-f14', file: 'aerospace-f14.wav', build: (c, m) => buildAero(c, m) },
   { id: 'ion-twin', file: 'ion-twin.wav', build: (c, m) => buildScifi(c, m) },
   { id: 'night-pursuit', file: 'night-pursuit.wav', render: renderNightPursuitPreview },
+  { id: 'chrono-coupe', file: 'chrono-coupe.wav', render: renderChronoCoupePreview },
   { id: 'stellar-helm', file: 'stellar-helm.wav', render: renderStellarHelmPreviewBuffer },
 ];
 // Optional filter: node scripts/render-snippets.mjs night-pursuit  (re-render only those ids)
