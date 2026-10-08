@@ -1,6 +1,8 @@
 import type { RevForgeVoiceConfig } from '../forge/voiceTypes';
 import type { ChronoCoupeId } from './chronoCoupePack';
 import type { STELLAR_HELM_PACK } from './stellarHelmPack';
+import type { BassDriverListener, BassDriverSettings } from './bassDriver';
+export type { BassDriverHooks, BassDriverListener, BassDriverSettings } from './bassDriver';
 export type EngineId = string;
 
 export type TopologyId =
@@ -390,6 +392,18 @@ export interface EngineSynth {
   setChargeLevel?(level: number): void;
   /** Chrono Coupe: one-shot discharge (rate-limited). Safe no-op on other packs / stopped. */
   triggerDischarge?(): void;
+
+  /**
+   * Bass driver: optional sub-bass layer on the shared master bus (every pack). Always present on
+   * engines from createEngineSynth. Default `{ enabled: false, amount: 0.5 }`; amount is 0..1.
+   * Partial updates merge; every change ramps over ~150 ms (no clicks). Audio never persists it —
+   * Frontend owns the pref and re-applies it after creating / swapping an engine.
+   */
+  setBassDriver?(settings: Partial<BassDriverSettings>): void;
+  /** Current bass-driver settings (a copy). */
+  getBassDriver?(): BassDriverSettings;
+  /** Subscribe to effective bass-driver changes; returns an unsubscribe function. */
+  onBassDriverChange?(cb: BassDriverListener): () => void;
 }
 
 export interface ParamMeta {

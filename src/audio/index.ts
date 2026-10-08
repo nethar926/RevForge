@@ -112,6 +112,12 @@ export { CHRONO_COUPE_PARAM_META } from './builtins';
 export { chronoCoupeChargeIntensity, CC_DISCHARGE_COOLDOWN_S } from './chronoCoupeVoice';
 export { EnvelopeMeter } from './envelopeMeter';
 export {
+  BASS_DRIVER_RAMP_S,
+  DEFAULT_BASS_DRIVER,
+  normalizeBassDriver,
+} from './bassDriver';
+export type { BassDriverHooks, BassDriverListener, BassDriverSettings } from './bassDriver';
+export {
   STELLAR_HELM_PACK,
   STELLAR_HELM_EXPERIMENTAL,
   STELLAR_HELM_DEFAULTS,
