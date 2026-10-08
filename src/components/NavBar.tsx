@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { Icon } from '../ui/hig';
 
 /** RevForge IA — labels differ from path segments where product renamed surfaces. */
 const links = [
@@ -21,6 +22,7 @@ export function HamburgerMenu({ open, onClose }: Props) {
   const location = useLocation();
   const titleId = useId();
   const firstLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const drawerRef = useRef<HTMLElement | null>(null);
   const prevPath = useRef(location.pathname);
 
   // Close on navigate
@@ -36,7 +38,15 @@ export function HamburgerMenu({ open, onClose }: Props) {
     if (!open) return;
     firstLinkRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
+      // Keep Tab inside the drawer while it is open (modal focus trap).
+      if (e.key !== 'Tab' || !drawerRef.current) return;
+      const items = [...drawerRef.current.querySelectorAll<HTMLElement>('a[href],button:not(:disabled)')];
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      else if (!drawerRef.current.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -59,10 +69,11 @@ export function HamburgerMenu({ open, onClose }: Props) {
       <button
         type="button"
         className="menu-backdrop"
-        aria-label="Close menu"
+        tabIndex={-1}
+        aria-hidden="true"
         onClick={onClose}
       />
-      <nav id="revforge-menu" className="menu-drawer glass-strong" aria-labelledby={titleId}>
+      <nav ref={drawerRef} id="revforge-menu" className="menu-drawer glass-strong" aria-labelledby={titleId}>
         <div className="menu-drawer-head">
           <h2 id={titleId} className="menu-drawer-title">
             RevForge
@@ -73,7 +84,7 @@ export function HamburgerMenu({ open, onClose }: Props) {
             onClick={onClose}
             aria-label="Close menu"
           >
-            ✕
+            <Icon name="x" />
           </button>
         </div>
         <ul className="menu-list">
@@ -83,6 +94,7 @@ export function HamburgerMenu({ open, onClose }: Props) {
                 ref={i === 0 ? firstLinkRef : undefined}
                 to={l.to}
                 className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}
+                aria-current={location.pathname === l.to ? 'page' : undefined}
                 onClick={onClose}
               >
                 {l.label}

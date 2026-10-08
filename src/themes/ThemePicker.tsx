@@ -3,6 +3,7 @@ import {FAMILIES,LISTED_THEMES,isThemeListed,themeForId,type ThemeFamily,type Th
 import {listExperimentalPacks,packForThemeId} from '../packs/registry';
 import {isExperimentalPackEnabled,setExperimentalPackEnabled} from '../packs/experimental';
 import '../packs/packs.css';
+import {HigSegmented,HigSwitch,Icon} from '../ui/hig';
 
 function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | 'pack'; accent: string; secondary: string; uid: string}) {
   const a = accent;
@@ -20,7 +21,7 @@ function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | '
           <line x1="34" y1="40" x2="48" y2="28" stroke={s} strokeWidth="2" strokeLinecap="round"/>
           <line x1="86" y1="40" x2="98" y2="30" stroke={s} strokeWidth="2" strokeLinecap="round"/>
           <circle cx="34" cy="40" r="3" fill={s}/><circle cx="86" cy="40" r="3" fill={s}/>
-          <text x="60" y="72" textAnchor="middle" fill={a} fontSize="9" fontFamily="ui-monospace,monospace">68</text>
+          <text x="60" y="72" textAnchor="middle" fill={a} fontSize="11" fontFamily="ui-monospace,monospace">68</text>
         </svg>
       );
       break;
@@ -31,7 +32,7 @@ function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | '
           <path d="M18 58 A42 42 0 0 1 102 58" fill="none" stroke="#ffffff18" strokeWidth="6" strokeLinecap="round"/>
           <path d="M18 58 A42 42 0 0 1 88 28" fill="none" stroke={a} strokeWidth="6" strokeLinecap="round"/>
           <text x="60" y="52" textAnchor="middle" fill="#e8edf1" fontSize="22" fontFamily="ui-monospace,monospace" fontWeight="300">68</text>
-          <text x="60" y="66" textAnchor="middle" fill={a} fontSize="8" fontFamily="ui-monospace,monospace">MPH</text>
+          <text x="60" y="66" textAnchor="middle" fill={a} fontSize="11" fontFamily="ui-monospace,monospace">MPH</text>
         </svg>
       );
       break;
@@ -72,7 +73,7 @@ function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | '
           <rect width="120" height="78" rx="6" fill="#070b10"/>
           <rect width="120" height="78" rx="6" fill={`url(#${gid('numGlow')})`}/>
           <text x="60" y="48" textAnchor="middle" fill="#f2f6fa" fontSize="36" fontFamily="ui-monospace,monospace" fontWeight="200">68</text>
-          <text x="60" y="64" textAnchor="middle" fill={a} fontSize="8" fontFamily="ui-monospace,monospace" letterSpacing="2">MPH</text>
+          <text x="60" y="64" textAnchor="middle" fill={a} fontSize="11" fontFamily="ui-monospace,monospace" letterSpacing="1">MPH</text>
         </svg>
       );
       break;
@@ -167,7 +168,7 @@ function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | '
           <line x1="32" y1="39" x2="44" y2="22" stroke="#dff4ff" strokeWidth="2" strokeLinecap="round"/>
           <circle cx="88" cy="39" r="24" fill={`url(#${gid('gradRed')})`}/>
           <line x1="88" y1="39" x2="106" y2="39" stroke={s} strokeWidth="2" strokeLinecap="round"/>
-          <text x="60" y="70" textAnchor="middle" fill={a} fontSize="10" fontFamily="ui-monospace,monospace">74</text>
+          <text x="60" y="70" textAnchor="middle" fill={a} fontSize="11" fontFamily="ui-monospace,monospace">74</text>
         </svg>
       );
       break;
@@ -197,7 +198,7 @@ function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | '
           <rect x="12" y="14" width="40" height="24" rx="3" fill="#ffffff10" stroke={a}/>
           <rect x="68" y="14" width="40" height="24" rx="3" fill="#ffffff10" stroke={s}/>
           <rect x="12" y="46" width="96" height="18" rx="3" fill="#ffffff10" stroke={a} opacity="0.7"/>
-          <text x="60" y="58" textAnchor="middle" fill={a} fontSize="10" fontFamily="ui-monospace,monospace">GRID</text>
+          <text x="60" y="58" textAnchor="middle" fill={a} fontSize="11" fontFamily="ui-monospace,monospace">GRID</text>
         </svg>
       );
   }
@@ -212,18 +213,20 @@ export function ThemePicker({selected,onSelect,mode='all'}:{selected:string;onSe
   // Visible catalogue = the allowlist only (catalog VISIBLE_THEME_IDS). Allowlisted packs show without the
   // Experimental opt-in (it now only gates their engines in Revs); hidden themes never show, even when selected.
   const THEMES=LISTED_THEMES;
-  const toggleExperimental=(on:boolean)=>{for(const p of experimentalPacks)setExperimentalPackEnabled(p.id,on);setExperimentalOn(on);if(on&&families.includes('Full Screen')){setFamily('Full Screen');setGroup('Experimental');}else if(!on&&group==='Experimental')setGroup('All');};
+  const toggleExperimental=(on:boolean)=>{for(const p of experimentalPacks)setExperimentalPackEnabled(p.id,on);setExperimentalOn(on);setAnnounce(on?`${experimentalPacks.map(p=>p.displayName).join(', ')} added to Full Screen › Experimental.`:'Experimental packs hidden.');if(on&&families.includes('Full Screen')){setFamily('Full Screen');setGroup('Experimental');}else if(!on&&group==='Experimental')setGroup('All');};
   const families=FAMILIES.filter(f=>(mode==='all'||(mode==='atmosphere'?f==='RoadView':f!=='RoadView'))&&THEMES.some(t=>t.family===f));
   const [family,setFamily]=useState<ThemeFamily>(()=>families.includes(themeForId(selected).family)?themeForId(selected).family:families[0]??'Full Screen');
   const [group,setGroup]=useState('All');
+  const [announce,setAnnounce]=useState('');
   const groups=[...new Set(THEMES.filter(t=>t.family===family).map(t=>t.group))];
   return <div className="theme-picker">
-    {mode!=='atmosphere'&&experimentalPacks.length>0&&<label className="theme-experimental-toggle"><input type="checkbox" checked={experimentalOn} onChange={e=>toggleExperimental(e.target.checked)}/><span><strong>Experimental packs</strong><small>{experimentalPacks.map(p=>p.displayName).join(' · ')} — theme + engine selected together. Full Screen › Experimental.</small></span></label>}
-    <div className="theme-tabs" aria-label="Theme families">{families.map(f=><button key={f} type="button" aria-pressed={family===f} onClick={()=>{setFamily(f);setGroup('All');}}>{f}</button>)}</div>
-    <div className="theme-subtabs" aria-label="Theme subcategories">{['All',...groups].map(g=><button key={g} type="button" aria-pressed={group===g} onClick={()=>setGroup(g)}>{g}</button>)}</div>
+    {mode!=='atmosphere'&&experimentalPacks.length>0&&<HigSwitch className="theme-experimental-toggle" label="Experimental packs" description={`${experimentalPacks.map(p=>p.displayName).join(' · ')}. Theme and engine are selected together. Appears in Full Screen › Experimental.`} checked={experimentalOn} onChange={toggleExperimental}/>}
+    <p className="sr-only" role="status" aria-live="polite">{announce}</p>
+    <HigSegmented className="theme-tabs" wrap label="Theme family" value={family} onChange={f=>{setFamily(f);setGroup('All');}} options={families.map(f=>({value:f,label:f}))}/>
+    <HigSegmented className="theme-subtabs" wrap label="Theme category" value={groups.includes(group)?group:'All'} onChange={setGroup} options={['All',...groups].map(g=>({value:g,label:g}))}/>
     <div className="theme-card-grid">{THEMES.filter(t=>t.family===family&&(group==='All'||t.group===group)).map(t=><button className="theme-card" type="button" key={t.id} aria-pressed={selected===t.id} onClick={()=>onSelect(t.id)} style={{'--skin-accent':t.accent,'--skin-secondary':t.secondary} as CSSProperties}>
       <ThumbPreview layout={t.layout} accent={t.accent} secondary={t.secondary} uid={t.id}/>
-      <span className="theme-card-title">{t.name}<span aria-hidden="true">{selected===t.id?'✓':'↗'}</span></span><small>{t.group} · {t.feature}</small><p>{t.description}</p>
+      <span className="theme-card-title">{t.name}{selected===t.id&&<span className="theme-card-check" aria-hidden="true"><Icon name="check"/></span>}</span><small>{t.group} · {t.feature}</small><p>{t.description}</p>
     </button>)}</div>
   </div>;
 }

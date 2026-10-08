@@ -1,0 +1,105 @@
+/*
+ * RevForge × Apple HIG — accessibility preferences.
+ * useA11yPrefs() merges the system media queries with the in-app settings and
+ * mirrors the result on <html>:
+ *   data-motion="reduce"          Reduce Motion        (prefers-reduced-motion OR in-app)
+ *   data-transparency="reduced"   Reduce Transparency  (prefers-reduced-transparency OR in-app)
+ *   data-contrast="more"          Increase Contrast    (prefers-contrast: more OR in-app)
+ *   data-text-size / data-bold-text / data-device
+ * plus data-a11y-motion / data-a11y-transparency / data-a11y-contrast for packs.
+ * Media-query twins below cover the first paint before JS runs.
+ */
+
+/* Chrome surfaces that use glass. Packs/skins are not listed. */
+/* ── Reduce Transparency: solid fills instead of backdrop-filter glass ── */
+html[data-transparency="reduced"] :is(
+  .glass, .glass-strong, .top-chrome, .menu-drawer, .hamburger-btn, .icon-btn, .start-btn, .btn-primary,
+  .engine-preview-btn, .gear-pill, .palette-btn, .engine-card, .panel, .hud-stage, .diag-row, .stat-card, .tele-cell,
+  .forge .rev-chip, .forge .rev-segment, .forge .rev-segment button, .forge-modal, .forge-modal-backdrop,
+  .forge .tuner-menu > button, .forge .forge-icon, .rev-throttle, .rf-dynamics-panel, .theme-builder-panel,
+  .user-preset-row, .commentary-chip, .engine-delete-btn, .aurebesh-toggle, .hig-segmented, .hig-listpicker-sheet,
+  .hig-group, .rev-scene .layout-road .skin-telemetry
+) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-transparency="reduced"] :is(.forge-modal, .menu-drawer, .top-chrome, .hig-listpicker-sheet) {
+  background: var(--hig-bg-2) !important;
+}
+html[data-transparency="reduced"] :is(.forge .rev-chip, .forge .rev-segment, .rev-throttle, .forge .tuner-menu > button,
+  .engine-card, .panel, .diag-row, .rf-dynamics-panel, .theme-builder-panel, .hig-group, .user-preset-row, .hamburger-btn, .icon-btn) {
+  background: var(--hig-bg-3) !important;
+}
+html[data-transparency="reduced"] .forge-modal-backdrop { background: rgb(0 0 0 / 0.72) !important; }
+html[data-transparency="reduced"] .rev-scene .layout-road .skin-telemetry { background: #10171e !important; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .forge-modal, .menu-drawer, .top-chrome, .hig-listpicker-sheet { background: var(--hig-bg-2) !important; }
+}
+
+/* ── Increase Contrast: IC palette, 2px borders, no text opacity ── */
+html[data-contrast="more"] {
+  --hig-label: #ffffff;
+  --hig-label-secondary: #e6eaef;
+  --hig-label-tertiary: #b9c0c9;
+  --hig-separator: #9aa2ad;
+  --hig-control-border: #c3cad3;
+  --hig-border-w: 2px;
+  --hig-fill: #3a3f47;
+  --hig-bg-2: #1b1e24;
+  --hig-bg-3: #2a2e35;
+  --hig-blue: #5cb8ff;
+  --hig-green: #4ad968;
+  --hig-red: #ff6165;
+  --hig-focus-color: #8fd0ff;
+  --text-dim: #e6eaef;
+  --glass-border: #c3cad3;
+}
+html[data-contrast="more"] :is(.forge-modal, .menu-drawer, .top-chrome, .hig-listpicker-sheet) {
+  background: var(--hig-bg-2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-contrast="more"] :is(.forge .rev-chip, .forge .rev-segment, .rev-throttle, .forge .tuner-menu > button,
+  .engine-card, .panel, .diag-row, .hig-group, .hig-segmented, .theme-card, .forge .forge-icon, .hamburger-btn, .icon-btn,
+  .menu-link, .theme-builder-panel, .rf-dynamics-panel) {
+  border-width: 2px !important;
+  border-style: solid !important;
+  border-color: var(--hig-control-border) !important;
+}
+html[data-contrast="more"] :is(.forge .rev-chip, .forge .rev-segment, .rev-throttle, .forge .tuner-menu > button, .hamburger-btn, .icon-btn) {
+  background: var(--hig-bg-3) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* No text opacity in IC (chrome only; pack HUD art is untouched). */
+html[data-contrast="more"] :is(.forge-modal, .app-shell, .rev-dock, .rev-throttle, .rev-topbar, .theme-builder, .menu-drawer) :is(p, small, span, strong, label, h1, h2, h3, h4, dt, dd, li, a, button:not(:disabled), output, summary, code, em) {
+  opacity: 1 !important;
+}
+html[data-contrast="more"] .forge :focus-visible,
+html[data-contrast="more"] :focus-visible { outline-width: 4px !important; }
+
+/* ── Reduce Motion: stop decorative loops; keep ≤150ms cross-fades as feedback ── */
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+html[data-motion="reduce"] :is(.hig-switch-track, .hig-switch-thumb, .hig-seg-option, .hig-seg-pill, .hig-row-button, .forge .tuner-menu > button, .hig-listpicker-option) {
+  transition: opacity var(--hig-dur-fade) linear, background-color var(--hig-dur-fade) linear, color var(--hig-dur-fade) linear, border-color var(--hig-dur-fade) linear !important;
+}
+html[data-motion="reduce"] :is(.forge .tuner-menu > button, .hig-press):active { transform: none !important; }
+html[data-motion="reduce"] .rf-thumb-scan { transform: translateX(26px); }
+
+/* Media twins (first paint, and for any surface rendered before the hook runs). */
+@media (prefers-reduced-motion: reduce) {
+  .rf-thumb-scan { animation: none !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :is(.forge-modal, .menu-drawer, .top-chrome, .hig-listpicker-sheet) {
+    background: var(--hig-bg-2) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}

@@ -275,20 +275,10 @@
   padding: 16px 18px;
 }
 
+/* HIG: blur is a *transparency* concern, not a motion one. The backdrop-filter
+   kill moved to src/styles/hig/a11y.css (prefers-reduced-transparency +
+   in-app Reduce transparency). Reduce Motion only drops the press scale. */
 @media (prefers-reduced-motion: reduce) {
-  .glass,
-  .glass-strong,
-  .top-chrome,
-  .menu-drawer,
-  .forge .rev-chip,
-  .forge .rev-segment,
-  .forge-modal,
-  .forge .tuner-menu > button,
-  .rev-throttle,
-  .rev-scene .layout-road .skin-telemetry {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
   .forge .tuner-menu > button:active {
     transform: none;
   }
@@ -383,7 +373,7 @@
   justify-content: center;
   border-radius: var(--radius-pill);
   font-weight: 800;
-  font-size: 0.78rem;
+  font-size: max(11px, 0.78rem);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text);
@@ -398,7 +388,7 @@
 
 .aurebesh-hint {
   margin: 4px 0 0;
-  font-size: 0.68rem;
+  font-size: max(11px, 0.68rem);
   letter-spacing: 0.06em;
   color: var(--text-dim);
   opacity: 0.55;
@@ -419,7 +409,7 @@
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   color: var(--text-dim);
-  font-size: 0.7rem;
+  font-size: max(11px, 0.7rem);
   font-weight: 700;
   letter-spacing: 0.08em;
   cursor: pointer;

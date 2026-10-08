@@ -23,7 +23,7 @@
   --radius: 18px;
   --touch: 52px;
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
 }
 
 html[data-theme="day"] {
@@ -293,7 +293,7 @@ textarea {
 }
 
 .keepalive-tip {
-  font-size: 0.78rem;
+  font-size: max(11px, 0.78rem);
   color: var(--text-dim);
   text-align: center;
   padding: 4px 8px 10px;
@@ -469,7 +469,7 @@ textarea {
 .stat-label {
   margin-top: 4px;
   color: var(--text-dim);
-  font-size: 0.78rem;
+  font-size: max(11px, 0.78rem);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -500,7 +500,7 @@ textarea {
   margin-top: 6px;
   color: var(--text-dim);
   letter-spacing: 0.12em;
-  font-size: 0.75rem;
+  font-size: max(11px, 0.75rem);
 }
 .gauge-arc-fill {
   filter: drop-shadow(0 0 8px var(--accent-dim));
@@ -536,7 +536,7 @@ textarea {
   gap: 8px;
 }
 .rev-pad-label {
-  font-size: 0.75rem;
+  font-size: max(11px, 0.75rem);
   letter-spacing: 0.14em;
   color: var(--text-dim);
 }
@@ -625,7 +625,7 @@ textarea {
 .safety-note {
   margin: 0;
   color: var(--text-dim);
-  font-size: 0.78rem;
+  font-size: max(11px, 0.78rem);
   line-height: 1.4;
 }
 
@@ -715,7 +715,7 @@ textarea {
 }
 .kind-pill,
 .free-pill {
-  font-size: 0.7rem;
+  font-size: max(11px, 0.7rem);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 4px 8px;
@@ -1027,7 +1027,7 @@ textarea {
 }
 .graph-node-sub {
   color: var(--text-dim);
-  font-size: 0.72rem;
+  font-size: max(11px, 0.72rem);
   font-family: var(--mono);
 }
 .port {
@@ -1167,7 +1167,7 @@ textarea {
 }
 .tele-label {
   color: var(--text-dim);
-  font-size: 0.72rem;
+  font-size: max(11px, 0.72rem);
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -1209,7 +1209,7 @@ textarea {
 }
 
 .telemetry-strip.density-compact .tele-value { font-size: 0.85em; opacity: 0.85; }
-.telemetry-strip.density-compact .tele-label { font-size: 0.7em; }
+.telemetry-strip.density-compact .tele-label { font-size: max(11px, 0.7em); }
 .telemetry-strip.density-compact { gap: 8px; padding: 6px 10px; }
 .shift-paddles { display: flex; gap: 12px; justify-content: center; margin: 8px 0; }
 .shift-paddle {

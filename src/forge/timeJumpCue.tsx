@@ -110,12 +110,18 @@ export function useTimeJump(audioEngine: object, themeId: string) {
   return { cueOn, setCueOn, active, onTimeJump };
 }
 
-/** HIG switch row for Options (44pt target, VoiceOver: "88 mph time jump (light and sound), switch, on/off"). */
+/**
+ * HIG switch row for Tuner › Settings › Sound (shared .hig-switch-row / .hig-switch styles from
+ * src/styles/hig: 51×31 switch inside a ≥44pt row; VoiceOver: "88 mph time jump (light and sound), switch, on/off").
+ */
 export function TimeJumpCueSwitch({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
+  const nativeSwitch = { switch: '' } as Record<string, string>;
   return (
-    <label className="rf-tj-switch">
-      <span>88 mph time jump (light and sound)</span>
-      <input type="checkbox" role="switch" aria-label="88 mph time jump (light and sound)" aria-checked={on} checked={on} onChange={(e) => onChange(e.target.checked)} />
+    <label className="hig-switch-row rf-tj-switch">
+      <span className="hig-switch-text">
+        <span className="hig-switch-label">88 mph time jump (light and sound)</span>
+      </span>
+      <input type="checkbox" role="switch" aria-label="88 mph time jump (light and sound)" {...nativeSwitch} className="hig-switch" checked={on} onChange={(e) => onChange(e.target.checked)} />
     </label>
   );
 }

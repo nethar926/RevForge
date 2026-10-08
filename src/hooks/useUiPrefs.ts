@@ -1,6 +1,7 @@
 import { getBuiltin, resolveLegacyPackId } from '../audio';
 import { FALLBACK_ENGINE_ID, resolveListedEngineId } from '../themes/visibility';
 import { useCallback, useEffect, useState } from 'react';
+import { DEFAULT_TEXT_SIZE, isTextSize, type TextSize } from './useA11yPrefs';
 import {
   DEFAULT_GEAR_COUNT,
   DEFAULT_MAX_TOP_SPEED_MPH,
@@ -64,6 +65,16 @@ export interface UiPrefs {
   idleRpmMin: number;
   /** Drive Dynamics: idle RPM ceiling / jitter band — for @Audio Synth. */
   idleRpmMax: number;
+  /** Display & Accessibility: in-app Text size (HIG Dynamic Type stand-in). */
+  textSize: TextSize;
+  /** Display & Accessibility: Bold text (chrome weight +100). */
+  boldText: boolean;
+  /** Display & Accessibility: in-app Increase Contrast (OR'd with prefers-contrast). */
+  increaseContrast: boolean;
+  /** Display & Accessibility: in-app Reduce Transparency (OR'd with prefers-reduced-transparency). */
+  reduceTransparency: boolean;
+  /** Display & Accessibility: in-app Reduce Motion (OR'd with prefers-reduced-motion). */
+  reduceMotion: boolean;
 }
 
 /** Primary prefs blob. */
@@ -113,7 +124,22 @@ export const DEFAULT_UI: UiPrefs = {
   maxTopSpeedMph: DEFAULT_MAX_TOP_SPEED_MPH,
   idleRpmMin: 700,
   idleRpmMax: 900,
+  textSize: DEFAULT_TEXT_SIZE,
+  boldText: false,
+  increaseContrast: false,
+  reduceTransparency: false,
+  reduceMotion: false,
 };
+
+function normalizeA11y(p: Partial<UiPrefs>): Pick<UiPrefs, 'textSize' | 'boldText' | 'increaseContrast' | 'reduceTransparency' | 'reduceMotion'> {
+  return {
+    textSize: isTextSize(p.textSize) ? p.textSize : DEFAULT_TEXT_SIZE,
+    boldText: p.boldText === true,
+    increaseContrast: p.increaseContrast === true,
+    reduceTransparency: p.reduceTransparency === true,
+    reduceMotion: p.reduceMotion === true,
+  };
+}
 
 const LEGACY_AUREBESH_KEY = 'drivesynth.ionTwin.aurebeshNumerals';
 
@@ -262,6 +288,7 @@ function load(): UiPrefs {
       upshiftSfx,
       ionTwinSpeedScript: migrateIonTwinSpeedScript(parsed),
       ...dynamics,
+      ...normalizeA11y(parsed),
     };
     if (parsed.gaugeCluster == null && parsed.gaugeStyle != null) {
       merged.gaugeCluster = gaugeStyleToCluster(parsed.gaugeStyle);
@@ -346,7 +373,7 @@ export function useUiPrefs() {
         next.gaugeCluster = gaugeStyleToCluster(partial.gaugeStyle);
       }
       const dynamics = normalizeDynamics(next);
-      return { ...next, ...dynamics };
+      return { ...next, ...dynamics, ...normalizeA11y(next) };
     });
   }, []);
 

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { EngineKind, EngineParams, EnginePatch } from '../audio';
 import { BUILTIN_PATCHES, CHRONO_COUPE, STELLAR_HELM_PACK } from '../audio';
 import { isEngineIdVisible } from '../packs/registry';
 import type { useAudioEngine } from '../hooks/useAudioEngine';
 import type { UiPrefs } from '../hooks/useUiPrefs';
+import { HigSlider, HigSwitch, Icon, pctText } from '../ui/hig';
 
 interface Props {
   selectedId: string;
@@ -183,12 +184,11 @@ export function EnginesPage({
       {showScream && (
         <section className="panel ion-scream-panel">
           <h2 className="section-title">Ion Twin scream</h2>
-          <label className="toggle-row">
-            <input
-              type="checkbox"
+          <div className="hig-group-body">
+            <HigSwitch
+              label="Scream"
               checked={screamOn}
-              onChange={(e) => {
-                const on = e.target.checked;
+              onChange={(on) => {
                 setScreamOn(on);
                 if (on) {
                   const intensity = lastIntensityRef.current || SCREAM_DEFAULTS.formantHowl;
@@ -199,91 +199,32 @@ export function EnginesPage({
                 }
               }}
             />
-            <span>Scream</span>
-          </label>
-          <label className="slider-block">
-            <div className="slider-head">
-              <span>Intensity</span>
-              <span>{scream.formantHowl.toFixed(2)}</span>
-            </div>
-            <input
-              className="big-slider"
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={scream.formantHowl}
-              disabled={!screamOn}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                lastIntensityRef.current = v;
-                pushScream({ formantHowl: v });
-              }}
-            />
-          </label>
-          <label className="slider-block">
-            <div className="slider-head">
-              <span>Pitch center</span>
-              <span>{Math.round(scream.corePitch)} Hz</span>
-            </div>
-            <input
-              className="big-slider"
-              type="range"
-              min={40}
-              max={400}
-              step={1}
-              value={scream.corePitch}
-              onChange={(e) => pushScream({ corePitch: Number(e.target.value) })}
-            />
-          </label>
-          <label className="slider-block">
-            <div className="slider-head">
-              <span>Grit</span>
-              <span>{scream.carrierBite.toFixed(2)}</span>
-            </div>
-            <input
-              className="big-slider"
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={scream.carrierBite}
-              onChange={(e) => pushScream({ carrierBite: Number(e.target.value) })}
-            />
-          </label>
-          <label className="slider-block">
-            <div className="slider-head">
-              <span>Wet/Dry</span>
-              <span>{scream.wetHiss.toFixed(2)}</span>
-            </div>
-            <input
-              className="big-slider"
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={scream.wetHiss}
-              onChange={(e) => pushScream({ wetHiss: Number(e.target.value) })}
-            />
-          </label>
-          <label className="toggle-row mt tesla-touch">
-            <input
-              type="checkbox"
-              checked={prefs.ionTwinLockSfx}
-              onChange={(e) => update({ ionTwinLockSfx: e.target.checked })}
-            />
-            <span>Ion Twin lock SFX</span>
-          </label>
-          <p className="help-text dim">Optional chirp on TARGET LOCK (off by default).</p>
+            <HigSlider label="Intensity" min={0} max={1} step={0.01} value={scream.formantHowl} disabled={!screamOn}
+              display={`${Math.round(scream.formantHowl * 100)}%`} valueText={pctText(scream.formantHowl)}
+              onChange={(v) => { lastIntensityRef.current = v; pushScream({ formantHowl: v }); }} />
+            <HigSlider label="Pitch center" min={40} max={400} step={1} value={scream.corePitch}
+              display={`${Math.round(scream.corePitch)} Hz`} valueText={`${Math.round(scream.corePitch)} hertz`}
+              onChange={(v) => pushScream({ corePitch: v })} />
+            <HigSlider label="Grit" min={0} max={1} step={0.01} value={scream.carrierBite}
+              display={`${Math.round(scream.carrierBite * 100)}%`} valueText={pctText(scream.carrierBite)}
+              onChange={(v) => pushScream({ carrierBite: v })} />
+            <HigSlider label="Wet/dry mix" min={0} max={1} step={0.01} value={scream.wetHiss}
+              display={`${Math.round(scream.wetHiss * 100)}%`} valueText={pctText(scream.wetHiss)}
+              onChange={(v) => pushScream({ wetHiss: v })} />
+            <HigSwitch label="Ion lock cues" description="Chirp when target lock engages." checked={prefs.ionTwinLockSfx}
+              onChange={(ionTwinLockSfx) => update({ ionTwinLockSfx })} />
+          </div>
         </section>
       )}
 
       <Link to="/builder" className="cta-link">
-        Open Synth Builder →
+        Open Synth Builder <Icon name="chevron-right" />
       </Link>
     </div>
   );
 }
+
+const KIND_NAME: Record<string, string> = { ice: 'Combustion', scifi: 'Sci-fi', aerospace: 'Jet', 'ev-whine': 'Electric' };
 
 function EngineCard({
   patch,
@@ -300,16 +241,19 @@ function EngineCard({
   onPreview?: (src: string) => void;
   onDelete?: () => void;
 }) {
+  const blurbId = useId();
+  const kindName = KIND_NAME[patch.kind] ?? patch.kind;
   return (
     <div className={`engine-card ${selected ? 'selected' : ''}`}>
-      <button type="button" className="engine-card-main" onClick={onSelect}>
-        <div className="engine-card-top">
+      {/* Short name for VoiceOver; blurb is the description (F-13). */}
+      <button type="button" className="engine-card-main" aria-pressed={selected} aria-label={`${patch.name}, ${kindName}, free`} aria-describedby={blurbId} onClick={onSelect}>
+        <div className="engine-card-top" aria-hidden="true">
           <span className={`kind-pill kind-${patch.kind}`}>{patch.kind}</span>
           <span className="free-pill">FREE</span>
         </div>
         <div className="engine-card-name">{patch.name}</div>
-        <div className="engine-card-blurb">{patch.meta?.blurb ?? patch.topology}</div>
-        {selected && <div className="engine-card-active">Active</div>}
+        <div className="engine-card-blurb" id={blurbId}>{patch.meta?.blurb ?? patch.topology}</div>
+        {selected && <div className="engine-card-active"><Icon name="check" />Active</div>}
       </button>
       {snippetSrc && onPreview && (
         <button
@@ -320,7 +264,7 @@ function EngineCard({
             onPreview(snippetSrc);
           }}
         >
-          Preview
+          Preview<span className="sr-only"> {patch.name}</span>
         </button>
       )}
       {onDelete && (
@@ -332,7 +276,7 @@ function EngineCard({
             onDelete();
           }}
         >
-          Delete
+          Delete<span className="sr-only"> {patch.name}</span>
         </button>
       )}
     </div>

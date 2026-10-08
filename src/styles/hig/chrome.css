@@ -1,0 +1,189 @@
+/*
+ * HIG chrome pass: app chrome (not src/skins) moved onto the HIG tokens.
+ * - Every chrome text style resolves to >= 11px (--hig-caption-2 floor) and scales with Text Size.
+ * - Every chrome control is >= --hig-hit (44px; 48px on Tesla).
+ * - Secondary text uses --hig-label-secondary (>= 4.5:1 on chrome surfaces), never accent.
+ * The locked IGNITION splash (.rev-launch, REVFORGE wordmark, Tuner chip) is not styled here: its tagline
+ *   size/halo ships separately (9d97bcb) and the splash otherwise stays pixel-identical.
+ */
+
+/* ── Drive top bar: vehicle name is secondary text, not accent ── */
+.rev-topbar small {
+  color: var(--hig-label-secondary) !important;
+  font-size: var(--hig-footnote);
+}
+
+/* ── Dock ── */
+/* The dock is a toolbar: like iOS bar items, its Auto/Manual labels follow Text Size up to xxxL
+   (22px) and then hold, so every dock control (Shutdown included) stays on-screen at AX sizes.
+   At Default and below this is identical to the plain token sizes. */
+.rev-dock .rev-transmission { font-size: min(1rem, 22px); min-width: 12em; }
+.rev-dock .rev-transmission .hig-seg-option { font-size: min(var(--hig-callout), 22px) !important; }
+.rev-dock .rev-chip { min-height: var(--hig-hit); min-width: var(--hig-hit); }
+.rev-shifter { display: inline-flex; gap: var(--hig-space-1); }
+.rev-shifter .rev-chip .hig-icon { width: 1.15em; height: 1.15em; }
+.rev-throttle .hig-slider { min-width: 0; width: 100%; }
+.rev-throttle .hig-slider span { float: none; }
+.rev-throttle .hig-slider input { margin-top: 0 !important; }
+.rev-throttle .hig-slider-head label,
+.rev-throttle .hig-slider-head output { color: var(--hig-label); font-size: var(--hig-subhead); }
+
+/* ── Tuner sheet: thicker material, toned-down specular ── */
+.forge .forge-modal {
+  background: var(--hig-material-thick-bg) !important;
+  backdrop-filter: blur(var(--hig-material-blur-thick, 40px)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--hig-material-blur-thick, 40px)) saturate(1.2);
+  color: var(--hig-label);
+}
+.forge-modal-heading { align-items: center; }
+.forge-modal-titles { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.forge-modal-titles h2 { font: var(--hig-w-bold) var(--hig-title-2) / 1.2 var(--hig-font-text); margin: 0; letter-spacing: -0.01em; }
+.forge .tuner-back {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: var(--hig-hit) !important; min-width: var(--hig-hit);
+  padding: 0 12px 0 4px !important;
+  font: var(--hig-w-regular) var(--hig-body) / 1 var(--hig-font-text) !important;
+  letter-spacing: 0 !important;
+  color: var(--hig-label) !important;
+  border-radius: var(--hig-radius-s);
+}
+.forge .tuner-back .hig-icon { width: 1.2em; height: 1.2em; }
+.forge .forge-icon .hig-icon { width: 1.2em; height: 1.2em; }
+
+.forge .tuner-menu > button {
+  background: color-mix(in srgb, #131b23 92%, transparent) !important;
+  min-height: max(72px, var(--hig-hit));
+}
+.tuner-menu strong { font: var(--hig-w-semibold) var(--hig-headline) / 1.25 var(--hig-font-text) !important; }
+.forge .tuner-menu small,
+.tuner-menu small {
+  color: var(--hig-label-secondary) !important;
+  font: var(--hig-w-regular) var(--hig-subhead) / 1.4 var(--hig-font-text) !important;
+}
+.tuner-menu span[aria-hidden] { align-self: center; color: var(--hig-label-secondary); font-size: 1.25em; display: inline-flex; }
+
+/* Every control in the sheet meets the hit size (including narrow-window media queries). */
+.forge-modal :is(button, summary, a[href]):not(.empty-cell):not(.placed-widget):not(.hig-seg-option) {
+  min-height: var(--hig-hit) !important;
+}
+.forge-modal :is(.rf-simple-hud, .locked-engine button) { min-height: var(--hig-hit); }
+.forge-modal > .hig-segmented { margin-bottom: var(--hig-space-3); }
+/* Picker-card captions keep their own sizes (themes.css owns them), so the footnote floor skips .theme-card > p. */
+.forge-modal p:not(.theme-card > p), .forge-modal li, .forge-modal dd, .forge-modal dt { font-size: max(var(--hig-footnote), 1em); }
+/* Revs › Garage appearance colour rows: 44pt row and fields. */
+.forge-modal .theme-color-field { min-height: var(--hig-hit); }
+.forge-modal .theme-color-field input { min-height: var(--hig-hit); }
+
+/* Settings: media-session rows (native checkboxes on purpose, see ForgePage): full-width row >= 44pt. */
+.forge-tune .hig-legacy-row {
+  display: flex !important; align-items: center; justify-content: space-between; gap: var(--hig-space-2);
+  min-height: var(--hig-row); padding: 0; color: var(--hig-label);
+  font: var(--hig-w-regular) var(--hig-body) / 1.3 var(--hig-font-text);
+}
+.forge-tune .hig-legacy-row input { width: 24px; height: 24px; margin: 0 10px; flex: none; }
+.forge-tune .compatibility-box { border-top: 1px solid var(--hig-separator); padding: var(--hig-space-2) 0; background: none; border-radius: 0; }
+.forge-tune .compatibility-box h4 { margin: 0 0 8px; font: var(--hig-w-semibold) var(--hig-subhead) / 1.3 var(--hig-font-text); }
+.forge-tune .compatibility-box :is(dt, dd, p) { color: var(--hig-label-secondary); font-size: var(--hig-footnote); }
+.forge-tune .compatibility-box dd { color: var(--hig-label); }
+.hig-status-row { padding: var(--hig-space-2) 0; color: var(--hig-label-secondary); font-size: var(--hig-footnote); }
+.hig-status-row p { margin: 0 0 6px; }
+.hig-field { display: grid; gap: 8px; padding: var(--hig-space-2) 0; }
+.hig-field-label { font: var(--hig-w-regular) var(--hig-body) / 1.3 var(--hig-font-text); color: var(--hig-label); }
+.hig-field-row { display: flex; align-items: center; justify-content: space-between; min-height: var(--hig-row); }
+.hig-field-row input[type=color] { width: var(--hig-hit); height: var(--hig-hit); border: 1px solid var(--hig-control-border); border-radius: var(--hig-radius-s); background: none; padding: 2px; }
+.hig-kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; padding: var(--hig-space-2) 0; font-size: var(--hig-subhead); }
+.hig-kv dt { color: var(--hig-label-secondary); }
+.hig-kv dd { margin: 0; color: var(--hig-label); font-family: var(--hig-font-mono); }
+.hig-btn, .hig-settings .btn-secondary { min-height: var(--hig-hit); }
+
+/* Garage (Revs) cards: secondary meta legible, selected state not colour-only */
+.rev-engine-card small { color: var(--hig-label-secondary) !important; font-size: var(--hig-footnote) !important; }
+.rev-engine-active, .engine-card-active, .theme-card-check {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: var(--hig-w-semibold) var(--hig-footnote) / 1 var(--hig-font-text);
+  color: var(--hig-label);
+}
+.rev-engine-card button[aria-pressed=true],
+.engine-card.selected,
+.theme-card[aria-pressed=true],
+.customize-page .theme-card.selected {
+  outline: 2px solid var(--hig-label);
+  outline-offset: -2px;
+}
+.theme-card-check {
+  width: 1.5em; height: 1.5em; justify-content: center; border-radius: 50%;
+  background: var(--hig-selected-pill); color: var(--hig-selected-pill-text);
+}
+
+/* ── Visuals: theme picker cards ── */
+.theme-picker .theme-tabs, .theme-picker .theme-subtabs { margin: 0 0 var(--hig-space-2); }
+.theme-card-title { font: var(--hig-w-semibold) var(--hig-subhead) / 1.3 var(--hig-font-text) !important; align-items: center; gap: 6px; }
+.theme-picker .hig-switch-row.theme-experimental-toggle { margin: 0 0 var(--hig-space-2); padding: 0 var(--hig-space-2); background: var(--hig-bg-2); border: 1px solid var(--hig-separator); border-radius: var(--hig-radius-m); }
+.font-picker { display: grid; }
+
+/* ── ThemeStage (Frontend clusters, not src/skins): >= 11px labels ── */
+.skin-descriptor, .skin-source, .skin-heading small, .skin-rail > span, .shift-telltale { font-size: 11px !important; }
+.layout-road .skin-number { text-shadow: 0 0 10px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.6); }
+.layout-road :is(.skin-descriptor, .skin-source, .skin-heading small, .skin-heading > span) { text-shadow: 0 0 6px rgb(0 0 0 / 0.6); }
+
+/* Redline: shape + text cue in addition to colour (WCAG 1.4.1). */
+.stage-redline-badge {
+  position: absolute; z-index: 5; top: 12px; left: 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 8px; border: 2px solid currentColor; border-radius: 6px;
+  font: 700 12px/1 var(--hig-font-text); letter-spacing: 0.12em;
+  color: #fff; background: repeating-linear-gradient(135deg, #b3261e 0 6px, #7d1a15 6px 12px);
+  pointer-events: none;
+}
+.stage-redline-badge::before { content: ""; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid currentColor; }
+.shift-telltale { color: #8e959e; }
+.shift-telltale.lit { color: #ffd0a8; border-color: currentColor !important; font-weight: 700; text-decoration: underline 2px; text-underline-offset: 3px; }
+
+/* ── App shell (#/engines, #/customize, #/builder, #/diag) ── */
+.brand-sub { color: var(--hig-label-secondary) !important; font-size: var(--hig-footnote); }
+.brand-mark { color: #fff !important; background: #0f3b2c !important; border: 1px solid var(--hig-control-border); }
+.hamburger-btn, .menu-close-btn, .icon-btn { min-width: var(--hig-hit); min-height: var(--hig-hit); display: inline-flex; align-items: center; justify-content: center; }
+.hamburger-glyph .hig-icon, .menu-close-btn .hig-icon { width: 1.4em; height: 1.4em; }
+/* Top-bar glyph: bar icons don't grow past Default (30.24px = 1.4 × 1.35rem at 16px), so the glyph
+   never spills out of its 48px button at AX sizes; smaller Text Sizes still shrink it. */
+.hamburger-glyph .hig-icon { width: min(1.4em, 30.24px); height: min(1.4em, 30.24px); }
+.chrome-actions { display: flex; align-items: center; gap: var(--hig-space-2); }
+.chrome-status { font: var(--hig-w-medium) var(--hig-footnote) / 1 var(--hig-font-text); color: var(--hig-label-secondary); }
+.chrome-mute { gap: 6px; padding: 0 14px; }
+.chrome-mute[aria-pressed=true] { background: var(--hig-selected-pill) !important; color: var(--hig-selected-pill-text) !important; }
+.keepalive-footer { position: relative; }
+.keepalive-tip { color: var(--hig-label-secondary); font-size: var(--hig-footnote); }
+.menu-link { min-height: var(--hig-hit); display: flex; align-items: center; }
+.menu-link[aria-current=page] { font-weight: var(--hig-w-semibold); }
+.page-sub, .help-text, .help-text.dim, .diag-row dt, .section-title + p { color: var(--hig-label-secondary) !important; opacity: 1 !important; }
+.kind-pill { filter: none; }
+.kind-pill.kind-ice { color: #a9dbff !important; }
+.engine-card-blurb { color: var(--hig-label-secondary); }
+.customize-page .hig-group, .customize-page > .btn-secondary { max-width: 760px; }
+.customize-page .theme-grid { padding: var(--hig-space-2) 0; }
+.customize-page .theme-card { display: flex; align-items: center; gap: 10px; min-height: var(--hig-hit); }
+
+/* ExperienceBuilder (#/builder) */
+.theme-builder .forge-eyebrow { font-size: var(--hig-caption-1) !important; color: var(--hig-label-secondary); }
+.theme-builder .forge-text-button { display: inline-flex; align-items: center; gap: 4px; min-height: var(--hig-hit); }
+
+/* Toned-down specular for chrome surfaces (the bright 38% white corner dropped secondary text below 4.5:1).
+   Scoped to app pages and the Tuner sheet so the locked splash / top-bar chip keep their look. */
+.app-shell, .forge-modal-backdrop {
+  --glass-specular: linear-gradient(
+    135deg,
+    color-mix(in srgb, #ffffff 9%, transparent) 0%,
+    color-mix(in srgb, #ffffff 3%, transparent) 28%,
+    transparent 48%,
+    color-mix(in srgb, #ffffff 2%, transparent) 72%,
+    color-mix(in srgb, #ffffff 6%, transparent) 100%
+  );
+}
+.layout-road .skin-number { text-shadow: 0 0 18px rgb(0 0 0 / 0.6), 0 0 4px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.6); }
+
+.forge-modal .hig-group-title, .hig-settings .hig-group-title {
+  font: var(--hig-w-semibold) var(--hig-footnote) / 1.3 var(--hig-font-text) !important;
+  margin: 0 0 var(--hig-space-1) var(--hig-space-2) !important;
+  color: var(--hig-label-secondary);
+}
+.forge-modal .hig-group + .hig-group { margin-top: var(--hig-space-4); }

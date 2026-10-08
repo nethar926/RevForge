@@ -34,6 +34,9 @@ import { LEGACY_MEDIA_OPT_IN_KEY, MEDIA_BUTTONS_KEY, readMediaButtons } from "./
 import { NativeStudio } from "./NativeStudio";
 import { useDriveSimulation } from "./useDriveSimulation";
 import { TimeJumpCueSwitch, useTimeJump } from "./timeJumpCue";
+import { useA11y } from "../hooks/useA11yPrefs";
+import { DisplaySettings, HigGroup } from "../components/settings/DisplaySettings";
+import { HigListPicker, HigSegmented, HigSlider, HigSwitch, Icon as HigIcon, pctText } from "../ui/hig";
 import "./forge.css";
 import "./viewport.css";
 import { storageKey } from '../lib/storageKey';
@@ -139,6 +142,16 @@ export function ForgePage({
   const [mediaButtons,setMediaButtons] = useState(() => readMediaButtons(typeof localStorage==='undefined'?null:localStorage, storageKey(MEDIA_BUTTONS_KEY), storageKey(LEGACY_MEDIA_OPT_IN_KEY)));
   const [mutedBeforeHide, setMutedBeforeHide] = useState(false);
   const [revision, setRevision] = useState(0);
+  const a11y = useA11y();
+  // Reduce Motion (system or in-app) overrides Animated environment.
+  const sceneMotion = motion && !a11y.reduceMotion;
+  const tunerButton = useRef<HTMLButtonElement>(null);
+  const hadPanel = useRef(false);
+  // HIG Sheets/Modality: return focus to the Tuner button when the sheet closes.
+  useEffect(() => {
+    if (panel) hadPanel.current = true;
+    else if (hadPanel.current) { hadPanel.current = false; tunerButton.current?.focus(); }
+  }, [panel]);
   const patch = useMemo(
     () =>
       audio.getPatch() ??
@@ -319,23 +332,25 @@ export function ForgePage({
   // Catalogue trim: RoadView scenes and the DashLab custom grid are hidden unless allowlisted.
   const atmospheresListed=LISTED_THEMES.some(t=>t.family==='RoadView');
   const dashLabListed=isThemeListed('custom-grid');
-  const panelTitle=panel==='tuner'?'TUNE':panel==='tune'?'Options':panel==='themes'||panel==='scenes'?'Visuals':panel==='garage'?'Revs':panel==='account'?'Account':'Lab';
+  const panelTitle=panel==='tuner'?'Tuner':panel==='tune'?'Settings':panel==='themes'||panel==='scenes'?'Visuals':panel==='garage'?'Revs':panel==='account'?'Account':'Lab';
   return (
     <div
       className="forge"
       style={{ "--forge-accent": stageTheme.accent } as CSSProperties}
     >
-      <main className={`rev-viewport ${!ignited&&source==='demo'?'is-launch':''}`} style={{'--hud-scale':scale,'--hud-opacity':opacity} as CSSProperties}>
+      <main className={`rev-viewport ${!ignited&&source==='demo'?'is-launch':''}`} inert={panel?true:undefined} aria-busy={audio.starting||undefined} style={{'--hud-scale':scale,'--hud-opacity':opacity} as CSSProperties}>
         <section className="rev-scene" aria-label="Full-screen dashboard">
-          <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={onTimeJump} timeJumpActive={timeJumpActive} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
+          <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={onTimeJump} timeJumpActive={timeJumpActive} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={sceneMotion} running={audio.running} gpsLabel={gpsLabel}/>
         </section>
-        <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{garage.active?.name??theme.name}</small>}</div><button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button></header>
+        <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{garage.active?.name??theme.name}</small>}</div><button ref={tunerButton} className="rev-chip" aria-haspopup="dialog" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button></header>
+        <p className="sr-only" role="status">{audio.starting?'Starting engine':''}</p>
         {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>
-          {source==='demo'&&<label className="rev-throttle">Throttle <span>{Math.round(pedal*100)}%</span><input aria-label="Throttle" type="range" min="0" max="1" step=".01" disabled={!revReady} value={pedal} onChange={e=>setPedal(Number(e.target.value))}/></label>}
+          {source==='demo'&&<div className="rev-throttle"><HigSlider label="Throttle" min={0} max={1} step={.01} disabled={!revReady} value={pedal} display={`${Math.round(pedal*100)}%`} valueText={pctText(pedal)} onChange={setPedal}/></div>}
           <footer className="rev-dock" aria-label="Drive controls">
-            <div className="rev-segment"><button aria-pressed={mode==='auto'} onClick={()=>setMode('auto')}>Auto</button><button aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>Manual</button></div>
-            {mode==='manual'&&<><button className="rev-chip" disabled={!audio.running} aria-label="Downshift" onClick={()=>paddle(-1)}>−</button><button className="rev-chip" disabled={!audio.running} onClick={neutral}>N</button><button className="rev-chip" disabled={!audio.running} aria-label="Upshift" onClick={()=>paddle(1)}>+</button></>}
-            {source==='demo'&&<button className="rev-chip" disabled={!revReady} onPointerDown={e=>hold(e,'throttle')} onPointerUp={()=>setPedal(0)} onPointerCancel={()=>setPedal(0)} onLostPointerCapture={()=>setPedal(0)}>Hold to rev</button>}
+            <HigSegmented className="rev-transmission" label="Transmission" value={mode} onChange={setMode} options={[{value:'auto',label:'Auto'},{value:'manual',label:'Manual'}]}/>
+            {mode==='manual'&&<div className="rev-shifter" role="group" aria-label="Gear"><button className="rev-chip" disabled={!audio.running} aria-label="Downshift" onClick={()=>paddle(-1)}><HigIcon name="minus"/></button><button className="rev-chip" disabled={!audio.running} aria-label="Neutral" onClick={neutral}>N</button><button className="rev-chip" disabled={!audio.running} aria-label="Upshift" onClick={()=>paddle(1)}><HigIcon name="plus"/></button></div>}
+            {source==='demo'&&<button className="rev-chip" disabled={!revReady} aria-describedby="rev-hold-hint" onPointerDown={e=>hold(e,'throttle')} onPointerUp={()=>setPedal(0)} onPointerCancel={()=>setPedal(0)} onLostPointerCapture={()=>setPedal(0)} onKeyDown={e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();e.stopPropagation();setPedal(1);}}} onKeyUp={e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();e.stopPropagation();setPedal(0);}}} onBlur={()=>setPedal(0)}>Hold to rev</button>}
+            {source==='demo'&&<span id="rev-hold-hint" className="sr-only">Press and hold. Keyboard: hold Space.</span>}
             {patch?.kind==='scifi'&&<button className="rev-chip rev-blaster" disabled={!audio.running} onClick={()=>audio.triggerUiCue('ion-cannon')}>Pulse Burst</button>}
             <button className="rev-chip rev-stop" disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Shutdown':mutedBeforeHide?'Resume':'Ignition'}</button>
           </footer>
@@ -348,14 +363,14 @@ export function ForgePage({
             className="forge-modal"
             role="dialog"
             aria-modal="true"
-            aria-label={panelTitle}
+            aria-labelledby="tuner-sheet-title"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") setPanel(null);
               if (e.key === "Tab") {
                 const targets = Array.from(
                   e.currentTarget.querySelectorAll<HTMLElement>(
-                    "button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled)",
+                    "button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex='-1']),summary",
                   ),
                 );
                 const first = targets[0],
@@ -371,75 +386,57 @@ export function ForgePage({
             }}
           >
             <div className="forge-modal-heading">
-              <div>
-                <span className="forge-eyebrow">REVFORGE / TUNE</span>{panel!=="tuner"&&<button className="tuner-back" onClick={()=>setPanel("tuner")}>← TUNE</button>}<h2>{panelTitle}</h2>
+              <div className="forge-modal-titles">
+                {panel!=="tuner"&&<button type="button" className="tuner-back" onClick={()=>setPanel("tuner")}><HigIcon name="chevron-left"/>Tuner</button>}<h2 id="tuner-sheet-title">{panelTitle}</h2>
               </div>
               <button
                 autoFocus
+                type="button"
                 className="forge-icon"
-                aria-label="Close panel"
+                aria-label="Close"
                 onClick={() => setPanel(null)}
               >
-                <Icon name="close" />
+                <HigIcon name="x" />
               </button>
             </div>
-            {panel==='tuner'&&<div className="tuner-menu">{([['tune','Options','Base UI, Demo mode and playback'],['themes','Visuals',atmospheresListed?'Themes and Clusters':'Clusters'],['garage','Revs','Original engine collection'],[dashLabListed?'dashlab':'studio','Lab',dashLabListed?'DashLab and EngineForge':'EngineForge'],['account','Account','Vehicles and saved configurations']] as const).map(([id,label,hint])=><button key={id} onClick={()=>setPanel(id)}><strong>{label}</strong><small>{hint}</small><span>↗</span></button>)}<button onClick={()=>navigate('/sound-builder')}><strong>Sound Builder</strong><small>Build an engine sound from synth nodes</small><span>↗</span></button></div>}
-            {(panel==='themes'||panel==='scenes')&&<>{atmospheresListed&&<div role="tablist" aria-label="Visuals tabs"><button role="tab" className="rf-hit" aria-selected={panel==='themes'} onClick={()=>setPanel('themes')}>Themes</button><button role="tab" className="rf-hit" aria-selected={panel==='scenes'} onClick={()=>setPanel('scenes')}>Clusters</button></div>}{panel==='themes'&&atmospheresListed?<ThemePicker key="atmosphere" mode="atmosphere" selected={themes.atmosphereId} onSelect={themes.selectAtmosphere}/>:<>{isThemeListed(themes.atmosphereId)&&<button className="rf-hit" onClick={()=>themes.selectSkin(themes.atmosphereId)}>Simple RevForge HUD</button>}<ThemePicker key="cluster" mode="cluster" selected={themes.skinId} onSelect={selectCluster}/></>}<section className="theme-builder-panel" style={{marginTop:18}}><h2>Appearance</h2><AppearanceKnobs prefs={prefs} update={update}/></section><section className="theme-builder-panel"><h2>Drive Dynamics</h2><DriveDynamicsPanel prefs={prefs} update={update}/><p className="rf-frontend-note">Also on <code>/customize</code>. Frontend: fold under ☰ → Interface Options → Visuals when hamburger lands.</p></section></>}
-            {panel==='garage'&&<><p>Choose an original engine. Create an editable copy with Tune This Engine.</p><details className="garage-colors"><summary>Garage appearance · recolor</summary><ThemeColors themes={themes}/></details><div className="forge-garage-list">{BUILTIN_PATCHES.filter(p=>isEngineIdVisible(p.id)||audio.engineId===p.id).map(p=><article className="rev-engine-card" key={p.id}><button aria-pressed={audio.engineId===p.id} onClick={()=>onSelectEngine(structuredClone(p))}><strong>{p.name}</strong><small>{{ice:"Combustion",scifi:"Sci-fi",aerospace:"Jet",'ev-whine':"Electric"}[p.kind]} · Original preset</small></button><button onClick={()=>tuneEngine(p)}>Tune This Engine<span className="sr-only"> · {p.name}</span></button></article>)}</div></>}
-            {(panel==='studio'||panel==='dashlab')&&<><div role="tablist" aria-label="Lab tabs">{dashLabListed&&<button role="tab" aria-selected={panel==='dashlab'} onClick={()=>setPanel('dashlab')}>DashLab</button>}<button role="tab" aria-selected={panel==='studio'} onClick={()=>setPanel('studio')}>EngineForge</button></div>{panel==='dashlab'&&dashLabListed?<Guide kind="dash"><ClusterBuilder widgets={themes.widgets} onChange={themes.saveWidgets} onUse={()=>{themes.selectSkin('custom-grid');setPanel(null);}}/></Guide>:<Guide kind="engine">{patch&&(!isCustomEngine(patch)?<section className="locked-engine"><h3>{patch.name}</h3><p>This is an original preset. Create a custom engine to tune its components.</p><button onClick={()=>tuneEngine(patch)}>Tune This Engine</button></section>:<><h3>{patch.name}</h3>{userPatches.length>0&&<label>Custom engine<select aria-label="Custom engine" value={patch.id} onChange={e=>{const p=userPatches.find(p=>p.id===e.target.value);if(p)onSelectEngine(p);}}>{userPatches.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}<button disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Stop audition':'Audition sound'}</button><NativeStudio key={patch.id} patch={patch} onChange={next=>{onSelectEngine(next);setRevision(r=>r+1);}} onSave={onSavePatch}/></>)}</Guide>}</>}
+            {panel==='tuner'&&<div className="tuner-menu">{([['tune','Settings','Display, sound, drive and controls'],['themes','Visuals',atmospheresListed?'Themes and Clusters':'Clusters'],['garage','Revs','Original engine collection'],[dashLabListed?'dashlab':'studio','Lab',dashLabListed?'DashLab and EngineForge':'EngineForge'],['account','Account','Vehicles and saved configurations']] as const).map(([id,label,hint])=><button type="button" key={id} className="hig-row-button" onClick={()=>setPanel(id)}><strong>{label}</strong><small>{hint}</small><span aria-hidden="true"><HigIcon name="chevron-right"/></span></button>)}<button type="button" className="hig-row-button" onClick={()=>navigate('/sound-builder')}><strong>Sound Builder</strong><small>Build an engine sound from synth nodes</small><span aria-hidden="true"><HigIcon name="chevron-right"/></span></button></div>}
+            {(panel==='themes'||panel==='scenes')&&(atmospheresListed?<><HigSegmented tabs panelId="visuals-panel" label="Visuals" value={panel==='scenes'?'scenes':'themes'} onChange={v=>setPanel(v)} options={[{value:'themes',label:'Themes'},{value:'scenes',label:'Clusters'}]}/><div role="tabpanel" id="visuals-panel" aria-labelledby={`visuals-panel-tab-${panel==='scenes'?'scenes':'themes'}`}>{panel==='themes'&&atmospheresListed?<ThemePicker key="atmosphere" mode="atmosphere" selected={themes.atmosphereId} onSelect={themes.selectAtmosphere}/>:<>{isThemeListed(themes.atmosphereId)&&<button type="button" className="hig-btn rf-simple-hud" aria-pressed={themes.skinId===themes.atmosphereId} onClick={()=>themes.selectSkin(themes.atmosphereId)}>Simple RevForge HUD</button>}<ThemePicker key="cluster" mode="cluster" selected={themes.skinId} onSelect={selectCluster}/></>}<section className="theme-builder-panel" style={{marginTop:18}}><h2>Appearance</h2><AppearanceKnobs prefs={prefs} update={update}/></section><section className="theme-builder-panel"><h2>Drive Dynamics</h2><DriveDynamicsPanel prefs={prefs} update={update}/></section></div></>:<>{panel==='themes'&&atmospheresListed?<ThemePicker key="atmosphere" mode="atmosphere" selected={themes.atmosphereId} onSelect={themes.selectAtmosphere}/>:<>{isThemeListed(themes.atmosphereId)&&<button type="button" className="hig-btn rf-simple-hud" aria-pressed={themes.skinId===themes.atmosphereId} onClick={()=>themes.selectSkin(themes.atmosphereId)}>Simple RevForge HUD</button>}<ThemePicker key="cluster" mode="cluster" selected={themes.skinId} onSelect={selectCluster}/></>}<section className="theme-builder-panel" style={{marginTop:18}}><h2>Appearance</h2><AppearanceKnobs prefs={prefs} update={update}/></section><section className="theme-builder-panel"><h2>Drive Dynamics</h2><DriveDynamicsPanel prefs={prefs} update={update}/></section></>)}
+            {panel==='garage'&&<><p className="hig-hint">Choose an original engine. Tune This Engine creates an editable copy.</p><details className="garage-colors"><summary>Garage appearance · recolor</summary><ThemeColors themes={themes}/></details><div className="forge-garage-list">{BUILTIN_PATCHES.filter(p=>isEngineIdVisible(p.id)||audio.engineId===p.id).map(p=>{const kind={ice:"Combustion",scifi:"Sci-fi",aerospace:"Jet",'ev-whine':"Electric"}[p.kind];return <article className="rev-engine-card" key={p.id}><button type="button" aria-pressed={audio.engineId===p.id} aria-label={`${p.name}, ${kind}`} onClick={()=>onSelectEngine(structuredClone(p))}><strong>{p.name}</strong><small>{kind} · Original preset</small>{audio.engineId===p.id&&<span className="rev-engine-active"><HigIcon name="check"/>Active</span>}</button><button type="button" onClick={()=>tuneEngine(p)}>Tune This Engine<span className="sr-only"> · {p.name}</span></button></article>;})}</div></>}
+            {(panel==='studio'||panel==='dashlab')&&(dashLabListed?<><HigSegmented tabs panelId="lab-panel" label="Lab" value={panel==='studio'?'studio':'dashlab'} onChange={v=>setPanel(v)} options={[{value:'dashlab',label:'DashLab'},{value:'studio',label:'EngineForge'}]}/><div role="tabpanel" id="lab-panel" aria-labelledby={`lab-panel-tab-${panel==='studio'?'studio':'dashlab'}`}>{panel==='dashlab'&&dashLabListed?<Guide kind="dash"><ClusterBuilder widgets={themes.widgets} onChange={themes.saveWidgets} onUse={()=>{themes.selectSkin('custom-grid');setPanel(null);}}/></Guide>:<Guide kind="engine">{patch&&(!isCustomEngine(patch)?<section className="locked-engine"><h3>{patch.name}</h3><p>This is an original preset. Create a custom engine to tune its components.</p><button type="button" onClick={()=>tuneEngine(patch)}>Tune This Engine</button></section>:<><h3>{patch.name}</h3>{userPatches.length>0&&<HigListPicker label="Custom engine" value={patch.id} options={userPatches.map(p=>({value:p.id,label:p.name}))} onChange={id=>{const p=userPatches.find(p=>p.id===id);if(p)onSelectEngine(p);}}/>}<button type="button" disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Stop audition':'Audition sound'}</button><NativeStudio key={patch.id} patch={patch} onChange={next=>{onSelectEngine(next);setRevision(r=>r+1);}} onSave={onSavePatch}/></>)}</Guide>}</div></>:<>{panel==='dashlab'&&dashLabListed?<Guide kind="dash"><ClusterBuilder widgets={themes.widgets} onChange={themes.saveWidgets} onUse={()=>{themes.selectSkin('custom-grid');setPanel(null);}}/></Guide>:<Guide kind="engine">{patch&&(!isCustomEngine(patch)?<section className="locked-engine"><h3>{patch.name}</h3><p>This is an original preset. Create a custom engine to tune its components.</p><button type="button" onClick={()=>tuneEngine(patch)}>Tune This Engine</button></section>:<><h3>{patch.name}</h3>{userPatches.length>0&&<HigListPicker label="Custom engine" value={patch.id} options={userPatches.map(p=>({value:p.id,label:p.name}))} onChange={id=>{const p=userPatches.find(p=>p.id===id);if(p)onSelectEngine(p);}}/>}<button type="button" disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Stop audition':'Audition sound'}</button><NativeStudio key={patch.id} patch={patch} onChange={next=>{onSelectEngine(next);setRevision(r=>r+1);}} onSave={onSavePatch}/></>)}</Guide>}</>)}
             {panel==='account'&&<AccountPanel garage={garage} themes={themes} patch={patch} userPatches={userPatches} onEngine={onSavePatch} onLoad={id=>{const c=themes.combinations.find(c=>c.id===id);if(c){themes.loadAppearance(c);onSavePatch(resolveVisibleEnginePatch(c.sound));}}}/>}
             {panel === "tune" && (
-              <div className="forge-tune">
-                <FontPicker value={themes.fonts[themes.skinId]??{numbers:"default",labels:"default"}} onChange={value=>themes.setFont(themes.skinId,value)}/><label>Dashboard scale · {Math.round(scale*100)}%<input aria-label="Dashboard scale" type="range" min=".65" max="1.35" step=".01" value={scale} onChange={e=>setScale(Number(e.target.value))}/></label><label>Instrument opacity<input aria-label="Instrument opacity" type="range" min=".25" max="1" step=".01" value={opacity} onChange={e=>update({hudOpacity:Number(e.target.value)})}/></label><label>Volume<input aria-label="Master volume" type="range" min="0" max="1" step=".01" value={prefs.masterVolume} onChange={e=>update({masterVolume:Number(e.target.value)})}/></label><label>Mute<input aria-label="Mute" type="checkbox" checked={prefs.masterMuted} onChange={e=>update({masterMuted:e.target.checked})}/></label>
-                <label>Background audio<input aria-label="Background audio" type="checkbox" checked={audio.background} onChange={e=>audio.setBackgroundEnabled(e.target.checked)}/></label><TimeJumpCueSwitch on={timeJumpCue} onChange={setTimeJumpCue}/><p role="status">{audio.backgroundStatus} · Audio context: {audio.getDiag().contextState}</p><label>Demo mode<input aria-label="Demo mode" type="checkbox" checked={source==='demo'} onChange={e=>sourceChange(e.target.checked?'demo':'gps')}/></label>
-                <p className="forge-control-hint">Turn Demo off to use browser GPS. Location permission is required.</p>{source==='gps'&&<div role="status"><p>{gpsLabel} · {gps.accuracy===null?'No fix':`Accuracy ±${Math.round(gps.accuracy)} m`}</p><p>{gps.errorMessage}</p><button onClick={gps.start}>Retry GPS</button></div>}
-                <label>Idle jitter<input aria-label="Idle jitter" type="checkbox" checked={jitterEnabled} onChange={e=>setJitterEnabled(e.target.checked)}/></label><label>Idle jitter intensity · {Math.round(jitterAmount*100)}%<input aria-label="Idle jitter intensity" type="range" min="0" max="1" step=".01" disabled={!jitterEnabled} value={jitterAmount} onChange={e=>setJitterAmount(Number(e.target.value))}/></label><p className="forge-control-hint">Adds subtle RPM wander at idle. Fades out as you accelerate.</p>
-                <label>Steering-wheel media buttons shift gears<input type="checkbox" checked={mediaButtons} onChange={e=>setMediaButtons(e.target.checked)}/></label>
-                <p className="forge-control-hint">While the engine runs, RevForge takes the media controls (Miniplayer and steering wheel). Shutdown hands them back to your music. Background playback and wheel events depend on the browser. If interrupted, tap Ignition to resume; touch shifting remains available.</p>
-                <label>Play/pause button upshifts in Manual<input type="checkbox" checked={pauseShifts} onChange={e=>setPauseShifts(e.target.checked)}/></label>
-                <p className="forge-control-hint">Twin-Ion: received play/pause events fire a pulse burst. Other engines: pause stops (or upshifts in Manual). Next/previous shift gears like the paddles (in Auto they switch to Manual). Touch Shutdown always stops.</p>
-                <div className="compatibility-box"><h3>Tesla input check</h3><dl><dt>Location API</dt><dd>{typeof navigator!=='undefined'&&'geolocation' in navigator?'Available':'Unavailable'}</dd><dt>GPS status</dt><dd>{gps.status}</dd><dt>Position accuracy</dt><dd>{gps.accuracy===null?'No reading':`±${Math.round(gps.accuracy)} m`}</dd><dt>Speed reading</dt><dd>{gps.timestamp===null?'Not received':`${gps.mph.toFixed(1)} mph`}</dd><dt>Media handlers</dt><dd>{media.accepted.length}/4 registered</dd><dt>Media session</dt><dd>{media.carrier}</dd><dt>Engine output element</dt><dd>{media.outputPlaying?'Playing':'Direct Web Audio'}</dd></dl><p className="input-check-log" role="status">{media.lastEvent}</p>{media.history.length>1&&<p className="input-check-log">{media.history.slice(1).map((line,i)=><span key={i} style={{display:'block'}}>{line}</span>)}</p>}<button className="forge-text-button" disabled={!mediaButtons || !audio.running} onClick={media.arm}>Enable controls / recheck</button><p>While parked, start the engine and press your media buttons. An event appearing here confirms delivery to this browser. Button registration alone does not mean Tesla delivers the event. GPS speed requires an actual location reading.</p></div>
-
-                <label>
-                  Speed units
-                  <select
-                    value={prefs.speedUnit}
-                    onChange={(e) =>
-                      update({
-                        speedUnit: e.target.value as UiPrefs["speedUnit"],
-                      })
-                    }
-                  >
-                    <option value="mph">Miles per hour</option>
-                    <option value="kph">Kilometers per hour</option>
-                  </select>
-                </label>
-                <label>
-                  Animated environment
-                  <input
-                    type="checkbox"
-                    checked={motion}
-                    onChange={(e) => setMotion(e.target.checked)}
-                  />
-                </label>
-                <label>
-                  Shift sound
-                  <input
-                    type="checkbox"
-                    checked={prefs.upshiftSfx}
-                    onChange={(e) => update({ upshiftSfx: e.target.checked })}
-                  />
-                </label>
-                <label>
-                  Ion lock cues
-                  <input
-                    type="checkbox"
-                    checked={prefs.ionTwinLockSfx}
-                    onChange={(e) =>
-                      update({ ionTwinLockSfx: e.target.checked })
-                    }
-                  />
-                </label>
+              <div className="forge-tune hig-settings">
+                <DisplaySettings prefs={prefs} update={update} idPrefix="tuner-display"/>
+                <HigGroup title="Dashboard" id="tuner-dash-title">
+                  <HigSwitch label="Animated environment" description={a11y.reduceMotion?'Paused while Reduce motion is on.':'Moving road scene behind the instruments.'} checked={sceneMotion} disabled={a11y.reduceMotion} onChange={setMotion}/>
+                  <HigSlider label="Dashboard scale" min={.65} max={1.35} step={.01} value={scale} display={`${Math.round(scale*100)}%`} valueText={pctText(scale)} onChange={setScale}/>
+                  <HigSlider label="Instrument opacity" min={.25} max={1} step={.01} value={opacity} display={`${Math.round(opacity*100)}%`} valueText={pctText(opacity)} onChange={v=>update({hudOpacity:v})}/>
+                  <FontPicker value={themes.fonts[themes.skinId]??{numbers:"default",labels:"default"}} onChange={value=>themes.setFont(themes.skinId,value)}/>
+                </HigGroup>
+                <HigGroup title="Sound" id="tuner-sound-title" footer={`${audio.backgroundStatus} · Audio context: ${audio.getDiag().contextState}`}>
+                  <HigSlider label="Volume" min={0} max={1} step={.01} value={prefs.masterVolume} display={`${Math.round(prefs.masterVolume*100)}%`} valueText={pctText(prefs.masterVolume)} hint="Mix level inside RevForge. Use the car's volume control for overall loudness." onChange={v=>update({masterVolume:v})}/>
+                  <HigSwitch label="Mute" checked={prefs.masterMuted} onChange={masterMuted=>update({masterMuted})}/>
+                  <HigSwitch label="Background audio" description="Keep playing when the browser is not in front, where supported." checked={audio.background} onChange={on=>audio.setBackgroundEnabled(on)}/>
+                  {/* Chrono Coupe 88 mph time jump (chrono-88): HIG switch row, same label and aria-label. */}
+                  <TimeJumpCueSwitch on={timeJumpCue} onChange={setTimeJumpCue}/>
+                  <HigSwitch label="Shift sound" description="Short mechanical bark on Manual upshifts." checked={prefs.upshiftSfx} onChange={upshiftSfx=>update({upshiftSfx})}/>
+                  <HigSwitch label="Ion lock cues" description="Chirp when Twin Ion target lock engages." checked={prefs.ionTwinLockSfx} onChange={ionTwinLockSfx=>update({ionTwinLockSfx})}/>
+                </HigGroup>
+                <HigGroup title="Drive" id="tuner-drive-title" footer="Turn Demo off to use browser GPS. Location permission is required.">
+                  <HigSwitch label="Demo mode" description="Simulated speed. Turn off to read speed from GPS." checked={source==='demo'} onChange={on=>sourceChange(on?'demo':'gps')}/>
+                  {source==='gps'&&<div role="status" className="hig-status-row"><p>{gpsLabel} · {gps.accuracy===null?'No fix':`Accuracy ±${Math.round(gps.accuracy)} m`}</p>{gps.errorMessage&&<p>{gps.errorMessage}</p>}<button type="button" className="hig-btn" onClick={gps.start}>Retry GPS</button></div>}
+                  <div className="hig-field"><span id="tuner-units-label" className="hig-field-label">Speed units</span><HigSegmented labelledBy="tuner-units-label" value={prefs.speedUnit} onChange={speedUnit=>update({speedUnit})} options={[{value:'mph',label:'mph',ariaLabel:'Miles per hour'},{value:'kph',label:'km/h',ariaLabel:'Kilometers per hour'}]}/></div>
+                  <HigSwitch label="Idle jitter" description="Subtle RPM wander at idle that fades as you accelerate." checked={jitterEnabled} onChange={setJitterEnabled}/>
+                  <HigSlider label="Idle jitter intensity" min={0} max={1} step={.01} disabled={!jitterEnabled} value={jitterAmount} display={`${Math.round(jitterAmount*100)}%`} valueText={pctText(jitterAmount)} onChange={setJitterAmount}/>
+                </HigGroup>
+                <HigGroup title="Steering-wheel controls" id="tuner-controls-title" footer="Background playback and wheel events depend on the browser. If interrupted, tap Ignition to resume; touch shifting remains available.">
+                  {/* Media-session rows stay native checkboxes in a full-width row (owned by the media-session work, not this pass). */}
+                  <label className="hig-legacy-row">Steering-wheel media buttons shift gears<input type="checkbox" checked={mediaButtons} onChange={e=>setMediaButtons(e.target.checked)}/></label>
+                  <p className="hig-hint">While the engine runs, RevForge takes the media controls (Miniplayer and steering wheel). Shutdown hands them back to your music.</p>
+                  <label className="hig-legacy-row">Play/pause button upshifts in Manual<input type="checkbox" checked={pauseShifts} onChange={e=>setPauseShifts(e.target.checked)}/></label>
+                  <p className="hig-hint">Twin-Ion: received play/pause events fire a pulse burst. Other engines: pause stops (or upshifts in Manual). Next/previous shift gears like the paddles (in Auto they switch to Manual). Touch Shutdown always stops.</p>
+                  <div className="compatibility-box"><h4>Tesla input check</h4><dl><dt>Location API</dt><dd>{typeof navigator!=='undefined'&&'geolocation' in navigator?'Available':'Unavailable'}</dd><dt>GPS status</dt><dd>{gps.status}</dd><dt>Position accuracy</dt><dd>{gps.accuracy===null?'No reading':`±${Math.round(gps.accuracy)} m`}</dd><dt>Speed reading</dt><dd>{gps.timestamp===null?'Not received':`${gps.mph.toFixed(1)} mph`}</dd><dt>Media handlers</dt><dd>{media.accepted.length}/4 registered</dd><dt>Media session</dt><dd>{media.carrier}</dd><dt>Engine output element</dt><dd>{media.outputPlaying?'Playing':'Direct Web Audio'}</dd></dl><p className="input-check-log" role="status">{media.lastEvent}</p>{media.history.length>1&&<p className="input-check-log">{media.history.slice(1).map((line,i)=><span key={i} style={{display:'block'}}>{line}</span>)}</p>}<button type="button" className="hig-btn" disabled={!mediaButtons || !audio.running} onClick={media.arm}>Enable controls / recheck</button><p>While parked, start the engine and press your media buttons. An event appearing here confirms delivery to this browser. Button registration alone does not mean Tesla delivers the event. GPS speed requires an actual location reading.</p></div>
+                </HigGroup>
               </div>
             )}
           </section>

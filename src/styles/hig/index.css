@@ -1,0 +1,5 @@
+/* HIG layer — imported last (main.tsx) so it sits after legacy component CSS. */
+@import "./tokens.css";
+@import "./components.css";
+@import "./chrome.css";
+@import "./a11y.css";

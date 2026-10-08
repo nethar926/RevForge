@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useA11y } from "../hooks/useA11yPrefs";
 import { drawScene } from "./scenes";
 import type { ScenePack } from "./catalog";
 import type { Simulation } from "./simulation";
@@ -13,6 +14,7 @@ export function SceneCanvas({
   motion: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { reduceMotion } = useA11y();
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -22,8 +24,12 @@ export function SceneCanvas({
       height = 1,
       frame = 0,
       previous = 0;
+    // Reduce Motion (system or in-app) or Animated environment off: draw one
+    // static frame and stop the rAF loop entirely (redraw only on resize).
     const reduced =
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches || !motion;
+      reduceMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches || !motion;
+    const drawStatic = () =>
+      drawScene(ctx, width, height, { sim: { speedMps: 0, distance: 0 }, pack: scene, motion: 0, time: 0 });
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       width = rect.width;
@@ -32,6 +38,7 @@ export function SceneCanvas({
       canvas.width = Math.max(1, Math.round(width * dpr));
       canvas.height = Math.max(1, Math.round(height * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (reduced) drawStatic();
     };
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
@@ -51,17 +58,17 @@ export function SceneCanvas({
       }
       frame = requestAnimationFrame(draw);
     };
-    frame = requestAnimationFrame(draw);
+    if (!reduced) frame = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [scene, simulation, motion]);
+  }, [scene, simulation, motion, reduceMotion]);
   return (
     <canvas
       ref={canvasRef}
       className="forge-scene-canvas"
-      aria-label={`${scene.name} animated environment`}
+      aria-label={`${scene.name} environment`}
       role="img"
     />
   );

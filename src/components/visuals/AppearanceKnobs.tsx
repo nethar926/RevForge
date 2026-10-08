@@ -1,93 +1,38 @@
 import type { UiPrefs } from '../../hooks/useUiPrefs';
+import { HigSlider, pctText } from '../../ui/hig';
 
 interface Props {
   prefs: UiPrefs;
   update: (p: Partial<UiPrefs>) => void;
 }
 
-function Knob({
-  label,
-  value,
-  min,
-  max,
-  step,
-  display,
-  onChange,
-  hint,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  display: string;
-  onChange: (n: number) => void;
-  hint?: string;
-}) {
-  return (
-    <label className="rf-knob tesla-touch">
-      <span className="rf-knob-head">
-        <span>{label}</span>
-        <output>{display}</output>
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        aria-label={label}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-      {hint ? <small className="help-text dim">{hint}</small> : null}
-    </label>
-  );
-}
+type Key = 'bloomGlow' | 'scanlineStrength' | 'hudOpacity' | 'hudBezel';
+const KNOBS: readonly { key: Key; label: string; min: number; hint: string }[] = [
+  { key: 'bloomGlow', label: 'Glow', min: 0, hint: 'Brightness of needle and digit glow.' },
+  { key: 'scanlineStrength', label: 'Scanlines', min: 0, hint: 'Strength of the scan-line overlay on screen-style clusters.' },
+  { key: 'hudOpacity', label: 'Instrument opacity', min: 0.25, hint: 'How solid the instrument cluster looks over the scene.' },
+  { key: 'hudBezel', label: 'Bezel', min: 0, hint: 'Intensity of frame and plate edges.' },
+];
 
-/** Bloom / scanline / HUD opacity / bezel — Tesla ≥48px, no native select. */
+/** Glow / scanlines / opacity / bezel as HIG sliders (≥44px, 48px Tesla). */
 export function AppearanceKnobs({ prefs, update }: Props) {
   return (
-    <div className="rf-appearance-knobs" data-testid="appearance-knobs">
-      <Knob
-        label="Bloom / glow"
-        value={prefs.bloomGlow}
-        min={0}
-        max={1}
-        step={0.01}
-        display={`${Math.round(prefs.bloomGlow * 100)}%`}
-        onChange={(bloomGlow) => update({ bloomGlow })}
-        hint="Phosphor / needle glow intensity (CSS --rf-bloom)."
-      />
-      <Knob
-        label="Scanline strength"
-        value={prefs.scanlineStrength}
-        min={0}
-        max={1}
-        step={0.01}
-        display={`${Math.round(prefs.scanlineStrength * 100)}%`}
-        onChange={(scanlineStrength) => update({ scanlineStrength })}
-        hint="CRT / HUD scan overlay (CSS --rf-scanline → --skin-scanline-opacity)."
-      />
-      <Knob
-        label="HUD opacity"
-        value={prefs.hudOpacity}
-        min={0.25}
-        max={1}
-        step={0.01}
-        display={`${Math.round(prefs.hudOpacity * 100)}%`}
-        onChange={(hudOpacity) => update({ hudOpacity })}
-        hint="Instrument cluster opacity (--hud-opacity)."
-      />
-      <Knob
-        label="Bezel / frame"
-        value={prefs.hudBezel}
-        min={0}
-        max={1}
-        step={0.01}
-        display={`${Math.round(prefs.hudBezel * 100)}%`}
-        onChange={(hudBezel) => update({ hudBezel })}
-        hint="Frame / plate edge intensity (--rf-bezel)."
-      />
+    <div className="rf-appearance-knobs hig-group-body" data-testid="appearance-knobs">
+      {KNOBS.map(({ key, label, min, hint }) => (
+        <HigSlider
+          key={key}
+          className="rf-knob"
+          label={label}
+          value={prefs[key]}
+          min={min}
+          max={1}
+          step={0.01}
+          display={`${Math.round(prefs[key] * 100)}%`}
+          valueText={pctText(prefs[key])}
+          hint={hint}
+          onChange={(v) => update({ [key]: v } as Partial<UiPrefs>)}
+        />
+      ))}
     </div>
   );
 }

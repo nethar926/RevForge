@@ -5,6 +5,7 @@ import { useAudioEngine } from "../hooks/useAudioEngine";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { usePatches } from "../hooks/usePatches";
 import { useUiPrefs } from "../hooks/useUiPrefs";
+import { A11yContext, useA11yPrefs } from "../hooks/useA11yPrefs";
 import { BuilderPage } from "../pages/BuilderPage";
 import { CustomizePage } from "../pages/CustomizePage";
 import { DiagPage } from "../pages/DiagPage";
@@ -20,6 +21,7 @@ import { FALLBACK_ENGINE_ID } from "../themes/visibility";
 
 export default function App() {
   const { prefs, update, reset } = useUiPrefs();
+  const a11y = useA11yPrefs(prefs);
   const themes = useThemes();
   const { userPatches, savePatch, deletePatch } = usePatches();
   const audio = useAudioEngine(prefs.selectedEngineId, userPatches);
@@ -82,6 +84,7 @@ export default function App() {
   const onMuteToggle = () => update({ masterMuted: !prefs.masterMuted });
 
   return (
+    <A11yContext.Provider value={a11y}>
     <Routes>
       {["/", "/drive"].map((path) => (
         <Route
@@ -151,5 +154,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/drive" replace />} />
       </Route>
     </Routes>
+    </A11yContext.Provider>
   );
 }

@@ -1,0 +1,142 @@
+/*
+ * RevForge × Apple HIG — design tokens (chrome only).
+ * Type: HIG iOS "Large (default)" text styles in rem, so the in-app Text size
+ * setting (html font-size) scales them. Every small style is floored at 11px
+ * (Caption 2) so chrome text never renders below 11 CSS px.
+ * Packs/skins keep their own art; they may consume --hig-hit, --hig-focus-*
+ * and the html[data-*] accessibility attributes only.
+ */
+
+/* InterVariable (rsms/inter v4.1, SIL OFL 1.1, Latin subset). Licence:
+   src/assets/fonts/OFL-Inter.txt, shipped as /fonts/OFL-Inter.txt. Registered
+   under the family name "InterVariable" only, so stacks that list "Inter"
+   (e.g. the locked IGNITION splash) render exactly as before. */
+@font-face {
+  font-family: "InterVariable";
+  src: url("../../assets/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ── Fonts (AUDIT §7). SF is reached only via the OS keyword; nothing Apple is bundled. ── */
+  --hig-font-text: -apple-system, BlinkMacSystemFont, "InterVariable", "Inter", "Segoe UI Variable Text", "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --hig-font-rounded: ui-rounded, "InterVariable", "Inter", sans-serif;
+  --hig-font-mono: ui-monospace, Menlo, "JetBrains Mono", "Cascadia Mono", "Roboto Mono", "Liberation Mono", monospace;
+
+  /* ── Type scale (AUDIT §6.1). --hig-type-step = +1 step on Tesla. ── */
+  --hig-type-step: 1;
+  --hig-weight-bump: 0;
+  --hig-large-title: calc(2.125rem * var(--hig-type-step));
+  --hig-title-1: calc(1.75rem * var(--hig-type-step));
+  --hig-title-2: calc(1.375rem * var(--hig-type-step));
+  --hig-title-3: calc(1.25rem * var(--hig-type-step));
+  --hig-headline: calc(1.0625rem * var(--hig-type-step));
+  --hig-body: calc(1.0625rem * var(--hig-type-step));
+  --hig-callout: calc(1rem * var(--hig-type-step));
+  --hig-subhead: max(11px, calc(0.9375rem * var(--hig-type-step)));
+  --hig-footnote: max(11px, calc(0.8125rem * var(--hig-type-step)));
+  --hig-caption-1: max(11px, calc(0.75rem * var(--hig-type-step)));
+  --hig-caption-2: max(11px, calc(0.6875rem * var(--hig-type-step)));
+  --hig-lh-tight: 1.2;
+  --hig-lh: 1.35;
+  --hig-w-regular: calc(400 + var(--hig-weight-bump));
+  --hig-w-medium: calc(510 + var(--hig-weight-bump));
+  --hig-w-semibold: calc(590 + var(--hig-weight-bump));
+  --hig-w-bold: calc(700 + var(--hig-weight-bump));
+
+  /* ── Spacing (8pt grid), sizing, shape (AUDIT §6.2) ── */
+  --hig-space-0_5: 4px;
+  --hig-space-1: 8px;
+  --hig-space-1_5: 12px;
+  --hig-space-2: 16px;
+  --hig-space-3: 24px;
+  --hig-space-4: 32px;
+  --hig-space-6: 48px;
+  --hig-hit: 44px;
+  --hig-row: 52px;
+  --hig-radius-s: 8px;
+  --hig-radius-m: 12px;
+  --hig-radius-l: 16px;
+  --hig-radius-xl: 24px;
+  --hig-radius-capsule: 999px;
+
+  /* ── Semantic colours, dark (chrome is dark-first; retro packs pin their own) ── */
+  --hig-label: #f5f7fa;
+  --hig-label-secondary: #c3cad3; /* ≥5.3:1 even on mid-grey glass (#4a4a48) */
+  --hig-label-tertiary: #8e959e;  /* placeholder / disabled only, never body text */
+  --hig-label-on-light: #0b0d10;
+  --hig-bg: #000000;
+  --hig-bg-2: #16191f;            /* grouped/elevated surface */
+  --hig-bg-3: #22262d;
+  --hig-fill: #2c3037;            /* control track */
+  --hig-fill-strong: #3a3f47;
+  --hig-separator: #3a3f47;
+  --hig-control-border: #787f88;  /* ≥3:1 boundary for form controls */
+  --hig-border-w: 1px;
+  --hig-accent: var(--forge-accent, var(--accent, #0a91ff));
+  --hig-blue: #0091ff;
+  --hig-green: #30d158;
+  --hig-red: #ff4245;
+  --hig-orange: #ff9230;
+  --hig-yellow: #ffd600;
+  --hig-selected-pill: #f2f4f7;   /* segmented selection: 15:1 vs the dark track */
+  --hig-selected-pill-text: #0b0d10;
+
+  /* ── Focus ring (3:1 on any skin: blue ring + dark halo) ── */
+  --hig-focus-color: #4db2ff;
+  --hig-focus-width: 3px;
+  --hig-focus-offset: 2px;
+  --hig-focus-halo: 0 0 0 6px rgb(0 0 0 / 0.6);
+
+  /* ── Materials (AUDIT §6.4). Opaque fallbacks come from a11y.css. ── */
+  --hig-material-regular-bg: rgb(22 25 31 / 0.78);
+  --hig-material-thick-bg: rgb(22 25 31 / 0.9);
+  --hig-material-chrome-bg: rgb(16 23 30 / 0.82);
+  --hig-material-blur: blur(24px) saturate(1.5);
+  --hig-material-blur-thick: blur(36px) saturate(1.6);
+
+  /* ── Motion (AUDIT §6.5) ── */
+  --hig-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --hig-ease-spring: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --hig-dur-quick: 120ms;
+  --hig-dur-base: 240ms;
+  --hig-dur-sheet: 360ms;
+  --hig-dur-fade: 150ms;
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --hig-ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077 24.3%, 1.093 27.4%, 1.07 33.5%, 1.019 46.2%, 0.998 59.3%, 1);
+  }
+}
+
+/* Tesla: 48px hit floor and one type step up. Tesla misreports `pointer`, so the
+   UA hint (html[data-device=tesla], set in useA11yPrefs) is the reliable path. */
+html[data-device="tesla"] { --hig-hit: 48px; --hig-type-step: 1.0625; }
+@media (min-width: 1100px) and (pointer: coarse), (min-width: 1100px) and (any-pointer: coarse) {
+  :root { --hig-hit: 48px; }
+}
+
+/* In-app Text size (Dynamic Type stand-in). Presets per AUDIT §6.1 plus AX3 so
+   text can reach 200 % (HIG Accessibility "at least 200 percent"). */
+html { font-size: calc(100% * var(--hig-text-scale, 1)); -webkit-text-size-adjust: 100%; }
+html[data-text-size="xS"] { --hig-text-scale: 0.875; }
+html[data-text-size="S"] { --hig-text-scale: 0.9375; }
+html[data-text-size="M"] { --hig-text-scale: 1; }
+html[data-text-size="L"] { --hig-text-scale: 1; }
+html[data-text-size="xL"] { --hig-text-scale: 1.125; }
+html[data-text-size="xxL"] { --hig-text-scale: 1.25; }
+html[data-text-size="xxxL"] { --hig-text-scale: 1.375; }
+html[data-text-size="AX1"] { --hig-text-scale: 1.5; }
+html[data-text-size="AX2"] { --hig-text-scale: 1.75; }
+html[data-text-size="AX3"] { --hig-text-scale: 2; }
+html[data-bold-text="on"] { --hig-weight-bump: 100; }
+
+/* Visually hidden (screen-reader only) utility. */
+.hig-vh {
+  position: absolute !important;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0;
+}

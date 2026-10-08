@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { HamburgerMenu } from './NavBar';
 import type { UiPrefs } from '../hooks/useUiPrefs';
+import { Icon } from '../ui/hig';
 
 interface Props {
   prefs: UiPrefs;
@@ -13,7 +14,12 @@ interface Props {
 
 export function AppShell({ prefs, engineName, running, onMuteToggle, skinId = 'default' }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  // Return focus to the hamburger when the menu closes (HIG / WCAG 2.4.3).
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    requestAnimationFrame(() => menuButton.current?.focus());
+  }, []);
   const speedScript = skinId === 'ion-twin' ? prefs.ionTwinSpeedScript : undefined;
 
   return (
@@ -22,9 +28,10 @@ export function AppShell({ prefs, engineName, running, onMuteToggle, skinId = 'd
       data-skin={skinId}
       {...(speedScript ? { 'data-speed-script': speedScript } : {})}
     >
-      <header className="top-chrome">
+      <header className="top-chrome" inert={menuOpen || undefined}>
         <div className="chrome-leading">
           <button
+            ref={menuButton}
             type="button"
             className="hamburger-btn"
             aria-label="Open menu"
@@ -33,7 +40,7 @@ export function AppShell({ prefs, engineName, running, onMuteToggle, skinId = 'd
             onClick={() => setMenuOpen(true)}
           >
             <span className="hamburger-glyph" aria-hidden="true">
-              ☰
+              <Icon name="menu" />
             </span>
           </button>
           <div className="brand">
@@ -54,27 +61,34 @@ export function AppShell({ prefs, engineName, running, onMuteToggle, skinId = 'd
           </div>
         </div>
         <div className="chrome-actions">
+          {/* Status is separate text; the button keeps one constant name + aria-pressed (F-12). */}
+          <span className="chrome-status" role="status">
+            {prefs.masterMuted ? 'Muted' : running ? 'Live' : 'Idle'}
+          </span>
           <button
             type="button"
-            className={`icon-btn ${prefs.masterMuted ? 'muted' : ''}`}
+            className={`icon-btn hig-btn chrome-mute ${prefs.masterMuted ? 'muted' : ''}`}
             onClick={onMuteToggle}
-            aria-label={prefs.masterMuted ? 'Unmute' : 'Mute'}
+            aria-pressed={prefs.masterMuted}
           >
-            {prefs.masterMuted ? 'Muted' : running ? 'Live' : 'Idle'}
+            <Icon name={prefs.masterMuted ? 'volume-x' : 'volume-2'} />
+            <span>Mute</span>
           </button>
         </div>
       </header>
 
       <HamburgerMenu open={menuOpen} onClose={closeMenu} />
 
-      <main className="main-stage">
+      <main className="main-stage" inert={menuOpen || undefined}>
         <Outlet />
       </main>
 
       {prefs.showKeepAliveTip && (
-        <div className="keepalive-tip" role="note">
-          Tesla tip: keep this Browser tab open — backgrounding may pause audio & GPS.
-        </div>
+        <footer className="keepalive-footer">
+          <aside className="keepalive-tip" aria-label="Tip">
+            Keep this browser tab open. Switching away may pause audio and GPS.
+          </aside>
+        </footer>
       )}
     </div>
   );

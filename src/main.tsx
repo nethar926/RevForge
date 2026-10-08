@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './app/App';
 import './index.css';
+import './styles/hig/index.css';
 import { runPackPrefMigrations } from './packs/migrations';
 import { getBuiltin } from './audio';
 import { applyPackDeepLink } from './packs/deepLink';

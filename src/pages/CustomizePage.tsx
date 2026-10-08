@@ -1,6 +1,8 @@
 import { Gauge } from '../components/Gauge';
 import { AppearanceKnobs } from '../components/visuals/AppearanceKnobs';
 import { DriveDynamicsPanel } from '../components/visuals/DriveDynamicsPanel';
+import { DisplaySettings, HigGroup } from '../components/settings/DisplaySettings';
+import { HigSegmented, HigSwitch, Icon } from '../ui/hig';
 import type {
   UiPrefs,
   ThemeId,
@@ -26,29 +28,28 @@ const THEMES: { id: ThemeId; label: string; accent: string }[] = [
   { id: 'mono', label: 'Minimal Mono', accent: '#e8ecf2' },
 ];
 
+/** Labelled segmented row inside a settings group. */
+function SegRow<T extends string>({ id, label, value, options, onChange, wrap }: { id: string; label: string; value: T; options: { value: T; label: string; ariaLabel?: string }[]; onChange: (v: T) => void; wrap?: boolean }) {
+  return (
+    <div className="hig-field">
+      <span id={id} className="hig-field-label">{label}</span>
+      <HigSegmented labelledBy={id} value={value} options={options} onChange={onChange} wrap={wrap} />
+    </div>
+  );
+}
+
 export function CustomizePage({ prefs, update, reset }: Props) {
   return (
-    <div className="page customize-page">
+    <div className="page customize-page hig-settings">
       <header className="page-head">
         <h1>Interface Options</h1>
-        <p className="page-sub">
-          Themes, appearance, Drive Dynamics & SFX — saved locally (RevForge Visuals)
-        </p>
+        <p className="page-sub">Display, theme, appearance and drive settings. Saved on this device.</p>
       </header>
 
-      <aside className="rf-frontend-note" role="note">
-        <strong>Frontend handoff:</strong> when ☰ hamburger IA merges, move{' '}
-        <em>Appearance</em> + <em>Drive Dynamics</em> under{' '}
-        <code>☰ → Interface Options → Visuals</code> (alongside Themes / Clusters).
-        Until then this panel lives on <code>/customize</code> (
-        <code>src/pages/CustomizePage.tsx</code>). Components:{' '}
-        <code>src/components/visuals/AppearanceKnobs.tsx</code>,{' '}
-        <code>src/components/visuals/DriveDynamicsPanel.tsx</code>.
-      </aside>
+      <DisplaySettings prefs={prefs} update={update} idPrefix="customize-display" />
 
-      <section className="panel">
-        <h2 className="section-title">Theme</h2>
-        <div className="theme-grid">
+      <HigGroup title="Theme" id="customize-theme-title">
+        <div className="theme-grid" role="group" aria-labelledby="customize-theme-title">
           {THEMES.map((t) => (
             <button
               key={t.id}
@@ -56,195 +57,66 @@ export function CustomizePage({ prefs, update, reset }: Props) {
               className={`theme-card ${prefs.theme === t.id ? 'selected' : ''}`}
               aria-pressed={prefs.theme === t.id}
               onClick={() => update({ theme: t.id, accent: t.accent })}
-              style={{ ['--card-accent' as string]: t.accent, minHeight: 48 }}
+              style={{ ['--card-accent' as string]: t.accent }}
             >
-              <span className="theme-swatch" />
+              <span className="theme-swatch" aria-hidden="true" />
               {t.label}
+              {prefs.theme === t.id && <span className="theme-card-check" aria-hidden="true"><Icon name="check" /></span>}
             </button>
           ))}
         </div>
-        <label className="field">
-          <span>Accent</span>
-          <input
-            type="color"
-            value={prefs.accent}
-            onChange={(e) => update({ accent: e.target.value })}
-            aria-label="Accent color"
-          />
+        <label className="field hig-field-row">
+          <span>Accent color</span>
+          <input type="color" value={prefs.accent} onChange={(e) => update({ accent: e.target.value })} />
         </label>
-      </section>
+      </HigGroup>
 
-      <section className="panel">
-        <h2 className="section-title">Appearance</h2>
+      <HigGroup title="Appearance" id="customize-appearance-title">
         <AppearanceKnobs prefs={prefs} update={update} />
-      </section>
+      </HigGroup>
 
-      <section className="panel">
-        <h2 className="section-title">Drive Dynamics</h2>
+      <HigGroup title="Drive Dynamics" id="customize-dynamics-title">
         <DriveDynamicsPanel prefs={prefs} update={update} />
-      </section>
+      </HigGroup>
 
-      <section className="panel">
-        <h2 className="section-title">Layout density</h2>
-        <div className="segmented">
-          {(['spacious', 'comfortable', 'compact'] as LayoutDensity[]).map((d) => (
-            <button
-              key={d}
-              type="button"
-              className={`seg-btn ${prefs.density === d ? 'active' : ''}`}
-              onClick={() => update({ density: d })}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2 className="section-title">Gauge cluster</h2>
-        <div className="segmented">
-          {(
-            [
-              ['classic', 'Classic'],
-              ['digital', 'Digital'],
-              ['minimal', 'Minimal'],
-              ['skin-native', 'Skin-native'],
-            ] as [GaugeCluster, string][]
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              className={`seg-btn ${prefs.gaugeCluster === id ? 'active' : ''}`}
-              style={{ minHeight: 48 }}
-              onClick={() => update({ gaugeCluster: id })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <HigGroup title="Layout" id="customize-layout-title" footer="Minimal telemetry hides the shared load, revs and acceleration bar.">
+        <SegRow<LayoutDensity> id="cz-density" label="Density" value={prefs.density} onChange={(density) => update({ density })}
+          options={[{ value: 'spacious', label: 'Spacious' }, { value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]} />
+        <SegRow<GaugeCluster> id="cz-gauge" label="Gauge cluster" value={prefs.gaugeCluster} wrap onChange={(gaugeCluster) => update({ gaugeCluster })}
+          options={[{ value: 'classic', label: 'Classic' }, { value: 'digital', label: 'Digital' }, { value: 'minimal', label: 'Minimal' }, { value: 'skin-native', label: 'Theme' }]} />
         <div className="preview-strip">
           {prefs.gaugeCluster === 'skin-native' ? (
-            <p className="help-text dim" style={{ textAlign: 'center', padding: 24 }}>
-              Skin-native — pack overlay owns the secondary ring (fallback: Minimal).
-            </p>
+            <p className="hig-hint" style={{ textAlign: 'center', padding: 24 }}>The selected theme draws its own gauges.</p>
           ) : (
-            <Gauge
-              style={clusterToGaugeStyle(prefs.gaugeCluster)}
-              value={0.62}
-              label="REVS"
-              readout="4640"
-              size={180}
-            />
+            <Gauge style={clusterToGaugeStyle(prefs.gaugeCluster)} value={0.62} label="REVS" readout="4640" size={180} />
           )}
         </div>
-      </section>
+        <SegRow<TelemetryDensity> id="cz-telemetry" label="Telemetry" value={prefs.telemetryDensity} onChange={(telemetryDensity) => update({ telemetryDensity })}
+          options={[{ value: 'full', label: 'Full' }, { value: 'compact', label: 'Compact' }, { value: 'minimal', label: 'Minimal' }]} />
+      </HigGroup>
 
-      <section className="panel">
-        <h2 className="section-title">Telemetry density</h2>
-        <div className="segmented">
-          {(
-            [
-              ['full', 'Full'],
-              ['compact', 'Compact'],
-              ['minimal', 'Minimal'],
-            ] as [TelemetryDensity, string][]
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              className={`seg-btn ${prefs.telemetryDensity === id ? 'active' : ''}`}
-              style={{ minHeight: 48 }}
-              onClick={() => update({ telemetryDensity: id })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="help-text dim">
-          Minimal hides the shared LOAD/REVS/ACCEL bar (skin-native gauges keep SPEED dominant).
-        </p>
-      </section>
+      <HigGroup title="Units & sounds" id="customize-units-title">
+        <SegRow<SpeedUnit> id="cz-units" label="Speed units" value={prefs.speedUnit} onChange={(speedUnit) => update({ speedUnit })}
+          options={[{ value: 'mph', label: 'mph', ariaLabel: 'Miles per hour' }, { value: 'kph', label: 'km/h', ariaLabel: 'Kilometers per hour' }]} />
+        <HigSwitch label="Keep-tab-open tip" description="Reminder that switching away may pause audio and GPS." checked={prefs.showKeepAliveTip} onChange={(showKeepAliveTip) => update({ showKeepAliveTip })} />
+        <HigSwitch label="Ion lock cues" description="Chirp when Twin Ion target lock engages." checked={prefs.ionTwinLockSfx} onChange={(ionTwinLockSfx) => update({ ionTwinLockSfx })} />
+        <HigSwitch label="Shift sound" description="Short mechanical bark on Manual upshifts." checked={prefs.upshiftSfx} onChange={(upshiftSfx) => update({ upshiftSfx })} />
+      </HigGroup>
 
-      <section className="panel">
-        <h2 className="section-title">Units & coaching</h2>
-        <div className="segmented">
-          {(['mph', 'kph'] as SpeedUnit[]).map((u) => (
-            <button
-              key={u}
-              type="button"
-              className={`seg-btn ${prefs.speedUnit === u ? 'active' : ''}`}
-              onClick={() => update({ speedUnit: u })}
-            >
-              {u.toUpperCase()}
-            </button>
-          ))}
-        </div>
-        <label className="toggle-row mt">
-          <input
-            type="checkbox"
-            checked={prefs.showKeepAliveTip}
-            onChange={(e) => update({ showKeepAliveTip: e.target.checked })}
-          />
-          <span>Show keep-tab-open tip</span>
-        </label>
-        <label className="toggle-row mt tesla-touch">
-          <input
-            type="checkbox"
-            checked={prefs.ionTwinLockSfx}
-            onChange={(e) => update({ ionTwinLockSfx: e.target.checked })}
-          />
-          <span>Ion Twin lock SFX</span>
-        </label>
-        <p className="help-text dim">Optional chirp when TARGET LOCK engages (off by default).</p>
-        <label className="toggle-row mt tesla-touch">
-          <input
-            type="checkbox"
-            checked={prefs.upshiftSfx}
-            onChange={(e) => update({ upshiftSfx: e.target.checked })}
-          />
-          <span>MANUAL upshift bark</span>
-        </label>
-        <p className="help-text dim">
-          Optional short mechanical bark on MANUAL paddle up (off by default). Frontend:{' '}
-          <code>eng.triggerUiCue(&apos;upshift&apos;)</code>.
-        </p>
-        <h2 className="section-title mt">Ion Twin SPEED script</h2>
-        <p className="help-text dim">
-          Aurebesh is the Ion Twin default. Latin or dual-ghost keeps glanceability under cabin motion.
-          Sets <code>data-speed-script</code> on the shell when that skin is active.
-        </p>
-        <div className="segmented">
-          {(
-            [
-              { id: 'aurebesh', label: 'Aurebesh' },
-              { id: 'dual', label: 'Dual ghost' },
-              { id: 'latin', label: 'Latin' },
-            ] as { id: IonTwinSpeedScript; label: string }[]
-          ).map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              className={`seg-btn ${prefs.ionTwinSpeedScript === opt.id ? 'active' : ''}`}
-              onClick={() => update({ ionTwinSpeedScript: opt.id })}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </section>
+      <HigGroup title="Twin Ion speed digits" id="customize-ion-title" footer="Aurebesh is the Twin Ion default. Latin or Dual keeps the speed readable at a glance.">
+        <SegRow<IonTwinSpeedScript> id="cz-script" label="Script" value={prefs.ionTwinSpeedScript} onChange={(ionTwinSpeedScript) => update({ ionTwinSpeedScript })}
+          options={[{ value: 'aurebesh', label: 'Aurebesh' }, { value: 'dual', label: 'Dual' }, { value: 'latin', label: 'Latin' }]} />
+      </HigGroup>
 
-      <section className="panel">
-        <h2 className="section-title">Control mapping</h2>
-        <p className="help-text">
-          Rev pad → <code>{prefs.mapping.revPad}</code> · Speed slider →{' '}
-          <code>{prefs.mapping.speedSlider}</code> · Mute → <code>{prefs.mapping.mute}</code>
-        </p>
-        <p className="help-text dim">
-          Mapping is fixed for v0 drive safety; values persist with your UI prefs.
-        </p>
-      </section>
+      <HigGroup title="Controls" id="customize-controls-title" footer="Control mapping is fixed for driving safety.">
+        <dl className="hig-kv">
+          <dt>Rev pad</dt><dd>{prefs.mapping.revPad}</dd>
+          <dt>Speed slider</dt><dd>{prefs.mapping.speedSlider}</dd>
+          <dt>Mute</dt><dd>{prefs.mapping.mute}</dd>
+        </dl>
+      </HigGroup>
 
-      <button type="button" className="btn-secondary" onClick={reset}>
+      <button type="button" className="btn-secondary hig-btn" onClick={reset}>
         Reset to defaults
       </button>
     </div>
