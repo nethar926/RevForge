@@ -16,7 +16,7 @@ const BOX = { wide: { w: 880, h: 400 }, stack: { w: 600, h: 640 } } as const;
  * Visual Skins' NightPursuitOverlay (which owns all HUD art).
  * Re-renders only on the existing 80 ms HUD publish; no extra loops.
  */
-export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, speed, unit, load, throttle, running, driveWindow = false }: PackHudProps) {
+export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, speed, unit, load, throttle, running, compact, driveWindow = false }: PackHudProps) {
   const [mode, setMode] = useState<NightPursuitMode>(() => getPackMode(NIGHT_PURSUIT_ID));
   useEffect(
     () =>
@@ -79,6 +79,10 @@ export function NightPursuitMount({ rpmNorm, rpm, redlineRpm, gear, speedNorm, s
         onModeChange={(next) => setPackMode(NIGHT_PURSUIT_ID, next)}
         voiceEnvelope={running ? readPackEnvelope() : 0}
         onScannerPass={(edge) => emitScannerPass(NIGHT_PURSUIT_ID, edge)}
+        // Drive-window mode (or an explicit host request) forces the compact layout; otherwise
+        // the skin self-detects from its rendered scale (scale × 9px < 11px), like Chrono Coupe /
+        // Stellar Helm. Off at 1280×800 (@1 and @1.53).
+        compact={driveWindow || compact === true ? true : 'auto'}
       />
       </div>
     </div>
