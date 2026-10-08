@@ -381,6 +381,10 @@ export class ChronoCoupeBus {
     this.crackF.connect(this.crackG);
     this.crackG.connect(this.chargeComp);
 
+    /** True when the rear V6 voice feeds the chain (opens the tone for its rasp, thinner shelf). */
+    this.v6 = false;
+    /** 0..1 combustion gate for the breath layers (V6: 0 while cranking / after key-off). */
+    this.breathGate = 1;
     this.chargeTarget = 0;
     this.breath = 0;
     this.chargeSmooth = 0;
@@ -419,18 +423,22 @@ export class ChronoCoupeBus {
     setT(this.shellA.gain, shell * (2.2 + rn * 1.6 + thr * 0.8), t, tc);
     setT(this.shellB.gain, shell * (1.2 + rn * 1.8), t, tc);
     setT(this.shellA.frequency, 370 + rn * 60, t, tc);
-    setT(this.shelf.gain, 2 - rn * 1.2, t, tc);
-    // Modest power: tone opens with revs + throttle but stays rounded
-    const open = 950 + Math.pow(rn, 0.9) * 3300 + thr * 1100 + ovr * 500;
-    setT(this.tone.frequency, Math.min(7500, open), t, tc);
+    setT(this.shelf.gain, this.v6 ? 0.5 - rn * 1.5 : 2 - rn * 1.2, t, tc);
+    // Modest power: tone opens with revs + throttle but stays rounded. The V6 voice shapes its
+    // own exhaust / intake bands, so the chain stays open enough to keep its rasp.
+    const open = this.v6
+      ? 3600 + Math.pow(rn, 0.9) * 3600 + thr * 1400
+      : 950 + Math.pow(rn, 0.9) * 3300 + thr * 1100 + ovr * 500;
+    setT(this.tone.frequency, Math.min(this.v6 ? 9000 : 7500, open), t, tc);
 
     // Wheeze + injection hiss follow airflow
     const wz = clip(num(p.wheeze, 0.55));
     const hiss = clip(num(p.injectionHiss, 0.5));
     setT(this.crankLfo.frequency, clip(rpm / 60, 8, 110), t, tc);
     setT(this.wheezeF.frequency, 1050 + rn * 1500 + thr * 300, t, tc);
-    setT(this.wheezeG.gain, wz * (0.016 + br * 0.07) * (0.5 + rn * 0.5), t, tc);
-    setT(this.hissG.gain, hiss * (0.011 + br * 0.03), t, tc);
+    const gate = clip(num(this.breathGate, 1));
+    setT(this.wheezeG.gain, gate * wz * (0.016 + br * 0.07) * (0.5 + rn * 0.5), t, tc);
+    setT(this.hissG.gain, gate * hiss * (0.011 + br * 0.03), t, tc);
 
     this.updateCharge(p, t, tc);
   }
@@ -706,7 +714,7 @@ export function playChronoCoupeStarter(ctx, dest, params, whiteBuf, pinkBuf) {
   motor.stop(crankEnd + 0.25);
   motor.onended = cleanup(motor, mBp, mG);
 
-  // Pinion engage tick
+  // Pinion mesh tick
   const nz = ctx.createBufferSource();
   nz.buffer = whiteBuf;
   const nbp = ctx.createBiquadFilter();

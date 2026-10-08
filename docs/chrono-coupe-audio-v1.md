@@ -1,5 +1,9 @@
 # Chrono Coupe — audio engine v1 (experimental)
 
+> **Superseded for the engine voice:** the Chrono Coupe now runs its own rear-mounted odd-fire
+> V6 worklet with engine-played startup / shutdown, see [chrono-coupe-v6.md](chrono-coupe-v6.md).
+> The pulse family-5 voice described here remains the fallback (and the charge bus is unchanged).
+
 An original, fully procedural voice: a 2.85 L rear-mounted 90° V6 with a common-pin crank, so it
 fires unevenly (150° / 90° alternating). It's uneven, slightly wheezy and modest in power, with
 a continuous mechanical-injection hiss, a mild stainless body-shell ring and gentle overrun pops.

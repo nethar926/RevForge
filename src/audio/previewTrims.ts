@@ -21,7 +21,7 @@ export const PREVIEW_PEAK_CEILING_DB = -3;
 
 export const PREVIEW_TRIM_INFO: Readonly<Record<string, PreviewTrimInfo>> = {
   'aerospace-f14': {liveCruiseLufs: -29.21, previewLufs: -19.97, previewPeakDb: -7.3, exactDb: -9.25, trimDb: -9.25, clamped: false},
-  [CHRONO_COUPE.id]: {liveCruiseLufs: -19.73, previewLufs: -19.72, previewPeakDb: -8.23, exactDb: -0.01, trimDb: -0.01, clamped: false},
+  [CHRONO_COUPE.id]: {liveCruiseLufs: -20.15, previewLufs: -22.1, previewPeakDb: -11.42, exactDb: 1.96, trimDb: 1.96, clamped: false},
   'ev-dual-motor': {liveCruiseLufs: -19.65, previewLufs: -21.67, previewPeakDb: -11.4, exactDb: 2.03, trimDb: 2.03, clamped: false},
   'ev-inverter-climb': {liveCruiseLufs: -16.8, previewLufs: -28.11, previewPeakDb: -14.67, exactDb: 11.31, trimDb: 11.31, clamped: false},
   'ev-regen-howl': {liveCruiseLufs: -16.08, previewLufs: -25.18, previewPeakDb: -15.11, exactDb: 9.11, trimDb: 9.11, clamped: false},

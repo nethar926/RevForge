@@ -84,18 +84,33 @@ function scheduleParam(param, when, value) {
 }
 
 /**
- * Chrono Coupe preview (~6 s): odd-fire idle → pull away and cruise while the charge builds
- * (whine + crackle) → discharge at full charge → cruise on. Real worklet + chronoCoupeVoice chain.
+ * Chrono Coupe preview (~6.4 s): key → odd-fire cranking → catch → settle to the lumpy idle →
+ * pull away while the charge builds → discharge → lift-off. Runs the SHIPPED engine graph
+ * (createEngineSynth: rear V6 worklet + Chrono Coupe chain) via scripts/live-render.mjs with a
+ * fixed seed, then normalises to CHRONO_PREVIEW_LUFS integrated.
  */
+export const CHRONO_PREVIEW_LUFS = -22.1;
 async function renderChronoCoupePreview() {
-  const { renderChronoCoupe } = await import('./chrono-coupe-render.mjs');
+  const { renderLive } = await import('./live-render.mjs');
+  const { integratedLufs } = await import('./loudness.mjs');
   const ramp = (t, a, b) => Math.max(0, Math.min(1, (t - a) / (b - a)));
   const profile = (t) => {
-    const speed = 0.76 * ramp(t, 0.8, 4.2);
-    const throttle = t < 0.8 ? 0 : t < 4.2 ? 0.55 : 0.35;
-    return { speed, throttle, load: throttle * 0.4, charge: Math.min(1, speed / 0.73) };
+    if (t < 3.0) return { speed: 0, throttle: 0, load: 0 };
+    if (t < 5.3) return { speed: 0.5 * ramp(t, 3.0, 5.3), throttle: 0.6, load: 0.35 };
+    return { speed: 0.5 - 0.1 * ramp(t, 5.3, 6.4), throttle: 0, load: -0.2 };
   };
-  return renderChronoCoupe(profile, 6.2, { sampleRate: SR, cues: [{ t: 4.3, type: 'discharge' }] });
+  const cues = [{ t: 0.1, run: async (e) => { await e.start(); e.playStarter?.(); } }];
+  for (let t = 3.0; t < 5.3; t += 0.1) cues.push({ t, run: (e) => e.setChargeLevel?.(ramp(t, 3.0, 5.0)) });
+  cues.push({ t: 5.05, run: (e) => e.triggerDischarge?.() });
+  const buf = await renderLive('chrono-coupe', profile, 6.4, { sampleRate: SR, cues, noStart: true, seed: 'chrono-v6-preview' });
+  const ch = Array.from({ length: buf.numberOfChannels }, (_, c) => Float64Array.from(buf.getChannelData(c)));
+  // bufferToWav writes at 0.9 — compensate so the FILE lands on CHRONO_PREVIEW_LUFS
+  const g = Math.pow(10, (CHRONO_PREVIEW_LUFS - integratedLufs(ch, SR)) / 20) / 0.9;
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < d.length; i++) d[i] *= g;
+  }
+  return buf;
 }
 
 async function renderPack(id, buildFn, renderFn) {
