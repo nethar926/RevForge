@@ -1,0 +1,3 @@
+Code tip: a19b38c (skin/chrono-coupe-88-root; on 682798b) — Chrono Coupe time-jump arcs: default off (timeJumpArcs), none under Reduce Motion / Animated environment off / Reduce Transparency even with ?cc88=arcs|?cc88arcs=1, blue routed strikes, per-strike canvas + compositor opacity (dup-key double light fixed).
+Done: tsc app+node, 126 tests, build, 0 idle px vs 8f10e06 (5 sizes), 0 flashes/s (whole HUD, 25% viewport, 341x256; red 0), 0 keep-out hits, contrast >=4.96, min text 12px; perf 1280 p95 16.8 = light-only 16.8, 773 dw 16.7; picks clean on 7ae637d with 9922f04 (145 tests).
+Left: ship after the Carrier Jet follow-up; dw GIF + 773 (non-dw-forced) perf/flash re-run on the final build; artifacts in /workspace/drivesynth-skins/chrono-coupe-88/arcs2/.
