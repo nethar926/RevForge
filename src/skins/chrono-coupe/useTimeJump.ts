@@ -18,8 +18,9 @@ export interface TimeJumpState {
  * - `?cc88=1`    → loop the time-jump light: held 2.0 s, released 2.0 s, repeating
  * - `?cc88=dw`   → same, with the drive-window (localized) variant forced on
  * - `?cc88=drop` → same loop, but released early at 0.8 s (checks the clean early end)
- * - `?cc88=arcs` → same loop with the electric arcs forced on (even if the prop is false)
+ * - `?cc88=arcs` → same loop with the electric arcs forced on (even if the prop is false/unset)
  * - `?cc88arcs=0|1` → arcs off / on (wins over the prop and `cc88=arcs`)
+ *   Neither override turns arcs on under Reduce Motion, "Animated environment" off or Reduce Transparency.
  * Absent or `0` → no override. Demo runs use a fixed arc seed per run (repeatable screenshots).
  */
 export interface Cc88Demo {

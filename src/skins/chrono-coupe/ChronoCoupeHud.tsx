@@ -4,7 +4,7 @@ import { DestinationDialog } from './DestinationDialog';
 import { JUMP_THRESHOLD, bankParts, defaultDestination, readStoredDate, storeDate } from './chronoModel';
 import { useHudCompact, type HudCompact } from './useHudCompact';
 import { cc88ArcsFromQuery, cc88FromQuery, useCc88Demo, useCoreAnchor, useTimeJump, useTimeJumpMotion, type TimeJumpPhase } from './useTimeJump';
-import { useTimeJumpArcs } from './timeJumpArcs';
+import { arcsEnabled, useReducedTransparency, useTimeJumpArcs } from './timeJumpArcs';
 import './chrono-coupe.css';
 
 export interface ChronoCoupeHudProps extends PackHudProps {
@@ -46,10 +46,11 @@ export interface ChronoCoupeHudProps extends PackHudProps {
    */
   driveWindow?: boolean;
   /**
-   * Electric arcs during the time-jump light (default true): 4–8 thin branching blue-white
-   * strikes (2–3 inside the FLUX panel in a drive window), 60–140 ms each, never over the
-   * 7-seg digits, speed, text or controls. None under Reduce Motion / motion off / Reduce
-   * Transparency. Preview: `?cc88=arcs`, `?cc88arcs=0`.
+   * Electric arcs during the time-jump light (default false: undefined → no arcs): 4–6 branching electric-blue
+   * strikes that travel across the HUD along the gutters and panel chrome (2–3 inside the FLUX
+   * panel in a drive window), each a soft glow ~0.35–0.5 s, never over the 7-seg digits,
+   * speed/gear, text or controls; <=3 per second. None under Reduce Motion / motion off / Reduce
+   * Transparency, even with a preview override. Preview: `?cc88=arcs`, `?cc88arcs=0|1`.
    */
   timeJumpArcs?: boolean;
 }
@@ -307,7 +308,8 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
   useCoreAnchor(rootRef, jump.run, jump.phase !== 'idle');
   useTimeJumpMotion(rootRef, jump, still);
   const arcsRef = useRef<HTMLDivElement>(null);
-  const arcsOn = !still && (cc88ArcsFromQuery() ?? (demo88?.arcs || (props.timeJumpArcs ?? true)));
+  const reducedTransparency = useReducedTransparency();
+  const arcsOn = arcsEnabled({ prop: props.timeJumpArcs, demoArcs: demo88?.arcs, query: cc88ArcsFromQuery(), still, reducedTransparency });
   useTimeJumpArcs(rootRef, arcsRef, jump, { enabled: arcsOn, driveWindow, seed: demo88 ? jump.run * 7919 + 17 : null });
 
   const saveMode = (m: RailMode) => props.onModeChange(m);
@@ -492,7 +494,7 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
         </button>
       </div>
 
-      {jump.phase !== 'idle' && arcsOn && <div key={jump.run} ref={arcsRef} className="cc-tj-fade cc-tj-arcs" aria-hidden="true" />}
+      {jump.phase !== 'idle' && arcsOn && <div key={`arcs-${jump.run}`} ref={arcsRef} className="cc-tj-arcs" aria-hidden="true" />}
 
       <DestinationDialog
         open={dialogOpen}
