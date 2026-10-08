@@ -75,6 +75,22 @@ import {
   shutoffDuration,
 } from './engineStartShutdown';
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
+import {
+  ION_DRIFT_HZ,
+  ION_HOWL_FORMANTS,
+  ION_HOWL_MAKEUP,
+  ION_HOWL_SAT,
+  ION_SCREAM_MAKEUP,
+  ION_SCREAM_SAT,
+  ION_SCREAM_FORMANTS,
+  ION_VIBRATO_HZ,
+  ionHowlF0,
+  ionHowlWave,
+  ionMotorWave,
+  ionLevelTrimDb,
+  ionShaper,
+  ionShaperStep,
+} from './ionTwinVoice';
 import pulseWorkletUrl from './worklets/pulse-engine-processor.js?url';
 
 type Kind = EnginePatch['kind'];
@@ -140,6 +156,16 @@ interface GraphHandles {
   /** Burtt-style phrase AM on the scream */
   howlPhraseLfo?: OscillatorNode;
   howlPhraseDepth?: GainNode;
+  /** Twin Ion pitched twin-howl partials (howlOsc/howlOsc2) into the formant + scream banks */
+  howlToneGain?: GainNode;
+  ionMotorBpR?: BiquadFilterNode;
+  howlHp?: BiquadFilterNode;
+  screamToneGain?: GainNode;
+  howlVibLfo?: OscillatorNode;
+  howlVibDepth?: GainNode;
+  howlDriftLfo?: OscillatorNode;
+  howlDriftDepth?: GainNode;
+  screamFlutterDepth?: GainNode;
   bodyGain?: GainNode;
   bodyFilt?: BiquadFilterNode;
   /** Twin motor LP beds (drive bus) */
@@ -278,6 +304,12 @@ export class EngineSynthImpl implements EngineSynth {
   /** Ion Twin spool inertia on motor rate + howl (1-pole lag) */
   private ionSpoolLag = 0;
   private ionSurge = 0;
+  /** Slow surge envelope + glide phase (0 = just struck, 1 = settled) */
+  private ionSurgeEnv = 0;
+  private ionSurgeRise = 1;
+  /** Last written Twin Ion shaper drive steps (curves are only re-written on a step change) */
+  private ionHowlDriveStep = -1;
+  private ionScreamDriveStep = -1;
   /** Aerospace spool inertia + wander */
   private spoolLag = 0;
   private spoolWander = 0;
@@ -1680,6 +1712,7 @@ export class EngineSynthImpl implements EngineSynth {
     motorBpR.type = 'bandpass';
     motorBpR.frequency.value = 72;
     motorBpR.Q.value = 2.2;
+    g.ionMotorBpR = motorBpR;
 
     const motorGainL = ctx.createGain();
     motorGainL.gain.value = 0.28;
@@ -1694,14 +1727,17 @@ export class EngineSynthImpl implements EngineSynth {
     carrierGain.gain.value = 0.06;
     g.carrierGain = carrierGain;
 
+    // Rounded twin carriers: fundamental + soft 2nd (triangle odd partials were a buzzy
+    // 170/290 Hz line comb over the clean motor pole)
+    const motorWave = ionMotorWave(ctx);
     const c1 = ctx.createOscillator();
-    c1.type = 'triangle';
+    c1.setPeriodicWave(motorWave);
     c1.frequency.value = 58;
     c1.start();
     g.carrier1 = c1;
 
     const c2 = ctx.createOscillator();
-    c2.type = 'triangle';
+    c2.setPeriodicWave(motorWave);
     c2.frequency.value = 64;
     c2.detune.value = -18;
     c2.start();
@@ -1714,11 +1750,17 @@ export class EngineSynthImpl implements EngineSynth {
     c3.start();
     g.carrier3 = c3;
 
+    // Near-linear bite (k ≈ 1.2): the old k ≈ 9 clip turned the three carriers into a buzzy
+    // 110–350 Hz intermod cluster; the motor ref is a clean ~57 Hz pole + dark rumble
     const softBite = ctx.createWaveShaper();
-    softBite.curve = makeShaper(0.22) as Float32Array<ArrayBuffer>;
-    c1.connect(softBite);
-    c2.connect(softBite);
-    c3.connect(softBite);
+    softBite.curve = ionShaper(0.03);
+    // Headroom pad: three summed carriers peaked ~2.3 and hard-clipped the curve (intermod)
+    const carrierPad = ctx.createGain();
+    carrierPad.gain.value = 0.4;
+    c1.connect(carrierPad);
+    c2.connect(carrierPad);
+    c3.connect(carrierPad);
+    carrierPad.connect(softBite);
     softBite.connect(carrierGain);
 
     // Irregular pulse AM on motor noise beds (detuned twin beat)
@@ -1792,39 +1834,41 @@ export class EngineSynthImpl implements EngineSynth {
     motorBodyMix.connect(bodyGain);
     motorSum.connect(bodyGain);
 
-    // ── Formant howl stack α: ~400 / 700 / 900 / 1300 Hz ──
+    // ── Formant howl stack α: ~420 / 575 / 900 / 1300 Hz (cue sheet §2) ──
+    const [hf1, hf2, hf3, hf4] = ION_HOWL_FORMANTS;
     const howlFilt = ctx.createBiquadFilter();
     howlFilt.type = 'bandpass';
-    howlFilt.frequency.value = 400;
-    howlFilt.Q.value = 6.5;
+    howlFilt.frequency.value = hf1.hz;
+    howlFilt.Q.value = hf1.q;
     g.howlFilt = howlFilt;
 
     const howlFilt2 = ctx.createBiquadFilter();
     howlFilt2.type = 'bandpass';
-    howlFilt2.frequency.value = 700;
-    howlFilt2.Q.value = 6.0;
+    howlFilt2.frequency.value = hf2.hz;
+    howlFilt2.Q.value = hf2.q;
     g.howlFilt2 = howlFilt2;
 
     const howlFilt3 = ctx.createBiquadFilter();
     howlFilt3.type = 'bandpass';
-    howlFilt3.frequency.value = 900;
-    howlFilt3.Q.value = 5.5;
+    howlFilt3.frequency.value = hf3.hz;
+    howlFilt3.Q.value = hf3.q;
     g.howlFilt3 = howlFilt3;
 
     const howlFilt4 = ctx.createBiquadFilter();
     howlFilt4.type = 'bandpass';
-    howlFilt4.frequency.value = 1300;
-    howlFilt4.Q.value = 5.0;
+    howlFilt4.frequency.value = hf4.hz;
+    howlFilt4.Q.value = hf4.q;
     g.howlFilt4 = howlFilt4;
 
     const formantGain = ctx.createGain();
     formantGain.gain.value = 1.15;
     g.formantGain = formantGain;
 
+    // Breath: pink noise through every formant (dark top — the refs roll off hard above 2 kHz)
     g.pinkSrc!.connect(howlFilt);
     g.pinkSrc!.connect(howlFilt2);
     g.pinkSrc!.connect(howlFilt3);
-    g.noiseSrc!.connect(howlFilt4);
+    g.pinkSrc!.connect(howlFilt4);
     howlFilt.connect(formantGain);
     howlFilt2.connect(formantGain);
     howlFilt3.connect(formantGain);
@@ -1833,7 +1877,7 @@ export class EngineSynthImpl implements EngineSynth {
     // Soft grit under howl — filtered noise + mild waveshape (NOT saw lead)
     const howlGritFilt = ctx.createBiquadFilter();
     howlGritFilt.type = 'bandpass';
-    howlGritFilt.frequency.value = 3200;
+    howlGritFilt.frequency.value = 1800;
     howlGritFilt.Q.value = 1.1;
     g.howlGritFilt = howlGritFilt;
 
@@ -1842,37 +1886,80 @@ export class EngineSynthImpl implements EngineSynth {
     g.howlOscGain = howlOscGain;
 
     const gritShaper = ctx.createWaveShaper();
-    gritShaper.curve = makeShaper(0.55) as Float32Array<ArrayBuffer>;
-    g.noiseSrc!.connect(howlGritFilt);
+    gritShaper.curve = ionShaper(0.55);
+    // Pink-fed: white grit put a hard >8 kHz sheen on a voice the refs band-limit near 8 kHz
+    g.pinkSrc!.connect(howlGritFilt);
     howlGritFilt.connect(gritShaper);
     gritShaper.connect(howlOscGain);
     howlOscGain.connect(formantGain);
 
-    // Keep howlOsc handles as silent placeholders for teardown safety (unused leads)
+    // Pitched twin howl (elephant-call partials): two detuned saw voices excite the SAME formant
+    // filters as the breath noise — the formants pick out thin gliding partial lines, never a
+    // bare saw lead. Slow drift + vibrato on detune; the twin offset beats like two motors.
+    // Brassy harmonic recipe with no fundamental (formants pick the partials; no f0 drone)
+    const howlWave = ionHowlWave(ctx);
     const howlOsc = ctx.createOscillator();
-    howlOsc.type = 'sine';
-    howlOsc.frequency.value = 190;
+    howlOsc.setPeriodicWave(howlWave);
+    howlOsc.frequency.value = 160;
     howlOsc.start();
     g.howlOsc = howlOsc;
-    const howlOscSilent = ctx.createGain();
-    howlOscSilent.gain.value = 0;
-    howlOsc.connect(howlOscSilent);
 
     const howlOsc2 = ctx.createOscillator();
-    howlOsc2.type = 'sine';
-    howlOsc2.frequency.value = 285;
+    howlOsc2.setPeriodicWave(howlWave);
+    howlOsc2.frequency.value = 162.5;
     howlOsc2.start();
     g.howlOsc2 = howlOsc2;
-    howlOsc2.connect(howlOscSilent);
+
+    const howlToneGain = ctx.createGain();
+    howlToneGain.gain.value = 0;
+    g.howlToneGain = howlToneGain;
+    howlOsc.connect(howlToneGain);
+    howlOsc2.connect(howlToneGain);
+    howlToneGain.connect(howlFilt);
+    howlToneGain.connect(howlFilt2);
+    howlToneGain.connect(howlFilt3);
+    howlToneGain.connect(howlFilt4);
+
+    const howlVibLfo = ctx.createOscillator();
+    howlVibLfo.type = 'sine';
+    howlVibLfo.frequency.value = ION_VIBRATO_HZ;
+    howlVibLfo.start();
+    g.howlVibLfo = howlVibLfo;
+    const howlVibDepth = ctx.createGain();
+    howlVibDepth.gain.value = 0;
+    g.howlVibDepth = howlVibDepth;
+    howlVibLfo.connect(howlVibDepth);
+    howlVibDepth.connect(howlOsc.detune);
+    howlVibDepth.connect(howlOsc2.detune);
+
+    const howlDriftLfo = ctx.createOscillator();
+    howlDriftLfo.type = 'triangle';
+    howlDriftLfo.frequency.value = ION_DRIFT_HZ;
+    howlDriftLfo.start();
+    g.howlDriftLfo = howlDriftLfo;
+    const howlDriftDepth = ctx.createGain();
+    howlDriftDepth.gain.value = 0;
+    g.howlDriftDepth = howlDriftDepth;
+    howlDriftLfo.connect(howlDriftDepth);
+    howlDriftDepth.connect(howlOsc.detune);
+    howlDriftDepth.connect(howlOsc2.detune);
 
     const howlShaper = ctx.createWaveShaper();
-    howlShaper.curve = makeShaper(0.58) as Float32Array<ArrayBuffer>;
+    howlShaper.curve = ionShaper(0.58 * ION_HOWL_SAT);
     g.howlShaper = howlShaper;
 
     const howlGain = ctx.createGain();
     howlGain.gain.value = 0;
     g.howlGain = howlGain;
-    formantGain.connect(howlShaper);
+    // Steep floor under the bellow: the refs fall ~30 dB/oct below ~380 Hz on the howl (the
+    // motors own that band) — keeps the voices' fundamental + the BP skirts out of it
+    const howlHp = ctx.createBiquadFilter();
+    howlHp.type = 'highpass';
+    howlHp.frequency.value = 340;
+    howlHp.Q.value = 1.1;
+    g.howlHp = howlHp;
+    formantGain.connect(howlHp);
+    howlHp.connect(howlShaper);
     howlShaper.connect(howlGain);
 
     // Phrase AM — shallow breath on the sustained bellow (never gate/chop)
@@ -1888,62 +1975,78 @@ export class EngineSynthImpl implements EngineSynth {
     howlPhraseLfo.connect(howlPhraseDepth);
     howlPhraseDepth.connect(howlGain.gain);
 
-    // ── Scream burst stack β: ~470 / 1270 / 1480 Hz (ref-C aggression accent) ──
+    // ── Scream burst stack β: ~480 / 1260 / 1500 Hz (ref-C aggression accent) ──
+    const [sf1, sf2, sf3] = ION_SCREAM_FORMANTS;
     const screamFilt = ctx.createBiquadFilter();
     screamFilt.type = 'bandpass';
-    screamFilt.frequency.value = 470;
-    screamFilt.Q.value = 7.0;
+    screamFilt.frequency.value = sf1.hz;
+    screamFilt.Q.value = sf1.q;
     g.screamFilt = screamFilt;
 
     const screamFilt2 = ctx.createBiquadFilter();
     screamFilt2.type = 'bandpass';
-    screamFilt2.frequency.value = 1270;
-    screamFilt2.Q.value = 6.5;
+    screamFilt2.frequency.value = sf2.hz;
+    screamFilt2.Q.value = sf2.q;
     g.screamFilt2 = screamFilt2;
 
     const screamFilt3 = ctx.createBiquadFilter();
     screamFilt3.type = 'bandpass';
-    screamFilt3.frequency.value = 1480;
-    screamFilt3.Q.value = 5.5;
+    screamFilt3.frequency.value = sf3.hz;
+    screamFilt3.Q.value = sf3.q;
     g.screamFilt3 = screamFilt3;
     const screamShaper = ctx.createWaveShaper();
-    screamShaper.curve = makeShaper(0.62) as Float32Array<ArrayBuffer>;
+    screamShaper.curve = ionShaper(0.62 * ION_SCREAM_SAT);
     g.screamShaper = screamShaper;
     const screamGain = ctx.createGain();
     screamGain.gain.value = 0;
     g.screamGain = screamGain;
     g.pinkSrc!.connect(screamFilt);
-    g.noiseSrc!.connect(screamFilt2);
-    g.noiseSrc!.connect(screamFilt3);
+    g.pinkSrc!.connect(screamFilt2);
+    g.pinkSrc!.connect(screamFilt3);
+    // Same twin voices excite the scream stack (thin stable 1.26 / 1.5 kHz lines)
+    const screamToneGain = ctx.createGain();
+    screamToneGain.gain.value = 0;
+    g.screamToneGain = screamToneGain;
+    howlOsc.connect(screamToneGain);
+    howlOsc2.connect(screamToneGain);
+    screamToneGain.connect(screamFilt);
+    screamToneGain.connect(screamFilt2);
+    screamToneGain.connect(screamFilt3);
     screamFilt.connect(screamShaper);
     screamFilt2.connect(screamShaper);
     screamFilt3.connect(screamShaper);
     screamShaper.connect(screamGain);
+    // ~5.7 Hz flutter AM on the scream (shares the vibrato LFO)
+    const screamFlutterDepth = ctx.createGain();
+    screamFlutterDepth.gain.value = 0;
+    g.screamFlutterDepth = screamFlutterDepth;
+    howlVibLfo.connect(screamFlutterDepth);
+    screamFlutterDepth.connect(screamGain.gain);
 
     // ── Shared grit bus (2–5 kHz × load) ──
     const gritFilt = ctx.createBiquadFilter();
     gritFilt.type = 'bandpass';
-    gritFilt.frequency.value = 3400;
+    gritFilt.frequency.value = 2200;
     gritFilt.Q.value = 0.9;
     g.gritFilt = gritFilt;
 
     const gritGain = ctx.createGain();
     gritGain.gain.value = 0;
     g.gritGain = gritGain;
-    g.noiseSrc!.connect(gritFilt);
+    g.pinkSrc!.connect(gritFilt);
     gritFilt.connect(gritGain);
 
-    // ── Air / wet-road swoosh (opens with rpm; dominates high) ──
+    // ── Air / wet-pavement hiss: mid-band tyre rush (1–2.5 kHz), steep roll-off above ──
     const wetHissFilt = ctx.createBiquadFilter();
-    wetHissFilt.type = 'highpass';
-    wetHissFilt.frequency.value = 1200;
-    wetHissFilt.Q.value = 0.55;
+    wetHissFilt.type = 'lowpass';
+    wetHissFilt.frequency.value = 2600;
+    wetHissFilt.Q.value = 0.6;
     g.wetHissFilt = wetHissFilt;
 
     const wetHissFilt2 = ctx.createBiquadFilter();
     wetHissFilt2.type = 'bandpass';
-    wetHissFilt2.frequency.value = 3800;
-    wetHissFilt2.Q.value = 0.85;
+    wetHissFilt2.frequency.value = 1400;
+    wetHissFilt2.Q.value = 0.8;
     g.wetHissFilt2 = wetHissFilt2;
 
     const wetHissGain = ctx.createGain();
@@ -1980,7 +2083,8 @@ export class EngineSynthImpl implements EngineSynth {
     wetFlybyGain.gain.value = 0;
     g.wetFlybyGain = wetFlybyGain;
 
-    g.noiseSrc!.connect(wetHissFilt);
+    // Pink (not white) rush: wet tarmac hiss is dense in the mids and falls away up top
+    g.pinkSrc!.connect(wetHissFilt);
     wetHissFilt.connect(wetHissFilt2);
     wetHissFilt2.connect(wetHissGain);
     wetHissGain.connect(wetPan);
@@ -1989,18 +2093,20 @@ export class EngineSynthImpl implements EngineSynth {
     wetBodyFilt.connect(wetBodyGain);
     wetBodyGain.connect(wetPan);
 
-    g.noiseSrc!.connect(wetFlybyGain);
+    // Flyby rush rides the same dark wet band (raw white noise was the bright top of the stack)
+    wetHissFilt.connect(wetFlybyGain);
     wetFlybyGain.connect(wetPan);
 
     // Ion spark / discharge (sparse, never solo lead)
     const afterFilt = ctx.createBiquadFilter();
-    afterFilt.type = 'highpass';
-    afterFilt.frequency.value = 2800;
+    afterFilt.type = 'bandpass';
+    afterFilt.frequency.value = 2200;
+    afterFilt.Q.value = 0.9;
 
     const afterGain = ctx.createGain();
     afterGain.gain.value = 0;
     g.afterGain = afterGain;
-    g.noiseSrc!.connect(afterFilt);
+    g.pinkSrc!.connect(afterFilt);
     afterFilt.connect(afterGain);
 
     // Soft ion hum (idle support)
@@ -2042,6 +2148,13 @@ export class EngineSynthImpl implements EngineSynth {
     humGain.connect(sum);
     wetPan.connect(sum);
 
+    // Fixed stereo after the sum: when every wet send idles at zero the bus can collapse to mono
+    // and flip back on the next automation tick; pinning 2 ch keeps the low hum free of 60 Hz
+    // switching sidebands (heard as a buzzy 113/173/232 Hz comb at idle)
+    for (const n of [dryGain, delay]) {
+      n.channelCountMode = 'explicit';
+      n.channelCount = 2;
+    }
     sum.connect(dryGain);
     sum.connect(delay);
     delay.connect(delayGain);
@@ -2061,6 +2174,10 @@ export class EngineSynthImpl implements EngineSynth {
     this.scifiPrevThr = 0;
     this.ionSpoolLag = 0;
     this.ionSurge = 0;
+    this.ionSurgeEnv = 0;
+    this.ionSurgeRise = 1;
+    this.ionHowlDriveStep = -1;
+    this.ionScreamDriveStep = -1;
     const stopOsc = (o?: OscillatorNode | AudioBufferSourceNode) => {
       try {
         o?.stop();
@@ -2090,6 +2207,8 @@ export class EngineSynthImpl implements EngineSynth {
     stopOsc(g.howlOsc);
     stopOsc(g.howlOsc2);
     stopOsc(g.howlPhraseLfo);
+    stopOsc(g.howlVibLfo);
+    stopOsc(g.howlDriftLfo);
     stopOsc(g.humOsc);
     stopOsc(g.wetAmLfo);
     stopOsc(g.intakeWhineOsc);
@@ -3193,6 +3312,11 @@ export class EngineSynthImpl implements EngineSynth {
     const jump = Math.min(1.2, rpmJump * 10 + thrJump * 5.5);
     this.scifiFlyby = Math.max(this.scifiFlyby * Math.exp(-tc * 9), jump);
     this.ionSurge = Math.max(this.ionSurge * Math.exp(-tc * 5.5), jump * 0.85);
+    // Glide phase: a fresh stab restarts low (growl blob) and the formants climb as it settles
+    const envDecayed = this.ionSurgeEnv * Math.exp(-tc * 1.1);
+    if (jump * 0.85 > envDecayed + 0.05) this.ionSurgeRise = 0;
+    this.ionSurgeEnv = Math.max(envDecayed, jump * 0.85);
+    this.ionSurgeRise += (1 - this.ionSurgeRise) * (1 - Math.exp(-tc * 1.6));
     this.scifiPrevRpm = rpmNorm;
     this.scifiPrevThr = thrRaw;
     const flyby = this.scifiFlyby;
@@ -3271,7 +3395,8 @@ export class EngineSynthImpl implements EngineSynth {
     if (g.carrierGain) {
       smooth(
         g.carrierGain.gain,
-        motorLead * motorMix * (0.04 + (1 - open) * 0.06) * (0.5 + thr * 0.2),
+        // Pad-compensated; more carrier at speed = the twin low hum (≈90–230 Hz) under the howl
+        motorLead * motorMix * (0.16 + open * 0.16) * (0.5 + thr * 0.2) * (1 + howlLead * 0.6),
         tc,
         ctx,
       );
@@ -3279,26 +3404,40 @@ export class EngineSynthImpl implements EngineSynth {
 
     // Motor bed — continuous floor under howl (never drop to silence at cruise)
     const motorScale = (0.24 + noiseBody * 0.35) * (0.75 + motorMix * 0.5);
-    const motorBed = Math.max(
-      0.09 * motorScale * (0.45 + spool * 0.55),
-      motorLead * motorScale * (0.92 - howlLead * 0.22),
-    );
+    // Floor keeps a real low twin-motor hum under the howl at speed (refs: dual low hum under
+    // every howl, -13…-19 dB re peak at 100–250 Hz)
+    const motorBed =
+      motorLead * motorScale * (0.92 - howlLead * 0.22) * (1 + howlLead * 1.2);
     if (g.motorGainL) smooth(g.motorGainL.gain, motorEnable * motorBed * (1 + this.liveJit.gain * 0.03), tc, ctx);
     if (g.motorGainR) {
       smooth(g.motorGainR.gain, motorEnable * motorBed * (0.92 + detune * 0.08), tc, ctx);
     }
     if (g.motorFiltL) {
-      smooth(g.motorFiltL.frequency, 70 + spool * 110 + thr * 40 + surgeAmt * 30, tc, ctx);
+      smooth(g.motorFiltL.frequency, 70 + spool * 170 + thr * 40 + surgeAmt * 30, tc, ctx);
     }
     if (g.motorFiltR) {
-      smooth(g.motorFiltR.frequency, 78 + spool * 125 + thr * 45 + detune * 20, tc, ctx);
+      smooth(g.motorFiltR.frequency, 78 + spool * 185 + thr * 45 + detune * 20, tc, ctx);
     }
     if (g.bodyFilt) {
-      smooth(g.bodyFilt.frequency, 52 + spool * 55 + thr * 25, tc, ctx);
-      g.bodyFilt.Q.value = 1.8 + res * 1.5;
+      // Twin motor bands climb with spool (~57 Hz idle pole → ~150 Hz hum under the howl) and
+      // widen at speed so the low hum covers 90–250 Hz
+      const bodyHz = 52 + spool * 95 + thr * 30;
+      const bodyQ = (1.8 + res * 1.5) * (1 - open * 0.45);
+      smooth(g.bodyFilt.frequency, bodyHz, tc, ctx);
+      g.bodyFilt.Q.value = bodyQ;
+      if (g.ionMotorBpR) {
+        smooth(g.ionMotorBpR.frequency, bodyHz * 1.12, tc, ctx);
+        g.ionMotorBpR.Q.value = bodyQ * 0.92;
+      }
     }
     if (g.bodyGain) {
-      smooth(g.bodyGain.gain, (0.28 + bodyAmt * 0.35) * (0.55 + motorLead * 0.55), tc, ctx);
+      // Motor bus rides up with the howl so the twin low hum stays audible under the bellow
+      smooth(
+        g.bodyGain.gain,
+        (0.28 + bodyAmt * 0.35) * (0.55 + motorLead * 0.55) * (1 + howlLead * 2.2),
+        tc,
+        ctx,
+      );
     }
     if (g.motorBodyMix) {
       // B-like wetness on motor only; leaner when howl leads
@@ -3316,10 +3455,14 @@ export class EngineSynthImpl implements EngineSynth {
 
     // Formant howl — sustained bellow × smoothstep(rpmNorm); holds while driving
     const howlAmt = howlLead;
-    const howlOut = howlAmt * (1.28 + thr * 0.42) + flybyAmt * howlMix * 0.22;
+    const howlOut = (howlAmt * (1.28 + thr * 0.42) + flybyAmt * howlMix * 0.22) * ION_HOWL_MAKEUP;
     if (g.howlGain) smooth(g.howlGain.gain, howlOut * howlEnable, tc, ctx);
     if (g.formantGain) {
       smooth(g.formantGain.gain, howlEnable * (0.95 + formantHowl * 0.45 + openSpool * 0.35), tc, ctx);
+    }
+    if (g.howlHp) {
+      // Surge opens the bellow's floor (low growl blob, then the rising glide — ref-D)
+      smooth(g.howlHp.frequency, 340 * (1 - clamp(surgeAmt) * 0.5), tc, ctx);
     }
     if (g.howlOscGain) {
       // Noise grit under formants × load
@@ -3347,61 +3490,100 @@ export class EngineSynthImpl implements EngineSynth {
       flybyAmt * 0.85 +
       openSpool * thr * 0.25
     );
-    if (g.screamGain) smooth(g.screamGain.gain, screamLead * (1.1 + thr * 0.35), tc, ctx);
-    const screamShift = lerp(0.95, 1.35, screamBright);
-    const screamSurge = 1 + surgeAmt * 0.18;
+    const screamOut = screamLead * (1.1 + thr * 0.35) * ION_SCREAM_MAKEUP;
+    if (g.screamGain) smooth(g.screamGain.gain, screamOut, tc, ctx);
+    if (g.screamFlutterDepth) {
+      // ~5.7 Hz flutter on the scream (ref-C AM peak), ≤35 % so it trembles, never gates
+      smooth(g.screamFlutterDepth.gain, screamOut * (0.22 + thr * 0.13), tc, ctx);
+    }
+    if (g.screamToneGain) {
+      smooth(g.screamToneGain.gain, screamEnable * (0.05 + screamBright * 0.05 + thr * 0.03), tc, ctx);
+    }
+    // Brightness = small shift around the stack (ref-C lines barely move); surge lifts it
+    const screamShift = lerp(0.94, 1.08, screamBright);
+    const screamSurge = 1 + surgeAmt * 0.12;
+    const [sf1, sf2, sf3] = ION_SCREAM_FORMANTS;
     if (g.screamFilt) {
-      smooth(g.screamFilt.frequency, 470 * screamShift * screamSurge, tc, ctx);
-      g.screamFilt.Q.value = 5.5 + res * 3.5;
+      smooth(g.screamFilt.frequency, sf1.hz * screamShift * screamSurge, tc, ctx);
+      g.screamFilt.Q.value = sf1.q * (0.8 + res * 0.35);
     }
     if (g.screamFilt2) {
-      smooth(g.screamFilt2.frequency, 1270 * screamShift * screamSurge, tc, ctx);
-      g.screamFilt2.Q.value = 5.0 + res * 3.2;
+      smooth(g.screamFilt2.frequency, sf2.hz * screamShift * screamSurge, tc, ctx);
+      g.screamFilt2.Q.value = sf2.q * (0.8 + res * 0.35);
     }
     if (g.screamFilt3) {
-      smooth(g.screamFilt3.frequency, 1480 * screamShift * screamSurge * (1 + screamBright * 0.08), tc, ctx);
-      g.screamFilt3.Q.value = 4.5 + res * 3.0;
+      smooth(g.screamFilt3.frequency, sf3.hz * screamShift * screamSurge, tc, ctx);
+      g.screamFilt3.Q.value = sf3.q * (0.8 + res * 0.35);
     }
     if (g.screamShaper) {
-      const sDrive = 0.4 + screamBright * 0.3 + thr * 0.2 + flybyAmt * 0.15;
-      g.screamShaper.curve = makeShaper(clamp(sDrive, 0.25, 0.9)) as Float32Array<ArrayBuffer>;
+      const sStep = ionShaperStep(clamp(0.4 + screamBright * 0.3 + thr * 0.2 + flybyAmt * 0.15, 0.25, 0.9));
+      if (sStep !== this.ionScreamDriveStep) {
+        this.ionScreamDriveStep = sStep;
+        g.screamShaper.curve = ionShaper(sStep * ION_SCREAM_SAT);
+      }
     }
 
-    // Formant CF stack α + RPM/surge morph (0.7×–1.4×) + rising surge glide
-    const shift = lerp(0.72, 1.38, formantShift * 0.5 + spool * 0.5);
-    const surgeLift = 1 + surgeAmt * 0.22;
-    const f1 = (400 + spread * 80 + thr * 60) * shift * surgeLift;
-    const f2 = (700 + spread * 120 + thr * 90) * shift * surgeLift;
-    const f3 = (900 + spread * 160 + thr * 110) * shift * surgeLift;
-    const f4 = (1300 + spread * 220 + thr * 160 + open * 80) * shift * surgeLift;
+    // Formant CF stack α (~420/575/900/1300) + gentle spool morph (0.85×–1.2×) + rising surge
+    // glide; the stack darkens again on lift (refs: centroid falls ~60 Hz/s on release)
+    const lift = clamp(this.throttleLag - thrRaw);
+    const shift = lerp(0.85, 1.2, formantShift * 0.4 + spool * 0.6) * (1 - lift * 0.12);
+    // Surge glide: low (≈0.65×) on the strike → ≈1.35× as it settles (rising centroid, ref-D)
+    const surgeGlideAmt = clamp(this.ionSurgeEnv) * surgeMix;
+    const surgeLift = 1 + surgeGlideAmt * lerp(-0.35, 0.35, this.ionSurgeRise);
+    const fShift = shift * surgeLift;
+    const fq = (i: number) => ION_HOWL_FORMANTS[i].q * (0.75 + res * 0.4);
+    const f1 = (ION_HOWL_FORMANTS[0].hz + spread * 40 + thr * 30) * fShift;
+    const f2 = (ION_HOWL_FORMANTS[1].hz + spread * 60 + thr * 45) * fShift;
+    const f3 = (ION_HOWL_FORMANTS[2].hz + spread * 80 + thr * 60) * fShift;
+    const f4 = (ION_HOWL_FORMANTS[3].hz + spread * 110 + thr * 80 + open * 40) * fShift;
 
     if (g.howlFilt) {
       smooth(g.howlFilt.frequency, f1, tc, ctx);
-      g.howlFilt.Q.value = 4.2 + res * 5.5;
+      g.howlFilt.Q.value = fq(0);
     }
     if (g.howlFilt2) {
       smooth(g.howlFilt2.frequency, f2, tc, ctx);
-      g.howlFilt2.Q.value = 3.8 + res * 5;
+      g.howlFilt2.Q.value = fq(1);
     }
     if (g.howlFilt3) {
       smooth(g.howlFilt3.frequency, f3, tc, ctx);
-      g.howlFilt3.Q.value = 3.5 + res * 4.8;
+      g.howlFilt3.Q.value = fq(2);
     }
     if (g.howlFilt4) {
       smooth(g.howlFilt4.frequency, f4, tc, ctx);
-      g.howlFilt4.Q.value = 3.2 + res * 4.5;
+      g.howlFilt4.Q.value = fq(3);
     }
-    if (g.howlOsc) smooth(g.howlOsc.frequency, f1 * 0.45, tc, ctx);
-    if (g.howlOsc2) smooth(g.howlOsc2.frequency, f2 * 0.4, tc, ctx);
+
+    // Pitched twin howl: f0 glide (spool), surge lift, lift-off droop; twin offset = motorDetune
+    const howlF0 = ionHowlF0(spool, thr, surgeAmt, lift, !!d.reverse);
+    if (g.howlOsc) smooth(g.howlOsc.frequency, howlF0, tc, ctx);
+    if (g.howlOsc2) smooth(g.howlOsc2.frequency, howlF0 * (1.008 + detune * 0.014), tc, ctx);
+    if (g.howlToneGain) {
+      smooth(g.howlToneGain.gain, howlEnable * (0.07 + openSpool * 0.05 + thr * 0.03 + flybyAmt * 0.03), tc, ctx);
+    }
+    if (g.howlVibDepth) {
+      // cents: light vibrato that deepens with load / surge
+      smooth(g.howlVibDepth.gain, 5 + thr * 9 + flybyAmt * 14, tc, ctx);
+    }
+    if (g.howlDriftDepth) {
+      // slow ±cents wander so the partial lines glide like a voice, not a held synth note
+      smooth(g.howlDriftDepth.gain, 18 + phraseDepthK * 70, tc, ctx);
+    }
 
 
     if (g.howlGritFilt) {
-      smooth(g.howlGritFilt.frequency, 2600 + open * 1800 + thr * 900 + loadAbs * 400, tc, ctx);
+      smooth(g.howlGritFilt.frequency, 1500 + open * 700 + thr * 500 + loadAbs * 300, tc, ctx);
     }
     if (g.howlShaper) {
       // Grit × load — open harshness on aggression only
       const drive = 0.35 + gritKnob * 0.25 + thr * 0.25 + loadAbs * 0.15 + open * 0.1;
-      g.howlShaper.curve = makeShaper(clamp(drive, 0.2, 0.85)) as Float32Array<ArrayBuffer>;
+      const hStep = ionShaperStep(clamp(drive, 0.2, 0.85));
+      if (hStep !== this.ionHowlDriveStep) {
+        this.ionHowlDriveStep = hStep;
+        // Light saturation (k ≤ ~3): the old k ≈ 15–34 clip flattened the formants into
+        // broadband hiss; the refs keep clear formant peaks with a rough, dark top
+        g.howlShaper.curve = ionShaper(hStep * ION_HOWL_SAT);
+      }
     }
 
     // Shared grit bus
@@ -3414,7 +3596,7 @@ export class EngineSynthImpl implements EngineSynth {
       );
     }
     if (g.gritFilt) {
-      smooth(g.gritFilt.frequency, 2800 + thr * 1400 + open * 800, tc, ctx);
+      smooth(g.gritFilt.frequency, 1800 + thr * 800 + open * 500, tc, ctx);
     }
 
     // Air / wet swoosh — continuous bed; surge gestures on throttle spikes only
@@ -3432,7 +3614,7 @@ export class EngineSynthImpl implements EngineSynth {
       smooth(g.wetBodyGain.gain, wetAmt * 0.9 + open * wetKnob * 0.32, tc, ctx);
     }
     if (g.wetBodyFilt) {
-      smooth(g.wetBodyFilt.frequency, 900 + open * 1500 + thr * 650 + rpmNorm * 450, tc, ctx);
+      smooth(g.wetBodyFilt.frequency, 700 + open * 700 + thr * 350 + rpmNorm * 250, tc, ctx);
     }
     if (g.wetFlybyGain) {
       // Continuous trickle + spike surge (not the whole air bed)
@@ -3451,16 +3633,12 @@ export class EngineSynthImpl implements EngineSynth {
       smooth(g.wetAmLfo.frequency, 1.2 + rpmNorm * 2.2 + thr * 1.4 + flybyAmt * 2.5, tc, ctx);
     }
     if (g.wetHissFilt) {
-      smooth(
-        g.wetHissFilt.frequency,
-        700 + open * 2200 + thr * 1000 + rpmNorm * 800 + flybyAmt * 700,
-        tc,
-        ctx,
-      );
+      // Wet-pavement rush: low-pass opens with speed / surge but stays under ~4 kHz
+      smooth(g.wetHissFilt.frequency, 1700 + open * 1100 + thr * 500 + flybyAmt * 600, tc, ctx);
     }
     if (g.wetHissFilt2) {
-      smooth(g.wetHissFilt2.frequency, 2400 + open * 3400 + thr * 1500 + rpmNorm * 1100, tc, ctx);
-      g.wetHissFilt2.Q.value = 0.65 + open * 0.3;
+      smooth(g.wetHissFilt2.frequency, 950 + open * 700 + thr * 350 + rpmNorm * 300, tc, ctx);
+      g.wetHissFilt2.Q.value = 0.7 + open * 0.2;
     }
     if (g.wetPan) {
       // Near-mono default; subtle twin / load lean only
@@ -3481,7 +3659,8 @@ export class EngineSynthImpl implements EngineSynth {
 
     // Ion hum — idle / taxi support
     if (g.humGain) {
-      const idleAmt = clamp(1 - rpmNorm * 2.0) * hum * 0.2;
+      // Idle-only: fades out by ~30 % rpm so the 55 Hz pole doesn't sit under the howl
+      const idleAmt = clamp(1 - rpmNorm * 3.5) * hum * 0.2;
       smooth(g.humGain.gain, idleAmt + (d.speed < 0.03 ? thrRaw * hum * 0.08 : 0), tc, ctx);
     }
     if (g.humOsc) {
@@ -3491,8 +3670,12 @@ export class EngineSynthImpl implements EngineSynth {
     }
 
     // Wet/dry crossfade — default dry-leaning
-    if (g.dryGain) smooth(g.dryGain.gain, 1 - wetDry * 0.55, tc, ctx);
-    if (g.wetBusGain) smooth(g.wetBusGain.gain, wetDry * 0.45 + bodyAmt * 0.08 * (1 - open), tc, ctx);
+    // Level trim: holds idle / cruise / full integrated loudness on the pre-voicing reference
+    const trim = Math.pow(10, ionLevelTrimDb(thr) / 20);
+    if (g.dryGain) smooth(g.dryGain.gain, (1 - wetDry * 0.55) * trim, tc, ctx);
+    if (g.wetBusGain) {
+      smooth(g.wetBusGain.gain, (wetDry * 0.45 + bodyAmt * 0.08 * (1 - open)) * trim, tc, ctx);
+    }
     if (g.delay) {
       smooth(g.delay.delayTime, 0.012 + wetDry * 0.035 + loadAbs * 0.01, tc, ctx);
     }

@@ -15,13 +15,6 @@ const OUT = join(__dirname, '..', 'public', 'snippets');
 const SR = 44100;
 const DUR = 3.5;
 
-function envelope(t, attack, hold, release) {
-  if (t < attack) return t / attack;
-  if (t < hold) return 1;
-  if (t < release) return 1 - (t - hold) / (release - hold);
-  return 0;
-}
-
 /** Driving profile: idle 0–0.6s → rev 0.6–1.4 → accel 1.4–3.5 */
 function driveAt(t) {
   let speed = 0;
@@ -37,11 +30,6 @@ function driveAt(t) {
     throttle = 0.55 + u * 0.4;
   }
   return { speed: Math.max(0, Math.min(1, speed)), throttle: Math.max(0, Math.min(1, throttle)) };
-}
-
-function smoothstep(x, e0, e1) {
-  const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
-  return t * t * (3 - 2 * t);
 }
 
 function fillNoise(buf, pink = false) {
@@ -71,13 +59,6 @@ function makeNoise(ctx, seconds, pink) {
   src.buffer = buf;
   src.loop = true;
   return src;
-}
-
-function connectGain(ctx, node, gainVal = 1) {
-  const g = ctx.createGain();
-  g.gain.value = gainVal;
-  node.connect(g);
-  return g;
 }
 
 function scheduleParam(param, when, value) {
@@ -157,20 +138,17 @@ async function renderIcePreview(id) {
 }
 
 /**
- * Twin Ion preview: same buildScifi approximation, but level-matched (preview render gain only —
- * the live voice is untouched). The un-normalised render sat at ≈ −0.5 LUFS / −0.9 dBFS peak with
- * ~16 % of samples clipped in the WAV. Target = median integrated loudness of the other ten
- * previews (BS.1770, scripts/preview-loudness.mjs), peak capped at their median peak.
+ * Twin Ion preview: the LIVE voice (createEngineSynth → CharacterEngine → EngineSynthImpl scifi
+ * graph, scripts/ion-twin-render.mjs) driven by driveAt over 3.5 s after a 3 s silent pre-roll
+ * that skips the start-up sweep. Seeded noise → byte-identical re-renders. Preview gain only:
+ * level-matched to the median integrated loudness of the other previews (BS.1770,
+ * scripts/preview-loudness.mjs).
  */
-const ION_TWIN_PREVIEW = { lufs: -20.4, peakDb: -9.6 };
+const ION_TWIN_PREVIEW = { lufs: -20.4, peakCapDb: -1 };
 async function renderIonTwinPreview() {
   const { integratedLufs } = await import('./loudness.mjs');
-  const ctx = new OfflineAudioContext(2, Math.ceil(SR * DUR), SR);
-  const master = ctx.createGain();
-  master.gain.value = 0.85;
-  master.connect(ctx.destination);
-  buildScifi(ctx, master);
-  const buf = await ctx.startRendering();
+  const { renderIonTwin } = await import('./ion-twin-render.mjs');
+  const buf = await renderIonTwin(driveAt, DUR, { sampleRate: SR, preroll: 3, seed: 'ion-twin-preview' });
   const WAV_SCALE = 0.9; // bufferToWav writes at 0.9
   const chans = [];
   let peak = 0;
@@ -180,9 +158,10 @@ async function renderIonTwinPreview() {
     for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]) * WAV_SCALE);
   }
   const lufs = integratedLufs(chans, SR);
-  const gLufs = Math.pow(10, (ION_TWIN_PREVIEW.lufs - lufs) / 20);
-  const gPeak = Math.pow(10, ION_TWIN_PREVIEW.peakDb / 20) / Math.max(1e-9, peak);
-  const g = Math.min(gLufs, gPeak);
+  const g = Math.pow(10, (ION_TWIN_PREVIEW.lufs - lufs) / 20);
+  if (peak * g > Math.pow(10, ION_TWIN_PREVIEW.peakCapDb / 20)) {
+    throw new Error(`ion-twin preview would peak at ${(20 * Math.log10(peak * g)).toFixed(1)} dBFS`);
+  }
   for (let c = 0; c < buf.numberOfChannels; c++) {
     const x = buf.getChannelData(c);
     for (let i = 0; i < x.length; i++) x[i] *= g;
@@ -371,255 +350,6 @@ function buildAero(ctx, master) {
     scheduleParam(roarG.gain, t, 0.08 + spoolAmt * 0.28 + d.throttle * d.throttle * 0.2);
     const ab = Math.max(0, d.throttle - 0.55) / 0.45;
     scheduleParam(abG.gain, t, ab * ab * 0.35);
-  });
-}
-
-function buildScifi(ctx, master) {
-  const pink = makeNoise(ctx, 2, true);
-  const white = makeNoise(ctx, 2, false);
-
-  // Twin motor beds (LP+BP noise) — no saw/square lead
-  const mLpL = ctx.createBiquadFilter();
-  mLpL.type = 'lowpass';
-  mLpL.frequency.value = 95;
-  const mBpL = ctx.createBiquadFilter();
-  mBpL.type = 'bandpass';
-  mBpL.frequency.value = 65;
-  mBpL.Q.value = 2.4;
-  const mGL = ctx.createGain();
-  mGL.gain.value = 0;
-  pink.connect(mLpL);
-  mLpL.connect(mBpL);
-  mBpL.connect(mGL);
-  mGL.connect(master);
-
-  const mLpR = ctx.createBiquadFilter();
-  mLpR.type = 'lowpass';
-  mLpR.frequency.value = 110;
-  const mBpR = ctx.createBiquadFilter();
-  mBpR.type = 'bandpass';
-  mBpR.frequency.value = 72;
-  mBpR.Q.value = 2.2;
-  const mGR = ctx.createGain();
-  mGR.gain.value = 0;
-  const twinD = ctx.createDelay(0.05);
-  twinD.delayTime.value = 0.012;
-  pink.connect(mLpR);
-  mLpR.connect(mBpR);
-  mBpR.connect(mGR);
-  mGR.connect(twinD);
-  twinD.connect(master);
-
-  // Quiet triangle support
-  const c1 = ctx.createOscillator();
-  c1.type = 'triangle';
-  c1.frequency.value = 62;
-  c1.start();
-  const cG = ctx.createGain();
-  cG.gain.value = 0;
-  c1.connect(cG);
-  cG.connect(master);
-
-  // 4-formant howl stack α ~400/700/900/1300
-  const f1 = ctx.createBiquadFilter();
-  f1.type = 'bandpass';
-  f1.Q.value = 6.5;
-  f1.frequency.value = 400;
-  const f2 = ctx.createBiquadFilter();
-  f2.type = 'bandpass';
-  f2.Q.value = 6;
-  f2.frequency.value = 700;
-  const f3 = ctx.createBiquadFilter();
-  f3.type = 'bandpass';
-  f3.Q.value = 5.5;
-  f3.frequency.value = 900;
-  const f4 = ctx.createBiquadFilter();
-  f4.type = 'bandpass';
-  f4.Q.value = 5;
-  f4.frequency.value = 1300;
-  const formantG = ctx.createGain();
-  formantG.gain.value = 1.15;
-  const howlShaper = ctx.createWaveShaper();
-  const n = 256;
-  const curve = new Float32Array(n);
-  const k = 0.58 * 40;
-  for (let i = 0; i < n; i++) {
-    const x = (i * 2) / n - 1;
-    curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x));
-  }
-  howlShaper.curve = curve;
-  const howlG = ctx.createGain();
-  howlG.gain.value = 0;
-  pink.connect(f1);
-  pink.connect(f2);
-  pink.connect(f3);
-  white.connect(f4);
-  f1.connect(formantG);
-  f2.connect(formantG);
-  f3.connect(formantG);
-  f4.connect(formantG);
-  formantG.connect(howlShaper);
-  howlShaper.connect(howlG);
-  howlG.connect(master);
-
-  // Scream burst β ~470/1270/1480
-  const s1 = ctx.createBiquadFilter();
-  s1.type = 'bandpass';
-  s1.frequency.value = 470;
-  s1.Q.value = 7;
-  const s2 = ctx.createBiquadFilter();
-  s2.type = 'bandpass';
-  s2.frequency.value = 1270;
-  s2.Q.value = 6.5;
-  const s3 = ctx.createBiquadFilter();
-  s3.type = 'bandpass';
-  s3.frequency.value = 1480;
-  s3.Q.value = 5.5;
-  const screamSh = ctx.createWaveShaper();
-  {
-    const n = 256;
-    const curve = new Float32Array(n);
-    const k = 0.62 * 40;
-    for (let i = 0; i < n; i++) {
-      const x = (i * 2) / n - 1;
-      curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x));
-    }
-    screamSh.curve = curve;
-  }
-  const screamG = ctx.createGain();
-  screamG.gain.value = 0;
-  pink.connect(s1);
-  white.connect(s2);
-  white.connect(s3);
-  s1.connect(screamSh);
-  s2.connect(screamSh);
-  s3.connect(screamSh);
-  screamSh.connect(screamG);
-  screamG.connect(master);
-
-  const phrase = ctx.createOscillator();
-  phrase.type = 'sine';
-  phrase.frequency.value = 0.45;
-  phrase.start();
-  const phraseD = ctx.createGain();
-  phraseD.gain.value = 0;
-  phrase.connect(phraseD);
-  phraseD.connect(howlG.gain);
-
-  // Grit × load (2–5 kHz)
-  const gritF = ctx.createBiquadFilter();
-  gritF.type = 'bandpass';
-  gritF.frequency.value = 3400;
-  gritF.Q.value = 0.9;
-  const gritG = ctx.createGain();
-  gritG.gain.value = 0;
-  white.connect(gritF);
-  gritF.connect(gritG);
-  gritG.connect(master);
-
-  // Air / wet swoosh
-  const wetF = ctx.createBiquadFilter();
-  wetF.type = 'highpass';
-  wetF.frequency.value = 1200;
-  wetF.Q.value = 0.55;
-  const wetBp = ctx.createBiquadFilter();
-  wetBp.type = 'bandpass';
-  wetBp.frequency.value = 3800;
-  wetBp.Q.value = 0.85;
-  const wetG = ctx.createGain();
-  wetG.gain.value = 0;
-  white.connect(wetF);
-  wetF.connect(wetBp);
-  wetBp.connect(wetG);
-  wetG.connect(master);
-
-  const wetBody = ctx.createBiquadFilter();
-  wetBody.type = 'bandpass';
-  wetBody.frequency.value = 1400;
-  wetBody.Q.value = 0.7;
-  const wetBodyG = ctx.createGain();
-  wetBodyG.gain.value = 0;
-  pink.connect(wetBody);
-  wetBody.connect(wetBodyG);
-  wetBodyG.connect(master);
-
-  const afterF = ctx.createBiquadFilter();
-  afterF.type = 'highpass';
-  afterF.frequency.value = 2800;
-  const afterG = ctx.createGain();
-  afterG.gain.value = 0;
-  white.connect(afterF);
-  afterF.connect(afterG);
-  afterG.connect(master);
-
-  const hum = ctx.createOscillator();
-  hum.type = 'sine';
-  hum.frequency.value = 55;
-  hum.start();
-  const humG = ctx.createGain();
-  humG.gain.value = 0;
-  hum.connect(humG);
-  humG.connect(master);
-
-  pink.start();
-  white.start();
-
-  // Spool lag state for offline render — continuous roar (match applyScifiDriving)
-  let spool = 0;
-  automate(ctx, (t, d) => {
-    const rpm = Math.max(d.speed * 0.65 + d.throttle * (d.speed < 0.05 ? 0.55 : 0.2), 0);
-    const spoolTarget = Math.min(1, rpm * 0.65 + d.throttle * 0.45);
-    spool += (spoolTarget - spool) * 0.08;
-    const open = smoothstep(rpm, 0.15, 0.85);
-    const openSpool = smoothstep(spool, 0.12, 0.88);
-    const fund = 62 * (0.85 + spool * 1.55);
-
-    const motorLead = Math.max(0, Math.min(1, 0.28 + (1 - openSpool) * 0.42 + d.throttle * 0.12 + (1 - open) * 0.18));
-    const howlHold = Math.max(0, Math.min(1, 0.92 * 0.9 * openSpool * (0.95 + d.throttle * 0.28)));
-    const howlLead = howlHold;
-    const airBed = 0.78 * open * (0.42 + rpm * 0.38 + d.throttle * 0.28);
-    const airLead = Math.max(0, Math.min(1, airBed));
-
-    scheduleParam(c1.frequency, t, fund);
-    scheduleParam(cG.gain, t, motorLead * 0.045);
-    const motorScale = 0.42 * (0.75 + 0.58 * 0.5);
-    const motorBed = Math.max(
-      0.09 * motorScale * (0.45 + spool * 0.55),
-      motorLead * motorScale * (0.92 - howlLead * 0.22),
-    );
-    scheduleParam(mGL.gain, t, motorBed);
-    scheduleParam(mGR.gain, t, motorBed * 0.95);
-    scheduleParam(mLpL.frequency, t, 70 + spool * 110 + d.throttle * 40);
-    scheduleParam(mLpR.frequency, t, 78 + spool * 125);
-
-    const shift = 0.72 + spool * 0.5;
-    scheduleParam(f1.frequency, t, 400 * shift);
-    scheduleParam(f2.frequency, t, 700 * shift);
-    scheduleParam(f3.frequency, t, 900 * shift);
-    scheduleParam(f4.frequency, t, (1300 + open * 80) * shift);
-    const screamLead = howlLead * (1.28 + d.throttle * 0.42);
-    scheduleParam(howlG.gain, t, screamLead);
-    scheduleParam(formantG.gain, t, 0.95 + 0.92 * 0.45 + openSpool * 0.35);
-    // screamBurst mix 0.35 default — throttle accent
-    const screamBurst = 0.35 * (d.throttle * d.throttle * (0.35 + open * 0.45) + openSpool * d.throttle * 0.25);
-    scheduleParam(screamG.gain, t, screamBurst * (1.1 + d.throttle * 0.35));
-    const screamShift = 0.95 + 0.55 * 0.4;
-    scheduleParam(s1.frequency, t, 470 * screamShift);
-    scheduleParam(s2.frequency, t, 1270 * screamShift);
-    scheduleParam(s3.frequency, t, 1480 * screamShift);
-    // Shallow phrase breath — cap ~15% of scream (never gate)
-    const breath = Math.min(screamLead * 0.15, howlLead * 0.18 * (0.12 + d.throttle * 0.1));
-    scheduleParam(phraseD.gain, t, breath);
-    scheduleParam(phrase.frequency, t, 0.25 + 0.28 * 0.3 + open * d.throttle * 0.6);
-
-    scheduleParam(gritG.gain, t, 0.42 * (d.throttle * 0.12 + open * d.throttle * 0.14));
-    scheduleParam(wetG.gain, t, airLead * 1.15);
-    scheduleParam(wetBodyG.gain, t, airLead * 0.9 + open * 0.78 * 0.32);
-    scheduleParam(wetF.frequency, t, 700 + open * 2200 + d.throttle * 1000);
-    scheduleParam(wetBp.frequency, t, 2400 + open * 3400);
-    scheduleParam(wetBody.frequency, t, 900 + open * 1500);
-    scheduleParam(afterG.gain, t, 0.3 * open * d.throttle * d.throttle * 0.35);
-    scheduleParam(humG.gain, t, Math.max(0, 1 - rpm * 2) * 0.42 * 0.2);
   });
 }
 
