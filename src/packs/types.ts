@@ -41,6 +41,11 @@ export interface PackHudProps {
    * Mirrors `data-drive-window="true"` on `.theme-stage`. Optional; safe to ignore.
    */
   driveWindow?: boolean;
+  /**
+   * Chrono Coupe 88 mph time-jump light: true for one cue length (TIME_JUMP_CUE_SECONDS) after
+   * a rising 88 mph crossing while the 'Time-jump sound' option is on. Only passed to Chrono Coupe.
+   */
+  timeJumpActive?: boolean;
 }
 
 /** How the pack behaves under prefers-reduced-motion / Animated environment off. */

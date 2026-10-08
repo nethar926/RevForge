@@ -7,7 +7,9 @@ import {AerospaceF14Overlay} from '../skins/aerospace-f14/AerospaceF14Overlay';
 import '../skins/aerospace-f14/aerospace-f14.css';
 import {GradientCluster} from '../skins/gradient/GradientCluster';
 import {GradientMacro} from '../skins/gradient/GradientMacro';
-import {useMemo,useRef} from 'react';
+import {useEffect,useMemo,useRef} from 'react';
+import {createTimeJumpEdge,MPS_TO_MPH} from '../forge/timeJump';
+import CHRONO_COUPE from '../packs/chrono-coupe.identity';
 import {useDriveWindow} from './useDriveWindow';
 import {packForThemeId} from '../packs/registry';
 import {instrumentDefaults} from './ThemeColors';
@@ -18,7 +20,7 @@ import type {Simulation} from '../forge/simulation';
 import type {ThemePreset} from './catalog';
 import './themes.css';
 import './special-dashes.css';
-interface Props {maxSpeedMps?:number;fonts?:FontChoice;widgets?:ClusterWidget[];lockStage?:string;onTimeJump?:()=>void;colors?:Record<string,string>;sceneColors?:Record<string,string>;theme:ThemePreset; state:Simulation; simulation:{current:Simulation}; redline:number; unit:'mph'|'kph'; demo:boolean; motion:boolean; running:boolean; warningRpm?:number;gpsLabel?:string; atmosphereId?:string;}
+interface Props {maxSpeedMps?:number;fonts?:FontChoice;widgets?:ClusterWidget[];lockStage?:string;onTimeJump?:()=>void;timeJumpActive?:boolean;colors?:Record<string,string>;sceneColors?:Record<string,string>;theme:ThemePreset; state:Simulation; simulation:{current:Simulation}; redline:number; unit:'mph'|'kph'; demo:boolean; motion:boolean; running:boolean; warningRpm?:number;gpsLabel?:string; atmosphereId?:string;}
 function Dial({value,max,label,unit}:{value:number;max:number;label:string;unit:string}) {
  const pct=Math.max(0,Math.min(1,value/max));
  return <div className="skin-dial"><svg viewBox="0 0 220 220" role="img" aria-label={`${label}: ${Math.round(value)} ${unit}`}>
@@ -32,7 +34,7 @@ function Dial({value,max,label,unit}:{value:number;max:number;label:string;unit:
 function Rail({value,label,segmented=false}:{value:number;label:string;segmented?:boolean}) {
  return <div className={`skin-rail ${segmented?'segmented':''}`}><span>{label}</span><div className="rail-track">{segmented?Array.from({length:32},(_,i)=><i key={i} className={i/32<value?'lit':''}/>):<i style={{width:`${Math.max(0,Math.min(1,value))*100}%`}}/>}</div></div>;
 }
-export function ThemeStage({maxSpeedMps,fonts,widgets=defaultCluster,theme,state,simulation,redline,unit,demo,motion,running,gpsLabel='GPS waiting',atmosphereId,warningRpm,colors={},sceneColors,onTimeJump,lockStage}:Props) {
+export function ThemeStage({maxSpeedMps,fonts,widgets=defaultCluster,theme,state,simulation,redline,unit,demo,motion,running,gpsLabel='GPS waiting',atmosphereId,warningRpm,colors={},sceneColors,onTimeJump,lockStage,timeJumpActive}:Props) {
  const scene=useMemo(()=>{const original=sceneForId(atmosphereId??theme.sceneId??'road-66');return sceneColors?{...original,palette:{...original.palette,...sceneColors}}:original;},[atmosphereId,theme.sceneId,sceneColors]);
  const palette={...instrumentDefaults,accent:theme.accent,secondary:theme.secondary,...colors};
  const speed=state.speedMps*(unit==='kph'?3.6:2.236936), rpm=running?state.rpm:0;
@@ -43,6 +45,9 @@ export function ThemeStage({maxSpeedMps,fonts,widgets=defaultCluster,theme,state
  const stageRef=useRef<HTMLDivElement>(null);
  // Drive-window mode (short / near-square Drive viewport): data-drive-window="true" on the stage + `driveWindow` (and `compact`) to pack HUD mounts.
  const driveWindow=useDriveWindow(stageRef,`${theme.id}|${theme.layout}`);
+ // Chrono Coupe: a rising 88 mph crossing fires onTimeJump (ForgePage plays the cue + lights the skin).
+ const chrono=pack?.id===CHRONO_COUPE.id, mph=state.speedMps*MPS_TO_MPH, jumpEdge=useRef(createTimeJumpEdge());
+ useEffect(()=>{if(!chrono){jumpEdge.current.reset();return;}if(jumpEdge.current.step(mph))onTimeJump?.();},[chrono,mph,onTimeJump]);
  const style={...(fonts?.numbers!=='default'&&fontCss[fonts?.numbers??'']?{'--number-font':fontCss[fonts!.numbers]}:{}),...(fonts?.labels!=='default'&&fontCss[fonts?.labels??'']?{'--label-font':fontCss[fonts!.labels]}:{}),...Object.fromEntries(Object.entries(palette).map(([k,v])=>['--skin-'+k,v])),'--rev':rev,'--speed':speedPct,'--flow-time':`${Math.max(.4,3-state.speedMps/25)}s`} as CSSProperties;
  const hero=<div className="skin-speed"><strong className="skin-number" data-testid="speed" aria-label={`${Math.round(speed)} ${unit}`}>{Math.round(speed).toString().padStart(2,'0')}</strong><span className="skin-descriptor">{unit==='kph'?'KM/H':'MPH'}</span><small className={`skin-source ${demo?'is-demo':''}`}>{demo?'DEMO':gpsLabel}</small></div>;
  const telemetry=<div className="skin-telemetry"><div><small className="skin-descriptor">ENGINE RPM</small><b className="skin-number" data-testid="rpm">{Math.round(rpm).toLocaleString()}</b></div><div><small className="skin-descriptor">GEAR</small><b className="skin-number" data-testid="gear">{state.gear===0?'N':state.gear}</b></div><div><small className="skin-descriptor">LOAD</small><b className="skin-number">{Math.round(state.load*100)}<em>%</em></b></div></div>;
@@ -62,7 +67,7 @@ export function ThemeStage({maxSpeedMps,fonts,widgets=defaultCluster,theme,state
    {theme.layout==='gradient-macro'&&<GradientMacro speedNorm={speedPct} speed={speed} unit={unit}/>}
    {theme.layout==='digital'&&<><div className="digital-cluster"><div className="digital-bank"><Rail value={state.load} label="LOAD" segmented/><Rail value={rev} label="ENGINE" segmented/></div>{hero}<div className="digital-tach" aria-label="Tachometer">{Array.from({length:20},(_,i)=><i key={i} className={i/20<rev?'lit':''} style={{height:`${25+i*3.6}%`}}/>)}</div></div>{telemetry}<div className="skin-grid-readout"><span>ENGINE MONITOR</span><span>{state.overrun?'OVERRUN':state.shifting?'SHIFT':'STEADY'}</span><span>{Math.round(warningRpm??redline*.9)} REDLINE</span></div></>}
    {theme.layout==='driver'&&<><div className="driver-cluster"><Rail value={rev} label="RPM"/><div className="driver-horizon"><div className="driver-lanes"/><svg viewBox="0 0 80 130" aria-hidden="true"><path d="M23 8 Q40 0 57 8 L66 103 Q65 120 40 122 Q15 120 14 103 Z"/><path d="M24 34 Q40 26 56 34 L60 73 L20 73 Z"/></svg></div>{hero}</div>{telemetry}<Rail value={state.load} label="POWER"/></>}
-   {pack&&<pack.Hud rpmNorm={rev} rpm={rpm} speedNorm={speedPct} speed={speed} unit={unit} load={state.load} throttle={state.overrun?0:state.load} gear={state.gear} distanceM={state.distance} shifting={state.shifting} overrun={state.overrun} running={running} demo={demo} redlineRpm={redline} motion={motion} compact={driveWindow||undefined} driveWindow={driveWindow}/>}
+   {pack&&<pack.Hud rpmNorm={rev} rpm={rpm} speedNorm={speedPct} speed={speed} unit={unit} load={state.load} throttle={state.overrun?0:state.load} gear={state.gear} distanceM={state.distance} shifting={state.shifting} overrun={state.overrun} running={running} demo={demo} redlineRpm={redline} motion={motion} compact={driveWindow||undefined} driveWindow={driveWindow} timeJumpActive={chrono?!!timeJumpActive:undefined}/>}
    {pack&&<p className="sr-only" data-testid="pack-sr-readout">{`Speed ${Math.round(speed)} ${unit==='kph'?'kilometers per hour':'miles per hour'}, ${Math.round(rpm/10)*10} RPM, gear ${typeof state.gear==='number'&&state.gear<=0?'neutral':state.gear}`}</p>}
    {theme.layout==='scanner'&&!pack&&<><div className="skin-scanner"><i/></div><div className="scanner-cluster"><div className="scanner-bank"><Rail value={rev} label="ENGINE" segmented/><Rail value={state.load} label="LOAD" segmented/></div>{hero}</div>{telemetry}<div className="skin-grid-readout"><span>SYSTEM ACTIVE</span><span>{state.shifting?'SHIFTING':'MONITORING'}</span></div></>}
    {theme.layout==='time'&&<TimeCircuits speedMps={state.speedMps} running={running} motion={motion} onJump={onTimeJump}/>}
