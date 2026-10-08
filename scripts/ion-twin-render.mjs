@@ -11,7 +11,7 @@
  *
  * Used by render-snippets.mjs (Twin Ion preview), ion-twin-qa.mjs (live loudness) and tests.
  */
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -45,6 +45,11 @@ const jiti = createJiti(join(ROOT, 'package.json'), {
 globalThis.window ??= globalThis;
 globalThis.location ??= { href: pathToFileURL(join(ROOT, 'index.html')).href };
 const audio = await jiti.import(join(ROOT, 'src/audio/index.ts'));
+// Same module instance the engine imports: cue buffers rendered here are the ones it plays
+globalThis.OfflineAudioContext ??= OfflineAudioContext;
+const cuesPath = join(ROOT, 'src/audio/ionTwinCues.ts');
+const cues = existsSync(cuesPath) ? await jiti.import(cuesPath) : null;
+export const ionTwinCueModule = cues;
 
 export const ION_TWIN_ID = 'ion-twin';
 export const ION_TWIN_LAYER_IDS = audio.ION_TWIN_LAYER_IDS;
@@ -115,7 +120,8 @@ export function ionTwinPatch(layers = 'default') {
 
 /**
  * profile(t) → DrivingInput { speed, throttle, load? }. opts: { layers, params (overrides),
- * seed, sampleRate, fadeOut, preroll (s, cut from the output) }.
+ * seed, sampleRate, fadeOut, preroll (s, cut from the output), actions: [[t, (eng) => void], …]
+ * fired on the first control frame at/after gesture time t (e.g. playStarter / triggerUiCue) }.
  * Returns the stereo AudioBuffer of the wrapper output (pre master-bus trim).
  */
 export async function renderIonTwin(profile, dur, opts = {}) {
@@ -149,6 +155,7 @@ async function renderOnce(profile, dur, opts) {
   let tNow = 0;
   performance.now = () => tNow * 1000;
   try {
+    await cues?.ionTwinCues(SR);
     const ctx = swappableShapers(new OfflineAudioContext(2, Math.ceil(SR * dur), SR));
     Object.defineProperty(ctx, 'state', { get: () => 'running', configurable: true });
     const base = ionTwinPatch(opts.layers);
@@ -160,11 +167,17 @@ async function renderOnce(profile, dur, opts) {
     // Control frames on exact render-quantum boundaries (128 samples) at ~60 Hz
     const Q = 128 / SR;
     const missed = [];
+    const actions = [...(opts.actions ?? [])].map(([t, fn]) => [t + pre, fn]).sort((a, b) => a[0] - b[0]);
+    const fire = (at) => {
+      while (actions.length && actions[0][0] <= at + 1e-9) actions.shift()[1](eng);
+    };
+    fire(0);
     for (let k = 1; k * (1 / 60) < dur - 0.02; k++) {
       const at = Math.round(k / 60 / Q) * Q;
       ctx.suspend(at).then(
         () => {
           tNow = at;
+          fire(at);
           eng.setDriving(profile(at));
           ctx.resume();
         },
@@ -277,3 +290,71 @@ export const ION_TWIN_GESTURES = {
     profile: drive(pw([[0, 0.6]]), pw([[0, 0.1], [2.4, 0.7], [4.5, 0.7], [5.6, 0], [5.69, 0]])),
   },
 };
+
+/**
+ * Cue-map roles (docs/ion-twin-closer-match.md §cue map): drive inputs + timed actions that
+ * perform each role over the length of its target segment. Times are seconds into the role.
+ */
+export const ION_TWIN_ROLES = {
+  'sustain': {
+    label: 'continuous cruise / sustain (swell in, hold at speed, lift)',
+    dur: 6.55,
+    profile: drive(
+      pw([[0, 0.1], [1, 0.38], [2.3, 0.5], [4.6, 0.5], [6.2, 0.1]]),
+      pw([[0, 0.2], [0.6, 0.55], [2.3, 0.62], [4.4, 0.62], [5.4, 0.1], [6.55, 0]]),
+    ),
+  },
+  'targeting': {
+    label: 'targeting cue on lock (cruise underneath)',
+    dur: 2.18,
+    profile: drive(pw([[0, 0.6]]), pw([[0, 0.3]])),
+    actions: [[0, (eng) => eng.triggerUiCue('lock')]],
+  },
+  'interior-hum': {
+    label: 'interior hum (parked idle; the target clip fades out over its last 0.45 s)',
+    dur: 8,
+    fadeOut: 0.45,
+    profile: drive(pw([[0, 0]]), pw([[0, 0]])),
+  },
+  'shutdown': {
+    label: 'shutdown cue from cruise',
+    dur: 12,
+    profile: drive(pw([[0, 0]]), pw([[0, 0]])),
+    actions: [[0, (eng) => eng.playShutoff()]],
+  },
+  'ignition': {
+    label: 'ignition (time-reversed shutdown) landing in the interior hum',
+    dur: 12,
+    profile: drive(pw([[0, 0]]), pw([[0, 0]])),
+    actions: [[0, (eng) => eng.playStarter()]],
+  },
+  'acceleration': {
+    label: 'initial acceleration from rest into the sustain (no fly-by)',
+    dur: 5,
+    profile: drive(
+      pw([[0, 0], [0.5, 0], [3.5, 0.42], [5, 0.5]]),
+      pw([[0, 0], [0.5, 0], [0.8, 0.62], [5, 0.62]]),
+    ),
+  },
+};
+
+/**
+ * Preview snippet (11.8 s, the longest existing preview length): the end of the ignition landing
+ * in the interior hum → pull-away swell → sustain with a lock cue → into the shutdown.
+ * The ignition starts in the pre-roll so the snippet opens on its last 2.4 s.
+ */
+export const ION_TWIN_PREVIEW_SEQUENCE = {
+  dur: 11.8,
+  preroll: 12,
+  fadeOut: 0.6,
+  profile: drive(
+    pw([[0, 0], [2.9, 0], [5.8, 0.4], [8, 0.5]]),
+    pw([[0, 0], [2.9, 0], [3.2, 0.62], [7.9, 0.62], [8, 0]]),
+  ),
+  actions: [
+    [-9.6, (eng) => eng.playStarter()],
+    [6.2, (eng) => eng.triggerUiCue('lock')],
+    [8, (eng) => eng.playShutoff()],
+  ],
+};
+

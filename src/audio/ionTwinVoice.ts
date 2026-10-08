@@ -35,10 +35,10 @@ export const ION_SCREAM_MAKEUP = 2.2;
 
 /** Formant bank (Hz, Q) for the howl at shift 1: ~420 / 575 / 900 / 1300 (cue sheet §2). */
 export const ION_HOWL_FORMANTS = [
-  { hz: 420, q: 7.0 },
-  { hz: 575, q: 4.2 },
-  { hz: 900, q: 5.0 },
-  { hz: 1300, q: 5.2 },
+  { hz: 363, q: 7.0 },
+  { hz: 501, q: 3.8 },
+  { hz: 814, q: 4.8 },
+  { hz: 1117, q: 4.5 },
 ] as const;
 
 /** Scream accent stack (Hz, Q): ~255 / 1260 / 1500 (cue sheet §3). */
@@ -86,8 +86,8 @@ export function ionMotorWave(ctx: BaseAudioContext): PeriodicWave {
  */
 export const ION_TRIM_ANCHORS: ReadonlyArray<readonly [number, number]> = [
   [0, -1.4],
-  [0.35, 0.75],
-  [1, -0.4],
+  [0.35, 3.3],
+  [1, 0.1],
 ];
 export function ionLevelTrimDb(thr: number): number {
   const t = Math.min(1, Math.max(0, thr));
@@ -101,3 +101,80 @@ export function ionLevelTrimDb(thr: number): number {
   }
   return a[a.length - 1][1];
 }
+
+/**
+ * Interior hum (idle bed): faint 55 Hz core + dark noise through a low resonance into a
+ * negative-feedback comb (clusters every ≈10 Hz around 45–80 Hz), darkened by an idle low-pass
+ * that opens with speed / throttle.
+ */
+export const ION_HUM = {
+  tone: 0.1,
+  poleHz: 60,
+  poleQ: 1.3,
+  combSec: 0.099,
+  combFb: -0.62,
+  bed: 1.5,
+  idleLpHz: 100,
+  idleMakeupDb: 9,
+  hiss: 0.002,
+  wanderHz: 0.83,
+  wander: 0.3,
+} as const;
+
+/** 0 parked → 1 by ≈15 % rpm or light throttle: how far the voice has opened out of the idle bed. */
+export function ionIdleOpen(rpmNorm: number, thr: number): number {
+  return Math.min(1, Math.max(0, rpmNorm * 6.5 + thr * 1.6));
+}
+
+/** Idle low-pass cutoff (Hz) for an idle-open amount (0 parked → 1 open): idleLpHz → 20 kHz. */
+export function ionIdleLpHz(open: number): number {
+  return ION_HUM.idleLpHz * Math.pow(20000 / ION_HUM.idleLpHz, Math.min(1, Math.max(0, open)));
+}
+
+/** Parked-idle makeup (linear): the dark hum bed carries the idle loudness on its own. */
+export function ionIdleMakeup(open: number): number {
+  return Math.pow(10, (ION_HUM.idleMakeupDb * (1 - Math.min(1, Math.max(0, open)))) / 20);
+}
+
+/** Idle-open glide (s): opening out of the parked bed / settling back into it. */
+export const ION_IDLE_OPEN_TAU = { up: 0.45, down: 0.8 } as const;
+
+/**
+ * Sustain voicing EQ (on the voice bus, scaled in by how far the voice has opened out of idle):
+ * the cruise howl's formant set ≈412 / 573 / 720 / 913 / 1258 Hz, a leaner 80–320 Hz motor
+ * region and a band-limited top. [type, Hz, Q, dB at full open].
+ */
+export const ION_SUSTAIN_EQ: ReadonlyArray<readonly [BiquadFilterType, number, number, number]> = [
+  ['peaking', 110, 0.9, 1.9],
+  ['peaking', 220, 1.1, -16.8],
+  ['peaking', 412, 4, 2.6],
+  ['peaking', 573, 3.5, -1.8],
+  ['peaking', 720, 4, 8.8],
+  ['peaking', 913, 3.5, -6.6],
+  ['peaking', 1258, 3, -0.7],
+  ['peaking', 2600, 0.8, -5.8],
+];
+/** Top cut of the open voice (Hz): the refs are band-limited under ≈7 kHz. */
+export const ION_SUSTAIN_TOP_HZ = 5800;
+
+/**
+ * Initial acceleration (pulling away from rest): the voice's throttle drive is capped along an
+ * eased ≈2.7 s swell (from capFloor) with a level swell (swellDb at the start) and a motor-hum
+ * bump mid-phrase; when the swell completes the cap is gone and the live sustain carries on.
+ */
+export const ION_ACCEL = {
+  fromSpeed: 0.08,
+  swellSec: 2.75,
+  capFloor: 0.08,
+  swellDb: -18,
+  motorBoost: 3,
+  bodyLiftHz: 90,
+} as const;
+/** Pull-away voicing on top of the sustain EQ (dB per ION_SUSTAIN_EQ band, × phrase activity), fitted
+ *  to ref1 0.5–4 s: the first band glides up to lowHz, the 2.6 kHz presence and the top cut come down
+ *  (the pull-away has less air than the settled sustain). */
+export const ION_ACCEL_EQ = {
+  db: [-1.9, 0.4, -1.7, 1.6, 0.7, 0.2, -1.0, -3.2] as readonly number[],
+  lowHz: 130,
+  topHz: 3606,
+};

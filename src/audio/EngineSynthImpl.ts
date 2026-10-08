@@ -75,6 +75,7 @@ import {
   shutoffDuration,
 } from './engineStartShutdown';
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
+import { ionTwinCues, readyIonTwinCues } from './ionTwinCues';
 import {
   ION_DRIFT_HZ,
   ION_HOWL_FORMANTS,
@@ -90,6 +91,15 @@ import {
   ionLevelTrimDb,
   ionShaper,
   ionShaperStep,
+  ION_ACCEL,
+  ION_ACCEL_EQ,
+  ION_HUM,
+  ION_SUSTAIN_EQ,
+  ION_SUSTAIN_TOP_HZ,
+  ionIdleLpHz,
+  ionIdleMakeup,
+  ionIdleOpen,
+  ION_IDLE_OPEN_TAU,
 } from './ionTwinVoice';
 import pulseWorkletUrl from './worklets/pulse-engine-processor.js?url';
 
@@ -192,6 +202,13 @@ interface GraphHandles {
   gritGain?: GainNode;
   humOsc?: OscillatorNode;
   humGain?: GainNode;
+  ionIdleLp?: BiquadFilterNode;
+  ionIdleHiss?: GainNode;
+  ionHumWander?: OscillatorNode;
+  ionEq?: BiquadFilterNode[];
+  ionTopCut?: BiquadFilterNode;
+  ionTopCut2?: BiquadFilterNode;
+  ionDuck?: GainNode;
   afterGain?: GainNode;
   wetHissGain?: GainNode;
   wetHissFilt?: BiquadFilterNode;
@@ -271,6 +288,13 @@ const workletContexts = new WeakSet<BaseAudioContext>();
 export class EngineSynthImpl implements EngineSynth {
   readonly context: AudioContext;
   readonly output: GainNode;
+  /**
+   * Twin Ion lifecycle / targeting cue bus. CharacterEngine mixes it beside the voice (after the
+   * acoustic low-pass); a bare engine sends it straight to the destination.
+   */
+  readonly cueOutput: GainNode;
+  /** Cue playback counts (tests / diagnostics). */
+  readonly ionCueCounts = { ignition: 0, shutdown: 0, target: 0 };
 
   private _id: EngineId = 'v8-rumble';
   private patchMeta: EnginePatch;
@@ -307,6 +331,17 @@ export class EngineSynthImpl implements EngineSynth {
   /** Slow surge envelope + glide phase (0 = just struck, 1 = settled) */
   private ionSurgeEnv = 0;
   private ionSurgeRise = 1;
+  /** start() leaves the live Twin Ion voice ducked this long for an ignition cue (−1 = none). */
+  private ionDuckPendingAt = -1;
+  /** Active ignition / shutdown cue (one at a time) and the last targeting cue. */
+  private ionCue: IonCueVoice | null = null;
+  private ionTargetVoice: IonCueVoice | null = null;
+  private ionLastTargetAt = -10;
+  private ionStarterWanted = -1;
+  private ionAccelArmed = false;
+  private ionIdleOpenLag = 0;
+  private ionIdleOpenAt = 0;
+  private ionAccelT0 = -1;
   /** Last written Twin Ion shaper drive steps (curves are only re-written on a step change) */
   private ionHowlDriveStep = -1;
   private ionScreamDriveStep = -1;
@@ -365,6 +400,8 @@ export class EngineSynthImpl implements EngineSynth {
     // Critical: without this, the graph never reaches the speakers (silent on all devices).
     this.output.connect(ctx.destination);
     this.envelope = new EnvelopeMeter(ctx, this.output);
+    this.cueOutput = ctx.createGain();
+    this.cueOutput.connect(ctx.destination);
 
     this.whiteBuf = createNoiseBuffer(ctx, 2, false);
     this.pinkBuf = createNoiseBuffer(ctx, 2, true);
@@ -419,6 +456,26 @@ export class EngineSynthImpl implements EngineSynth {
 
     smooth(this.output.gain, 1, 0.08, this.context);
     this.started = true;
+    if (this.g.ionDuck) {
+      // Twin Ion: hold the live voice briefly so an ignition cue can own the start; the hum fades
+      // in on its own if no ignition follows (never blocks: input lifts it immediately)
+      const d = this.g.ionDuck.gain;
+      const now = this.context.currentTime;
+      const ignitionLive = this.ionCue?.kind === 'ignition';
+      if (!ignitionLive) {
+        try {
+          d.cancelScheduledValues(now);
+          d.setValueAtTime(this.output.gain.value < 0.05 ? 0 : d.value, now);
+        } catch {
+          /* ignore */
+        }
+        this.ionDuckPendingAt = now;
+      }
+      if (this.ionLifecycleOn()) {
+        void ionTwinCues(this.context.sampleRate).catch(() => undefined);
+        return;
+      }
+    }
     if (this.g.helmVoice) {
       // Stellar Helm: the hum itself powers up (no combustion chuff on a starship drive)
       this.g.helmVoice.powerUp(1.6, undefined, 0);
@@ -451,6 +508,13 @@ export class EngineSynthImpl implements EngineSynth {
     if (this.disposed) return;
     this.disposed = true;
     this.started = false;
+    this.stopIonCue(this.ionCue, 0);
+    this.stopIonCue(this.ionTargetVoice, 0);
+    try {
+      this.cueOutput.disconnect();
+    } catch {
+      /* ignore */
+    }
     try {
       this.teardownGraph();
       this.envelope.dispose();
@@ -628,6 +692,10 @@ export class EngineSynthImpl implements EngineSynth {
       return;
     }
     if (!this.started) return;
+    if ((c === 'lock' || c === 'targeting') && this.g.ionDuck) {
+      this.playIonTarget();
+      return;
+    }
     if (c === 'upshift') {
       if (!this.upshiftSfxEnabled) return;
       this.playUpshiftBark();
@@ -640,6 +708,25 @@ export class EngineSynthImpl implements EngineSynth {
     const now = this.context.currentTime;
     if (this.lastStarterAt >= 0 && now - this.lastStarterAt < 0.45) return;
     this.lastStarterAt = now;
+    if (this.g.ionDuck && this.ionLifecycleOn()) {
+      // Twin Ion ignition = the procedural shutdown played backwards (renders once, then cached)
+      if (!this.playIonIgnition()) {
+        this.ionStarterWanted = now;
+        this.ionDuckPendingAt = now + 0.75;
+        void ionTwinCues(this.context.sampleRate)
+          .then(() => {
+            const t = this.context.currentTime;
+            if (this.started && this.ionStarterWanted >= 0 && t - this.ionStarterWanted < 1) {
+              this.playIonIgnition();
+            }
+            this.ionStarterWanted = -1;
+          })
+          .catch(() => {
+            this.ionStarterWanted = -1;
+          });
+      }
+      return;
+    }
     const helm = this.g.helmVoice;
     // Stellar Helm: a starter after a power-down cue brings the hum back up under the sweep
     if (helm && helm.powerTarget < 0.5) helm.powerUp(1.6);
@@ -663,6 +750,11 @@ export class EngineSynthImpl implements EngineSynth {
   playShutoff(): void {
     if (this.disposed) return;
     if (this.context.state === 'closed') return;
+    if (this.g.ionDuck && this.ionLifecycleOn()) {
+      this.ionStarterWanted = -1;
+      this.playIonShutdown();
+      return;
+    }
     const kind = this.patchMeta.kind;
     const dur = shutoffDuration(kind, this.patchMeta.topology);
     const now = this.context.currentTime;
@@ -2119,7 +2211,41 @@ export class EngineSynthImpl implements EngineSynth {
     const humGain = ctx.createGain();
     humGain.gain.value = 0.14;
     g.humGain = humGain;
-    humOsc.connect(humGain);
+    // The pure 55 Hz pole is now only a faint core under the comb bed below
+    const humTonePad = ctx.createGain();
+    humTonePad.gain.value = ION_HUM.tone;
+    humOsc.connect(humTonePad);
+    humTonePad.connect(humGain);
+
+    // Interior hum bed: dark noise through a low resonance (≈45–80 Hz) into a negative-feedback
+    // comb (≈99 ms) — clusters every ≈10 Hz around the pole, noise-fine and never a held note
+    const humBp = ctx.createBiquadFilter();
+    humBp.type = 'bandpass';
+    humBp.frequency.value = ION_HUM.poleHz;
+    humBp.Q.value = ION_HUM.poleQ;
+    const humComb = ctx.createDelay(0.25);
+    humComb.delayTime.value = ION_HUM.combSec;
+    const humFb = ctx.createGain();
+    humFb.gain.value = ION_HUM.combFb;
+    const humLoop = ctx.createGain();
+    const humBed = ctx.createGain();
+    humBed.gain.value = ION_HUM.bed;
+    g.pinkSrc!.connect(humBp);
+    humBp.connect(humLoop);
+    humLoop.connect(humComb);
+    humComb.connect(humFb);
+    humFb.connect(humLoop);
+    humLoop.connect(humBed);
+    humBed.connect(humGain);
+    // Slow level wander (the parked hum breathes at ≈0.5–2 Hz, never a held machine tone)
+    const humWander = ctx.createOscillator();
+    humWander.frequency.value = ION_HUM.wanderHz;
+    humWander.start();
+    g.ionHumWander = humWander;
+    const humWanderDepth = ctx.createGain();
+    humWanderDepth.gain.value = ION_HUM.bed * ION_HUM.wander;
+    humWander.connect(humWanderDepth);
+    humWanderDepth.connect(humBed.gain);
 
     // Wet/dry: dry = direct buses; wet = short body early reflections
     const dryGain = ctx.createGain();
@@ -2165,7 +2291,68 @@ export class EngineSynthImpl implements EngineSynth {
     g.panL = pan;
     dryGain.connect(pan);
     wetBusGain.connect(pan);
-    pan.connect(g.master);
+    // Idle darkening: the parked hum is a dark low bed; opens fully by ≈15 % rpm / light throttle
+    const idleLp = ctx.createBiquadFilter();
+    idleLp.type = 'lowpass';
+    idleLp.frequency.value = ION_HUM.idleLpHz;
+    idleLp.Q.value = 0.55;
+    g.ionIdleLp = idleLp;
+    // Lifecycle duck: ignition / shutdown cues own the output while they play (CharacterEngine
+    // mixes the cue bus next to this voice); 0 until start() lets the live voice in
+    const duck = ctx.createGain();
+    duck.gain.value = 0;
+    g.ionDuck = duck;
+    this.ionDuckPendingAt = this.started ? ctx.currentTime : -1;
+    if (this.ionLifecycleOn()) void ionTwinCues(ctx.sampleRate).catch(() => undefined);
+    // Sustain voicing EQ + top cut, faded in as the voice opens out of idle
+    let eqIn: AudioNode = pan;
+    g.ionEq = ION_SUSTAIN_EQ.map(([type, hz, q]) => {
+      const f = ctx.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = hz;
+      f.Q.value = q;
+      f.gain.value = 0;
+      eqIn.connect(f);
+      eqIn = f;
+      return f;
+    });
+    const topCut = ctx.createBiquadFilter();
+    topCut.type = 'lowpass';
+    topCut.frequency.value = 20000;
+    topCut.Q.value = 0.8;
+    g.ionTopCut = topCut;
+    const topCut2 = ctx.createBiquadFilter();
+    topCut2.type = 'lowpass';
+    topCut2.frequency.value = 20000;
+    topCut2.Q.value = 1.2;
+    g.ionTopCut2 = topCut2;
+    eqIn.connect(topCut);
+    topCut.connect(topCut2);
+    topCut2.connect(idleLp);
+    idleLp.connect(duck);
+    duck.connect(g.master);
+    // Faint flat air (≈0.4–5 kHz, white) over the parked hum, idle-only. It rides the side bus (after the
+    // wrapper's acoustic low-pass, which sits near 850 Hz at rest) and follows the duck by hand.
+    const idleHissHp = ctx.createBiquadFilter();
+    idleHissHp.type = 'highpass';
+    idleHissHp.frequency.value = 380;
+    idleHissHp.Q.value = 0.7;
+    const idleHissLp = ctx.createBiquadFilter();
+    idleHissLp.type = 'lowpass';
+    idleHissLp.frequency.value = 4200;
+    idleHissLp.Q.value = 1.1;
+    const idleHissLp2 = ctx.createBiquadFilter();
+    idleHissLp2.type = 'lowpass';
+    idleHissLp2.frequency.value = 5200;
+    idleHissLp2.Q.value = 0.9;
+    const idleHiss = ctx.createGain();
+    idleHiss.gain.value = 0;
+    g.ionIdleHiss = idleHiss;
+    (g.noiseSrc ?? g.pinkSrc)!.connect(idleHissHp);
+    idleHissHp.connect(idleHissLp);
+    idleHissLp.connect(idleHissLp2);
+    idleHissLp2.connect(idleHiss);
+    idleHiss.connect(this.cueOutput);
   }
 
   private teardownGraph(): void {
@@ -2210,6 +2397,12 @@ export class EngineSynthImpl implements EngineSynth {
     stopOsc(g.howlVibLfo);
     stopOsc(g.howlDriftLfo);
     stopOsc(g.humOsc);
+    stopOsc(g.ionHumWander);
+    try {
+      g.ionIdleHiss?.disconnect();
+    } catch {
+      /* ignore */
+    }
     stopOsc(g.wetAmLfo);
     stopOsc(g.intakeWhineOsc);
     stopOsc(g.intakeWhineOsc2);
@@ -3288,7 +3481,10 @@ export class EngineSynthImpl implements EngineSynth {
     const g = this.g;
     const ctx = this.context;
 
-    const thr = this.throttleLag;
+    // Initial-acceleration phrase: pulling away from rest swells in over ≈2.7 s (voice opens,
+    // motor hum rises under it), then releases into the continuous sustain — no fly-by fall
+    const accel = this.ionAccelPhase(d.speed, d.throttle);
+    const thr = Math.min(this.throttleLag, ION_ACCEL.capFloor + accel.open * (1 - ION_ACCEL.capFloor));
     const thrRaw = d.throttle;
     const loadAbs = Math.abs(d.load ?? 0);
     const loadL = this.loadLag;
@@ -3309,7 +3505,8 @@ export class EngineSynthImpl implements EngineSynth {
     // Surge gesture (rising CF) on throttle/rpm jump — ref-D DNA
     const rpmJump = Math.max(0, rpmNorm - this.scifiPrevRpm);
     const thrJump = Math.max(0, thrRaw - this.scifiPrevThr);
-    const jump = Math.min(1.2, rpmJump * 10 + thrJump * 5.5);
+    // A pull-away from rest is the accel phrase's job, not a surge stab
+    const jump = Math.min(1.2, rpmJump * 10 + thrJump * 5.5) * (accel.active ? 0.15 : 1);
     this.scifiFlyby = Math.max(this.scifiFlyby * Math.exp(-tc * 9), jump);
     this.ionSurge = Math.max(this.ionSurge * Math.exp(-tc * 5.5), jump * 0.85);
     // Glide phase: a fresh stab restarts low (growl blob) and the formants climb as it settles
@@ -3321,6 +3518,8 @@ export class EngineSynthImpl implements EngineSynth {
     this.scifiPrevThr = thrRaw;
     const flyby = this.scifiFlyby;
     const surge = this.ionSurge;
+    // Accel level swell on the howl / scream / air layers (motors + hum carry on under it)
+    const swell = Math.pow(10, (ION_ACCEL.swellDb * Math.pow(1 - accel.open, 0.75) * accel.active) / 20);
 
     const core = Number(p.corePitch ?? 65);
     let fund = core * lerp(0.85, 2.4, spool) * (1 + thr * 0.12);
@@ -3407,7 +3606,8 @@ export class EngineSynthImpl implements EngineSynth {
     // Floor keeps a real low twin-motor hum under the howl at speed (refs: dual low hum under
     // every howl, -13…-19 dB re peak at 100–250 Hz)
     const motorBed =
-      motorLead * motorScale * (0.92 - howlLead * 0.22) * (1 + howlLead * 1.2);
+      motorLead * motorScale * (0.92 - howlLead * 0.22) * (1 + howlLead * 1.2) *
+      (1 + accel.bell * ION_ACCEL.motorBoost);
     if (g.motorGainL) smooth(g.motorGainL.gain, motorEnable * motorBed * (1 + this.liveJit.gain * 0.03), tc, ctx);
     if (g.motorGainR) {
       smooth(g.motorGainR.gain, motorEnable * motorBed * (0.92 + detune * 0.08), tc, ctx);
@@ -3421,7 +3621,7 @@ export class EngineSynthImpl implements EngineSynth {
     if (g.bodyFilt) {
       // Twin motor bands climb with spool (~57 Hz idle pole → ~150 Hz hum under the howl) and
       // widen at speed so the low hum covers 90–250 Hz
-      const bodyHz = 52 + spool * 95 + thr * 30;
+      const bodyHz = 52 + spool * 95 + thr * 30 + accel.bell * ION_ACCEL.bodyLiftHz;
       const bodyQ = (1.8 + res * 1.5) * (1 - open * 0.45);
       smooth(g.bodyFilt.frequency, bodyHz, tc, ctx);
       g.bodyFilt.Q.value = bodyQ;
@@ -3456,7 +3656,7 @@ export class EngineSynthImpl implements EngineSynth {
     // Formant howl — sustained bellow × smoothstep(rpmNorm); holds while driving
     const howlAmt = howlLead;
     const howlOut = (howlAmt * (1.28 + thr * 0.42) + flybyAmt * howlMix * 0.22) * ION_HOWL_MAKEUP;
-    if (g.howlGain) smooth(g.howlGain.gain, howlOut * howlEnable, tc, ctx);
+    if (g.howlGain) smooth(g.howlGain.gain, howlOut * howlEnable * swell, tc, ctx);
     if (g.formantGain) {
       smooth(g.formantGain.gain, howlEnable * (0.95 + formantHowl * 0.45 + openSpool * 0.35), tc, ctx);
     }
@@ -3491,7 +3691,7 @@ export class EngineSynthImpl implements EngineSynth {
       openSpool * thr * 0.25
     );
     const screamOut = screamLead * (1.1 + thr * 0.35) * ION_SCREAM_MAKEUP;
-    if (g.screamGain) smooth(g.screamGain.gain, screamOut, tc, ctx);
+    if (g.screamGain) smooth(g.screamGain.gain, screamOut * swell, tc, ctx);
     if (g.screamFlutterDepth) {
       // ~5.7 Hz flutter on the scream (ref-C AM peak), ≤35 % so it trembles, never gates
       smooth(g.screamFlutterDepth.gain, screamOut * (0.22 + thr * 0.13), tc, ctx);
@@ -3600,7 +3800,7 @@ export class EngineSynthImpl implements EngineSynth {
     }
 
     // Air / wet swoosh — continuous bed; surge gestures on throttle spikes only
-    const wetAmt = airLead;
+    const wetAmt = airLead * swell;
     if (g.wetHissGain) {
       const baseGain = wetAmt * 1.15;
       try {
@@ -3657,6 +3857,45 @@ export class EngineSynthImpl implements EngineSynth {
       );
     }
 
+    // Idle-open glide: the parked bed opens over ≈0.5 s (and the accel swell rises over it)
+    const openTarget = ionIdleOpen(rpmNorm, thrRaw);
+    const nowT = ctx.currentTime;
+    const dtT = Math.max(0, nowT - this.ionIdleOpenAt);
+    this.ionIdleOpenAt = nowT;
+    if (tc < 0.02 || dtT > 1) this.ionIdleOpenLag = openTarget;
+    else {
+      const tau = openTarget > this.ionIdleOpenLag ? ION_IDLE_OPEN_TAU.up : ION_IDLE_OPEN_TAU.down;
+      this.ionIdleOpenLag += (openTarget - this.ionIdleOpenLag) * (1 - Math.exp(-dtT / tau));
+    }
+    const idleOpen = this.ionIdleOpenLag;
+    if (g.ionIdleLp) smooth(g.ionIdleLp.frequency, ionIdleLpHz(idleOpen), tc, ctx);
+    if (g.ionIdleHiss) {
+      const duckNow = g.ionDuck ? g.ionDuck.gain.value : 1;
+      smooth(g.ionIdleHiss.gain, ION_HUM.hiss * duckNow * (1 - idleOpen), tc, ctx);
+    }
+    this.ionLifecycleTick(d.speed, thrRaw);
+    const fullOpen = 0.8 * smoothstep(thr, 0.7, 1);
+    if (g.ionEq) {
+      // Weighted by spool (rpm + throttle), so it is fully in at cruise and out at rest
+      const eqAmt = Math.max(smoothstep(spool, 0.1, 0.45), accel.active);
+      g.ionEq.forEach((f, i) => {
+        // Pull-away voicing (first band glides to ≈130 Hz for the motor body under the swell)
+        const accelLow = ION_ACCEL_EQ.db[i] ?? 0;
+        // Full throttle opens the top back up (the presence cut eases off)
+        const k = i === ION_SUSTAIN_EQ.length - 1 ? 1 - fullOpen : 1;
+        smooth(f.gain, ION_SUSTAIN_EQ[i][3] * eqAmt * k + accelLow * accel.active, tc, ctx);
+      });
+      const f0 = ION_SUSTAIN_EQ[0][1];
+      smooth(g.ionEq[0].frequency, f0 + (ION_ACCEL_EQ.lowHz - f0) * accel.active, tc, ctx);
+    }
+    if (g.ionTopCut) {
+      const topAmt = Math.max(smoothstep(spool, 0.1, 0.45), accel.active) * (1 - fullOpen);
+      const topRef = ION_SUSTAIN_TOP_HZ * Math.pow(ION_ACCEL_EQ.topHz / ION_SUSTAIN_TOP_HZ, accel.active);
+      const topHz = 20000 * Math.pow(topRef / 20000, topAmt);
+      smooth(g.ionTopCut.frequency, topHz, tc, ctx);
+      if (g.ionTopCut2) smooth(g.ionTopCut2.frequency, topHz, tc, ctx);
+    }
+
     // Ion hum — idle / taxi support
     if (g.humGain) {
       // Idle-only: fades out by ~30 % rpm so the 55 Hz pole doesn't sit under the howl
@@ -3671,7 +3910,7 @@ export class EngineSynthImpl implements EngineSynth {
 
     // Wet/dry crossfade — default dry-leaning
     // Level trim: holds idle / cruise / full integrated loudness on the pre-voicing reference
-    const trim = Math.pow(10, ionLevelTrimDb(thr) / 20);
+    const trim = Math.pow(10, ionLevelTrimDb(thr) / 20) * ionIdleMakeup(idleOpen);
     if (g.dryGain) smooth(g.dryGain.gain, (1 - wetDry * 0.55) * trim, tc, ctx);
     if (g.wetBusGain) {
       smooth(g.wetBusGain.gain, (wetDry * 0.45 + bodyAmt * 0.08 * (1 - open)) * trim, tc, ctx);
@@ -3695,6 +3934,160 @@ export class EngineSynthImpl implements EngineSynth {
     else this.driveMood = 'idle';
   }
 
+
+  /** Accel phrase state: active (0/1), open (0 → 1 eased swell), bell (mid-phrase bump). */
+  private ionAccelPhase(speed: number, thr: number): { active: number; open: number; bell: number } {
+    const now = this.context.currentTime;
+    const rest = speed < ION_ACCEL.fromSpeed;
+    if (rest && thr < 0.06) this.ionAccelArmed = true;
+    if (this.ionAccelArmed && rest && thr > 0.12) {
+      this.ionAccelArmed = false;
+      this.ionAccelT0 = now;
+    }
+    if (this.ionAccelT0 < 0) return { active: 0, open: 1, bell: 0 };
+    const t = (now - this.ionAccelT0) / ION_ACCEL.swellSec;
+    if (t >= 1 || thr < 0.05) {
+      this.ionAccelT0 = -1;
+      return { active: 0, open: 1, bell: 0 };
+    }
+    // Ease-out: most of the opening lands in the first second, then it creeps to the peak
+    const x = Math.max(0, t);
+    const open = 1 - (1 - x) * (1 - x);
+    return { active: 1, open, bell: 4 * open * (1 - open) };
+  }
+
+  // ── Twin Ion lifecycle + targeting cues (buffers from ionTwinCues; see ionTwinCues.ts) ──
+
+  private ionLifecycleOn(): boolean {
+    return Number(this.params.lifecycleSounds ?? 1) !== 0;
+  }
+
+  /** Cue level re the generated buffers (peak 0.5): lifecycle cues peak under the cruise voice. */
+  private ionCueLevel(kind: IonCueKind): number {
+    const life = Math.max(0, Number(this.params.lifecycleLevel ?? 0.55)) / 0.55;
+    return kind === 'target' ? ION_CUE_LEVEL.target : ION_CUE_LEVEL.lifecycle * life;
+  }
+
+  private startIonBuffer(kind: IonCueKind, buf: AudioBuffer, level: number, at: number): IonCueVoice {
+    const ctx = this.context;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(level, at);
+    src.connect(gain);
+    gain.connect(this.cueOutput);
+    src.start(at);
+    const v: IonCueVoice = { kind, src, gain, startedAt: at, endsAt: at + buf.duration, handedOff: false };
+    src.onended = () => {
+      try {
+        gain.disconnect();
+      } catch {
+        /* ignore */
+      }
+      if (this.ionCue === v) this.ionCue = null;
+      if (this.ionTargetVoice === v) this.ionTargetVoice = null;
+    };
+    this.ionCueCounts[kind] += 1;
+    return v;
+  }
+
+  private stopIonCue(v: IonCueVoice | null, fade: number): void {
+    if (!v) return;
+    const now = this.context.currentTime;
+    try {
+      const p = v.gain.gain;
+      p.cancelScheduledValues(now);
+      p.setValueAtTime(p.value, now);
+      p.linearRampToValueAtTime(0, now + Math.max(0.005, fade));
+      v.src.stop(now + Math.max(0.005, fade) + 0.02);
+    } catch {
+      /* already stopped */
+    }
+    v.handedOff = true;
+  }
+
+  private rampDuck(to: number, over: number, at?: number): void {
+    const d = this.g.ionDuck?.gain;
+    if (!d) return;
+    const now = this.context.currentTime;
+    try {
+      d.cancelScheduledValues(now);
+      d.setValueAtTime(d.value, now);
+      if (at !== undefined && at > now) d.setValueAtTime(d.value, at);
+      d.linearRampToValueAtTime(to, Math.max(now, at ?? now) + over);
+    } catch {
+      d.value = to;
+    }
+  }
+
+  private playIonIgnition(): boolean {
+    const set = readyIonTwinCues(this.context.sampleRate);
+    if (!set || !this.g.ionDuck) return false;
+    const now = this.context.currentTime;
+    this.stopIonCue(this.ionCue, ION_CUE_XFADE);
+    const T = set.ignition.duration;
+    const land = now + T - ION_IGNITION_LAND;
+    const v = this.startIonBuffer('ignition', set.ignition, this.ionCueLevel('ignition'), now);
+    v.gain.gain.setValueAtTime(this.ionCueLevel('ignition'), land);
+    v.gain.gain.linearRampToValueAtTime(0, now + T);
+    v.src.stop(now + T + 0.05);
+    this.ionCue = v;
+    this.ionDuckPendingAt = -1;
+    // Live voice held under the cue, then the ignition lands in the interior hum
+    this.rampDuck(0, 0.03);
+    this.rampDuck(1, ION_IGNITION_LAND, land);
+    return true;
+  }
+
+  private playIonShutdown(): boolean {
+    const set = readyIonTwinCues(this.context.sampleRate);
+    if (!set || !this.g.ionDuck) return false;
+    const now = this.context.currentTime;
+    this.stopIonCue(this.ionCue, ION_CUE_XFADE);
+    this.stopIonCue(this.ionTargetVoice, ION_CUE_XFADE);
+    const lvl = this.ionCueLevel('shutdown');
+    const v = this.startIonBuffer('shutdown', set.shutdown, 0, now);
+    v.gain.gain.linearRampToValueAtTime(lvl, now + ION_CUE_XFADE);
+    v.src.stop(now + set.shutdown.duration + 0.05);
+    this.ionCue = v;
+    this.ionDuckPendingAt = -1;
+    // The shutdown voice replaces the live one (crossfade), which stays ducked until next start
+    this.rampDuck(0, ION_CUE_XFADE);
+    return true;
+  }
+
+  private playIonTarget(): void {
+    const set = readyIonTwinCues(this.context.sampleRate);
+    if (!set) {
+      void ionTwinCues(this.context.sampleRate).catch(() => undefined);
+      return;
+    }
+    const now = this.context.currentTime;
+    if (now - this.ionLastTargetAt < ION_TARGET_MIN_GAP) return;
+    this.ionLastTargetAt = now;
+    this.stopIonCue(this.ionTargetVoice, 0.05);
+    this.ionTargetVoice = this.startIonBuffer('target', set.target, this.ionCueLevel('target'), now);
+  }
+
+  /** Per-frame: lift a pending duck, and hand an ignition over to live input (never blocks). */
+  private ionLifecycleTick(speed: number, thr: number): void {
+    const now = this.context.currentTime;
+    const cue = this.ionCue;
+    const input = thr > 0.08 || speed > 0.03;
+    if (cue && cue.kind === 'ignition' && !cue.handedOff && now < cue.endsAt - ION_IGNITION_LAND && input) {
+      this.stopIonCue(cue, ION_CUE_XFADE);
+      this.rampDuck(1, ION_CUE_XFADE);
+      return;
+    }
+    if (this.ionDuckPendingAt >= 0 && this.started) {
+      const waited = now - this.ionDuckPendingAt;
+      if (input || waited > ION_DUCK_GRACE) {
+        this.ionDuckPendingAt = -1;
+        this.ionStarterWanted = -1;
+        this.rampDuck(1, input ? ION_CUE_XFADE : 0.3);
+      }
+    }
+  }
 
   /**
    * Non-ICE packs: scale fundamental by idleRpm vs defaults when near idle.
@@ -3723,6 +4116,25 @@ export class EngineSynthImpl implements EngineSynth {
 
 
 }
+
+type IonCueKind = 'ignition' | 'shutdown' | 'target';
+interface IonCueVoice {
+  kind: IonCueKind;
+  src: AudioBufferSourceNode;
+  gain: GainNode;
+  startedAt: number;
+  endsAt: number;
+  handedOff: boolean;
+}
+/** Crossfade between a cue and the live voice (s). */
+const ION_CUE_XFADE = 0.3;
+/** The ignition's last seconds crossfade into the live interior hum. */
+const ION_IGNITION_LAND = 1.6;
+/** start() waits this long for an ignition before letting the hum in on its own. */
+const ION_DUCK_GRACE = 0.25;
+const ION_TARGET_MIN_GAP = 1;
+/** Cue gains re the peak-0.5 buffers: lifecycle cues peak under the cruise voice; the lock cue rides ~0.5 LU over the cruise it fires on. */
+const ION_CUE_LEVEL = { lifecycle: 0.78, target: 0.9 };
 
 const UPSHIFT_SFX_KEY = 'ds-upshift-sfx';
 

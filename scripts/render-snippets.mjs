@@ -147,8 +147,14 @@ async function renderIcePreview(id) {
 const ION_TWIN_PREVIEW = { lufs: -20.4, peakCapDb: -1 };
 async function renderIonTwinPreview() {
   const { integratedLufs } = await import('./loudness.mjs');
-  const { renderIonTwin } = await import('./ion-twin-render.mjs');
-  const buf = await renderIonTwin(driveAt, DUR, { sampleRate: SR, preroll: 3, seed: 'ion-twin-preview' });
+  const { renderIonTwin, ION_TWIN_PREVIEW_SEQUENCE: P } = await import('./ion-twin-render.mjs');
+  const buf = await renderIonTwin(P.profile, P.dur, {
+    sampleRate: SR,
+    preroll: P.preroll,
+    seed: 'ion-twin-preview',
+    actions: P.actions,
+    fadeOut: P.fadeOut,
+  });
   const WAV_SCALE = 0.9; // bufferToWav writes at 0.9
   const chans = [];
   let peak = 0;
