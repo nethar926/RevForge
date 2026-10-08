@@ -1,7 +1,7 @@
 import type { EngineParams, EngineSynth } from '../audio/types';
 import { NIGHT_PURSUIT_ID } from './migrations';
 import type { PackIdentity } from './types';
-import { getPackMode, onPackEngineCommand, onPackMode, onScannerPass, setPackEnvelopeSource, type PackMode, type ScannerEdge } from './runtime';
+import { getPackMode, onPackEngineCommand, onPackMode, onScannerPass, setPackAbZoneSource, setPackEnvelopeSource, type PackMode, type ScannerEdge } from './runtime';
 
 /**
  * Optional audio hooks a pack engine may expose (Audio Synth owns them).
@@ -19,6 +19,10 @@ export interface PackAudioHooks {
   setChargeLevel?(level: number): void;
   /** Chrono pack: one-shot discharge when the jump threshold is crossed / JUMP SEQUENCE armed. */
   triggerDischarge?(): void;
+  /** Jet engines: current afterburner zone 0..5 (Carrier Jet HUD). */
+  getAfterburnerZone?(): number;
+  /** Jet engines: zone change subscription; returns an unsubscribe. */
+  onAfterburnerZoneChange?(listener: () => void): (() => void) | void;
 }
 
 type PackEngine = EngineSynth & PackAudioHooks;
@@ -71,10 +75,20 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
       /* engine not ready */
     }
   });
+  // Afterburner zone (any engine that has both methods; feature-detected, else HUDs derive it).
+  const live = eng();
+  if (live && typeof live.getAfterburnerZone === 'function' && typeof live.onAfterburnerZoneChange === 'function') {
+    setPackAbZoneSource({ get: () => live.getAfterburnerZone?.(), subscribe: (cb) => live.onAfterburnerZoneChange?.(cb) });
+  } else {
+    setPackAbZoneSource(null);
+  }
   const packId = MODE_PACKS[engineId];
   if (!packId) {
     setPackEnvelopeSource(null);
-    return offCommands;
+    return () => {
+      offCommands();
+      setPackAbZoneSource(null);
+    };
   }
   applyBoost(eng(), getPackMode(packId));
   setPackEnvelopeSource(() => {
@@ -97,5 +111,6 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
     offMode();
     offScan();
     setPackEnvelopeSource(null);
+    setPackAbZoneSource(null);
   };
 }

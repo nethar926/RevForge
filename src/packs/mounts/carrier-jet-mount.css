@@ -1,0 +1,14 @@
+/*
+ * Carrier Jet mount (framework glue, not HUD art — Visual owns skins/carrier-jet/*).
+ * .rf-pack-fit (pack-fit.css) gives the on-screen box; the HUD fills it with no transform scale.
+ */
+.cjm > .cjm-fill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+.cjm > .cjm-fill > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}

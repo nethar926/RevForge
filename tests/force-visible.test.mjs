@@ -17,7 +17,7 @@ async function build(env) {
   const key = `__RF_ENV_${n++}__`;
   globalThis[key] = env;
   const out = mkdtempSync(join(tmpdir(), 'rf-force-'));
-  for (const rel of ['packs/migrations', 'packs/stellar-helm.identity', 'packs/chrono-coupe.identity', 'themes/visibility', 'lib/storageKey']) {
+  for (const rel of ['packs/migrations', 'packs/stellar-helm.identity', 'packs/chrono-coupe.identity', 'packs/carrier-jet.identity', 'themes/visibility', 'lib/storageKey']) {
     let js = ts.transpileModule(readFileSync(join(root, 'src', `${rel}.ts`), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
     js = js.replace(/from '(\.\.?\/[^']+)'/g, "from '$1.mjs'").replace(/import\.meta\.env/g, `globalThis.${key}`);
     mkdirSync(dirname(join(out, rel)), { recursive: true });

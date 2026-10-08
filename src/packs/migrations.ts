@@ -8,6 +8,7 @@
  */
 import { storageKey } from '../lib/storageKey';
 import STELLAR_HELM from './stellar-helm.identity';
+import CARRIER_JET from './carrier-jet.identity';
 import { FALLBACK_THEME_ID, isThemeListed, resolveListedEngineId } from '../themes/visibility';
 
 export const NIGHT_PURSUIT_ID = 'night-pursuit' as const;
@@ -33,10 +34,19 @@ const toNightPursuit = (): Record<string, string> =>
  */
 const TO_STELLAR_HELM = ['saffron-console', 'saffron-command', legacy('sdlrow-wen'), legacy('esirpretne')];
 
+/**
+ * The old jet theme (`f14`) is replaced by the Carrier Jet pack — only on builds where Carrier Jet
+ * is visible (preview/carrier-jet via VITE_FORCE_VISIBLE). Everywhere else this map is empty, so a
+ * saved `f14` stays hidden and goes to Night Pursuit through the catalogue-trim rule. Theme only:
+ * the saved engine is left as it is.
+ */
+export const CARRIER_JET_THEME_MIGRATIONS: Record<string, string> = isThemeListed(CARRIER_JET.id) ? { f14: CARRIER_JET.id } : {};
+
 /** Theme preset ids → canonical pack id (drivesynth.theme.v2, saved combinations, deep links). */
 export const PACK_THEME_MIGRATIONS: Record<string, string> = {
   ...toNightPursuit(),
   ...Object.fromEntries(TO_STELLAR_HELM.map((id) => [id, STELLAR_HELM.id])),
+  ...CARRIER_JET_THEME_MIGRATIONS,
 };
 
 /**
@@ -57,7 +67,7 @@ export const PACK_ENGINE_MIGRATIONS: Record<string, string> = {
 };
 
 /** Only migrations that land on an experimental pack auto-enable its opt-in. */
-const EXPERIMENTAL_TARGETS: ReadonlySet<string> = new Set([NIGHT_PURSUIT_ID, STELLAR_HELM.id]);
+const EXPERIMENTAL_TARGETS: ReadonlySet<string> = new Set([NIGHT_PURSUIT_ID, STELLAR_HELM.id, CARRIER_JET.id]);
 
 /**
  * Packs that replace retired themes: a saved selection migrated to one of these is
@@ -164,6 +174,11 @@ function runThemeRenameMigrations(): void {
         changed = true;
       } else if (typeof c.skinId === 'string' && SELECT_ON_MIGRATE.has(PACK_THEME_MIGRATIONS[c.skinId])) {
         const pack = PACK_THEME_MIGRATIONS[c.skinId];
+        c.skinId = pack;
+        enableExperimental(pack);
+        changed = true;
+      } else if (typeof c.skinId === 'string' && CARRIER_JET_THEME_MIGRATIONS[c.skinId]) {
+        const pack = CARRIER_JET_THEME_MIGRATIONS[c.skinId];
         c.skinId = pack;
         enableExperimental(pack);
         changed = true;

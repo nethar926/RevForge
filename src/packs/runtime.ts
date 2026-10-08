@@ -59,6 +59,63 @@ export function onScannerPass(listener: ScannerListener): () => void {
   return () => scannerListeners.delete(listener);
 }
 
+/**
+ * Afterburner zone (0..5) from Audio's optional engine API (getAfterburnerZone /
+ * onAfterburnerZoneChange). audioBridge registers a source only when the live engine has both;
+ * otherwise readPackAbZone() is undefined and HUDs derive the zone themselves. Read with
+ * useSyncExternalStore(subscribePackAbZone, readPackAbZone).
+ */
+export interface PackAbZoneSource {
+  get: () => number | undefined;
+  subscribe: (onChange: () => void) => (() => void) | void;
+}
+let abZoneSource: PackAbZoneSource | null = null;
+let abZoneInnerOff: (() => void) | null = null;
+const abZoneListeners = new Set<() => void>();
+const abZoneFanout = () => {
+  for (const l of [...abZoneListeners]) l();
+};
+function attachAbZone() {
+  abZoneInnerOff?.();
+  abZoneInnerOff = null;
+  if (!abZoneSource || !abZoneListeners.size) return;
+  try {
+    const off = abZoneSource.subscribe(abZoneFanout);
+    abZoneInnerOff = typeof off === 'function' ? off : null;
+  } catch {
+    /* engine not ready */
+  }
+}
+
+export function setPackAbZoneSource(source: PackAbZoneSource | null): void {
+  abZoneSource = source;
+  attachAbZone();
+  abZoneFanout();
+}
+
+/** 0..5 integer zone, or undefined when Audio exposes no zone API. */
+export function readPackAbZone(): number | undefined {
+  if (!abZoneSource) return undefined;
+  try {
+    const v = abZoneSource.get();
+    return typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(5, Math.round(v))) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function subscribePackAbZone(listener: () => void): () => void {
+  abZoneListeners.add(listener);
+  if (abZoneListeners.size === 1) attachAbZone();
+  return () => {
+    abZoneListeners.delete(listener);
+    if (!abZoneListeners.size) {
+      abZoneInnerOff?.();
+      abZoneInnerOff = null;
+    }
+  };
+}
+
 /** Drive shell registers an audio-envelope reader (0..1) or null when unavailable. */
 export function setPackEnvelopeSource(source: (() => number | undefined) | null): void {
   envelopeSource = source;

@@ -10,7 +10,7 @@ import ts from 'typescript';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = mkdtempSync(join(tmpdir(), 'rf-mig-'));
-for (const rel of ['packs/migrations', 'packs/stellar-helm.identity', 'packs/chrono-coupe.identity', 'themes/visibility', 'lib/storageKey']) {
+for (const rel of ['packs/migrations', 'packs/stellar-helm.identity', 'packs/chrono-coupe.identity', 'packs/carrier-jet.identity', 'themes/visibility', 'lib/storageKey']) {
   const src = readFileSync(join(root, 'src', `${rel}.ts`), 'utf8');
   let js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
   js = js.replace(/from '(\.\.?\/[^']+)'/g, "from '$1.mjs'");
