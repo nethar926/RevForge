@@ -402,7 +402,7 @@ export function useAudioEngine(
 
   useEffect(()=>{try{localStorage.setItem("revforge.background",String(background));}catch{}if(!background)mediaRef.current?.disable();},[background]);
   const setBackgroundEnabled=useCallback((value:boolean)=>{setBackground(value);if(value&&mediaRef.current)void mediaRef.current.enable().then(()=>setBackgroundStatus("Media output active · browser may still suspend playback")).catch(()=>setBackgroundStatus("Tap Ignition to retry background output"));},[]);
-  const getMediaElement=useCallback(()=>mediaRef.current?.element??null,[]);
+  const getMediaElement=useCallback(()=>mediaRef.current?.playingElement()??null,[]);
   /** Explicit user resume after an interruption (same path as tapping Ignition while paused). */
   const resume = useCallback(async () => {
     await start();
