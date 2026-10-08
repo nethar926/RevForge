@@ -1,0 +1,97 @@
+/*
+ * Chrono Coupe drive-window reflow (framework glue; the HUD art is the skin's). Only applies
+ * with data-cc-box="drive" (useDriveBox in ChronoCoupeMount); parked layouts are untouched.
+ *
+ * The FULL layout, every element kept, rearranged into an L around the demo Throttle card:
+ *   row 1  date banks (3 rows)          | velocity + charge bar, engine bars + RPM + gear
+ *   row 2  rail (4 buttons), full width  — ends at the gap above the Throttle card
+ *   row 3  charge core | core-output needle gauge — left of the Throttle card
+ * With no Throttle card (GPS) row 3 spans the full width. Uniform scale (--pf-s >= 0.92) so
+ * 12px captions stay >= 11 screen px; spacing tightens (HUD/panel padding, cell gaps), sizes
+ * and fonts are the skin's. The frame is clipped to the L so it never paints under the card.
+ */
+.rf-pack-fit[data-cc-box='drive'] {
+  position: absolute;
+  left: var(--ccd-x);
+  top: var(--ccd-y);
+  margin: 0;
+}
+.rf-pack-fit[data-cc-box='drive'] .rf-pack-box {
+  --pf-tap: max(48px, calc(48px / var(--pf-s)));
+}
+.rf-pack-fit[data-cc-box='drive'] .cc {
+  grid-template-columns: calc(var(--ccd-nx) - 4px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) var(--pf-tap) var(--ccd-r3);
+  grid-template-areas: 'banks right' 'rail rail' 'lower .';
+  gap: 8px;
+  padding: 4px;
+}
+.rf-pack-fit[data-cc-box='drive'][data-cc-notch='true'] .cc {
+  clip-path: polygon(0 0, 100% 0, 100% var(--ccd-sh), var(--ccd-nx) var(--ccd-sh), var(--ccd-nx) 100%, 0 100%);
+}
+.rf-pack-fit[data-cc-box='drive'][data-cc-notch='false'] .cc {
+  grid-template-areas: 'banks right' 'rail rail' 'lower lower';
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-left {
+  display: contents;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-banks {
+  grid-area: banks;
+  min-height: 0;
+  align-content: space-between;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-bank {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-cells {
+  gap: 5px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-right {
+  grid-area: right;
+  gap: 8px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-right .cc-panel {
+  padding: 8px 14px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-velocity .cc-unit {
+  top: 8px;
+  right: 14px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-big {
+  margin-top: 6px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-thr {
+  margin-top: 8px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-rail {
+  grid-area: rail;
+  gap: 8px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-lower {
+  grid-area: lower;
+  grid-template-columns: minmax(0, 0.3fr) minmax(0, 0.7fr);
+  gap: 8px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-lower .cc-panel {
+  padding: 6px 10px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-charge-pct {
+  top: 6px;
+  right: 10px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-output .cc-readout {
+  top: 6px;
+  right: 10px;
+}
+.rf-pack-fit[data-cc-box='drive'] .cc-charge .cc-core-wrap {
+  padding-top: 2px;
+}
+/* Row 3 is only as tall as the Throttle card: the CORE OUTPUT caption moves onto the panel's
+   top-left corner (the readout already sits on the top-right) so the needle gauge gets the
+   panel's full height, as tall as at 1280x800 (tick numerals clear of the caption). */
+.rf-pack-fit[data-cc-box='drive'] .cc-output h4 {
+  position: absolute;
+  left: 10px;
+  top: 6px;
+}
