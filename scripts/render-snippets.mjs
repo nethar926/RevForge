@@ -111,6 +111,40 @@ async function renderPack(id, buildFn, renderFn) {
 }
 
 /**
+ * Twin Ion preview: same buildScifi approximation, but level-matched (preview render gain only —
+ * the live voice is untouched). The un-normalised render sat at ≈ −0.5 LUFS / −0.9 dBFS peak with
+ * ~16 % of samples clipped in the WAV. Target = median integrated loudness of the other ten
+ * previews (BS.1770, scripts/preview-loudness.mjs), peak capped at their median peak.
+ */
+const ION_TWIN_PREVIEW = { lufs: -20.4, peakDb: -9.6 };
+async function renderIonTwinPreview() {
+  const { integratedLufs } = await import('./loudness.mjs');
+  const ctx = new OfflineAudioContext(2, Math.ceil(SR * DUR), SR);
+  const master = ctx.createGain();
+  master.gain.value = 0.85;
+  master.connect(ctx.destination);
+  buildScifi(ctx, master);
+  const buf = await ctx.startRendering();
+  const WAV_SCALE = 0.9; // bufferToWav writes at 0.9
+  const chans = [];
+  let peak = 0;
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const x = buf.getChannelData(c);
+    chans.push(Float64Array.from(x, (v) => v * WAV_SCALE));
+    for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]) * WAV_SCALE);
+  }
+  const lufs = integratedLufs(chans, SR);
+  const gLufs = Math.pow(10, (ION_TWIN_PREVIEW.lufs - lufs) / 20);
+  const gPeak = Math.pow(10, ION_TWIN_PREVIEW.peakDb / 20) / Math.max(1e-9, peak);
+  const g = Math.min(gLufs, gPeak);
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const x = buf.getChannelData(c);
+    for (let i = 0; i < x.length; i++) x[i] *= g;
+  }
+  return buf;
+}
+
+/**
  * Night Pursuit preview (~5 s): lumpy idle → blip → launch through the 1-2 shift → lift-off
  * burble. Runs the real pulse-engine-processor + nightPursuitVoice chain.
  */
@@ -607,7 +641,7 @@ const PACKS = [
   { id: 'ev-regen-howl', file: 'ev-regen-howl.wav', build: (c, m) => buildEv(c, m, { regen: true }) },
   { id: 'ev-dual-motor', file: 'ev-dual-motor.wav', build: (c, m) => buildEv(c, m, { dual: true }) },
   { id: 'aerospace-f14', file: 'aerospace-f14.wav', build: (c, m) => buildAero(c, m) },
-  { id: 'ion-twin', file: 'ion-twin.wav', build: (c, m) => buildScifi(c, m) },
+  { id: 'ion-twin', file: 'ion-twin.wav', render: renderIonTwinPreview },
   { id: 'night-pursuit', file: 'night-pursuit.wav', render: renderNightPursuitPreview },
   { id: 'chrono-coupe', file: 'chrono-coupe.wav', render: renderChronoCoupePreview },
   { id: 'stellar-helm', file: 'stellar-helm.wav', render: renderStellarHelmPreviewBuffer },
