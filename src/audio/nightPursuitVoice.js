@@ -5,6 +5,8 @@
 // Base sound = pulse-engine-processor cross-plane V8 (family 1) + camLope / bankSplit /
 // overrun opt-ins. This module only shapes it; it never generates a jet.
 
+import { createOverrunBurstState, gatedCrackle, stepOverrunBurst } from './overrunBurst.js';
+
 const clip = (x, a = 0, b = 1) => Math.max(a, Math.min(b, Number.isFinite(x) ? x : a));
 const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const lag = (cur, target, dt, tc) => cur + (target - cur) * (1 - Math.exp(-Math.max(0, dt) / Math.max(1e-3, tc)));
@@ -38,6 +40,7 @@ export function createNightPursuitDriveState(idleRpm = 660) {
     thrSlow: 0,
     prevThr: 0,
     overrun: 0,
+    burst: createOverrunBurstState(),
     spool: 0,
     blowoff: 0,
     loadRich: 0,
@@ -118,21 +121,13 @@ export function stepNightPursuitDrive(state, input, dt, params = {}) {
   }
   const rpmNorm = clip((s.rpm - idle) / Math.max(1, red - idle));
 
-  // Lift-off → overrun burble envelope (continuous; never a hard gate)
+  // Overrun burble: ONLY a genuine lift-off from high rpm opens a bounded burst that decays as
+  // the revs fall (overrunBurst.js). No coasting floor, no Frontend `overrun` flag trigger — those
+  // produced pops at steady GPS speed and while coasting at low rpm.
   const dropRate = h > 0 ? (s.prevThr - thr) / h : 0;
   s.thrSlow = lag(s.thrSlow, thr, h, 0.35);
-  const rpmGate = clip((s.rpm - 1150) / 900);
-  if (thr < 0.14 && s.thrSlow - thr > 0.1 && s.rpm > 1450) {
-    s.overrun = Math.max(s.overrun, clip((s.thrSlow - thr) * 2.2) * rpmGate);
-  }
-  if (input?.overrun && s.rpm > 1300) s.overrun = Math.max(s.overrun, 0.8 * rpmGate);
-  // Coasting floor: the cam keeps burbling while the car rolls off-throttle
-  const coastFloor = thr < 0.06 && speed > 0.08 ? 0.28 * rpmGate : 0;
-  const ovrTarget = thr > 0.2 ? 0 : coastFloor;
-  const ovrTc = thr > 0.2 ? 0.06 : s.overrun > ovrTarget ? 1.3 : 0.35;
-  s.overrun = lag(s.overrun, ovrTarget, h, ovrTc);
-  // Fades continuously with rpm (no burble at idle)
-  s.overrun = Math.min(s.overrun, rpmGate);
+  if (!s.burst) s.burst = createOverrunBurstState();
+  s.overrun = stepOverrunBurst(s.burst, { throttle: thr, rpm: s.rpm }, h, { idleRpm: idle, redlineRpm: red });
 
   // PURSUIT spool (turbo lag) + blow-off on fast lift
   const boost = clip(num(params.pursuitBoost, 0));
@@ -182,6 +177,8 @@ export function nightPursuitWorkletTargets(params, drive, thr, base = {}) {
     mufflerMix: clip(muff0 * (1.1 - lr * 0.62)),
     exhaustFeedback: clip(num(base.exhaustFeedback, num(p.exhaustFeedback, 0.8)) * (0.97 + lr * 0.04), 0.1, 0.95),
     collectorDelayMs: clip(num(p.collectorDelayMs, 2.5), 0.5, 3),
+    // Worklet crackle only while a lift-off burst is open (never at cruise / coast / idle)
+    crackle: gatedCrackle(num(p.crackle, 0.3), drive.overrun),
   };
 }
 

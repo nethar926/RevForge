@@ -14,7 +14,7 @@ export interface NightPursuitDriveState {
   blowoff: number;
   loadRich: number;
   modelled: boolean;
-  [k: string]: number | boolean;
+  [k: string]: unknown;
 }
 export interface NightPursuitDrive {
   rpm: number;
@@ -37,6 +37,8 @@ export interface NightPursuitWorkletTargets {
   mufflerMix: number;
   exhaustFeedback: number;
   collectorDelayMs: number;
+  /** worklet crackle amount, open only during a lift-off burst */
+  crackle: number;
 }
 export function npIdleRpm(params: Partial<EngineParams>): number;
 export function npRedlineRpm(params: Partial<EngineParams>): number;

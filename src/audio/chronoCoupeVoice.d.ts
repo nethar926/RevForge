@@ -1,4 +1,5 @@
 import type { EngineParams } from './types';
+import type { OverrunBurstState } from './overrunBurst';
 
 export const CC_GEAR_RATIOS: number[];
 export const CC_FINAL_DRIVE: number;
@@ -17,6 +18,8 @@ export interface ChronoCoupeDriveState {
   thrSlow: number;
   prevThr: number;
   overrun: number;
+  /** lift-off pop gate (overrunBurst.js) */
+  burst: OverrunBurstState;
   breath: number;
   modelled: boolean;
 }
@@ -52,6 +55,8 @@ export interface ChronoCoupeWorkletTargets {
   mufflerMix: number;
   exhaustFeedback: number;
   collectorDelayMs: number;
+  /** worklet crackle amount, open only during a lift-off burst */
+  crackle: number;
 }
 
 export function ccIdleRpm(params: Partial<EngineParams>): number;

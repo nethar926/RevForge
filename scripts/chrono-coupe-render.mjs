@@ -20,6 +20,7 @@ if (!Promise.withResolvers) {
   };
 }
 const { OfflineAudioContext, AudioWorkletNode } = await import('node-web-audio-api');
+const seeded = await import('./seeded-random.mjs');
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKLET = join(ROOT, 'src/audio/worklets/pulse-engine-processor.js');
@@ -44,7 +45,9 @@ export async function renderChronoCoupe(profile, dur, opts = {}) {
   const SR = opts.sampleRate ?? 44100;
   const params = { ...pack.CHRONO_COUPE_DEFAULTS, ...(opts.params ?? {}) };
   const ctx = new OfflineAudioContext(2, Math.ceil(SR * dur), SR);
-  await ctx.audioWorklet.addModule(WORKLET);
+  // opts.seed → deterministic main-thread + worklet randomness (QA / previews)
+  if (opts.seed != null) seeded.seedMathRandom(opts.seed);
+  await ctx.audioWorklet.addModule(opts.seed != null ? seeded.seededWorkletModule(WORKLET, opts.seed) : WORKLET);
   const node = new AudioWorkletNode(ctx, 'pulse-engine-processor', {
     numberOfInputs: 0,
     numberOfOutputs: 1,
@@ -128,7 +131,7 @@ export async function renderChronoCoupe(profile, dur, opts = {}) {
     set('pulseJitter', Math.min(0.5, wp.pulseJitter + 0.02 + Math.abs(pitch) * 0.08), t);
     set('roughness', Number(params.roughness), t);
     set('exhaustLength', Number(params.exhaustLength), t);
-    set('crackle', Number(params.crackle), t);
+    set('crackle', tg.crackle, t); // gated to lift-off bursts (overrunBurst.js)
     set('masterGain', clamp(Number(params.masterGain) * (0.75 + Number(params.presence) * 0.4)), t);
     for (const k of ['camLope', 'bankSplit', 'overrun', 'overrunBurble', 'dcGuard', 'growl', 'intake', 'mufflerMix', 'exhaustFeedback', 'collectorDelayMs'])
       set(k, tg[k], t);
@@ -155,6 +158,7 @@ export async function renderChronoCoupe(profile, dur, opts = {}) {
     });
   }
   const buf = await ctx.startRendering();
+  if (opts.seed != null) seeded.restoreMathRandom();
   buf.trace = trace;
   return buf;
 }

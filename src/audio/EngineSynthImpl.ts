@@ -61,6 +61,7 @@ import {
   shutoffDuration,
 } from './engineStartShutdown';
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
+import { createOverrunBurstState, gatedCrackle, stepOverrunBurst } from './overrunBurst';
 import pulseWorkletUrl from './worklets/pulse-engine-processor.js?url';
 
 type Kind = EnginePatch['kind'];
@@ -297,6 +298,10 @@ export class EngineSynthImpl implements EngineSynth {
   private ccDrive: ChronoCoupeDrive | null = null;
   private ccLastMs = 0;
   private chargeLevel = 0;
+  /** Generic ICE packs: lift-off pop gate for the worklet's crackle (overrunBurst.js). */
+  private iceBurst = createOverrunBurstState();
+  /** Last gated worklet crackle amount (applyAllParams re-pushes this, never the raw param). */
+  private iceCrackle = 0;
   /** Post-gain loudness envelope (getEnvelope / getVoiceEnvelope). */
   private envelope: EnvelopeMeter;
   /** Stellar Helm lagged drive state (speed glide, throttle attack/release, reverse, boost). */
@@ -503,6 +508,8 @@ export class EngineSynthImpl implements EngineSynth {
       this.ccDriveState = createChronoCoupeDriveState(ccIdleRpm(this.params));
       this.ccLastMs = 0;
       this.chargeLevel = 0;
+      this.iceBurst = createOverrunBurstState();
+      this.iceCrackle = 0;
       this.helmState = createStellarHelmDriveState();
       this.helmLastMs = 0;
       this.g = this.buildGraph(patch.kind, patch.topology);
@@ -2096,7 +2103,8 @@ export class EngineSynthImpl implements EngineSynth {
       this.setWorkletParam('exhaustFeedback', Number(p.exhaustFeedback ?? 0.72), 0.05);
       this.setWorkletParam('mufflerMix', Number(p.muffling ?? 0.3), 0.05);
       this.setWorkletParam('intake', Number(p.intake ?? 0.45), 0.05);
-      this.setWorkletParam('crackle', Number(p.crackle ?? 0.35), 0.05);
+      // Crackle stays gated to lift-off bursts (applyIceDriving owns the gate)
+      this.setWorkletParam('crackle', this.iceCrackle, 0.05);
       this.setWorkletParam('cylinders', Number(p.cylinders ?? 8), 0.05);
       this.setWorkletParam('masterGain', clamp(Number(p.masterGain ?? 0.7)), 0.05);
       this.setWorkletParam('misfire', Number(p.misfire ?? 0), 0.05);
@@ -2574,7 +2582,20 @@ export class EngineSynthImpl implements EngineSynth {
         ),
         tc,
       );
-      this.setWorkletParam('crackle', Number(p.crackle ?? 0.35), tc);
+      // Pops / crackle only on a genuine lift-off from high rpm (overrunBurst.js). Generic packs
+      // run their own gate; Night Pursuit / Chrono Coupe use their drive model's burst below.
+      // overrun is forced to 0 here so a value left over from a previous pack can never pop.
+      {
+        const idleRpmGate = band.rpmMin;
+        const redRpmGate = (red * 120) / Math.max(4, cyl);
+        const env = stepOverrunBurst(this.iceBurst, { throttle: thrRaw, rpm: baseRpm }, dt, {
+          idleRpm: idleRpmGate,
+          redlineRpm: redRpmGate,
+        });
+        this.iceCrackle = gatedCrackle(Number(p.crackle ?? 0.35), env);
+      }
+      this.setWorkletParam('crackle', this.iceCrackle, tc);
+      this.setWorkletParam('overrun', 0, tc);
       const presenceBoost = 0.75 + Number(p.presence ?? 0.45) * 0.4;
       this.setWorkletParam('masterGain', clamp(Number(p.masterGain ?? 0.7) * presenceBoost), tc);
       if (nightPursuit && this.npDrive) {
@@ -2590,6 +2611,8 @@ export class EngineSynthImpl implements EngineSynth {
             1,
           ),
         });
+        this.iceCrackle = t.crackle;
+        this.setWorkletParam('crackle', t.crackle, tc);
         this.setWorkletParam('camLope', t.camLope, tc);
         this.setWorkletParam('bankSplit', t.bankSplit, tc);
         this.setWorkletParam('overrun', t.overrun, tc);
@@ -2615,6 +2638,8 @@ export class EngineSynthImpl implements EngineSynth {
           ),
         });
         this.setWorkletParam('firingFamily', t.firingFamily, tc);
+        this.iceCrackle = t.crackle;
+        this.setWorkletParam('crackle', t.crackle, tc);
         this.setWorkletParam('camLope', t.camLope, tc);
         this.setWorkletParam('bankSplit', t.bankSplit, tc);
         this.setWorkletParam('overrun', t.overrun, tc);
