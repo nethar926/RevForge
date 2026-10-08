@@ -85,7 +85,7 @@ test('wiring: ThemeStage edge → ForgePage onTimeJump → Chrono mount prop; op
   assert.match(forge, /onTimeJump=\{onTimeJump\} timeJumpActive=\{timeJumpActive\}/);
   assert.match(forge, /<TimeJumpCueSwitch on=\{timeJumpCue\} onChange=\{setTimeJumpCue\}\/>/);
   const cue = readFileSync(join(root, 'src/forge/timeJumpCue.tsx'), 'utf8');
-  assert.match(cue, /if \(cueOn && trigger\(\)\) triggerUiCue\?\.\('time-jump'\);/);
+  assert.match(cue, /if \(cueOn && trigger\(\) && HAS_TIME_JUMP_CUE_API\) triggerUiCue\?\.\('time-jump'\);/);
   assert.match(cue, /storageKey\(TIME_JUMP_CUE_KEY\)/);
-  assert.match(cue, /role="switch" aria-label="Time-jump sound"/);
+  assert.match(cue, /role="switch" aria-label="88 mph time jump \(light and sound\)"/);
 });

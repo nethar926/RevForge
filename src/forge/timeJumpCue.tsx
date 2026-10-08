@@ -1,5 +1,5 @@
 /**
- * 'Time-jump sound' preference + the Chrono Coupe light timer (React side of ./timeJump).
+ * '88 mph time jump (light and sound)' preference + the Chrono Coupe light timer (React side of ./timeJump).
  *
  * Audio's hooks (audio/hig-hooks: src/audio/cuePrefs onTimeJumpCueChange / setTimeJumpCueEnabled,
  * ProceduralCharacter TIME_JUMP_CUE_SECONDS, useAudioEngine().timeJumpCue) are feature-detected
@@ -103,17 +103,19 @@ export function useTimeJump(audioEngine: object, themeId: string) {
   const [active, trigger] = useTimeJumpLight(themeId);
   const triggerUiCue = (audioEngine as AudioCueView).triggerUiCue;
   const onTimeJump = useCallback(() => {
-    if (cueOn && trigger()) triggerUiCue?.('time-jump');
+    // Sound only once Audio's playback pass (limiter + 2 s cue cap + cue API) is in the build;
+    // until then the crossing is light-only, so no unlimited cue plays at highway speed.
+    if (cueOn && trigger() && HAS_TIME_JUMP_CUE_API) triggerUiCue?.('time-jump');
   }, [cueOn, trigger, triggerUiCue]);
   return { cueOn, setCueOn, active, onTimeJump };
 }
 
-/** HIG switch row for Options (44pt target, VoiceOver: "Time-jump sound, switch, on/off"). */
+/** HIG switch row for Options (44pt target, VoiceOver: "88 mph time jump (light and sound), switch, on/off"). */
 export function TimeJumpCueSwitch({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
   return (
     <label className="rf-tj-switch">
-      <span>Time-jump sound</span>
-      <input type="checkbox" role="switch" aria-label="Time-jump sound" aria-checked={on} checked={on} onChange={(e) => onChange(e.target.checked)} />
+      <span>88 mph time jump (light and sound)</span>
+      <input type="checkbox" role="switch" aria-label="88 mph time jump (light and sound)" aria-checked={on} checked={on} onChange={(e) => onChange(e.target.checked)} />
     </label>
   );
 }

@@ -307,7 +307,7 @@ export function ForgePage({
           ? "GPS stale"
           : "Waiting for GPS";
   const tuneEngine=(p:EnginePatch)=>{onSavePatch(editableEngine(p));setPanel("studio");};
-  // Chrono Coupe 88 mph time-jump: the 'Time-jump sound' option gates the UI cue and the skin light.
+  // Chrono Coupe 88 mph time-jump: the '88 mph time jump (light and sound)' option gates the UI cue and the skin light.
   const {cueOn:timeJumpCue,setCueOn:setTimeJumpCue,active:timeJumpActive,onTimeJump}=useTimeJump(audio,theme.id);
   // Selecting a theme pack selects its linked engine too; plain themes are unchanged.
   const selectCluster=(id:string)=>{themes.selectSkin(id);const pack=packForThemeId(id);const engine=pack&&getBuiltin(pack.engineId);if(engine&&isEngineIdVisible(engine.id)&&audio.engineId!==engine.id)onSelectEngine(structuredClone(engine));};

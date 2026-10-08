@@ -43,7 +43,7 @@ export interface PackHudProps {
   driveWindow?: boolean;
   /**
    * Chrono Coupe 88 mph time-jump light: true for one cue length (TIME_JUMP_CUE_SECONDS) after
-   * a rising 88 mph crossing while the 'Time-jump sound' option is on. Only passed to Chrono Coupe.
+   * a rising 88 mph crossing while the '88 mph time jump (light and sound)' option is on. Only passed to Chrono Coupe.
    */
   timeJumpActive?: boolean;
 }

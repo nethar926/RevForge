@@ -1,4 +1,4 @@
-/* 'Time-jump sound' HIG switch (Options). Row and control are ≥ 44pt touch targets. */
+/* '88 mph time jump (light and sound)' HIG switch (Options). Row and control are ≥ 44pt touch targets. */
 .forge-tune > label.rf-tj-switch { min-height: 55px; }
 .forge-tune .rf-tj-switch input[type="checkbox"][role="switch"] {
   appearance: none;
