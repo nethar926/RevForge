@@ -317,10 +317,16 @@ test('fadeOut reaches silence within 150 ms', async () => {
   const bus = PS.createMasterBus(ctx);
   bus.fade.gain.value = 1;
   sine(ctx, bus.input, 0.25);
-  ctx.suspend(0.2).then(() => { bus.fadeOut(); ctx.resume(); });
+  // Measure from the moment the fade was actually scheduled: under a loaded test run the
+  // offline renderer can be a quantum or two past the suspend point when the callback fires.
+  let t0 = 0.2;
+  let end = 0;
+  ctx.suspend(0.2).then(() => { t0 = ctx.currentTime; end = bus.fadeOut(); ctx.resume(); });
   const y = await ctx.startRendering();
   const x = y.getChannelData(0);
-  assert.ok(peak(x, Math.round(0.36 * sr)) < 1e-3, 'silent after the fade');
+  assert.ok(end > 0, 'fadeOut ran');
+  assert.ok(end - t0 <= 0.15 + 1e-6, `fade scheduled within 150 ms (${((end - t0) * 1000).toFixed(1)} ms)`);
+  assert.ok(peak(x, Math.min(x.length - 1, Math.ceil((end + 0.01) * sr))) < 1e-3, 'silent after the fade');
 });
 
 /* ---------------- gesture gating ---------------- */
