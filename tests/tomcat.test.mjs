@@ -45,7 +45,7 @@ const BANNED = [
   ['\\bgoo', 'se\\b'],
   ['\\bice', 'man\\b'],
   ['grum', 'man'],
-  ['jolly\\s*', 'rogers'],
+  ['jo', 'lly\\s*', 'rog', 'ers'],
   ['\\bvf-?', '\\d+\\b'],
 ].map((p) => new RegExp(p.join(''), 'i'));
 const DISPLAY_LABEL = new RegExp(['aerospace[ _]?', 'f-?14'].join(''), 'i');
