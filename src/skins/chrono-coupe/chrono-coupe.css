@@ -86,9 +86,9 @@
 .cc-cell { flex: 1 1 auto; display: flex; flex-direction: column; align-items: stretch; }
 .cc-cell .cc-glass { display: flex; justify-content: center; padding: 5px 10px 4px; border-radius: 8px; }
 .cc-cell .cc-digits { font-size: var(--cc-bank-digit); letter-spacing: 2px; }
-.cc-cell small { display: block; margin-top: min(4px, 0.5cqh); text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #d7d9dc; text-shadow: none; }
+.cc-cell small { display: block; margin-top: min(4px, 0.5cqh); text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; color: #d7d9dc; text-shadow: none; }
 .cc-ampm { display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 0 4px; }
-.cc-ampm span { display: flex; gap: 6px; align-items: center; font-size: 11px; font-weight: 700; color: #e4e6e9; text-shadow: none; }
+.cc-ampm span { display: flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 700; color: #e4e6e9; text-shadow: none; }
 .cc-ampm i { width: 14px; height: 14px; border-radius: 50%; background: #0c0d0f; box-shadow: inset 1px 1px 3px #000, 1px 1px 0 rgb(255 255 255 / 0.07); }
 .cc-colon { display: flex; flex-direction: column; justify-content: center; gap: 12px; }
 .cc-colon i { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
@@ -220,7 +220,7 @@
 .cc-bars i.on.g { background: var(--cc-grn); box-shadow: 0 0 6px #3dff6e66; }
 .cc-bars i.on.y { background: #ffd23e; box-shadow: 0 0 6px #ffd23e66; }
 .cc-bars i.on.r { background: repeating-linear-gradient(135deg, #ff3b2f 0 5px, #ff7a6e 5px 8px); box-shadow: 0 0 6px #ff3b2f66; }
-.cc-redline-tag { position: absolute; top: -18px; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: #ff8f86; }
+.cc-redline-tag { position: absolute; top: -18px; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: #ff8f86; }
 .cc-rpmrow { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex: none; }
 .cc-rpm, .cc-gear { display: flex; align-items: center; gap: 8px; }
 .cc-rpm .cc-glass, .cc-gear .cc-glass { padding: 5px 8px 4px; border-radius: 8px; }
@@ -355,7 +355,7 @@
   padding: calc(8 * var(--u, 1px)) calc(10 * var(--u, 1px));
   border-radius: calc(10 * var(--u, 1px));
 }
-.cc-compact h4 { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(2 * var(--u, 1px)); }
+.cc-compact h4 { font-size: calc(12 * var(--u, 1px)); letter-spacing: calc(2 * var(--u, 1px)); }
 .cc-compact .cc-left, .cc-compact .cc-right { gap: calc(8 * var(--u, 1px)); }
 .cc-compact .cc-banks { gap: calc(6 * var(--u, 1px)); }
 .cc-compact .cc-bank { padding: calc(5 * var(--u, 1px)) calc(8 * var(--u, 1px)); border-radius: calc(9 * var(--u, 1px)); }
@@ -364,12 +364,12 @@
 .cc-compact .cc-cell .cc-digits { letter-spacing: calc(1 * var(--u, 1px)); }
 .cc-compact .cc-cell small { display: none; }
 .cc-compact .cc-ampm { gap: 0; padding: 0; }
-.cc-compact .cc-ampm span { gap: calc(4 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); }
+.cc-compact .cc-ampm span { gap: calc(4 * var(--u, 1px)); font-size: calc(12 * var(--u, 1px)); }
 .cc-compact .cc-ampm span:not(:has(i.on)) { display: none; }
 .cc-compact .cc-ampm i { width: calc(10 * var(--u, 1px)); height: calc(10 * var(--u, 1px)); }
 .cc-compact .cc-colon { gap: calc(6 * var(--u, 1px)); }
 .cc-compact .cc-colon i { width: calc(5 * var(--u, 1px)); height: calc(5 * var(--u, 1px)); }
-.cc-compact .cc-plate { margin-top: calc(4 * var(--u, 1px)); padding: calc(1 * var(--u, 1px)); border-radius: calc(5 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(3 * var(--u, 1px)); }
+.cc-compact .cc-plate { margin-top: calc(4 * var(--u, 1px)); padding: calc(1 * var(--u, 1px)); border-radius: calc(5 * var(--u, 1px)); font-size: calc(12 * var(--u, 1px)); letter-spacing: calc(3 * var(--u, 1px)); }
 .cc-compact .cc-lower { grid-template-columns: minmax(0, 1fr) minmax(0, 0.62fr); gap: calc(8 * var(--u, 1px)); }
 .cc-compact .cc-panel { padding: calc(7 * var(--u, 1px)) calc(10 * var(--u, 1px)); border-radius: calc(12 * var(--u, 1px)); }
 .cc-compact .cc-charge .cc-core-wrap { padding-top: calc(4 * var(--u, 1px)); }
@@ -380,16 +380,16 @@
 .cc-compact .cc-big { margin-top: calc(6 * var(--u, 1px)); padding: 0 calc(10 * var(--u, 1px)); border-radius: calc(9 * var(--u, 1px)); font-size: min(calc(72 * var(--u, 1px)), 46cqh); }
 .cc-compact .cc-thr { margin-top: calc(6 * var(--u, 1px)); height: calc(10 * var(--u, 1px)); border-radius: calc(5 * var(--u, 1px)); }
 .cc-compact .cc-thr em { width: calc(2 * var(--u, 1px)); }
-.cc-compact .cc-thr-labels { margin-top: calc(4 * var(--u, 1px)); gap: calc(6 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); }
+.cc-compact .cc-thr-labels { margin-top: calc(4 * var(--u, 1px)); gap: calc(6 * var(--u, 1px)); font-size: calc(12 * var(--u, 1px)); }
 .cc-compact .cc-thr-labels > span:first-child { display: none; }
-.cc-compact .cc-armed-tag { left: calc(10 * var(--u, 1px)); top: calc(24 * var(--u, 1px)); padding: calc(1 * var(--u, 1px)) calc(5 * var(--u, 1px)); border-width: var(--u, 1px); border-radius: calc(3 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
+.cc-compact .cc-armed-tag { left: calc(10 * var(--u, 1px)); top: calc(24 * var(--u, 1px)); padding: calc(1 * var(--u, 1px)) calc(5 * var(--u, 1px)); border-width: var(--u, 1px); border-radius: calc(3 * var(--u, 1px)); font-size: calc(12 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
 .cc-compact .cc-bars { gap: calc(2 * var(--u, 1px)); margin-top: calc(17 * var(--u, 1px)); padding: calc(5 * var(--u, 1px)) calc(6 * var(--u, 1px)) calc(4 * var(--u, 1px)); border-radius: calc(8 * var(--u, 1px)); }
-.cc-compact .cc-redline-tag { top: calc(-16 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.cc-compact .cc-redline-tag { top: calc(-16 * var(--u, 1px)); font-size: calc(12 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
 .cc-compact .cc-rpmrow { margin-top: calc(6 * var(--u, 1px)); }
 .cc-compact .cc-rpm, .cc-compact .cc-gear { gap: calc(4 * var(--u, 1px)); }
 .cc-compact .cc-rpm .cc-glass, .cc-compact .cc-gear .cc-glass { padding: calc(3 * var(--u, 1px)) calc(5 * var(--u, 1px)) calc(2 * var(--u, 1px)); border-radius: calc(5 * var(--u, 1px)); }
 .cc-compact .cc-rpm .cc-digits, .cc-compact .cc-gear .cc-digits { font-size: min(calc(26 * var(--u, 1px)), 21cqh); }
-.cc-compact .cc-rpmrow small { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
+.cc-compact .cc-rpmrow small { font-size: calc(12 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
 .cc-compact .cc-rail { gap: calc(8 * var(--u, 1px)); }
 .rf-pack-box .cc.cc-compact .cc-rail button, .cc.cc-compact .cc-rail button {
   min-height: calc(48 * var(--u, 1px));
