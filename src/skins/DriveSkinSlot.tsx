@@ -65,7 +65,7 @@ export function skinIdForEngine(engineId: string): string {
   }
 }
 
-/** Per-engine Drive plate — Ion Twin / Aerospace F14 mount full overlays; others use CSS tokens. */
+/** Per-engine Drive plate — Ion Twin / Tomcat mount full overlays; others use CSS tokens. */
 export function DriveSkinSlot({
   engineId,
   rpmNorm,

@@ -69,7 +69,7 @@ export function AerospaceF14Overlay({ rpmNorm, speedNorm, throttle, loadFeel }: 
       {armed && <div className="aero-heat-band" aria-hidden />}
 
       <div className="aero-status">
-        <span className="aero-status-name aero-stencil">AEROSPACE F14</span>
+        <span className="aero-status-name aero-stencil">TOMCAT</span>
         <span className="aero-status-lat aero-stencil">AEROSPACE · DRIVE</span>
         <span className={`aero-ab-pill aero-stencil ${armed ? 'on' : ''}`}>
           {armed ? 'AB ARMED' : 'AB STBY'}

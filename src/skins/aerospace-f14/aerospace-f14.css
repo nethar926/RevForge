@@ -1,5 +1,5 @@
 /**
- * DriveSynth — Aerospace F14 visual skin
+ * DriveSynth — Tomcat visual skin (engine id aerospace-f14)
  * Jet-cockpit HUD vibe · original geometry · free-only
  * Tokens + overlay chrome under [data-skin="aerospace-f14"]
  * Keeps app accent #7CFFB2 compatibility.
@@ -74,7 +74,7 @@
 
   /* Skin identity */
   --skin-id: "aerospace-f14";
-  --skin-label: "AEROSPACE F14";
+  --skin-label: "TOMCAT";
   --skin-category: "AEROSPACE";
 
   /* App chrome aliases — keep #7CFFB2 accent */
