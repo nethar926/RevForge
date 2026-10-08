@@ -250,6 +250,18 @@ test('rendered: no gear anywhere (every look, full and compact)', async () => {
   for (const f of ['CarrierJetHud.tsx', 'carrier-jet.css']) assert.doesNotMatch(readFileSync(join(SKIN, f), 'utf8'), /GearBlock|cj-gear|shift/i, f);
 });
 
+test('phone layouts: every phone rule is scoped under [data-rf-layout="portrait"|"phone-landscape"] .cj; no width-only media rules', () => {
+  const css = readFileSync(join(SKIN, 'carrier-jet.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [...css.matchAll(/([^{}]+)\{[^{}]*\}/g)].map((m) => m[1].trim()).filter((sel) => /rf-layout|portrait|phone/.test(sel));
+  assert.ok(rules.length > 20, `phone rules found (${rules.length})`);
+  for (const sel of rules) for (const part of sel.split(',')) assert.match(part.trim(), /^\[data-rf-layout="(portrait|phone-landscape)"\] \.cj[\[\s.]/, `scoped: ${part.trim()}`);
+  assert.doesNotMatch(css, /@media[^{]*(max-width|min-width)/, 'no width media rules');
+  assert.match(css, /\[data-rf-layout="phone-landscape"\] \.cj \.cj-in \{[^}]*\* 16 \/ 9/, 'phone landscape: native 16:9 board');
+  const hud = readFileSync(join(SKIN, 'CarrierJetHud.tsx'), 'utf8');
+  assert.match(hud, /closest\('\[data-rf-layout\]'\)/, 'HUD reads the picker attribute from an ancestor');
+  assert.match(hud, /rf === 'portrait' \|\| rf === 'phone-landscape'/);
+});
+
 test('rendered: AB lights follow the abZone prop in the same render (no smoothing)', async () => {
   const html = await renderVariants();
   assert.equal((html.loadNoZone.match(/class="cj-ab" data-lit="true"/g) ?? []).length, 0, 'high load without an Audio zone lights nothing');
