@@ -40,8 +40,11 @@ interface Props {
   compact?: HudCompact;
 }
 
-/** Smallest font-size in the full layout (bar labels / tach scale) — drives `'auto'`. */
-const NP_MIN_DESIGN_PX = 9;
+/**
+ * Smallest font-size in the full layout (label floor, see night-pursuit.css) — drives `'auto'`:
+ * compact turns on only when the full layout would render a label under 11px.
+ */
+const NP_MIN_DESIGN_PX = 11.25;
 
 const SEG_BITS: Record<string, number[]> = {
   '0': [1, 1, 1, 1, 1, 1, 0],
@@ -270,8 +273,6 @@ export function NightPursuitOverlay({
         className={`np-overlay np-compact${pursuitHot ? ' np-hot' : ''}`}
         data-compact="true"
         data-mode={mode}
-        data-np-cols={fit.realW >= 560 ? 2 : 1}
-        data-np-tight={fit.realH < 345 && fit.realW < 560 ? '' : undefined}
         style={
           {
             ['--np-rpm']: rpm,
@@ -280,9 +281,13 @@ export function NightPursuitOverlay({
             ['--np-load']: load,
             ['--np-scanner-ms']: pursuitHot ? '1100ms' : '2200ms',
             ['--u']: `${fit.unit}px`,
+            ['--np-k']: fit.unit,
           } as CSSProperties
         }
       >
+        {/* Screen-px frame: undoes the host scale-to-fit so the container queries in
+            night-pursuit.css see the real on-screen size of the HUD (1 frame px = 1 screen px). */}
+        <div className="np-c-frame">
         {scanner}
         <div className="np-c-dash">
           <section className="np-pod np-c-speed" aria-hidden>
@@ -310,6 +315,7 @@ export function NightPursuitOverlay({
             {tachBar}
           </section>
           {modeRail(' np-c-rail')}
+        </div>
         </div>
       </div>
     );

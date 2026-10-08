@@ -50,6 +50,8 @@
   font-family: var(--skin-font-mono);
   pointer-events: none;
   overflow: hidden;
+  /* Layout keys off the overlay's own width (stack box / previews), not the viewport. */
+  container: np / inline-size;
 }
 
 .np-overlay::after {
@@ -188,9 +190,14 @@
   min-width: 0;
 }
 
+/*
+ * Label floor: every caption is >= 11.25 CSS px (was 9-10px), so it renders >= 11px at
+ * any host fit >= 0.98 and >= 14.5px at the 1280x800 fit (1.295).
+ */
 .np-pod-label {
   flex: none;
-  font-size: 10px;
+  font-size: 11.25px;
+  line-height: 15px; /* line box of the old 10px label: 1280 geometry unchanged */
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--skin-cyan, #00e5ff);
@@ -230,9 +237,10 @@
   fill: #2a0a0a;
 }
 .np-seg-unit {
-  font-size: 10px;
+  font-size: 11.25px;
+  line-height: 15px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
   margin: 0 0 6px 4px;
   color: inherit;
 }
@@ -259,7 +267,8 @@
 }
 .np-bar-label,
 .np-mini-label {
-  font-size: 9px;
+  font-size: 11.25px;
+  line-height: 13.5px; /* line box of the old 9px label */
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(240, 240, 240, 0.68);
@@ -306,7 +315,7 @@
   position: relative;
   height: 12px;
   margin: 3px 4px 0;
-  font-size: 9px;
+  font-size: 11.25px;
   color: rgba(255, 176, 0, 0.72);
   font-variant-numeric: tabular-nums;
 }
@@ -414,7 +423,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11.25px;
+  line-height: 15px;
   letter-spacing: 0.12em;
   color: var(--skin-cyan, #00e5ff);
   text-shadow: 0 0 6px var(--skin-cyan-glow, rgba(0, 229, 255, 0.35));
@@ -494,7 +504,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 10px;
+  font-size: 11.25px;
+  line-height: 15px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(240, 240, 240, 0.68);
@@ -546,15 +557,33 @@
   display: none;
 }
 
-@media (max-width: 900px) {
+/*
+ * Stack layout (600px-wide host box / narrow previews): keyed to the overlay width via the
+ * `np` container, not the viewport. Wide box (880) keeps the 4-column dash.
+ * Tach pod spans both rows so the 2x2 grid has no empty cell next to Sensor pods.
+ */
+@container np (max-width: 760px) {
   .np-dash {
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
+  }
+  .np-pod-speed {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .np-pod-crt {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .np-pod-tach {
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
   .np-mode-rail {
     flex-direction: row;
     flex-wrap: wrap;
     grid-column: 1 / -1;
+    grid-row: 3;
   }
   .np-mode-btn {
     flex: 1;
@@ -568,13 +597,32 @@
 
 /* ——— Compact (small Tesla window) ———
  * Additive: only applies under .np-compact (host `compact` prop / ?hudCompact).
- * --u = one on-screen px (1 / host scale), so every size here is authored in real
- * screen px: text ≥11px, mode buttons ≥48px, whatever the host's scale-to-fit.
- * Keeps: scanner, speed 7-seg + gear, RPM 7-seg + tach bar/scale, voice box, mode rail.
- * Drops: throttle/load/engine bar stack, sensor pods (CRT), footer badge/status.
+ * .np-c-frame undoes the host scale-to-fit (--np-k = 1 / host scale), so inside it one CSS px
+ * is one screen px (--u: 1px) and the `np-c` container queries see the real on-screen size.
+ * Text >= 11.5px, mode buttons >= 48px, internal padding 6-8px, whatever the host scale.
+ * Keeps: scanner, speed 7-seg + gear, throttle bar, RPM 7-seg + tach bar/scale, voice box,
+ * mode rail. Drops: load/engine bars, sensor pods (CRT), footer badge/status.
+ *
+ * Hero sizing: the speed digit height (--np-hs) is the largest that fits the container, from
+ * the free height after the fixed rows (scanner 22, padding, gaps, labels, bars, rail 48) and
+ * the free width of the speed row; RPM digits are 0.62x and the gear digit 0.7x of it, so
+ * speed then gear stay the biggest readouts and no pod is left with dead space.
  */
 .np-overlay.np-compact {
-  grid-template-rows: calc(22 * var(--u, 1px)) minmax(0, 1fr);
+  display: block;
+}
+.np-c-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% / var(--np-k, 1));
+  height: calc(100% / var(--np-k, 1));
+  transform: scale(var(--np-k, 1));
+  transform-origin: 0 0;
+  display: grid;
+  grid-template-rows: 22px minmax(0, 1fr);
+  container: np-c / size;
+  --u: 1px;
 }
 .np-compact .np-scanner {
   height: auto;
@@ -592,138 +640,164 @@
   height: calc(12 * var(--u, 1px));
   margin-top: calc(-6 * var(--u, 1px));
 }
+/* Single column (narrow, near-square host box: all three Tesla driving sizes). */
 .np-c-dash {
   position: relative;
   z-index: 4;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: calc(6 * var(--u, 1px));
-  padding: calc(8 * var(--u, 1px));
+  gap: 6px;
+  padding: 6px;
   min-height: 0;
-}
-.np-compact[data-np-cols="2"] .np-c-dash {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  /* Speed-row furniture beside the digits (gaps, MPH, gear label) and the throttle row. */
+  --np-thr-h: 33px;
+  /* Fixed rows: scanner 22 + padding 12 + gaps 12 + rail 48 + two pod chromes (border, padding,
+     label: 2 x 35) + tach bar 34 + throttle row; then speed + 0.62 x speed share the rest. */
+  --np-hs: clamp(
+    44px,
+    min((100cqh - 198px - var(--np-thr-h)) / 1.62, (100cqw - 80px) / 2.12),
+    150px
+  );
 }
 .np-compact .np-pod {
-  padding: calc(6 * var(--u, 1px)) calc(10 * var(--u, 1px));
-  border-width: calc(2 * var(--u, 1px));
-  border-radius: calc(6 * var(--u, 1px));
+  padding: 6px 8px;
+  border-width: 2px;
+  border-radius: 6px;
   justify-content: space-between;
 }
 .np-compact .np-pod-label {
-  font-size: calc(11.25 * var(--u, 1px));
+  font-size: 11.5px;
+  line-height: 1.2;
   letter-spacing: 0.12em;
-  margin-bottom: calc(4 * var(--u, 1px));
+  margin-bottom: 3px;
 }
 .np-compact .np-seg-row {
-  gap: calc(3 * var(--u, 1px));
+  gap: 3px;
 }
 .np-compact .np-seg-digit {
-  width: calc(32 * var(--u, 1px));
-  height: calc(56 * var(--u, 1px));
+  height: var(--np-hs);
+  width: calc(var(--np-hs) * 0.5714);
 }
 .np-compact .np-seg-unit {
-  font-size: calc(11.25 * var(--u, 1px));
-  letter-spacing: 0.12em;
-  margin: 0 0 calc(4 * var(--u, 1px)) calc(3 * var(--u, 1px));
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  margin: 0 0 calc(var(--np-hs) * 0.06) 3px;
 }
 .np-compact .np-readout-row {
-  gap: calc(8 * var(--u, 1px));
+  gap: 8px;
+  align-items: flex-end;
 }
 .np-compact .np-gear {
-  gap: calc(2 * var(--u, 1px));
+  gap: 2px;
 }
 .np-compact .np-mini-label {
-  font-size: calc(11.25 * var(--u, 1px));
+  font-size: 11.5px;
+  line-height: 1.2;
   letter-spacing: 0.1em;
 }
 .np-compact .np-gear .np-seg-digit {
-  width: calc(22 * var(--u, 1px));
-  height: calc(38 * var(--u, 1px));
+  height: calc(var(--np-hs) * 0.7);
+  width: calc(var(--np-hs) * 0.7 * 0.579);
 }
 .np-c-tach-row {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: calc(8 * var(--u, 1px));
+  gap: 8px;
 }
 .np-c-tach .np-seg-digit {
-  width: calc(28 * var(--u, 1px));
-  height: calc(50 * var(--u, 1px));
+  height: calc(var(--np-hs) * 0.62);
+  width: calc(var(--np-hs) * 0.62 * 0.56);
+}
+.np-c-tach .np-seg-unit {
+  margin-bottom: calc(var(--np-hs) * 0.04);
 }
 .np-compact .np-voice {
   flex: 1;
-  max-width: calc(96 * var(--u, 1px));
-  min-height: calc(50 * var(--u, 1px));
+  max-width: 96px;
+  min-height: calc(var(--np-hs) * 0.5);
   margin-top: 0;
-  gap: calc(3 * var(--u, 1px));
+  gap: 3px;
   align-self: stretch;
 }
 .np-compact .np-tach-bar {
-  margin-top: calc(6 * var(--u, 1px));
+  margin-top: 6px;
 }
 .np-compact .np-tach-bar .np-bar {
-  height: calc(10 * var(--u, 1px));
-  gap: calc(2 * var(--u, 1px));
+  height: 10px;
+  gap: 2px;
 }
 .np-compact .np-tach-scale {
-  height: calc(14 * var(--u, 1px));
-  margin: calc(3 * var(--u, 1px)) calc(4 * var(--u, 1px)) 0;
-  font-size: calc(11.25 * var(--u, 1px));
+  height: 14px;
+  margin: 3px 4px 0;
+  font-size: 11.5px;
 }
+/* Whole-px label boxes (centred on the tick), so the digit is never measured below its size. */
 .np-compact .np-tach-scale span {
-  line-height: calc(14 * var(--u, 1px));
+  width: 14px;
+  text-align: center;
+  line-height: 14px;
 }
 .np-compact .np-c-rail {
   flex-direction: row;
   flex-wrap: nowrap;
   grid-column: 1 / -1;
-  gap: calc(6 * var(--u, 1px));
+  grid-row: auto;
+  gap: 6px;
 }
 .np-overlay.np-compact .np-mode-btn {
   flex: 1;
   min-width: 0;
-  min-height: calc(48 * var(--u, 1px));
-  padding: 0 calc(4 * var(--u, 1px));
-  border-width: calc(2 * var(--u, 1px));
-  border-radius: calc(3 * var(--u, 1px));
-  font-size: calc(12 * var(--u, 1px));
+  min-height: 48px;
+  padding: 0 4px;
+  border-width: 2px;
+  border-radius: 3px;
+  font-size: 12px;
   letter-spacing: 0.08em;
 }
 /* Active mode is not colour-only: underline bar under the label. */
 .np-overlay.np-compact .np-mode-btn.active {
   text-decoration: underline;
-  text-decoration-thickness: calc(2 * var(--u, 1px));
-  text-underline-offset: calc(4 * var(--u, 1px));
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 /* Throttle merged into the velocity pod (single bar; load/engine bars dropped). */
 .np-c-thr {
   display: grid;
-  gap: calc(3 * var(--u, 1px));
-  margin-top: calc(6 * var(--u, 1px));
+  gap: 3px;
+  margin-top: 6px;
 }
 .np-compact .np-bar-label {
-  font-size: calc(11.25 * var(--u, 1px));
+  font-size: 11.5px;
+  line-height: 1.2;
   letter-spacing: 0.1em;
 }
 .np-c-thr .np-bar {
-  height: calc(10 * var(--u, 1px));
-  gap: calc(2 * var(--u, 1px));
+  height: 10px;
+  gap: 2px;
 }
-/* Tight (short host, e.g. demo throttle card open): smaller digits, throttle bar folds away. */
-.np-compact[data-np-tight] .np-c-thr {
-  display: none;
+/* Short host (e.g. demo throttle card open, under 345px): the throttle bar folds away. */
+@container np-c (max-height: 344px) and (max-width: 539px) {
+  .np-c-dash {
+    --np-thr-h: 0px;
+  }
+  .np-c-thr {
+    display: none;
+  }
 }
-.np-compact[data-np-tight] .np-seg-digit {
-  width: calc(26 * var(--u, 1px));
-  height: calc(46 * var(--u, 1px));
-}
-.np-compact[data-np-tight] .np-c-tach .np-seg-digit {
-  width: calc(22 * var(--u, 1px));
-  height: calc(40 * var(--u, 1px));
-}
-.np-compact[data-np-tight] .np-voice {
-  min-height: calc(40 * var(--u, 1px));
+/*
+ * Two columns once the container has room (>= 540 screen px): speed | tach side by side,
+ * mode rail across the bottom. Hero height comes from the row height or the column width.
+ */
+@container np-c (min-width: 540px) {
+  .np-c-dash {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    --np-hs: clamp(
+      44px,
+      min(100cqh - 128px - var(--np-thr-h), (53.5cqw - 90px) / 2.12),
+      150px
+    );
+  }
 }
