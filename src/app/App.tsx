@@ -15,7 +15,8 @@ import { EnginesPage } from "../pages/EnginesPage";
 import type { EnginePatch } from "../audio";
 import { getBuiltin } from "../audio";
 import { skinIdForEngine } from "../skins/DriveSkinSlot";
-import { packForEngineId } from "../packs/registry";
+import { packForEngineId, resolveVisibleEnginePatch } from "../packs/registry";
+import { FALLBACK_ENGINE_ID } from "../themes/visibility";
 
 export default function App() {
   const { prefs, update, reset } = useUiPrefs();
@@ -68,7 +69,7 @@ export default function App() {
     (id: string) => {
       deletePatch(id);
       if (audio.engineId === id || prefs.selectedEngineId === id) {
-        const fallback = getBuiltin("v8-rumble");
+        const fallback = getBuiltin(FALLBACK_ENGINE_ID) ?? getBuiltin("v8-rumble");
         if (fallback) {
           audio.loadPatch(fallback);
           update({ selectedEngineId: fallback.id });
@@ -103,7 +104,7 @@ export default function App() {
       ))}
       {/* Legacy Cockpit → Drive (ForgePage); never show DriveSynth chrome */}
       <Route path="/cockpit" element={<Navigate to="/drive" replace />} />
-      <Route path="/builder" element={<ExperienceBuilder themes={themes} audio={audio} userPatches={userPatches} onSelect={onSelectEngine} onLoadCombination={(skinId,patch,atmosphereId)=>{themes.selectSkin(skinId);if(atmosphereId)themes.selectAtmosphere(atmosphereId);onSavePatch(patch);}}/>}/>
+      <Route path="/builder" element={<ExperienceBuilder themes={themes} audio={audio} userPatches={userPatches} onSelect={onSelectEngine} onLoadCombination={(skinId,patch,atmosphereId)=>{themes.selectSkin(skinId);if(atmosphereId)themes.selectAtmosphere(atmosphereId);onSavePatch(resolveVisibleEnginePatch(patch));}}/>}/>
       <Route
         element={
           <AppShell

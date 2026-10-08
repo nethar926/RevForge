@@ -9,9 +9,10 @@ import type {
 } from "../audio";
 import { createEngineSynth, getBuiltin, resolveLegacyPackId } from "../audio";
 import { storageKey } from "../lib/storageKey";
+import { FALLBACK_ENGINE_ID } from "../themes/visibility";
 
 export function useAudioEngine(
-  initialId = "v8-rumble",
+  initialId = FALLBACK_ENGINE_ID,
   savedPatches: EnginePatch[] = [],
 ) {
   const resolvedInitialId = resolveLegacyPackId(initialId);
@@ -57,6 +58,7 @@ export function useAudioEngine(
       const patch =
         pendingPatchRef.current ??
         getBuiltin(selectedIdRef.current) ??
+        getBuiltin(FALLBACK_ENGINE_ID) ??
         getBuiltin("v8-rumble")!;
       pendingPatchRef.current = null;
       engineRef.current = createEngineSynth(ctxRef.current, patch);

@@ -1,4 +1,5 @@
-import { resolveLegacyPackId } from '../audio';
+import { getBuiltin, resolveLegacyPackId } from '../audio';
+import { FALLBACK_ENGINE_ID, resolveListedEngineId } from '../themes/visibility';
 import { useCallback, useEffect, useState } from 'react';
 import {
   DEFAULT_GEAR_COUNT,
@@ -95,7 +96,7 @@ export const DEFAULT_UI: UiPrefs = {
   showKeepAliveTip: true,
   masterMuted: false,
   masterVolume: .65,
-  selectedEngineId: 'revforge-road-66',
+  selectedEngineId: FALLBACK_ENGINE_ID,
   mapping: {
     revPad: 'throttle',
     speedSlider: 'speed',
@@ -273,7 +274,8 @@ function load(): UiPrefs {
       merged.telemetryDensity = DEFAULT_UI.telemetryDensity;
     }
     merged.gaugeStyle = clusterToGaugeStyle(merged.gaugeCluster);
-    merged.selectedEngineId = resolveLegacyPackId(merged.selectedEngineId);
+    // Hidden built-in engines → Night Pursuit's engine (visibility.ts VISIBLE_ENGINE_IDS); user synths untouched.
+    merged.selectedEngineId = resolveListedEngineId(resolveLegacyPackId(merged.selectedEngineId), (id) => !!getBuiltin(id));
     return merged;
   } catch {
     return { ...DEFAULT_UI };
