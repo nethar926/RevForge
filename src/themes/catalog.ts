@@ -1,6 +1,6 @@
 import { PACK_THEME_MIGRATIONS, THEME_ID_MIGRATIONS } from '../packs/migrations';
 import type { PackIdentity } from '../packs/types';
-import { FALLBACK_THEME_ID, isThemeListed, resolveListedThemeId } from './visibility';
+import { FALLBACK_THEME_ID, FORCED_VISIBLE_IDS, isThemeListed, resolveListedThemeId } from './visibility';
 export { VISIBLE_THEME_IDS, FALLBACK_THEME_ID, isThemeListed } from './visibility';
 export type ThemeFamily = 'Minimal' | 'Gauge Cluster' | 'Cockpit' | 'RoadView' | 'Full Screen';
 export type ThemeLayout = 'numerical' | 'arc' | 'line' | 'bar' | 'digital' | 'analog' | 'driver' | 'scanner' | 'time' | 'jet' | 'space' | 'road' | 'custom' | 'gradient' | 'gradient-macro';
@@ -72,4 +72,10 @@ export const themeForId = (id: string) => {
 /** The visible catalogue (allowlist in ./visibility) — the only themes any picker may list. */
 export const LISTED_THEMES: readonly ThemePreset[] = THEMES.filter((t) => isThemeListed(t.id));
 /** Saved / selected / deep-linked id → visible theme id (retired maps first, else Night Pursuit). */
-export const resolveThemeId = (id: string | null | undefined) => resolveListedThemeId(id, RETIRED_THEME_IDS);
+export const resolveThemeId = (id: string | null | undefined) => {
+  const resolved = resolveListedThemeId(id, RETIRED_THEME_IDS);
+  // A VITE_FORCE_VISIBLE id that is not a theme (e.g. an engine id) never becomes the saved theme.
+  return THEMES.some((t) => t.id === resolved) ? resolved : FALLBACK_THEME_ID;
+};
+/** VITE_FORCE_VISIBLE ids that matched a theme on this build (empty when unset). */
+export const FORCED_THEME_IDS: readonly string[] = FORCED_VISIBLE_IDS.filter((id) => THEMES.some((t) => t.id === id));

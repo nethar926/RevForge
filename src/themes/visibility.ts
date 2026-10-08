@@ -9,11 +9,39 @@
 import CHRONO_COUPE from '../packs/chrono-coupe.identity';
 import STELLAR_HELM from '../packs/stellar-helm.identity';
 
+/**
+ * Build-time override for a single preview (Oct 8 2026): `VITE_FORCE_VISIBLE` = comma-separated
+ * ids, matched against both theme ids and engine ids, e.g. `ion-twin` or
+ * `carrier-jet,aerospace-f14`. Forced ids join both allowlists below (so they are listed,
+ * selectable, deep-linkable and exempt from the hidden → Night Pursuit migration on that build).
+ * An id that is neither a theme nor an engine changes nothing: every list filters real items,
+ * catalog.resolveThemeId drops non-themes, and only built-in engines are ever migrated.
+ * Unset / empty = exactly the base allowlists (root and every other preview).
+ */
+export const parseForcedIds = (raw: unknown): string[] => [...new Set(String(raw ?? '').split(',').map((s) => s.trim()).filter(Boolean))];
+
+function readForcedEnv(): string {
+  try {
+    return String(import.meta.env.VITE_FORCE_VISIBLE ?? '');
+  } catch {
+    // Non-Vite runtimes (node tests) have no import.meta.env.
+    return '';
+  }
+}
+
+/** Raw forced ids for this build (catalog / registry derive the ones that actually match). */
+export const FORCED_VISIBLE_IDS: readonly string[] = parseForcedIds(readForcedEnv());
+
+const withForced = (base: readonly string[]): readonly string[] => [...base, ...FORCED_VISIBLE_IDS.filter((id) => !base.includes(id))];
+
 /** Saved picks / deep links to a hidden theme land here (and fresh users start here). */
 export const FALLBACK_THEME_ID = 'night-pursuit';
 
-/** The only theme ids any picker, selector, deep link or migration may surface. */
-export const VISIBLE_THEME_IDS: readonly string[] = [CHRONO_COUPE.id, FALLBACK_THEME_ID, STELLAR_HELM.id];
+/** Base theme allowlist: the only theme ids any picker, selector, deep link or migration may surface. */
+export const BASE_VISIBLE_THEME_IDS: readonly string[] = [CHRONO_COUPE.id, FALLBACK_THEME_ID, STELLAR_HELM.id];
+
+/** Effective theme allowlist = base ∪ VITE_FORCE_VISIBLE (identical to base when unset). */
+export const VISIBLE_THEME_IDS: readonly string[] = withForced(BASE_VISIBLE_THEME_IDS);
 
 const VISIBLE = new Set(VISIBLE_THEME_IDS);
 
@@ -27,7 +55,10 @@ const VISIBLE = new Set(VISIBLE_THEME_IDS);
  * User-built synths (drivesynth.patches.v1 / user-* ids) are never hidden or migrated.
  */
 export const FALLBACK_ENGINE_ID = 'night-pursuit';
-export const VISIBLE_ENGINE_IDS: readonly string[] = [FALLBACK_ENGINE_ID, CHRONO_COUPE.engine.preferred, STELLAR_HELM.engine.preferred];
+export const BASE_VISIBLE_ENGINE_IDS: readonly string[] = [FALLBACK_ENGINE_ID, CHRONO_COUPE.engine.preferred, STELLAR_HELM.engine.preferred];
+
+/** Effective engine allowlist = base ∪ VITE_FORCE_VISIBLE (identical to base when unset). */
+export const VISIBLE_ENGINE_IDS: readonly string[] = withForced(BASE_VISIBLE_ENGINE_IDS);
 
 const VISIBLE_ENGINES = new Set(VISIBLE_ENGINE_IDS);
 
