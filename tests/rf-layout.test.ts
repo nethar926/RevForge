@@ -34,5 +34,18 @@ test('index.html meta viewport has viewport-fit=cover; safe-area padding only un
   assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /<meta name="viewport" content="[^"]*viewport-fit=cover/);
   const css = readFileSync(new URL('../src/packs/mounts/carrier-jet-mount.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.match(css, /safe-area-inset-top/);
-  for (const m of css.matchAll(/([^{}]+)\{[^}]*safe-area-inset[^}]*\}/g)) assert.match(m[1], /^(\s*\.cjm\[data-rf-layout='(portrait|phone-landscape)'\] > \.cjm-fill,?\s*)+$/);
+  // Every safe-area rule is phone-scoped: the mount fill, or Drive chrome under a CJ phone-layout mount.
+  for (const m of css.matchAll(/([^{}]+)\{[^}]*safe-area-inset[^}]*\}/g)) for (const sel of m[1].split(',')) assert.match(sel.trim(), /^(\.cjm\[data-rf-layout='(portrait|phone-landscape)'\] > \.cjm-fill|\.rev-viewport:has\(> \.rev-dock\):has\(\.cjm\[data-rf-layout='(portrait|phone-landscape)'\]\).*)$/);
+});
+test('phone chrome: every .rev-viewport rule in the CJ mount CSS is scoped to a CJ phone layout with the dock present', () => {
+  const css = readFileSync(new URL('../src/packs/mounts/carrier-jet-mount.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const sels = [...css.matchAll(/([^{}]+)\{/g)].flatMap((m) => m[1].split(',')).map((x) => x.trim()).filter((x) => x.includes('.rev-'));
+  assert.ok(sels.length >= 10);
+  for (const sel of sels) assert.match(sel, /^\.rev-viewport:has\(> \.rev-dock\):has\(\.cjm\[data-rf-layout='(portrait|phone-landscape)'\]\)/);
+  // phone landscape: right rail (88px + right inset), title visually hidden not removed, vertical throttle
+  assert.match(css, /--cjm-rail: 88px/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) var\(--cjm-rail\)/);
+  assert.match(css, /> \.rev-topbar > div \{[^}]*clip: rect\(0 0 0 0\)/);
+  assert.doesNotMatch(css, /\.rev-topbar[^{]*\{[^}]*display: none/);
+  assert.match(css, /writing-mode: vertical-lr/);
 });

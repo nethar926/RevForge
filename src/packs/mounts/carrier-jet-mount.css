@@ -22,3 +22,125 @@
   box-sizing: border-box;
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
+/* Phones: the board fills its free rect natively (no 1280-aspect box, no scale; useFitBox's vars go unused). */
+.cjm[data-rf-layout='portrait'],
+.cjm[data-rf-layout='phone-landscape'] {
+  flex: 1 1 100%;
+  align-self: stretch;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+/*
+ * Drive chrome around the phone board. Scoped to the Drive viewport while a Carrier Jet mount carries a phone
+ * layout and the drive controls exist (so never the IGNITION splash, other packs, Tesla or desktop).
+ */
+/* Portrait: the board spans the full width between the top bar and the throttle card / dock, all inside the
+   safe area (top bar under the status bar, dock and card above the home indicator). The top bar and dock
+   clear the insets, so the fill only pads left/right. */
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='portrait']) .cjm > .cjm-fill {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='portrait']) .rev-topbar {
+  top: max(16px, env(safe-area-inset-top, 0px));
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='portrait']) .rev-dock {
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='portrait']) .rev-throttle {
+  left: 14px;
+  right: 14px;
+  width: auto;
+  bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 59px);
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='portrait']) .rev-scene .theme-stage.is-fullscreen .skin-body {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Phone landscape: the board gets the safe-area rect minus a slim right rail (88px + the right inset) that
+   stacks Tuner, the demo throttle (vertical slider) and Hold to rev / Shutdown as 44pt+ targets. The
+   RevForge title is visually hidden (still read by VoiceOver); the HUD shows its own title. */
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) {
+  --cjm-rail: 88px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--cjm-rail);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  row-gap: 8px;
+  padding: max(8px, env(safe-area-inset-top, 0px)) env(safe-area-inset-right, 0px) max(8px, env(safe-area-inset-bottom, 0px)) 0;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) .rev-scene .theme-stage.is-fullscreen .skin-body {
+  padding: 0 var(--cjm-rail) 0 0 !important;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) > .rev-topbar,
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) > .rev-throttle,
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) > .rev-dock {
+  position: relative;
+  inset: auto;
+  grid-column: 2;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
+  margin: 0 4px;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) > .rev-topbar {
+  grid-row: 1;
+  flex-direction: column;
+  align-items: stretch;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) > .rev-topbar > div {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) > .rev-throttle {
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  padding: 8px 4px !important;
+  text-align: center;
+  font-size: 12px;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) > .rev-throttle span {
+  float: none;
+  order: 0;
+  min-width: 0;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) > .rev-throttle input {
+  order: 1;
+  flex: 1 1 0;
+  width: 44px;
+  height: auto !important;
+  margin: 0;
+  writing-mode: vertical-lr;
+  direction: rtl;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) > .rev-dock {
+  grid-row: 3;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  overflow: visible;
+  padding: 0;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) .rev-chip {
+  padding: 4px 6px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
+}
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) .rev-dock .rev-stop {
+  margin-left: 0;
+}
