@@ -75,7 +75,8 @@ export class ProceduralCharacter {
   if(ion&&d.overrun&&!this.previousOverrun&&p.gearingNoise!==0)this.cue('gearing');
   this.previousOverrun=!!d.overrun;
  }
- stop(immediate=false){const was=this.active;this.active=false;this.update({});if(immediate)for(const n of [this.roar,this.pulseDepth,this.interior,this.target,this.targetPulse,this.digital,this.component]){n.gain.cancelScheduledValues(this.ctx.currentTime);n.gain.setValueAtTime(0,this.ctx.currentTime);}this.cancelShots();if(was&&!immediate&&this.params?.lifecycleSounds!==0)this.cue('shutdown');}
+/** skipShutdownCue: the engine voice plays its own key-off (Night Pursuit, Chrono V6). */
+ stop(immediate=false,skipShutdownCue=false){const was=this.active;this.active=false;this.update({});if(immediate)for(const n of [this.roar,this.pulseDepth,this.interior,this.target,this.targetPulse,this.digital,this.component]){n.gain.cancelScheduledValues(this.ctx.currentTime);n.gain.setValueAtTime(0,this.ctx.currentTime);}this.cancelShots();if(was&&!immediate&&!skipShutdownCue&&this.params?.lifecycleSounds!==0)this.cue('shutdown');}
  cue(type){
   if(type==='ion-cannon'||type==='blaster'){this.cannon();return;}
   const p=this.params??{},ctx=this.ctx,now=ctx.currentTime;

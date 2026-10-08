@@ -59,11 +59,17 @@ export function setNightPursuitOfflineScheduling(on: boolean): void;
 export class NightPursuitBus {
   constructor(ctx: BaseAudioContext, dest: AudioNode);
   readonly input: GainNode;
+  /** Ignition key gain: the running engine (post chain + PURSUIT bus) → dest. */
+  readonly key: GainNode;
   readonly pink: AudioBuffer;
   readonly white: AudioBuffer;
   start(): void;
   update(params: Partial<EngineParams>, drive: NightPursuitDrive, thr: number, tc?: number): void;
   scannerTick(level?: number, pan?: number): void;
+  /** Ignition cut: fade the running engine out (default 30 ms). */
+  keyOff(now?: number, seconds?: number): void;
+  /** Running engine back in (default 300 ms). */
+  keyOn(now?: number, seconds?: number): void;
   dispose(): void;
 }
 export function playNightPursuitStarter(
@@ -77,7 +83,8 @@ export function playNightPursuitShutoff(
   ctx: BaseAudioContext,
   dest: AudioNode,
   params: Partial<EngineParams>,
-  whiteBuf: AudioBuffer,
-  pinkBuf: AudioBuffer,
+  whiteBuf?: AudioBuffer,
+  pinkBuf?: AudioBuffer,
+  opts?: import('./npShutdownCue').NpShutdownOptions,
 ): number;
 export function nightPursuitBoostForMode(mode: string): number;

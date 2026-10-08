@@ -61,6 +61,12 @@ import {
   shutoffDuration,
 } from './engineStartShutdown';
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
+import {
+  prepareNightPursuitShutdown,
+  startNightPursuitShutdown,
+  type NpShutdownHandle,
+  type NpShutdownPrepared,
+} from './npShutdownCue';
 import { createOverrunBurstState, gatedCrackle, stepOverrunBurst } from './overrunBurst';
 import pulseWorkletUrl from './worklets/pulse-engine-processor.js?url';
 import {
@@ -299,6 +305,12 @@ export class EngineSynthImpl implements EngineSynth {
   private ownShutdownUntil = 0;
   /** Chrono V6 worklet failed to load in this context → pulse family 5 (previous voice). */
   private v6Failed = false;
+  /** Night Pursuit key-off: running cue, engine keyed off (bus key gain at 0), cue counter. */
+  private npCue: NpShutdownHandle | null = null;
+  private npKeyedOff = false;
+  private npCueCount = 0;
+  private npPrepared: NpShutdownPrepared | null = null;
+  private npPrepTimer: ReturnType<typeof setTimeout> | null = null;
   /** Debounce duplicate starter cues (ctx time). */
   private lastStarterAt = -1;
   /** Drive Dynamics idle RPM band (localStorage or setIdleBand). */
@@ -387,6 +399,11 @@ export class EngineSynthImpl implements EngineSynth {
     smooth(this.output.gain, 1, 0.08, this.context);
     this.started = true;
     this.ownShutdownUntil = 0;
+    if (this.g.npBus) {
+      // Restart during / after a key-off: the running engine comes back in ~300 ms
+      this.npKeyOn(0.3);
+      this.scheduleNpPrepare();
+    }
     if (this.g.v6) {
       // Chrono V6: silent until the key (playStarter) cranks it; runs on its own if no key comes
       this.g.v6.armIgnition(this.context.currentTime, Number(this.params.v6KeyWait ?? 0.4));
@@ -424,9 +441,12 @@ export class EngineSynthImpl implements EngineSynth {
     } else if (hold > 0.05) {
       // Let Frontend-cued shutoff tail finish, then fade — no hard gate.
       try {
-        this.output.gain.cancelScheduledValues(now);
-        this.output.gain.setValueAtTime(Math.max(this.output.gain.value, 0.001), now);
-        this.output.gain.setTargetAtTime(0, now + hold * 0.55, 0.1);
+        const og = this.output.gain;
+        const cur = Math.max(og.value, 0.001);
+        og.cancelScheduledValues(now);
+        og.setValueAtTime(cur, now);
+        og.setValueAtTime(cur, now + hold * 0.55); // explicit hold (offline renderers need it)
+        og.setTargetAtTime(0, now + hold * 0.55, 0.1);
       } catch {
         smooth(this.output.gain, 0, Math.min(0.45, hold), this.context);
       }
@@ -439,6 +459,8 @@ export class EngineSynthImpl implements EngineSynth {
     if (this.disposed) return;
     this.disposed = true;
     this.started = false;
+    if (this.npPrepTimer) clearTimeout(this.npPrepTimer);
+    this.npPrepTimer = null;
     try {
       this.teardownGraph();
       this.envelope.dispose();
@@ -627,6 +649,7 @@ export class EngineSynthImpl implements EngineSynth {
     const now = this.context.currentTime;
     if (this.lastStarterAt >= 0 && now - this.lastStarterAt < 0.45) return;
     this.lastStarterAt = now;
+    if (this.g.npBus && (this.npKeyedOff || this.npCue)) this.npKeyOn(0.3);
     if (this.g.v6) {
       // Chrono V6: the engine voice cranks, catches, flares and settles (own starter)
       this.ownShutdownUntil = 0;
@@ -672,6 +695,11 @@ export class EngineSynthImpl implements EngineSynth {
       } catch {
         /* ignore */
       }
+      return;
+    }
+    if (this.g.npBus) {
+      // Night Pursuit key-off: cut the running engine, the cue plays the run-down
+      this.playNightPursuitKeyOff();
       return;
     }
     const dur = shutoffDuration(kind, this.patchMeta.topology);
@@ -2128,6 +2156,10 @@ export class EngineSynthImpl implements EngineSynth {
     stopOsc(g.regenOsc);
     stopOsc(g.regenOsc2);
     stopOsc(g.dualWhineR);
+    this.npCue?.dispose();
+    this.npCue = null;
+    this.npKeyedOff = false;
+    this.npPrepared = null;
     try {
       g.npBus?.dispose();
     } catch {
@@ -2524,6 +2556,80 @@ export class EngineSynthImpl implements EngineSynth {
     }
   }
 
+  /**
+   * Night Pursuit key-off: ignition cut (bus key gain → 0 in 30 ms) + the run-down cue from the
+   * current rpm into the engine output. The output is held until the cue has finished so stop()
+   * doesn't cut it; a throttle press or restart brings the engine back (npKeyOn).
+   */
+  private playNightPursuitKeyOff(): void {
+    const bus = this.g.npBus;
+    if (!bus) return;
+    const ctx = this.context;
+    const at = ctx.currentTime;
+    const idle = npIdleRpm(this.params);
+    const rpm = this.npDrive?.rpm ?? idle;
+    this.npCue?.cancel(at, 0.03);
+    const seed = ++this.npCueCount;
+    let cue: NpShutdownHandle;
+    try {
+      cue = startNightPursuitShutdown(ctx, this.output, this.params, { rpm, idleRpm: idle, seed, prepared: this.npPrepared });
+    } catch {
+      return; // never block the drive path
+    }
+    this.npPrepared = null;
+    this.npCue = cue;
+    this.npKeyedOff = true;
+    bus.keyOff(at, 0.03);
+    this.ownShutdownUntil = Math.max(this.ownShutdownUntil, cue.end);
+    this.shutoffUntil = Math.max(this.shutoffUntil, cue.end);
+    try {
+      const og = this.output.gain;
+      const cur = Math.max(og.value, 0.001);
+      og.cancelScheduledValues(at);
+      og.setValueAtTime(cur, at);
+      if (cur < 0.999) og.linearRampToValueAtTime(1, at + 0.02);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** Engine back on after a key-off (restart / throttle): cue out, engine in, ~300 ms. */
+  private npKeyOn(seconds: number): void {
+    const now = this.context.currentTime;
+    if (this.npCue) {
+      this.npCue.cancel(now, seconds * 0.85);
+      this.npCue = null;
+      this.ownShutdownUntil = 0;
+    }
+    if (this.npKeyedOff) this.g.npBus?.keyOn(now, seconds);
+    this.npKeyedOff = false;
+    if (this.started) this.scheduleNpPrepare();
+  }
+
+  /** Pre-render the next key-off cue at idle off the critical path (no Math.random used). */
+  private scheduleNpPrepare(delayMs = 1500): void {
+    if (this.npPrepTimer || typeof setTimeout !== 'function') return;
+    this.npPrepTimer = setTimeout(() => {
+      this.npPrepTimer = null;
+      if (this.disposed || !this.g.npBus || this.npPrepared) return;
+      try {
+        const idle = npIdleRpm(this.params);
+        this.npPrepared = prepareNightPursuitShutdown(this.context.sampleRate, this.params, {
+          idleRpm: idle,
+          rpm: this.npDrive?.rpm ?? idle,
+          seed: this.npCueCount + 1,
+        });
+      } catch {
+        this.npPrepared = null;
+      }
+    }, delayMs);
+  }
+
+  /** True when the engine voice plays its own shutdown (the generic character sweep is skipped). */
+  ownsShutdownCue(): boolean {
+    return !!(this.g.v6 || this.g.npBus);
+  }
+
   /** Chrono V6 idle target (drive model idle; the worklet adds its own lumpy hunt). */
   private ccIdleTarget(): number {
     return ccIdleRpm(this.params);
@@ -2587,6 +2693,11 @@ export class EngineSynthImpl implements EngineSynth {
     if (g.v6 && this.ccDrive) {
       this.applyChronoV6Driving(g.v6, d, thr, loadL, tc);
       return;
+    }
+    if (g.npBus && this.started && (this.npKeyedOff || this.npCue)) {
+      // Night Pursuit key-off never blocks controls: a throttle press brings the engine back
+      if (thrRaw > V6_TAKEOVER_THROTTLE) this.npKeyOn(0.3);
+      else if (this.npCue && !this.npCue.active(ctx.currentTime)) this.npCue = null;
     }
 
     if (g.iceMode === 'worklet' && g.pulseNode) {

@@ -62,8 +62,9 @@ These are exposed on both the `CharacterEngine` wrapper returned by `getEngine()
 | `scannerTick(edge: 'left' \| 'right')` | Soft original two-tone tick, panned to the edge. Only sounds while running, with the Night Pursuit voice active and `scannerTick > 0` |
 | `setPursuitBoost(amount)` | 0..1. Mode mapping: **PURSUIT 1, POWER 0.5, AUTO/NORM 0** (`nightPursuitBoostForMode`). `pursuitBoost` in params works as a fallback |
 
-UI cues (`triggerUiCue`): `starter`/`ignition` and `shutdown`/`shutoff` play the pack-specific heavy crank
-→ catch → flare and lumpy run-down. `scanner-tick`, `scanner-left` and `scanner-right` (also `scanner`) play the tick.
+UI cues (`triggerUiCue`): `starter`/`ignition` plays the pack-specific heavy crank → catch → flare;
+`shutdown`/`shutoff` plays the key-off (ignition cut → run-down with audible pulses → shudder → settle,
+see [night-pursuit-shutdown.md](night-pursuit-shutdown.md)). `scanner-tick`, `scanner-left` and `scanner-right` (also `scanner`) play the tick.
 
 ## Measured (offline renders with the real worklet, `scripts/night-pursuit-qa.mjs`)
 

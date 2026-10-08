@@ -6,6 +6,7 @@
 // overrun opt-ins. This module only shapes it; it never generates a jet.
 
 import { createOverrunBurstState, gatedCrackle, stepOverrunBurst } from './overrunBurst.js';
+import { startNightPursuitShutdown } from './npShutdownCue.js';
 
 const clip = (x, a = 0, b = 1) => Math.max(a, Math.min(b, Number.isFinite(x) ? x : a));
 const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
@@ -291,12 +292,17 @@ export class NightPursuitBus {
     this.shelf.connect(this.mid);
     this.mid.connect(this.tone);
     this.tone.connect(this.out);
-    this.out.connect(dest);
+    // Ignition key: the whole running engine (post chain + PURSUIT bus) goes through here so a
+    // key-off can cut it while the run-down cue (straight to the engine output) plays
+    this.key = n(ctx.createGain());
+    this.key.gain.value = 1;
+    this.key.connect(dest);
+    this.out.connect(this.key);
 
     // PURSUIT seasoning bus — silent unless pursuitBoost > 0
     this.pursuit = n(ctx.createGain());
     this.pursuit.gain.value = 1;
-    this.pursuit.connect(dest);
+    this.pursuit.connect(this.key);
     const pinkSrc = n(ctx.createBufferSource());
     pinkSrc.buffer = this.pink;
     pinkSrc.loop = true;
@@ -470,6 +476,26 @@ export class NightPursuitBus {
     }
   }
 
+  /**
+   * Ignition cut: the running engine stops firing (fast fade so it doesn't click). Floor at
+   * -80 dB rather than exactly 0: the post chain keeps running and an exact zero made an offline
+   * renderer drop the limiter's look-ahead tail with a click.
+   */
+  keyOff(now = this.ctx.currentTime, seconds = 0.03) {
+    const p = this.key.gain;
+    p.cancelScheduledValues(now);
+    p.setValueAtTime(p.value, now);
+    p.linearRampToValueAtTime(1e-4, now + Math.max(0.005, seconds));
+  }
+
+  /** Back on (restart / throttle take-over during the key-off cue): ~300 ms ramp. */
+  keyOn(now = this.ctx.currentTime, seconds = 0.3) {
+    const p = this.key.gain;
+    p.cancelScheduledValues(now);
+    p.setValueAtTime(p.value, now);
+    p.linearRampToValueAtTime(1, now + Math.max(0.005, seconds));
+  }
+
   dispose() {
     for (const s of [...this.sources, this.whistle, this.flutter]) {
       try {
@@ -547,7 +573,8 @@ function thump(ctx, dest, pinkBuf, t, hz, peak, len, lpHz) {
 }
 
 export const NP_STARTER_SECONDS = 1.75;
-export const NP_SHUTOFF_SECONDS = 1.25;
+/** Key-off cue length from idle (npShutdownSeconds(idle) — longer from higher revs). */
+export const NP_SHUTOFF_SECONDS = 2.45;
 
 /** Heavy cross-plane V8 crank (slow compression-loaded starter) → catch → flare. */
 export function playNightPursuitStarter(ctx, dest, params, whiteBuf, pinkBuf) {
@@ -594,7 +621,7 @@ export function playNightPursuitStarter(ctx, dest, params, whiteBuf, pinkBuf) {
   motor.stop(crankEnd + 0.2);
   motor.onended = cleanup(motor, mBp, mLp, mG);
 
-  // Bendix grind on engage
+  // Bendix grind as the pinion meshes
   const nz = ctx.createBufferSource();
   nz.buffer = whiteBuf;
   const nbp = ctx.createBiquadFilter();
@@ -656,64 +683,14 @@ export function playNightPursuitStarter(ctx, dest, params, whiteBuf, pinkBuf) {
   return NP_STARTER_SECONDS;
 }
 
-/** Key-off rundown: lumpy last fires slowing, pitch sagging, mount shudder + settle clunk. */
-export function playNightPursuitShutoff(ctx, dest, params, whiteBuf, pinkBuf) {
-  const now = ctx.currentTime + 0.01;
-  const growl = clip(num(params?.growl, 0.8));
-  const crackle = clip(num(params?.crackle, 0.3));
-  let t = now;
-  let gap = 0.058;
-  const fires = 11;
-  for (let i = 0; i < fires; i++) {
-    const bank = [0, 1, 0, 0, 1, 0, 1, 1][i % 8];
-    const lumpy = bank ? 0.86 : 1.1;
-    const fade = 1 - i / (fires + 2);
-    thump(ctx, dest, pinkBuf, t, (70 - i * 3.2) * (0.9 + growl * 0.2), 0.2 * fade * lumpy, 0.08 + i * 0.006, 460 - i * 22);
-    if (crackle > 0.1 && (i === 3 || i === 6)) {
-      const nz = ctx.createBufferSource();
-      nz.buffer = whiteBuf;
-      const hp = ctx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = 1900;
-      const ng = ctx.createGain();
-      env(ng, t + 0.012, crackle * 0.05, 0.002, 0.025);
-      nz.connect(hp);
-      hp.connect(ng);
-      ng.connect(dest);
-      nz.start(t);
-      nz.stop(t + 0.06);
-      nz.onended = cleanup(nz, hp, ng);
-    }
-    t += gap * (bank ? 1.18 : 0.88);
-    gap *= 1.14;
-  }
-  // Mount shudder: low wobble as the block rocks back
-  const sh = now + 0.62;
-  const o = ctx.createOscillator();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(38, sh);
-  o.frequency.exponentialRampToValueAtTime(26, sh + 0.35);
-  const am = ctx.createGain();
-  am.gain.value = 0;
-  const lfo = ctx.createOscillator();
-  lfo.frequency.value = 9;
-  const lfoD = ctx.createGain();
-  lfoD.gain.value = 0.5;
-  lfo.connect(lfoD);
-  lfoD.connect(am.gain);
-  const g = ctx.createGain();
-  env(g, sh, 0.22, 0.03, 0.34);
-  o.connect(am);
-  am.connect(g);
-  g.connect(dest);
-  o.start(sh);
-  o.stop(sh + 0.45);
-  lfo.start(sh);
-  lfo.stop(sh + 0.45);
-  o.onended = cleanup(o, am, g, lfo, lfoD);
-  // Settle clunk
-  thump(ctx, dest, pinkBuf, now + 1.0, 96, 0.12, 0.12, 300);
-  return NP_SHUTOFF_SECONDS;
+/**
+ * Key-off: ignition cut → run-down with individually audible pulses → shudder / clunk →
+ * exhaust settle → faint tick (npShutdownCue.js). This standalone entry plays the cue only;
+ * EngineSynthImpl also cuts the running engine (NightPursuitBus.keyOff) and keeps the handle
+ * so a throttle press or restart can interrupt it.
+ */
+export function playNightPursuitShutoff(ctx, dest, params, _whiteBuf, _pinkBuf, opts = {}) {
+  return startNightPursuitShutdown(ctx, dest, params, { idleRpm: npIdleRpm(params), ...opts }).duration;
 }
 
 /** Pack mode → audio seasoning (matches src/packs/audioBridge boostForMode). */

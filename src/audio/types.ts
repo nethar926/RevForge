@@ -364,6 +364,8 @@ export interface EngineSynth {
 
   /** Procedural Shutdown shutoff from active pack (alias of triggerUiCue('shutdown')). */
   playShutoff?(): void;
+  /** True when the engine voice plays its own key-off cue (generic shutdown sweep skipped). */
+  ownsShutdownCue?(): boolean;
 
   /** Optional MANUAL upshift bark; default false. Persists to localStorage `ds-upshift-sfx`. */
   setUpshiftSfxEnabled(enabled: boolean): void;
