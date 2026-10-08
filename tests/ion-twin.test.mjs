@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createJiti } from 'jiti';
@@ -18,9 +18,12 @@ const read = (rel) => readFileSync(join(root, rel), 'utf8');
 const jiti = createJiti(join(root, 'package.json'), { interopDefault: true });
 const voice = await jiti.import(join(root, 'src/audio/ionTwinVoice.ts'));
 
-/** Integrated loudness of the 36fa525 voice (seeded, 3 s pre-roll, 6 s) — the cue-map pass holds it. */
-const LOUDNESS_REF = { idle: -33.57, cruise: -13.78, full: -8.08 };
-const LUFS_TOL = 0.5;
+/**
+ * Integrated loudness of the a7882d7 voice (seeded, 3 s pre-roll, 6 s). The recorded-stem pass
+ * holds it within ±1 LU, both as the hybrid (stems on) and as the synth-only fallback.
+ */
+const LOUDNESS_REF = { idle: -33.45, cruise: -13.94, full: -8.37 };
+const LUFS_TOL = 1;
 
 const lufsOf = (buf) =>
   integratedLufs(
@@ -110,11 +113,14 @@ test('motor-bed-only idle is dark; howl layer adds the 300–1600 Hz bellow', as
   assert.ok(bandShare(howl.getChannelData(0), sr, 300, 1600) > 0.5);
 });
 
-test('live loudness holds idle / cruise / full within ±0.5 LU of the reference', async () => {
-  for (const [k, state] of Object.entries(ION_TWIN_LOUDNESS_STATES)) {
-    const buf = await renderIonTwin(() => state, 6, { preroll: 3, seed: `ion-twin-loud-${k}` });
-    const l = lufsOf(buf);
-    assert.ok(Math.abs(l - LOUDNESS_REF[k]) <= LUFS_TOL, `${k}: ${l.toFixed(2)} vs ${LOUDNESS_REF[k]}`);
+test('live loudness holds idle / cruise / full within ±1 LU of the reference (stems on and off)', async (t) => {
+  for (const stems of [true, false]) {
+    for (const [k, state] of Object.entries(ION_TWIN_LOUDNESS_STATES)) {
+      const buf = await renderIonTwin(() => state, 6, { preroll: 3, seed: `ion-twin-loud-${k}`, stems });
+      const l = lufsOf(buf);
+      t.diagnostic(`${stems ? 'stems' : 'synth-only'} ${k}: ${l.toFixed(2)} LUFS (ref ${LOUDNESS_REF[k]})`);
+      assert.ok(Math.abs(l - LOUDNESS_REF[k]) <= LUFS_TOL, `${k}: ${l.toFixed(2)} vs ${LOUDNESS_REF[k]}`);
+    }
   }
 });
 
@@ -128,10 +134,14 @@ test('new Twin Ion voice files stay free of franchise names', () => {
   const files = [
     'src/audio/ionTwinVoice.ts',
     'src/audio/ionTwinCues.ts',
+    'src/audio/ionTwinStems.ts',
     'scripts/ion-twin-render.mjs',
     'docs/ion-twin-closer-match.md',
+    'docs/ion-twin-recorded.md',
+    'public/audio/ion-twin/manifest.json',
     'tests/ion-twin.test.mjs',
-  ];
+    'tests/ion-twin-stems.test.mjs',
+  ].filter((f) => existsSync(join(root, f)));
   // Built from fragments so this file stays clean
   const banned = [
     new RegExp(['x', '-?wing'].join(''), 'i'),

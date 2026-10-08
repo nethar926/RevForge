@@ -10,6 +10,7 @@ import {
   stellarHelmBuiltinPatch,
 } from './stellarHelmPack';
 import { QUIET_CURRENT, QUIET_CURRENT_DEFAULTS, quietCurrentBuiltinPatch } from './quietCurrentPack';
+import { ION_STEM_REC_DEFAULT } from './ionTwinStems';
 
 export const V8_DEFAULTS: EngineParams = {
   // Audio Physics ICE v1 + ice-pack-firing-schedules-v1 (crossPlane)
@@ -137,6 +138,17 @@ export const TIE_DEFAULTS: EngineParams = {
   ionHum: 0.42,
   // No digital acceleration sine on the craft voice (the refs carry no tonal cue line)
   digitalCueLevel: 0,
+  // Recorded-stem hybrid (public/audio/ion-twin/): stems lead whenever they ship; the
+  // procedural layers fill underneath, with their air/noise trimmed well down.
+  stemsEnable: 1,
+  motorRec: ION_STEM_REC_DEFAULT.motor,
+  howlRec: ION_STEM_REC_DEFAULT.howl,
+  screamRec: ION_STEM_REC_DEFAULT.scream,
+  surgeRec: ION_STEM_REC_DEFAULT.surge,
+  airRec: ION_STEM_REC_DEFAULT.air,
+  gritRec: ION_STEM_REC_DEFAULT.grit,
+  cueRec: ION_STEM_REC_DEFAULT.cue,
+  synthNoise: 0.35,
 };
 
 /** Optional full-stack preset (ref-E DNA): balanced combination defaults. */
@@ -427,7 +439,7 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
     ],
     meta: {
       blurb:
-        'Twin Ion procedural layers (combinable): motorBed + formantHowl + screamBurst + surge + airSwoosh + grit. Continuous roar default; enable/mix each config. Original synthesis only — no samples.',
+        'Twin Ion procedural layers (combinable): motorBed + formantHowl + screamBurst + surge + airSwoosh + grit. Continuous roar default; enable/mix each config. Recorded stems (owner-made) lead each layer when they ship, with the procedural voice as fill and fallback.',
       tags: ['scifi', 'ion', 'formant', 'layers', 'free'],
       author: 'DriveSynth',
     },

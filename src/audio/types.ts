@@ -370,6 +370,8 @@ export interface EngineSynth {
 
   /** Frontend /diag snapshot — field names stable for iceMode consumers */
   getDiag(): EngineDiag;
+  /** Twin Ion recorded-stem loader / playback status (null for other voices). */
+  getIonTwinStemStatus?(): import('./ionTwinStems').IonStemStatus | null;
 
   /** Audio Physics ICE bridge snapshot (optional). */
   getEngineState?(): EngineStateSnapshot;

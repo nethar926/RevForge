@@ -139,7 +139,8 @@ async function renderIcePreview(id) {
 
 /**
  * Twin Ion preview: the LIVE voice (createEngineSynth → CharacterEngine → EngineSynthImpl scifi
- * graph, scripts/ion-twin-render.mjs) driven by driveAt over 3.5 s after a 3 s silent pre-roll
+ * graph, scripts/ion-twin-render.mjs; with the recorded stems from public/audio/ion-twin when they
+ * ship — render with them present) driven by driveAt over 3.5 s after a 3 s silent pre-roll
  * that skips the start-up sweep. Seeded noise → byte-identical re-renders. Preview gain only:
  * level-matched to the median integrated loudness of the other previews (BS.1770,
  * scripts/preview-loudness.mjs).

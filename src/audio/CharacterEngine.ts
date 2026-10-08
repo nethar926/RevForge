@@ -46,7 +46,7 @@ export class CharacterEngine implements EngineSynth {
  private graphActive(){return this.getParams().graphEnabled===1&&this.graphDesc.some(n=>n.type==='Output');}
  private routeGraph(){const active=this.graphActive();if(active)this.graph.configure(this.graphDesc);this.dry.gain.setTargetAtTime(active?0:1,this.context.currentTime,.025);if(active&&this.running)this.graph.start();else this.graph.stop();}
  applyGraphToParams(graph:SynthNodeDesc[]){if(graph.some(n=>n.type==='Output')){this.graph.configure(graph);this.graphDesc=graph;this.base.setParams({graphEnabled:1});this.routeGraph();}else{this.base.applyGraphToParams?.(graph);this.configure();}}
- getHud(){return {...this.base.getHud(),lockStage:this.lockStage};}getDiag(){return this.base.getDiag();}getLockStage(){return this.lockStage;}
+ getHud(){return {...this.base.getHud(),lockStage:this.lockStage};}getDiag(){return this.base.getDiag();}getIonTwinStemStatus(){return this.base.getIonTwinStemStatus?.()??null;}getLockStage(){return this.lockStage;}
  setLockSfxEnabled(v:boolean){this.lockSfx=v;this.base.setLockSfxEnabled(false);}getLockSfxEnabled(){return this.lockSfx;}
  setUpshiftSfxEnabled(v:boolean){this.base.setUpshiftSfxEnabled(v);}getUpshiftSfxEnabled(){return this.base.getUpshiftSfxEnabled();}
  triggerUiCue(cue:string){if(cue==='time-jump')this.fx.cue('time-jump');else if(cue==='ion-cannon'||cue==='blaster')this.fx.cue('ion-cannon');else if((cue==='upshift'||cue==='downshift')&&this.base.toPatch().kind==='scifi')this.fx.cue('gearing');else this.base.triggerUiCue?.(cue);}

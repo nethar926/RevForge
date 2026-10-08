@@ -86,7 +86,7 @@ export function ionMotorWave(ctx: BaseAudioContext): PeriodicWave {
  */
 export const ION_TRIM_ANCHORS: ReadonlyArray<readonly [number, number]> = [
   [0, -1.4],
-  [0.35, 3.3],
+  [0.35, 3.9],
   [1, 0.1],
 ];
 export function ionLevelTrimDb(thr: number): number {

@@ -2,7 +2,9 @@
  * Twin Ion offline renderer — runs the SHIPPED live voice (createEngineSynth → CharacterEngine
  * wrapping EngineSynthImpl.buildScifi / applyScifiDriving) in an OfflineAudioContext, driven
  * through setDriving at 60 Hz like the app's rAF loop. Math.random is seeded (noise buffers +
- * living-drive jitter) → byte-deterministic renders. Fully procedural: nothing is loaded but code.
+ * living-drive jitter) → byte-deterministic renders. The recorded stems (public/audio/ion-twin/, when
+ * they ship) are read from disk (AAC variant, decoded by node-web-audio-api); `stems: false` renders
+ * the synth-only voice.
  *
  * node-web-audio-api refuses a second WaveShaper.curve assignment (browsers allow it and the
  * voice re-drives its shapers per frame), so every WaveShaper here is a swap-on-write wrapper:
@@ -11,7 +13,7 @@
  *
  * Used by render-snippets.mjs (Twin Ion preview), ion-twin-qa.mjs (live loudness) and tests.
  */
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -50,6 +52,27 @@ globalThis.OfflineAudioContext ??= OfflineAudioContext;
 const cuesPath = join(ROOT, 'src/audio/ionTwinCues.ts');
 const cues = existsSync(cuesPath) ? await jiti.import(cuesPath) : null;
 export const ionTwinCueModule = cues;
+// Recorded stems: same module instance as the engine; files come from disk instead of fetch()
+const stemsPath = join(ROOT, 'src/audio/ionTwinStems.ts');
+const stems = existsSync(stemsPath) ? await jiti.import(stemsPath) : null;
+export const ionTwinStemModule = stems;
+const STEM_DIR = join(ROOT, 'public/audio/ion-twin');
+/** True when the recorded stems ship (manifest present). */
+export const ION_TWIN_STEMS_SHIPPED = existsSync(join(STEM_DIR, 'manifest.json'));
+/**
+ * Serve stems from `dir` (default: public/audio/ion-twin) instead of fetch(); null → a fetcher
+ * that finds nothing (the "no stems shipped" path). node-web-audio-api decodes the AAC variant.
+ */
+export function installIonTwinStemFetcher(dir = STEM_DIR) {
+  stems?.setIonStemFetcher(async (name) => {
+    if (!dir) return null;
+    const f = join(dir, name);
+    if (!existsSync(f)) return null;
+    const b = readFileSync(f);
+    return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+  }, ['m4a']);
+}
+installIonTwinStemFetcher();
 
 export const ION_TWIN_ID = 'ion-twin';
 export const ION_TWIN_LAYER_IDS = audio.ION_TWIN_LAYER_IDS;
@@ -156,10 +179,13 @@ async function renderOnce(profile, dur, opts) {
   performance.now = () => tNow * 1000;
   try {
     await cues?.ionTwinCues(SR);
+    const useStems = opts.stems !== false;
+    if (useStems && stems) await stems.ionTwinStems(new OfflineAudioContext(2, 128, SR));
     const ctx = swappableShapers(new OfflineAudioContext(2, Math.ceil(SR * dur), SR));
     Object.defineProperty(ctx, 'state', { get: () => 'running', configurable: true });
     const base = ionTwinPatch(opts.layers);
-    const patch = opts.params ? { ...base, params: { ...base.params, ...opts.params } } : base;
+    const extra = { ...(opts.params ?? {}), ...(useStems ? {} : { stemsEnable: 0 }) };
+    const patch = Object.keys(extra).length ? { ...base, params: { ...base.params, ...extra } } : base;
     const eng = audio.createEngineSynth(ctx, patch);
     await eng.start();
     delete ctx.state;

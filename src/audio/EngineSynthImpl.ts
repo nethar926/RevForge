@@ -77,6 +77,26 @@ import {
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
 import { ionTwinCues, readyIonTwinCues } from './ionTwinCues';
 import {
+  ION_STEM_IDS,
+  ION_STEM_LAYER,
+  IonStemBed,
+  ionTwinStems,
+  playIonStemOneShot,
+  readyIonTwinStems,
+  getIonTwinStemStatus,
+  ionStemsQueryOverride,
+  reportIonStemLive,
+  type IonStemStatus,
+  ionStemSustainDb,
+  ION_STEM_CUE_DB,
+  ION_STEM_LEVEL,
+  ION_STEM_MIX_REF,
+  ION_STEM_REC_DEFAULT,
+  type IonStemBuffers,
+  type IonStemId,
+  type IonStemSet,
+} from './ionTwinStems';
+import {
   ION_DRIFT_HZ,
   ION_HOWL_FORMANTS,
   ION_HOWL_MAKEUP,
@@ -209,6 +229,12 @@ interface GraphHandles {
   ionTopCut?: BiquadFilterNode;
   ionTopCut2?: BiquadFilterNode;
   ionDuck?: GainNode;
+  /** Recorded-stem bus duck (mirrors ionDuck; the stems ride the cue bus, after the acoustic LP). */
+  ionRecDuck?: GainNode;
+  ionStemBed?: IonStemBed;
+  ionStemSet?: IonStemSet;
+  /** When the stem bed attached (ready ramp origin). */
+  ionStemReadyAt?: number;
   afterGain?: GainNode;
   wetHissGain?: GainNode;
   wetHissFilt?: BiquadFilterNode;
@@ -342,6 +368,17 @@ export class EngineSynthImpl implements EngineSynth {
   private ionIdleOpenLag = 0;
   private ionIdleOpenAt = 0;
   private ionAccelT0 = -1;
+  /** Recorded stems: accel one-shot, last accel start seen. */
+  private ionAccelStem: {
+    gain: GainNode;
+    level: GainNode;
+    srcs: AudioBufferSourceNode[];
+    t0: number;
+    T: number;
+    abortAt: number;
+  } | null = null;
+  private ionAccelSeen = -1;
+  private ionStemOpenLag = 0;
   /** Last written Twin Ion shaper drive steps (curves are only re-written on a step change) */
   private ionHowlDriveStep = -1;
   private ionScreamDriveStep = -1;
@@ -463,11 +500,14 @@ export class EngineSynthImpl implements EngineSynth {
       const now = this.context.currentTime;
       const ignitionLive = this.ionCue?.kind === 'ignition';
       if (!ignitionLive) {
-        try {
-          d.cancelScheduledValues(now);
-          d.setValueAtTime(this.output.gain.value < 0.05 ? 0 : d.value, now);
-        } catch {
-          /* ignore */
+        const hold = this.output.gain.value < 0.05 ? 0 : d.value;
+        for (const prm of this.ionDuckParams()) {
+          try {
+            prm.cancelScheduledValues(now);
+            prm.setValueAtTime(hold, now);
+          } catch {
+            /* ignore */
+          }
         }
         this.ionDuckPendingAt = now;
       }
@@ -510,6 +550,8 @@ export class EngineSynthImpl implements EngineSynth {
     this.started = false;
     this.stopIonCue(this.ionCue, 0);
     this.stopIonCue(this.ionTargetVoice, 0);
+    this.stopIonAccelStem(0);
+    if (this.g.ionStemBed) reportIonStemLive(false, 0, 0);
     try {
       this.cueOutput.disconnect();
     } catch {
@@ -1773,7 +1815,7 @@ export class EngineSynthImpl implements EngineSynth {
     const ctx = this.context;
 
     // ═══════════════════════════════════════════════════════════════════
-    // Ion Twin v2 — procedural from twin-ion-ref-analysis.md (no samples)
+    // Ion Twin v2 — procedural from twin-ion-ref-analysis.md; recorded stems layer on top (attachIonStems)
     // Buses: twin motors · formant howl · grit · ion · air · body
     // Continuous drive bed: motors never drop at cruise; howl is sustained
     // bellow (shallow phrase breath, not gated bursts). Surge = throttle spikes.
@@ -2302,6 +2344,11 @@ export class EngineSynthImpl implements EngineSynth {
     const duck = ctx.createGain();
     duck.gain.value = 0;
     g.ionDuck = duck;
+    const recDuck = ctx.createGain();
+    recDuck.gain.value = 0;
+    recDuck.connect(this.cueOutput);
+    g.ionRecDuck = recDuck;
+    if (this.ionStemsOn()) this.attachIonStems(g);
     this.ionDuckPendingAt = this.started ? ctx.currentTime : -1;
     if (this.ionLifecycleOn()) void ionTwinCues(ctx.sampleRate).catch(() => undefined);
     // Sustain voicing EQ + top cut, faded in as the voice opens out of idle
@@ -2400,9 +2447,13 @@ export class EngineSynthImpl implements EngineSynth {
     stopOsc(g.ionHumWander);
     try {
       g.ionIdleHiss?.disconnect();
+      g.ionStemBed?.stop(0);
+      g.ionStemBed?.out.disconnect();
+      g.ionRecDuck?.disconnect();
     } catch {
       /* ignore */
     }
+    this.stopIonAccelStem(0);
     stopOsc(g.wetAmLfo);
     stopOsc(g.intakeWhineOsc);
     stopOsc(g.intakeWhineOsc2);
@@ -3545,7 +3596,20 @@ export class EngineSynthImpl implements EngineSynth {
     const gritKnob = Number(p.gritMix ?? p.grit ?? 0.4) * gritEnable;
     const screamMix = Number(p.screamMix ?? 0.35) * screamEnable;
     const screamBright = Number(p.screamBright ?? 0.55);
-    const surgeMix = Number(p.surgeMix ?? 0.7) * surgeEnable;
+    // Recorded stems take a per-layer share (equal-power: stem sin, synth cos); 0 → synth only
+    const stemRec = this.ionStemRec();
+    const syn = {
+      motor: Math.cos((stemRec.motor * Math.PI) / 2),
+      howl: Math.cos((stemRec.howl * Math.PI) / 2),
+      scream: Math.cos((stemRec.scream * Math.PI) / 2),
+      surge: Math.cos((stemRec.surge * Math.PI) / 2),
+      air: Math.cos((stemRec.air * Math.PI) / 2),
+      grit: Math.cos((stemRec.grit * Math.PI) / 2),
+    };
+    const surgeMix = Number(p.surgeMix ?? 0.7) * surgeEnable * syn.surge;
+    // Procedural broadband noise (air / hiss / grit) sits well under the voice by default: it fills
+    // in, it never masks the howl / scream (or the recorded stems) with a rush of air
+    const noiseTrim = clamp(Number(p.synthNoise ?? ION_SYNTH_NOISE_DEFAULT), 0, 1.5);
     const detune = Number(p.motorDetune ?? 0.55);
     const flybyAmt = flyby * surgeMix;
     const surgeAmt = surge * surgeMix;
@@ -3608,9 +3672,9 @@ export class EngineSynthImpl implements EngineSynth {
     const motorBed =
       motorLead * motorScale * (0.92 - howlLead * 0.22) * (1 + howlLead * 1.2) *
       (1 + accel.bell * ION_ACCEL.motorBoost);
-    if (g.motorGainL) smooth(g.motorGainL.gain, motorEnable * motorBed * (1 + this.liveJit.gain * 0.03), tc, ctx);
+    if (g.motorGainL) smooth(g.motorGainL.gain, motorEnable * motorBed * (1 + this.liveJit.gain * 0.03) * syn.motor, tc, ctx);
     if (g.motorGainR) {
-      smooth(g.motorGainR.gain, motorEnable * motorBed * (0.92 + detune * 0.08), tc, ctx);
+      smooth(g.motorGainR.gain, motorEnable * motorBed * (0.92 + detune * 0.08) * syn.motor, tc, ctx);
     }
     if (g.motorFiltL) {
       smooth(g.motorFiltL.frequency, 70 + spool * 170 + thr * 40 + surgeAmt * 30, tc, ctx);
@@ -3641,7 +3705,7 @@ export class EngineSynthImpl implements EngineSynth {
     }
     if (g.motorBodyMix) {
       // B-like wetness on motor only; leaner when howl leads
-      smooth(g.motorBodyMix.gain, bodyAmt * (0.22 + (1 - open) * 0.25) * (1 - howlLead * 0.35), tc, ctx);
+      smooth(g.motorBodyMix.gain, bodyAmt * (0.22 + (1 - open) * 0.25) * (1 - howlLead * 0.35) * syn.motor, tc, ctx);
     }
     if (g.motorBodyFb) {
       smooth(g.motorBodyFb.gain, 0.18 + bodyAmt * 0.22, tc, ctx);
@@ -3656,7 +3720,7 @@ export class EngineSynthImpl implements EngineSynth {
     // Formant howl — sustained bellow × smoothstep(rpmNorm); holds while driving
     const howlAmt = howlLead;
     const howlOut = (howlAmt * (1.28 + thr * 0.42) + flybyAmt * howlMix * 0.22) * ION_HOWL_MAKEUP;
-    if (g.howlGain) smooth(g.howlGain.gain, howlOut * howlEnable * swell, tc, ctx);
+    if (g.howlGain) smooth(g.howlGain.gain, howlOut * howlEnable * swell * syn.howl, tc, ctx);
     if (g.formantGain) {
       smooth(g.formantGain.gain, howlEnable * (0.95 + formantHowl * 0.45 + openSpool * 0.35), tc, ctx);
     }
@@ -3666,7 +3730,7 @@ export class EngineSynthImpl implements EngineSynth {
     }
     if (g.howlOscGain) {
       // Noise grit under formants × load
-      smooth(g.howlOscGain.gain, (0.04 + howlAmt * 0.14 + thr * 0.05 + loadAbs * 0.04) * gritKnob, tc, ctx);
+      smooth(g.howlOscGain.gain, (0.04 + howlAmt * 0.14 + thr * 0.05 + loadAbs * 0.04) * gritKnob * syn.grit * noiseTrim, tc, ctx);
     }
     if (g.howlPhraseDepth) {
       // Shallow breath only — cap ~15% of howl so AM never chops the bellow off
@@ -3691,13 +3755,13 @@ export class EngineSynthImpl implements EngineSynth {
       openSpool * thr * 0.25
     );
     const screamOut = screamLead * (1.1 + thr * 0.35) * ION_SCREAM_MAKEUP;
-    if (g.screamGain) smooth(g.screamGain.gain, screamOut * swell, tc, ctx);
+    if (g.screamGain) smooth(g.screamGain.gain, screamOut * swell * syn.scream, tc, ctx);
     if (g.screamFlutterDepth) {
       // ~5.7 Hz flutter on the scream (ref-C AM peak), ≤35 % so it trembles, never gates
       smooth(g.screamFlutterDepth.gain, screamOut * (0.22 + thr * 0.13), tc, ctx);
     }
     if (g.screamToneGain) {
-      smooth(g.screamToneGain.gain, screamEnable * (0.05 + screamBright * 0.05 + thr * 0.03), tc, ctx);
+      smooth(g.screamToneGain.gain, screamEnable * (0.05 + screamBright * 0.05 + thr * 0.03) * syn.scream, tc, ctx);
     }
     // Brightness = small shift around the stack (ref-C lines barely move); surge lifts it
     const screamShift = lerp(0.94, 1.08, screamBright);
@@ -3759,7 +3823,7 @@ export class EngineSynthImpl implements EngineSynth {
     if (g.howlOsc) smooth(g.howlOsc.frequency, howlF0, tc, ctx);
     if (g.howlOsc2) smooth(g.howlOsc2.frequency, howlF0 * (1.008 + detune * 0.014), tc, ctx);
     if (g.howlToneGain) {
-      smooth(g.howlToneGain.gain, howlEnable * (0.07 + openSpool * 0.05 + thr * 0.03 + flybyAmt * 0.03), tc, ctx);
+      smooth(g.howlToneGain.gain, howlEnable * (0.07 + openSpool * 0.05 + thr * 0.03 + flybyAmt * 0.03) * syn.howl, tc, ctx);
     }
     if (g.howlVibDepth) {
       // cents: light vibrato that deepens with load / surge
@@ -3790,7 +3854,7 @@ export class EngineSynthImpl implements EngineSynth {
     if (g.gritGain) {
       smooth(
         g.gritGain.gain,
-        gritKnob * (thr * 0.12 + loadAbs * 0.1 + open * thr * 0.14) * (0.4 + howlLead * 0.6),
+        gritKnob * (thr * 0.12 + loadAbs * 0.1 + open * thr * 0.14) * (0.4 + howlLead * 0.6) * syn.grit * noiseTrim,
         tc,
         ctx,
       );
@@ -3802,7 +3866,7 @@ export class EngineSynthImpl implements EngineSynth {
     // Air / wet swoosh — continuous bed; surge gestures on throttle spikes only
     const wetAmt = airLead * swell;
     if (g.wetHissGain) {
-      const baseGain = wetAmt * 1.15;
+      const baseGain = wetAmt * 1.15 * syn.air * noiseTrim;
       try {
         g.wetHissGain.gain.cancelScheduledValues(ctx.currentTime);
         g.wetHissGain.gain.setTargetAtTime(baseGain, ctx.currentTime, tc);
@@ -3811,7 +3875,7 @@ export class EngineSynthImpl implements EngineSynth {
       }
     }
     if (g.wetBodyGain) {
-      smooth(g.wetBodyGain.gain, wetAmt * 0.9 + open * wetKnob * 0.32, tc, ctx);
+      smooth(g.wetBodyGain.gain, (wetAmt * 0.9 + open * wetKnob * 0.32) * syn.air * noiseTrim, tc, ctx);
     }
     if (g.wetBodyFilt) {
       smooth(g.wetBodyFilt.frequency, 700 + open * 700 + thr * 350 + rpmNorm * 250, tc, ctx);
@@ -3820,7 +3884,7 @@ export class EngineSynthImpl implements EngineSynth {
       // Continuous trickle + spike surge (not the whole air bed)
       smooth(
         g.wetFlybyGain.gain,
-        open * wetKnob * 0.1 + flybyAmt * wetKnob * 0.9,
+        (open * wetKnob * 0.1 + flybyAmt * wetKnob * 0.9) * syn.air * noiseTrim,
         Math.min(tc, 0.04),
         ctx,
       );
@@ -3868,10 +3932,16 @@ export class EngineSynthImpl implements EngineSynth {
       this.ionIdleOpenLag += (openTarget - this.ionIdleOpenLag) * (1 - Math.exp(-dtT / tau));
     }
     const idleOpen = this.ionIdleOpenLag;
+    // The recorded sustain opens faster than the synth bed (it has no other pull-away layers)
+    if (tc < 0.02 || dtT > 1) this.ionStemOpenLag = openTarget;
+    else {
+      const tau = openTarget > this.ionStemOpenLag ? ION_STEM_OPEN_TAU.up : ION_STEM_OPEN_TAU.down;
+      this.ionStemOpenLag += (openTarget - this.ionStemOpenLag) * (1 - Math.exp(-dtT / tau));
+    }
     if (g.ionIdleLp) smooth(g.ionIdleLp.frequency, ionIdleLpHz(idleOpen), tc, ctx);
     if (g.ionIdleHiss) {
       const duckNow = g.ionDuck ? g.ionDuck.gain.value : 1;
-      smooth(g.ionIdleHiss.gain, ION_HUM.hiss * duckNow * (1 - idleOpen), tc, ctx);
+      smooth(g.ionIdleHiss.gain, ION_HUM.hiss * duckNow * (1 - idleOpen) * syn.air * noiseTrim, tc, ctx);
     }
     this.ionLifecycleTick(d.speed, thrRaw);
     const fullOpen = 0.8 * smoothstep(thr, 0.7, 1);
@@ -3900,7 +3970,34 @@ export class EngineSynthImpl implements EngineSynth {
     if (g.humGain) {
       // Idle-only: fades out by ~30 % rpm so the 55 Hz pole doesn't sit under the howl
       const idleAmt = clamp(1 - rpmNorm * 3.5) * hum * 0.2;
-      smooth(g.humGain.gain, idleAmt + (d.speed < 0.03 ? thrRaw * hum * 0.08 : 0), tc, ctx);
+      smooth(g.humGain.gain, (idleAmt + (d.speed < 0.03 ? thrRaw * hum * 0.08 : 0)) * syn.motor, tc, ctx);
+    }
+
+    // Recorded stems: continuous sustain + interior hum beds (granular), accel one-shot gate
+    if (g.ionStemBed) {
+      const share = this.ionStemShare();
+      const susDrive = clamp(ION_STEM_LEVEL.driveSpeed * d.speed + (1 - ION_STEM_LEVEL.driveSpeed) * thr);
+      const accelGate = this.ionAccelStemTick(accel.active, thrRaw, ionStemSustainDb(susDrive));
+      const susOpen = clamp(this.ionStemOpenLag);
+      const sw = (r: number) => Math.sin((r * Math.PI) / 2);
+      const layer = {} as Record<IonStemId, number>;
+      for (const st of ION_STEM_IDS) layer[st] = sw(stemRec[ION_STEM_LAYER[st]]) * this.ionStemLayerScale(st);
+      // Opening glides in dB (from ION_STEM_OPEN_FLOOR_DB under the hum), so the recorded sustain
+      // rises out of the bed at a steady rate instead of jumping up from silence
+      const openDb = ION_STEM_OPEN_FLOOR_DB * (1 - susOpen);
+      const susG = share > 0 ? Math.pow(10, (ionStemSustainDb(susDrive) + openDb) / 20) * accelGate : 0;
+      const humG = share > 0 ? Math.pow(10, ION_STEM_LEVEL.humDb / 20) * (1 - susOpen * ION_STEM_LEVEL.humFade) : 0;
+      reportIonStemLive(share > 0, share, Math.max(susG, humG));
+      g.ionStemBed.update(ctx.currentTime, {
+        speed: d.speed,
+        thr,
+        load: clamp(Math.max(loadAbs, thr)),
+        surge: clamp(this.ionSurgeEnv),
+        sustainGain: susG,
+        humGain: humG,
+        layer,
+        surgeLayer: sw(stemRec.surge) * (surgeEnable ? 1 : 0),
+      });
     }
     if (g.humOsc) {
       const humHz =
@@ -3974,10 +4071,16 @@ export class EngineSynthImpl implements EngineSynth {
     src.buffer = buf;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(level, at);
-    src.connect(gain);
+    // Layered cue: procedural buffer + the recorded stems (when they ship), balanced by cueRec
+    const stems = this.ionCueStems(kind);
+    const procGain = ctx.createGain();
+    procGain.gain.value = stems ? stems.synth : 1;
+    src.connect(procGain);
+    procGain.connect(gain);
     gain.connect(this.cueOutput);
     src.start(at);
-    const v: IonCueVoice = { kind, src, gain, startedAt: at, endsAt: at + buf.duration, handedOff: false };
+    const extra = stems ? playIonStemOneShot(ctx, stems.bufs, gain, at, stems.gainFor) : [];
+    const v: IonCueVoice = { kind, src, extra, gain, startedAt: at, endsAt: at + buf.duration, handedOff: false };
     src.onended = () => {
       try {
         gain.disconnect();
@@ -3999,24 +4102,213 @@ export class EngineSynthImpl implements EngineSynth {
       p.cancelScheduledValues(now);
       p.setValueAtTime(p.value, now);
       p.linearRampToValueAtTime(0, now + Math.max(0.005, fade));
-      v.src.stop(now + Math.max(0.005, fade) + 0.02);
     } catch {
       /* already stopped */
     }
+    this.stopCueSources(v, now + Math.max(0.005, fade) + 0.02);
     v.handedOff = true;
   }
 
-  private rampDuck(to: number, over: number, at?: number): void {
-    const d = this.g.ionDuck?.gain;
-    if (!d) return;
+  private stopCueSources(v: IonCueVoice, at: number): void {
+    for (const s of [v.src, ...v.extra]) {
+      try {
+        s.stop(at);
+      } catch {
+        /* already stopped */
+      }
+    }
+  }
+
+  // ── Recorded stems (optional; see ionTwinStems.ts) ──
+
+  private ionStemsOn(): boolean {
+    const q = ionStemsQueryOverride();
+    if (q !== null) return q === 1;
+    return Number(this.params.stemsEnable ?? 1) !== 0;
+  }
+
+  /** Twin Ion recorded-stem status (loader + this engine's live share). */
+  getIonTwinStemStatus(): IonStemStatus {
+    return getIonTwinStemStatus();
+  }
+
+  /** Attach the continuous stem bed once the stems are decoded (never blocks the voice). */
+  private attachIonStems(g: GraphHandles): void {
+    const ctx = this.context;
+    const attach = (set: IonStemSet | null, immediate: boolean) => {
+      if (!set || this.disposed || !g.ionRecDuck || g.ionStemBed) return;
+      if (!immediate && this.g !== g) return;
+      const bed = new IonStemBed(ctx, set, 1);
+      bed.out.connect(g.ionRecDuck);
+      g.ionStemBed = bed;
+      g.ionStemSet = set;
+      // Decoded before the graph existed → in at once; arriving mid-drive → 1.5 s blend
+      g.ionStemReadyAt = immediate ? ctx.currentTime - 10 : ctx.currentTime;
+    };
+    const now = readyIonTwinStems(ctx.sampleRate);
+    if (now) {
+      attach(now, true);
+      return;
+    }
+    void ionTwinStems(ctx)
+      .then((set) => attach(set, false))
+      .catch(() => undefined);
+  }
+
+  /** 0 → 1 blend of the recorded share (0 while decoding, when absent or switched off). */
+  private ionStemShare(): number {
+    const at = this.g.ionStemReadyAt;
+    if (!this.g.ionStemBed || at === undefined || !this.ionStemsOn()) return 0;
+    return clamp((this.context.currentTime - at) / ION_STEM_BLEND_SEC);
+  }
+
+  /** Per-layer recorded share (0..1) × the stem blend. */
+  private ionStemRec(): Record<'motor' | 'howl' | 'scream' | 'surge' | 'air' | 'grit', number> {
+    const p = this.params;
+    const k = this.ionStemShare();
+    const r = (key: string, fb: number) => clamp(Number(p[key] ?? fb)) * k;
+    const D = ION_STEM_REC_DEFAULT;
+    return {
+      motor: r('motorRec', D.motor),
+      howl: r('howlRec', D.howl),
+      scream: r('screamRec', D.scream),
+      surge: r('surgeRec', D.surge),
+      air: r('airRec', D.air),
+      grit: r('gritRec', D.grit),
+    };
+  }
+
+  /** Layer enable × mix (re the default mix) for a stem's layer. */
+  private ionStemLayerScale(stem: IonStemId): number {
+    const p = this.params;
+    const on = (v: unknown) => (Number(v ?? 1) >= 0.5 ? 1 : 0);
+    const L = ION_STEM_LAYER[stem];
+    const key = { motor: ['motorEnable', 'motorMix'], howl: ['howlEnable', 'howlMix'], scream: ['screamEnable', 'screamMix'], air: ['airEnable', 'airMix'], grit: ['gritEnable', 'gritMix'] }[L];
+    const mix = Number(p[key[1]] ?? ION_STEM_MIX_REF[L]);
+    return on(p[key[0]]) * clamp(mix / ION_STEM_MIX_REF[L], 0, 1.6);
+  }
+
+  /** Stems for a cue (null → procedural only). */
+  private ionCueStems(
+    kind: IonCueKind,
+  ): { bufs: IonStemBuffers; synth: number; gainFor: (s: IonStemId) => number } | null {
+    const set = this.ionStemShare() > 0 ? (this.g.ionStemSet ?? null) : null;
+    const bufs = set?.segments[kind];
+    if (!set || !bufs || !Object.keys(bufs).length) return null;
+    const rec = clamp(Number(this.params.cueRec ?? ION_STEM_REC_DEFAULT.cue)) * this.ionStemShare();
+    const g = Math.sin((rec * Math.PI) / 2) * set.norm(kind) * Math.pow(10, ION_STEM_CUE_DB[kind] / 20);
+    // The voice gain carries the cue level (incl. the user's lifecycle level); stems are calibrated
+    // against the stock level so that setting still scales them
+    const base = kind === 'target' ? ION_CUE_LEVEL.target : ION_CUE_LEVEL.lifecycle;
+    return {
+      bufs,
+      synth: Math.cos((rec * Math.PI) / 2),
+      gainFor: (s) => (g / Math.max(1e-3, base)) * this.ionStemLayerScale(s),
+    };
+  }
+
+  /** Pull-away: the recorded acceleration one-shot, crossfading into the sustain stems. */
+  private ionAccelStemTick(accelActive: number, thrRaw: number, levelDb: number): number {
+    const now = this.context.currentTime;
+    const set = this.ionStemShare() > 0 ? (this.g.ionStemSet ?? null) : null;
+    const g = this.g;
+    if (this.ionAccelT0 >= 0 && this.ionAccelT0 !== this.ionAccelSeen) {
+      this.ionAccelSeen = this.ionAccelT0;
+      const bufs = set?.segments.accel;
+      if (set && bufs && g.ionRecDuck && Object.keys(bufs).length) {
+        this.stopIonAccelStem(0.05);
+        const gain = this.context.createGain();
+        const T = Math.max(...Object.values(bufs).map((b) => (b ? b.duration : 0)));
+        // Envelope (short fade-in, cos hand-over) × a level that tracks the sustain's own level
+        // for the current drive, so the phrase lands in the sustain without a step
+        const lvl = set.norm('accel') * this.ionStemShare();
+        const x = Math.min(ION_STEM_ACCEL_XFADE, T * 0.4);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(lvl, now + ION_STEM_ACCEL_FADE_IN);
+        gain.gain.setValueAtTime(lvl, now + T - x);
+        const curve = new Float32Array(33);
+        for (let i = 0; i < curve.length; i++) curve[i] = lvl * Math.cos(((i / (curve.length - 1)) * Math.PI) / 2);
+        gain.gain.setValueCurveAtTime(curve, now + T - x, x);
+        const level = this.context.createGain();
+        level.gain.value = Math.pow(10, (levelDb + ION_STEM_LEVEL.accelDb) / 20);
+        gain.connect(level);
+        level.connect(g.ionRecDuck);
+        const rec = this.ionStemRec();
+        const srcs = playIonStemOneShot(this.context, bufs, gain, now, (s) => {
+          const r = rec[ION_STEM_LAYER[s]];
+          return Math.sin((r * Math.PI) / 2) * this.ionStemLayerScale(s);
+        });
+        this.ionAccelStem = { gain, level, srcs, t0: now, T, abortAt: -1 };
+      }
+    }
+    const a = this.ionAccelStem;
+    if (!a) return 1;
+    try {
+      a.level.gain.setTargetAtTime(Math.pow(10, (levelDb + ION_STEM_LEVEL.accelDb) / 20), now, 0.06);
+    } catch {
+      /* ignore */
+    }
+    const t = now - a.t0;
+    if (a.abortAt < 0 && t < a.T - ION_STEM_ACCEL_XFADE && accelActive === 0 && thrRaw < 0.05) {
+      // Lifted mid-phrase: the one-shot fades, the sustain comes back
+      a.abortAt = now;
+      this.stopIonAccelStem(0.3, true);
+    }
+    if (a.abortAt >= 0) {
+      const u = clamp((now - a.abortAt) / 0.3);
+      if (u >= 1) this.ionAccelStem = null;
+      return Math.sin((u * Math.PI) / 2);
+    }
+    if (t >= a.T) {
+      this.ionAccelStem = null;
+      return 1;
+    }
+    const x = Math.min(ION_STEM_ACCEL_XFADE, a.T * 0.4);
+    const u = clamp((t - (a.T - x)) / x);
+    return Math.sin((u * Math.PI) / 2);
+  }
+
+  private stopIonAccelStem(fade: number, keep = false): void {
+    const a = this.ionAccelStem;
+    if (!a) return;
     const now = this.context.currentTime;
     try {
-      d.cancelScheduledValues(now);
-      d.setValueAtTime(d.value, now);
-      if (at !== undefined && at > now) d.setValueAtTime(d.value, at);
-      d.linearRampToValueAtTime(to, Math.max(now, at ?? now) + over);
+      const p = a.gain.gain;
+      p.cancelScheduledValues(now);
+      p.setValueAtTime(p.value, now);
+      p.linearRampToValueAtTime(0, now + fade);
     } catch {
-      d.value = to;
+      /* ignore */
+    }
+    for (const s of a.srcs) {
+      try {
+        s.stop(now + fade + 0.02);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!keep) this.ionAccelStem = null;
+  }
+
+  /** The live-voice duck and its mirror on the recorded-stem bus. */
+  private ionDuckParams(): AudioParam[] {
+    const out: AudioParam[] = [];
+    if (this.g.ionDuck) out.push(this.g.ionDuck.gain);
+    if (this.g.ionRecDuck) out.push(this.g.ionRecDuck.gain);
+    return out;
+  }
+
+  private rampDuck(to: number, over: number, at?: number): void {
+    const now = this.context.currentTime;
+    for (const d of this.ionDuckParams()) {
+      try {
+        d.cancelScheduledValues(now);
+        d.setValueAtTime(d.value, now);
+        if (at !== undefined && at > now) d.setValueAtTime(d.value, at);
+        d.linearRampToValueAtTime(to, Math.max(now, at ?? now) + over);
+      } catch {
+        d.value = to;
+      }
     }
   }
 
@@ -4030,7 +4322,7 @@ export class EngineSynthImpl implements EngineSynth {
     const v = this.startIonBuffer('ignition', set.ignition, this.ionCueLevel('ignition'), now);
     v.gain.gain.setValueAtTime(this.ionCueLevel('ignition'), land);
     v.gain.gain.linearRampToValueAtTime(0, now + T);
-    v.src.stop(now + T + 0.05);
+    this.stopCueSources(v, now + T + 0.05);
     this.ionCue = v;
     this.ionDuckPendingAt = -1;
     // Live voice held under the cue, then the ignition lands in the interior hum
@@ -4048,7 +4340,7 @@ export class EngineSynthImpl implements EngineSynth {
     const lvl = this.ionCueLevel('shutdown');
     const v = this.startIonBuffer('shutdown', set.shutdown, 0, now);
     v.gain.gain.linearRampToValueAtTime(lvl, now + ION_CUE_XFADE);
-    v.src.stop(now + set.shutdown.duration + 0.05);
+    this.stopCueSources(v, now + set.shutdown.duration + 0.05);
     this.ionCue = v;
     this.ionDuckPendingAt = -1;
     // The shutdown voice replaces the live one (crossfade), which stays ducked until next start
@@ -4121,6 +4413,8 @@ type IonCueKind = 'ignition' | 'shutdown' | 'target';
 interface IonCueVoice {
   kind: IonCueKind;
   src: AudioBufferSourceNode;
+  /** Recorded stem sources layered under the same voice gain. */
+  extra: AudioBufferSourceNode[];
   gain: GainNode;
   startedAt: number;
   endsAt: number;
@@ -4135,6 +4429,17 @@ const ION_DUCK_GRACE = 0.25;
 const ION_TARGET_MIN_GAP = 1;
 /** Cue gains re the peak-0.5 buffers: lifecycle cues peak under the cruise voice; the lock cue rides ~0.5 LU over the cruise it fires on. */
 const ION_CUE_LEVEL = { lifecycle: 0.78, target: 0.9 };
+/** Recorded stems: blend-in time once decoded mid-drive (s) and accel → sustain crossfade (s). */
+const ION_STEM_BLEND_SEC = 1.5;
+/** Default procedural noise-layer trim (air / hiss / grit), re the a7882d7 voice. */
+const ION_SYNTH_NOISE_DEFAULT = 0.35;
+/** Recorded-sustain open glide (s): quicker than the synth bed's ION_IDLE_OPEN_TAU. */
+const ION_STEM_OPEN_TAU = { up: 0.25, down: 0.5 } as const;
+/** Recorded sustain level (dB) under the hum when parked; it opens from here in dB. */
+const ION_STEM_OPEN_FLOOR_DB = -24;
+/** Pull-away one-shot fade-in (s). */
+const ION_STEM_ACCEL_FADE_IN = 0.06;
+const ION_STEM_ACCEL_XFADE = 0.6;
 
 const UPSHIFT_SFX_KEY = 'ds-upshift-sfx';
 

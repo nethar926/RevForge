@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "formats": [
+    "webm",
+    "m4a"
+  ],
+  "sampleRate": 44100,
+  "segments": {
+    "sustain": {
+      "seconds": 6.545,
+      "normDb": -10.03,
+      "stems": {
+        "motor": {
+          "file": "sustain-motor",
+          "channels": 1
+        },
+        "howl": {
+          "file": "sustain-howl",
+          "channels": 1
+        },
+        "scream": {
+          "file": "sustain-scream",
+          "channels": 1
+        },
+        "air": {
+          "file": "sustain-air",
+          "channels": 1
+        },
+        "grit": {
+          "file": "sustain-grit",
+          "channels": 1
+        }
+      }
+    },
+    "hum": {
+      "seconds": 8.0,
+      "normDb": -12.24,
+      "stems": {
+        "motor": {
+          "file": "hum-motor",
+          "channels": 1
+        },
+        "howl": {
+          "file": "hum-howl",
+          "channels": 2
+        },
+        "scream": {
+          "file": "hum-scream",
+          "channels": 2
+        },
+        "grit": {
+          "file": "hum-grit",
+          "channels": 1
+        }
+      }
+    },
+    "target": {
+      "seconds": 2.18,
+      "normDb": -9.56,
+      "stems": {
+        "motor": {
+          "file": "target-motor",
+          "channels": 2
+        },
+        "howl": {
+          "file": "target-howl",
+          "channels": 2
+        },
+        "scream": {
+          "file": "target-scream",
+          "channels": 2
+        },
+        "air": {
+          "file": "target-air",
+          "channels": 2
+        },
+        "grit": {
+          "file": "target-grit",
+          "channels": 2
+        }
+      }
+    },
+    "shutdown": {
+      "seconds": 12.0,
+      "normDb": -8.94,
+      "stems": {
+        "motor": {
+          "file": "shutdown-motor",
+          "channels": 2
+        },
+        "howl": {
+          "file": "shutdown-howl",
+          "channels": 1
+        },
+        "scream": {
+          "file": "shutdown-scream",
+          "channels": 1
+        },
+        "air": {
+          "file": "shutdown-air",
+          "channels": 1
+        },
+        "grit": {
+          "file": "shutdown-grit",
+          "channels": 2
+        }
+      }
+    },
+    "accel": {
+      "seconds": 2.95,
+      "normDb": -12.33,
+      "stems": {
+        "motor": {
+          "file": "accel-motor",
+          "channels": 1
+        },
+        "howl": {
+          "file": "accel-howl",
+          "channels": 1
+        },
+        "scream": {
+          "file": "accel-scream",
+          "channels": 1
+        },
+        "grit": {
+          "file": "accel-grit",
+          "channels": 1
+        }
+      }
+    }
+  }
+}

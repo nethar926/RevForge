@@ -1,4 +1,5 @@
 import type { EngineParams, EnginePatch, IonTwinLayerConfig } from './types';
+import { ION_STEM_REC_DEFAULT } from './ionTwinStems';
 
 /** Minimal continuous-roar defaults (mirrors CONTINUOUS; avoids builtins cycle). */
 const CONTINUOUS: EngineParams = {
@@ -44,6 +45,18 @@ const CONTINUOUS: EngineParams = {
   hum: 0.42,
   ionHum: 0.42,
   digitalCueLevel: 0,
+  // Recorded-stem hybrid: per-layer recorded share (0 = synth only, 1 = stem only), stems on
+  // whenever they ship, layered cues, and the procedural air/noise trim (kept low so the
+  // recordings lead).
+  stemsEnable: 1,
+  motorRec: ION_STEM_REC_DEFAULT.motor,
+  howlRec: ION_STEM_REC_DEFAULT.howl,
+  screamRec: ION_STEM_REC_DEFAULT.scream,
+  surgeRec: ION_STEM_REC_DEFAULT.surge,
+  airRec: ION_STEM_REC_DEFAULT.air,
+  gritRec: ION_STEM_REC_DEFAULT.grit,
+  cueRec: ION_STEM_REC_DEFAULT.cue,
+  synthNoise: 0.35,
 };
 
 const FULL_STACK: EngineParams = {
@@ -135,17 +148,17 @@ const LAYER_NAMES: Record<IonTwinLayerId, string> = {
 function characterParamsFor(id: IonTwinLayerId, p: EngineParams): Record<string, number> {
   switch (id) {
     case 'motorBed':
-      return pick(p, ['corePitch', 'pulseRate', 'motorDetune', 'noiseBody', 'body', 'spoolLag', 'stereoTwin']);
+      return pick(p, ['corePitch', 'pulseRate', 'motorDetune', 'noiseBody', 'body', 'spoolLag', 'stereoTwin', 'motorRec']);
     case 'formantHowl':
-      return pick(p, ['formantShift', 'formantSpread', 'resonance', 'formantQ', 'phraseRate', 'phraseDepth']);
+      return pick(p, ['formantShift', 'formantSpread', 'resonance', 'formantQ', 'phraseRate', 'phraseDepth', 'howlRec']);
     case 'screamBurst':
-      return pick(p, ['screamBright']);
+      return pick(p, ['screamBright', 'screamRec']);
     case 'surge':
-      return {};
+      return pick(p, ['surgeRec']);
     case 'airSwoosh':
-      return pick(p, ['wetDry', 'wetHiss', 'air']);
+      return pick(p, ['wetDry', 'wetHiss', 'air', 'airRec', 'synthNoise']);
     case 'grit':
-      return pick(p, ['grit']);
+      return pick(p, ['grit', 'gritRec']);
   }
 }
 
@@ -219,7 +232,7 @@ export function combineIonTwinLayers(
     meta: {
       author: 'DriveSynth',
       tags: ['scifi', 'ion', 'layers'],
-      blurb: 'Combinable Ion Twin procedural layers — original synthesis, no samples.',
+      blurb: 'Combinable Ion Twin layers — procedural synthesis blended with the recorded stems when they ship.',
     },
   };
 }
