@@ -727,3 +727,117 @@
 .np-compact[data-np-tight] .np-voice {
   min-height: calc(40 * var(--u, 1px));
 }
+
+/* ——— Sensor-pod radar (green CRT screen) ———
+ * Additive: the scope fills the existing .np-crt-a screen (absolute, inset 0), so the pod's box
+ * and every other element keep their exact geometry. No canvas and no promoted layers: the
+ * scope paints into the pod's own layer. Scanlines and the CRT inset shade sit above the
+ * phosphor. Geometry (face box, beam, blip size) is set from the screen's box by
+ * NightPursuitRadar.tsx on resize; per frame it only writes the wedge gradient, the beam
+ * angle and blip transform/opacity.
+ * Palette: --skin-green #00c853 = rgb(0, 200, 83); highlight rgb(170, 255, 205).
+ */
+.np-crt-a.np-radar-scope {
+  display: block;
+  background: #020806;
+}
+.np-radar-scope::before {
+  z-index: 1;
+}
+.np-radar-scope::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.9);
+}
+.np-radar {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  --np-radar-px: 1px;
+}
+.np-radar-face {
+  position: absolute;
+  overflow: hidden;
+}
+.np-radar-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 52% 100% at 50% 96%, rgba(0, 200, 83, 0.2), rgba(0, 200, 83, 0.07) 60%, transparent 100%);
+}
+.np-radar-wedge {
+  position: absolute;
+  border-radius: 50%;
+}
+.np-radar[data-radar="static"] .np-radar-wedge,
+.np-radar[data-radar="static"] .np-radar-beam {
+  display: none;
+}
+.np-radar-grid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.np-radar-grid path,
+.np-radar-grid line {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke: var(--skin-green, #00c853);
+  stroke-width: var(--np-radar-px, 1px);
+  stroke-linecap: round;
+}
+.np-radar-grid .np-radar-ring {
+  stroke-opacity: 0.24;
+}
+.np-radar-grid .np-radar-spoke {
+  stroke-opacity: 0.13;
+}
+.np-radar-grid .np-radar-bore {
+  stroke-opacity: 0.26;
+}
+.np-radar-grid .np-radar-base {
+  stroke-opacity: 0.4;
+}
+.np-radar-grid .np-radar-edge {
+  stroke-opacity: 0.55;
+  stroke-width: calc(1.5 * var(--np-radar-px, 1px));
+}
+.np-radar-grid .np-radar-tick {
+  stroke-opacity: 0.34;
+}
+.np-radar-grid .np-radar-tick.long {
+  stroke-opacity: 0.6;
+}
+.np-radar-grid .np-radar-own {
+  fill: var(--skin-green, #00c853);
+  fill-opacity: 0.85;
+  stroke: none;
+}
+.np-radar-blip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, rgb(200, 255, 220) 0%, rgba(0, 200, 83, 0.9) 35%, rgba(0, 200, 83, 0) 70%);
+}
+.np-radar-beam {
+  position: absolute;
+  transform-origin: 0 50%;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 200, 83, 0) 0%,
+    rgba(0, 200, 83, 0.16) 22%,
+    rgba(0, 200, 83, 0.45) 38%,
+    rgba(170, 255, 205, 0.95) 50%,
+    rgba(0, 200, 83, 0.45) 62%,
+    rgba(0, 200, 83, 0.16) 78%,
+    rgba(0, 200, 83, 0) 100%
+  );
+}

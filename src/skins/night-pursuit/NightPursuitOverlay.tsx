@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type AnimationEvent, type CSSProperties } from 'react';
 import { useHudCompact, type HudCompact } from './useHudCompact';
+import { NightPursuitRadar } from './NightPursuitRadar';
 import './night-pursuit.css';
 
 export type NightPursuitMode = 'power' | 'auto' | 'norm' | 'pursuit';
@@ -38,6 +39,11 @@ interface Props {
    * Dev/test override (wins over the prop): `?hudCompact=1|auto|0`.
    */
   compact?: HudCompact;
+  /**
+   * In-app motion flag. `false` → the sensor-pod radar shows a static scope (no sweep, no rAF).
+   * Optional: the radar also honours OS reduced motion and a `.motion-off` ancestor (ThemeStage).
+   */
+  motion?: boolean;
 }
 
 /** Smallest font-size in the full layout (bar labels / tach scale) — drives `'auto'`. */
@@ -160,6 +166,7 @@ export function NightPursuitOverlay({
   redlineRpm = 7000,
   gear,
   compact: compactProp,
+  motion,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const fit = useHudCompact(rootRef, compactProp, NP_MIN_DESIGN_PX);
@@ -364,14 +371,9 @@ export function NightPursuitOverlay({
         <section className="np-pod np-pod-crt" aria-hidden>
           <div className="np-pod-label">Sensor pods</div>
           <div className="np-crt-pair">
-            <div className="np-crt np-crt-a">
-              {/* Original orbit/chevron glyph (Night Pursuit mark) */}
-              <svg className="np-crt-glyph" viewBox="0 0 64 64" aria-hidden>
-                <circle cx="32" cy="32" r="22" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.7" />
-                <circle cx="32" cy="32" r="10" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
-                <path d="M32 12 L38 28 L32 24 L26 28 Z" fill="currentColor" />
-                <path d="M18 40 L32 50 L46 40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
+            <div className="np-crt np-crt-a np-radar-scope">
+              {/* Green sensor screen = forward sector radar (canvas, sized from this box). */}
+              <NightPursuitRadar rpmNorm={rpm} speedNorm={spd} loadFeel={load} motion={motion} />
             </div>
             <div className="np-crt np-crt-b">
               <div className="np-crt-feed">
