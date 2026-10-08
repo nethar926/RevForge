@@ -113,7 +113,11 @@ async function renderVariants(): Promise<Record<string, string>> {
     out[v.id] = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 45, rpm: 2150, gear: 4, load: 0.34, variant: v.id, onVariantChange: () => {} }));
   }
   out.dw = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 90, rpm: 5650, gear: 6, load: 0.9, abZone: 4, driveWindow: true, variant: 'swing-wing', onVariantChange: () => {} }));
-  out.compact = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 45, rpm: 2150, gear: 4, compact: true, variant: 'tomcat', onVariantChange: () => {} }));
+  out.explicitFalse = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 45, rpm: 2150, load: 0.34, compact: false, driveWindow: true, variant: 'carrier-jet', onVariantChange: () => {} }));
+  for (const v of CARRIER_JET_VARIANTS) {
+    out[`compact:${v.id}`] = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 45, rpm: 2150, gear: 4, load: 0.34, compact: true, variant: v.id, onVariantChange: () => {} }));
+    out[`dwc:${v.id}`] = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 45, rpm: 2150, gear: 4, load: 0.34, compact: true, driveWindow: true, variant: v.id, onVariantChange: () => {} }));
+  }
   out.ab3 = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 90, rpm: 5650, gear: 6, load: 0.1, abZone: 3, variant: 'swing-wing', onVariantChange: () => {} }));
   return out;
 }
@@ -122,7 +126,7 @@ test('rendered: each tab label equals its variant header label; radiogroup seman
   const html = await renderVariants();
   for (const v of CARRIER_JET_VARIANTS) {
     const h = html[v.id];
-    const header = h.match(/data-cj-label="">([^<]*)</)?.[1];
+    const header = h.match(/data-cj-label=""[^>]*>([^<]*)</)?.[1];
     const checked = h.match(/<button[^>]*role="radio"[^>]*aria-checked="true"[^>]*>([^<]*)<\/button>/)?.[1];
     assert.equal(header, v.label, `${v.id} header`);
     assert.equal(checked, header, `${v.id}: selected tab reads the header label`);
@@ -137,18 +141,51 @@ test('rendered: each tab label equals its variant header label; radiogroup seman
   }
 });
 
-test('rendered: tabs are not rendered in the drive window or compact layout; secondary blocks drop', async () => {
+// Wilson's reflow rule: compact = the full board reflowed (same elements, same look), tabs in every layout.
+const elements = (h: string) => [...h.matchAll(/data-cj-el="([^"]+)"/g)].map((m) => m[1]).sort();
+test('rendered: tabs in every layout (full, compact, drive window); compact keeps every element of the full board', async () => {
   const html = await renderVariants();
-  for (const k of ['dw', 'compact']) {
-    assert.doesNotMatch(html[k], /role="radiogroup"/, `${k}: no tab group`);
-    assert.doesNotMatch(html[k], /role="radio"/, `${k}: no tabs`);
-    assert.doesNotMatch(html[k], /cj-sec/, `${k}: secondary instruments dropped`);
-    assert.match(html[k], /data-layout="dw"/);
+  for (const k of ['dw', ...CARRIER_JET_VARIANTS.flatMap((v) => [`compact:${v.id}`, `dwc:${v.id}`])]) {
+    const h = html[k];
+    assert.match(h, /role="radiogroup"/, `${k}: tab group`);
+    assert.equal((h.match(/role="radio"/g) ?? []).length, 3, `${k}: three tabs`);
+    assert.equal((h.match(/aria-checked="true"/g) ?? []).length, 1, `${k}: one checked`);
+    assert.match(h, /data-cj-el="gps-pill"/, `${k}: GPS pill kept`);
+    assert.doesNotMatch(h, /data-layout="dw"/, `${k}: no separate essential layout`);
+  }
+  assert.match(html.dw, /data-layout="full"/, 'drive window alone renders the full board');
+  assert.match(html.explicitFalse, /data-layout="full"/, 'explicit compact={false} wins over the drive-window flag');
+  assert.doesNotMatch(html.explicitFalse, /data-compact=/);
+  assert.equal((html.explicitFalse.match(/role="radio"/g) ?? []).length, 3);
+  const hudSrc = readFileSync(join(SKIN, 'CarrierJetHud.tsx'), 'utf8');
+  assert.match(hudSrc, /const compact = compactReq === true \|\| \(compactReq === 'auto' && small\);/, 'only true / auto turn compact on');
+  assert.doesNotMatch(hudSrc, /ancestorDw \|\| compact|\|\| ancestorDw\)?;?\s*\n\s*const compact/, 'ancestor flag never forces compact');
+  for (const v of CARRIER_JET_VARIANTS) {
+    const full = elements(html[v.id]);
+    for (const k of [`compact:${v.id}`, `dwc:${v.id}`]) {
+      assert.match(html[k], /data-layout="reflow"/);
+      assert.deepEqual(elements(html[k]), full, `${k}: same elements (and counts) as the full ${v.id} board`);
+      for (const el of ['speed', 'gear', 'rpm', 'rpm-bar', 'sweep-digits', 'planform', 'sweep-tape', 'mode-windows', 'ladder', 'heading', 'aoa', 'indexer', 'accel', 'engines', 'ab-ladder', 'tabs', 'label', 'designation', 'gps-pill', 'status-pill'])
+        assert.ok(elements(html[k]).includes(el), `${k}: ${el}`);
+      assert.equal((html[k].match(/class="cj-ab" data-lit="/g) ?? []).length, 5, `${k}: five AB lights`);
+    }
   }
   assert.match(html.dw, /AB 4 · SWEEP AUTO/);
-  assert.equal((html.dw.match(/class="cj-pill/g) ?? []).length, 1, 'one status pill in the drive window');
-  // full layout: secondary blocks are aria-hidden
-  for (const v of CARRIER_JET_VARIANTS) for (const m of html[v.id].matchAll(/<div class="cj-sec[^"]*"([^>]*)>/g)) assert.match(m[1], /aria-hidden="true"/);
+  // secondary blocks stay aria-hidden in every layout
+  for (const h of Object.values(html)) for (const m of h.matchAll(/<div class="cj-sec[^"]*"([^>]*)>/g)) assert.match(m[1], /aria-hidden="true"/);
+});
+
+test('compact CSS: container units, >= 11px floors, >= 44px tabs, no transform scale', () => {
+  const css = readFileSync(join(SKIN, 'carrier-jet.css'), 'utf8');
+  const compact = css.slice(css.indexOf('/* ---------------- compact:'));
+  assert.match(compact, /\.cj\[data-layout='reflow'\] \.cj-tab \{[^}]*min-height: 44px[^}]*min-width: 44px/);
+  assert.match(compact, /calc\(11\.2px \/ var\(--cj-sv, 1\)\)/, 'SVG text floor 11px after the viewBox shrink');
+  assert.match(compact, /container-type: size/);
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /transform:\s*scale|scale\(/, 'no transform scale');
+  for (const m of compact.matchAll(/max\((\d+(?:\.\d+)?)px/g)) assert.ok(Number(m[1]) >= 11, `floor ${m[1]}px`);
+  for (const m of compact.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)) assert.ok(Number(m[1]) >= 11, `font ${m[1]}px`);
+  assert.doesNotMatch(css, /data-layout='dw'/, 'old essential layout removed');
+  assert.doesNotMatch(css, /@media[^{]*max-width/, 'no width-only media rules');
 });
 
 test('rendered: AB lights follow the abZone prop in the same render (no smoothing)', async () => {

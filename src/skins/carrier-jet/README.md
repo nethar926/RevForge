@@ -22,13 +22,21 @@ import { CarrierJetHud, CARRIER_JET_VARIANTS } from '../skins/carrier-jet';
 - `variant?: 'carrier-jet' | 'tomcat' | 'swing-wing'` with `onVariantChange?(v)`. Without a handler the skin persists
   the choice itself under `storageKey('revforge.pack.carrier-jet.variant')`, which becomes `rf.preview.carrier-jet.…` on the preview build.
   It uses the same pattern as Stellar Helm's frame toggle.
-- `driveWindow?: boolean`. An ancestor `[data-drive-window="true"]` also turns it on.
-- `compact?: boolean | 'auto'`. `true` gives the essential layout. `'auto'` switches to it when the container is under 980×500 (a 1280×800 screen mounts at about 1248×518 and keeps the full layout).
+- `driveWindow?: boolean`. An ancestor `[data-drive-window="true"]` also turns it on. It only sets `data-drive-window`; nothing is dropped.
+- `compact?: boolean | 'auto'`. `true` sets `data-compact` and reflows the board; `'auto'` does so when the container is under 980×500
+  (a 1280×800 screen mounts at about 1248×518 and keeps the full layout). An explicit `false` wins (no ancestor flag turns compact
+  on), but the board still lays itself out to fit: any container under 980×500 gets the reflowed arrangement (`data-layout="reflow"`).
 - `abZone?: number` (0..5). It is used as given, in the same render. Without it the zone comes from load, then throttle.
 - `parked?`, `heading?`, `accel?` are optional extras. Parked defaults to speed < 0.5 mph held for 2 s.
 
-Drive window and compact use the essential layout: speed, gear, RPM + bar, wing sweep (digits, planform, tape), label
-and one status pill. No tab group is rendered there, which matches Stellar Helm's toggle. Everything else is not rendered.
+### Compact = the full board, reflowed (Wilson's rule)
+There is no separate compact design. `CockpitCompact` / `GlassCompact` / `DeckCompact` render every block of the full board
+for that look (header label, F-14 chip, GPS + status pills, the Look tabs, speed, gear, RPM + bar, wing sweep digits, planform,
+tape + mode windows, pitch ladder, heading, AoA + indexer, accel ball, engine strips and AB ladder) and only rearrange them:
+dense SVG instruments get their own cells, the grid follows the container (container units, numeral cells are size containers).
+Text stays >= 11px after the SVG viewBox shrink (`--cj-sv` floor), the Look tabs stay >= 44px, no `transform: scale()`.
+Every block carries `data-cj-el="…"`, so tests and gates compare compact against the full board element by element.
+The Look tabs (CARRIER JET / TOMCAT / SWING WING) render in every layout, including compact and the drive window.
 Hosts that mount full-bleed can reserve space at the bottom with the CSS variable `--cj-reserve-bottom: 120px`.
 
 ## Preview harness (dev only)
@@ -36,6 +44,7 @@ Hosts that mount full-bleed can reserve space at the bottom with the CSS variabl
     npm run dev
     open /src/skins/carrier-jet/preview/index.html?cjDemo=cruise&cjVariant=swing-wing
     #   cjDemo=parked|cruise|high|sweep  cjVariant=carrier-jet|tomcat|swing-wing  cjDw=1|0  cjStill=1  cjDock=0
+    #   hudCompact=1|auto|0  cjBox=757x347 (pin the container)  cjRf=portrait|phone-landscape  cjSafe=T,R,B,L
     #   omit cjVariant to exercise the skin's own persistence
 
 ## Fonts (SIL OFL 1.1)

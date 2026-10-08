@@ -9,6 +9,9 @@
  *   cjStill=1                         motion prop off (wings snap)
  *   cjDock=0                          hide the mock dock/throttle (shown by default, not part of the skin)
  *   mph, rpm, gear, load, throttle, ab, unit=kph, heading, accel   overrides
+ *   cjBox=WxH                         pin the skin's container to W×H CSS px (top-left), e.g. 757x347 = drive window box
+ *   cjRf=board|window|portrait|phone-landscape   data-rf-layout on the mount wrapper (Frontend's layout picker)
+ *   cjSafe=T,R,B,L                    simulated safe-area insets (px) applied as wrapper padding
  * Mounted inside a `.theme-stage` that mirrors ThemeStage's data-drive-window attribute.
  * window.__cjSet({...props}) re-renders synchronously (flushSync), used by the abZone sync check.
  */
@@ -23,6 +26,10 @@ const q = new URLSearchParams(location.search);
 const num = (k: string): number | undefined => (q.has(k) ? Number(q.get(k)) : undefined);
 const demoKey = (q.get('cjDemo') ?? 'cruise') as CarrierJetDemoState | 'sweep';
 const qVariant = q.get('cjVariant');
+const box = q.get('cjBox')?.match(/^(\d+)x(\d+)$/);
+const rf = q.get('cjRf') ?? undefined;
+const safe = (q.get('cjSafe') ?? '').split(',').map(Number);
+const inset = safe.length === 4 && safe.every((n) => Number.isFinite(n)) ? safe : [0, 0, 0, 0];
 
 declare global {
   interface Window {
@@ -103,10 +110,14 @@ function Preview() {
   };
   return (
     <div className="theme-stage is-fullscreen" data-drive-window={dw ? 'true' : undefined} style={{ position: 'fixed', inset: 0, background: '#000' }}>
-      <div className="skin-body" style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: dockH }}>
-        <CarrierJetHud {...props} />
+      <div className="skin-body" style={box ? { position: 'absolute', left: 0, top: 0, width: +box[1], height: +box[2] } : { position: 'absolute', left: 0, top: 0, right: 0, bottom: dockH }}>
+        <div data-rf-layout={rf} style={{ position: 'absolute', inset: 0, boxSizing: 'border-box', display: 'flex', padding: `${inset[0]}px ${inset[1]}px ${inset[2]}px ${inset[3]}px` }}>
+          <div style={{ flex: '1 1 auto', minWidth: 0, minHeight: 0, position: 'relative' }}>
+            <CarrierJetHud {...props} />
+          </div>
+        </div>
       </div>
-      {dockH > 0 && <Dock dw={dw} h={dockH} />}
+      {dockH > 0 && !box && <Dock dw={dw} h={dockH} />}
     </div>
   );
 }
