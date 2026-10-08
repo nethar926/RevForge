@@ -1,5 +1,7 @@
 // Original procedural synthesis, calibrated from spectral/envelope measurements.
 // No reference recording or extracted waveform is included.
+/** time-jump cue: total length cap (attack + sweep + release + source stop), seconds. */
+export const TIME_JUMP_CUE_SECONDS=2;
 const clip=(x,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:a));
 export class ProceduralCharacter {
  constructor(ctx,destination){
@@ -7,8 +9,8 @@ export class ProceduralCharacter {
   this.master=this.node(ctx.createGain());this.master.gain.value=.65;
   this.limiter=this.node(ctx.createDynamicsCompressor());this.limiter.threshold.value=-15;this.limiter.knee.value=8;this.limiter.ratio.value=16;this.limiter.attack.value=.003;this.limiter.release.value=.16;
   this.master.connect(this.limiter);this.trim=this.node(ctx.createGain());this.trim.gain.value=.6;this.limiter.connect(this.trim);this.trim.connect(destination);
-  this.noise=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);const data=this.noise.getChannelData(0);let brown=0;
-  for(let i=0;i<data.length;i++){brown=(brown+(Math.random()*2-1)*.08)/1.015;data[i]=brown*2;}
+  this.noise=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);const data=this.noise.getChannelData(0);let walk=0;
+  for(let i=0;i<data.length;i++){walk=(walk+(Math.random()*2-1)*.08)/1.015;data[i]=walk*2;}
   const noise=this.node(ctx.createBufferSource());noise.buffer=this.noise;noise.loop=true;noise.start();this.sources.push(noise);
   // Tonal harmonic screams through moving formants, with a quieter noise bed.
   this.roar=this.node(ctx.createGain());this.roar.gain.value=0;
@@ -80,11 +82,13 @@ export class ProceduralCharacter {
   if(type==='blaster'&&(!this.active||this.kind!=='scifi'||now-this.lastCue<.18))return;
   if(type==='gearing'&&(!this.active||this.kind!=='scifi'||p.gearingNoise===0))return;
   if(type==='blaster')this.lastCue=now;
-  const duration=type==='lock'?.28:type==='time-jump'?2.4:type==='startup'?2.18:type==='shutdown'?1.65:type==='gearing'?1.15:.32;
+  const jump=type==='time-jump';
+  // time-jump: exponential decay to 1.9 s, linear release to silence by 1.96 s, sources stop 1.99 s (≤ TIME_JUMP_CUE_SECONDS, no step).
+  const duration=type==='lock'?.28:jump?TIME_JUMP_CUE_SECONDS-.1:type==='startup'?2.18:type==='shutdown'?1.65:type==='gearing'?1.15:.32;
   const gain=ctx.createGain(),osc=ctx.createOscillator(),noise=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),mix=ctx.createGain();
   const shot={sources:[osc,noise],nodes:[osc,noise,filter,mix,gain]};this.shots.add(shot);
   const level=type==='gearing'?clip(p.gearingLevel??.4)*.32:type==='blaster'?clip(p.blasterLevel??.55)*.45:clip(p.lifecycleLevel??.55)*.32;
-  gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(level,now+(type==='startup'?.45:.025));gain.gain.exponentialRampToValueAtTime(.0001,now+duration);gain.gain.setValueAtTime(0,now+duration+.01);gain.connect(this.master);
+  gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(level,now+(type==='startup'?.45:.025));gain.gain.exponentialRampToValueAtTime(.0001,now+duration);if(jump)gain.gain.linearRampToValueAtTime(0,now+duration+.06);else gain.gain.setValueAtTime(0,now+duration+.01);gain.connect(this.master);
   osc.type='sine';
   const base=this.kind==='scifi'?420:this.kind==='aerospace'?300:this.kind==='ice'?110:230;
   const from=type==='lock'?740:type==='time-jump'?90:type==='startup'?base*.22:type==='blaster'?1800:base;
@@ -94,7 +98,7 @@ export class ProceduralCharacter {
   filter.frequency.setValueAtTime(type==='startup'?120:850,now);filter.frequency.exponentialRampToValueAtTime(type==='startup'?900:75,now+duration);
   mix.gain.value=type==='blaster'?.15:.7;noise.connect(filter);filter.connect(mix);mix.connect(gain);
   let ended=0;const clean=()=>{if(++ended<2)return;for(const n of shot.nodes)try{n.disconnect();}catch{}this.shots.delete(shot);};osc.onended=clean;noise.onended=clean;
-  osc.start(now);noise.start(now);osc.stop(now+duration+.03);noise.stop(now+duration+.03);
+  const end=jump?now+TIME_JUMP_CUE_SECONDS-.01:now+duration+.03;osc.start(now);noise.start(now);osc.stop(end);noise.stop(end);
  }
  cannon(){
   const ctx=this.ctx,t=ctx.currentTime,p=this.params??{};if(!this.active||this.kind!=='scifi'||t-this.lastCue<.22)return;this.lastCue=t;
