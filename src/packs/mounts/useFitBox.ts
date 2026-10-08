@@ -22,6 +22,8 @@ export function useFitBox(designW: number, minH: number, maxH: number, fallbackH
     const host = el?.parentElement;
     if (!el || !host) return;
     const drive = !!host.closest('.rev-scene');
+    // Advertise the elastic design box so the Drive stage (useDriveWindow) can pick the free rect it fills best.
+    el.dataset.fitBox = `${designW},${minH},${maxH}`;
     const measure = () => {
       const cs = getComputedStyle(host);
       const w = host.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);

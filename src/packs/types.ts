@@ -31,6 +31,16 @@ export interface PackHudProps {
   redlineRpm: number;
   /** False when the user switched "Animated environment" off. */
   motion: boolean;
+  /**
+   * Compact variant request. ThemeStage passes `true` in drive-window mode (else undefined);
+   * mounts may override (e.g. 'auto' = the skin decides from its own fit scale).
+   */
+  compact?: boolean | 'auto';
+  /**
+   * Drive-window layout mode (Tesla in Drive: browser shrinks to ~5:4, or height ≤ 640).
+   * Mirrors `data-drive-window="true"` on `.theme-stage`. Optional; safe to ignore.
+   */
+  driveWindow?: boolean;
 }
 
 /** How the pack behaves under prefers-reduced-motion / Animated environment off. */
