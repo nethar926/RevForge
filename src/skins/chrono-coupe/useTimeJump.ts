@@ -18,19 +18,31 @@ export interface TimeJumpState {
  * - `?cc88=1`    → loop the time-jump light: held 2.0 s, released 2.0 s, repeating
  * - `?cc88=dw`   → same, with the drive-window (localized) variant forced on
  * - `?cc88=drop` → same loop, but released early at 0.8 s (checks the clean early end)
- * Absent or `0` → no override.
+ * - `?cc88=arcs` → same loop with the electric arcs forced on (even if the prop is false)
+ * - `?cc88arcs=0|1` → arcs off / on (wins over the prop and `cc88=arcs`)
+ * Absent or `0` → no override. Demo runs use a fixed arc seed per run (repeatable screenshots).
  */
 export interface Cc88Demo {
   driveWindow: boolean;
   /** How long each demo run holds the trigger (ms). */
   holdMs: number;
+  /** Force the arcs on (`cc88=arcs`). */
+  arcs: boolean;
+}
+
+/** `?cc88arcs=0|1` (undefined when absent). */
+export function cc88ArcsFromQuery(): boolean | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const v = new URLSearchParams(window.location.search).get('cc88arcs');
+  if (v == null) return undefined;
+  return !(v === '0' || v === 'false');
 }
 
 export function cc88FromQuery(): Cc88Demo | null {
   if (typeof window === 'undefined') return null;
   const v = new URLSearchParams(window.location.search).get('cc88');
   if (v == null || v === '0' || v === 'false') return null;
-  return { driveWindow: v === 'dw', holdMs: v === 'drop' ? 800 : TIME_JUMP_MS };
+  return { driveWindow: v === 'dw', holdMs: v === 'drop' ? 800 : TIME_JUMP_MS, arcs: v === 'arcs' };
 }
 
 /** Demo loop for `?cc88`: true for `holdMs`, false for the rest of a 4 s cycle, repeating. */
