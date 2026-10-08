@@ -1,7 +1,7 @@
 /**
  * Twin Ion voice helpers (EngineSynthImpl.buildScifi / applyScifiDriving). 100 % procedural:
  * every constant below is a synthesis parameter (pitch, formant centre, rate, time) set by
- * listening + spectral analysis — no recorded audio, wavetable or impulse response is used.
+ * listening + spectral analysis — no recorded audio, wavetable or convolution IR is used.
  * See docs/ion-twin-closer-match.md for the cue sheet behind these numbers.
  */
 import { clamp, lerp } from './utils';
