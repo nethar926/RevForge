@@ -33,7 +33,7 @@ import { useVehicleMedia } from "./useVehicleMedia";
 import { LEGACY_MEDIA_OPT_IN_KEY, MEDIA_BUTTONS_KEY, readMediaButtons } from "./mediaActions";
 import { NativeStudio } from "./NativeStudio";
 import { useDriveSimulation } from "./useDriveSimulation";
-import { TimeJumpCueSwitch, useTimeJump } from "./timeJumpCue";
+import { TimeJumpCueSwitch, useTimeJump, useTimeJumpArcs } from "./timeJumpCue";
 import "./forge.css";
 import "./viewport.css";
 import { storageKey } from '../lib/storageKey';
@@ -309,6 +309,8 @@ export function ForgePage({
   const tuneEngine=(p:EnginePatch)=>{onSavePatch(editableEngine(p));setPanel("studio");};
   // Chrono Coupe 88 mph time-jump: the '88 mph time jump (light and sound)' option gates the UI cue and the skin light.
   const {cueOn:timeJumpCue,setCueOn:setTimeJumpCue,active:timeJumpActive,onTimeJump}=useTimeJump(audio,theme.id);
+  // Its electric arcs ride the same switch, off under Reduce Motion (OS setting or 'Animated environment' off).
+  const timeJumpArcs=useTimeJumpArcs(timeJumpCue,motion);
   // Selecting a theme pack selects its linked engine too; plain themes are unchanged.
   const selectCluster=(id:string)=>{themes.selectSkin(id);const pack=packForThemeId(id);const engine=pack&&getBuiltin(pack.engineId);if(engine&&isEngineIdVisible(engine.id)&&audio.engineId!==engine.id)onSelectEngine(structuredClone(engine));};
   // The locked IGNITION splash keeps main's road scene behind it: until IGNITION a pack
@@ -327,7 +329,7 @@ export function ForgePage({
     >
       <main className={`rev-viewport ${!ignited&&source==='demo'?'is-launch':''}`} style={{'--hud-scale':scale,'--hud-opacity':opacity} as CSSProperties}>
         <section className="rev-scene" aria-label="Full-screen dashboard">
-          <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={onTimeJump} timeJumpActive={timeJumpActive} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
+          <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={onTimeJump} timeJumpActive={timeJumpActive} timeJumpArcs={timeJumpArcs} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
         </section>
         <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{garage.active?.name??theme.name}</small>}</div><button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button></header>
         {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>

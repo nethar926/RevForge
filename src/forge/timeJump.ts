@@ -58,3 +58,13 @@ export function createTimeJumpLight(onChange: (active: boolean) => void, duratio
     },
   };
 }
+
+/**
+ * Chrono Coupe time-jump arcs (skin prop `timeJumpArcs`): they belong to the existing
+ * '88 mph time jump (light and sound)' switch (no switch of their own) and stay off under
+ * Reduce Motion — the OS prefers-reduced-motion setting or the in-app 'Animated environment'
+ * pref switched off (`motion` false). On only when the switch is on and motion is allowed.
+ */
+export function timeJumpArcsEnabled(cueOn: boolean, reduceMotion: boolean): boolean {
+  return cueOn === true && reduceMotion !== true;
+}

@@ -46,6 +46,11 @@ export interface PackHudProps {
    * a rising 88 mph crossing while the '88 mph time jump (light and sound)' option is on. Only passed to Chrono Coupe.
    */
   timeJumpActive?: boolean;
+  /**
+   * Chrono Coupe time-jump arcs (skin default true): '88 mph time jump (light and sound)' on and
+   * Reduce Motion off (OS prefers-reduced-motion and 'Animated environment'). Only passed to Chrono Coupe.
+   */
+  timeJumpArcs?: boolean;
 }
 
 /** How the pack behaves under prefers-reduced-motion / Animated environment off. */

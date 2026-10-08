@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { storageKey } from '../lib/storageKey';
-import { createTimeJumpLight } from './timeJump';
+import { createTimeJumpLight, timeJumpArcsEnabled } from './timeJump';
 import './timeJumpCue.css';
 
 interface CuePrefsApi {
@@ -108,6 +108,38 @@ export function useTimeJump(audioEngine: object, themeId: string) {
     if (cueOn && trigger() && HAS_TIME_JUMP_CUE_API) triggerUiCue?.('time-jump');
   }, [cueOn, trigger, triggerUiCue]);
   return { cueOn, setCueOn, active, onTimeJump };
+}
+
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+function reducedMotionQuery(): MediaQueryList | null {
+  try {
+    return typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(REDUCED_MOTION_QUERY) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** OS prefers-reduced-motion as live state (follows changes while the Drive shell is open). */
+export function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() => reducedMotionQuery()?.matches ?? false);
+  useEffect(() => {
+    const mq = reducedMotionQuery();
+    if (!mq) return;
+    const sync = () => setReduced(mq.matches);
+    sync();
+    mq.addEventListener?.('change', sync);
+    return () => mq.removeEventListener?.('change', sync);
+  }, []);
+  return reduced;
+}
+
+/**
+ * Chrono Coupe `timeJumpArcs`: the '88 mph time jump (light and sound)' switch && !Reduce Motion,
+ * where Reduce Motion = OS prefers-reduced-motion or the 'Animated environment' pref off (`motion`).
+ */
+export function useTimeJumpArcs(cueOn: boolean, motion: boolean): boolean {
+  const osReduced = usePrefersReducedMotion();
+  return timeJumpArcsEnabled(cueOn, osReduced || !motion);
 }
 
 /** HIG switch row for Options (44pt target, VoiceOver: "88 mph time jump (light and sound), switch, on/off"). */
