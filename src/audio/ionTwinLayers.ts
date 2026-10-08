@@ -43,25 +43,28 @@ const CONTINUOUS: EngineParams = {
   ionSpark: 0.3,
   hum: 0.42,
   ionHum: 0.42,
+  digitalCueLevel: 0,
 };
 
 const FULL_STACK: EngineParams = {
   ...CONTINUOUS,
-  motorMix: 0.55,
-  howlMix: 0.85,
-  formantHowl: 0.85,
-  screamMix: 0.45,
+  // Stack keeps the twin low hum level with the howl (ref-E LTAS is flat 30 Hz–1 kHz)
+  motorMix: 1,
+  noiseBody: 0.75,
+  howlMix: 0.55,
+  formantHowl: 0.55,
+  screamMix: 0.15,
   screamBright: 0.5,
   surgeMix: 0.75,
-  airMix: 0.7,
-  wetHiss: 0.7,
-  air: 0.7,
-  gritMix: 0.48,
-  grit: 0.48,
+  airMix: 0.95,
+  wetHiss: 0.95,
+  air: 0.95,
+  gritMix: 0.5,
+  grit: 0.5,
   formantSpread: 0.48,
   formantShift: 0.52,
   phraseDepth: 0.16,
-  body: 0.55,
+  body: 0.7,
   wetDry: 0.22,
 };
 
@@ -95,7 +98,7 @@ const LAYER_MIX_KEY: Record<IonTwinLayerId, keyof EngineParams> = {
   grit: 'gritMix',
 };
 
-/** Default continuous-roar pack — all layers on, current TIE feel. */
+/** Default continuous-roar pack — all layers on, current Twin Ion feel. */
 export function ionTwinContinuousLayers(params: EngineParams = CONTINUOUS): IonTwinLayerConfig[] {
   return ION_TWIN_LAYER_IDS.map((id) => layerFromParams(id, params));
 }
