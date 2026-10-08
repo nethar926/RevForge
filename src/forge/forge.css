@@ -146,7 +146,7 @@
   margin-bottom: 27px;
 }
 .forge-eyebrow {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 2px;
   color: #929a9b;
@@ -262,7 +262,7 @@
 }
 .forge-speed > .forge-eyebrow {
   color: #eeeeeab0;
-  font-size: 8px;
+  font-size: 11px;
 }
 .forge-speed > div {
   display: flex;
@@ -601,7 +601,7 @@
   margin-top: 5px;
 }
 .forge-section-heading .forge-eyebrow {
-  font-size: 8px;
+  font-size: 11px;
 }
 .forge-scene-grid {
   display: grid;
@@ -1030,7 +1030,7 @@
     line-height: 1.2;
   }
   .forge-heading .forge-eyebrow {
-    font-size: 7px;
+    font-size: 11px;
     letter-spacing: 1.6px;
   }
   .forge-status {
