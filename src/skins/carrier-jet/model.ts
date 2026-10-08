@@ -8,12 +8,13 @@ export type CarrierJetVariant = 'carrier-jet' | 'tomcat' | 'swing-wing';
 
 /**
  * One label per variant: the header label AND the tab label (they must match, see tests).
+ * Sentence case in the DOM so screen readers say words; CSS uppercases it on screen.
  * carrier-jet = concept A (faithful cockpit), tomcat = B (modern glass), swing-wing = C (carrier-deck night).
  */
 export const CARRIER_JET_VARIANTS: readonly { readonly id: CarrierJetVariant; readonly label: string; readonly concept: 'A' | 'B' | 'C' }[] = [
-  { id: 'carrier-jet', label: 'CARRIER JET', concept: 'A' },
-  { id: 'tomcat', label: 'TOMCAT', concept: 'B' },
-  { id: 'swing-wing', label: 'SWING WING', concept: 'C' },
+  { id: 'carrier-jet', label: 'Carrier Jet', concept: 'A' },
+  { id: 'tomcat', label: 'Tomcat', concept: 'B' },
+  { id: 'swing-wing', label: 'Swing Wing', concept: 'C' },
 ];
 /** Fresh-profile default. */
 export const CARRIER_JET_DEFAULT_VARIANT: CarrierJetVariant = 'swing-wing';
