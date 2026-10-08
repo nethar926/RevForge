@@ -131,11 +131,14 @@ test('wiring sources: old jet skin CSS/overlay out of ThemeStage + index.css; mo
   assert.doesNotMatch(src('index.css'), /aerospace-f14/);
   const mount = src('packs/mounts/CarrierJetMount.tsx');
   assert.match(mount, /useFitBox\(/);
-  assert.match(mount, /driveWindow \|\| props\.compact === true \? true : 'auto'/);
-  assert.match(mount, /<CarrierJetHud \{\.\.\.props\} compact=\{compact\} driveWindow=\{driveWindow\} abZone=\{abZone\} \/>/);
+  // Drive window = the full board (Wilson): explicit compact={false}, never the skin's essential layout.
+  assert.match(mount, /driveWindow \? false : props\.compact === true \? true : 'auto'/);
+  assert.match(mount, /<CarrierJetHud \{\.\.\.props\} compact=\{compact\} driveWindow=\{false\} abZone=\{abZone\} \/>/);
   assert.match(mount, /useSyncExternalStore\(subscribePackAbZone, readPackAbZone/);
   assert.match(mount, /useSyncExternalStore\(subscribePackAbZone, readPackAbZone/);
-  assert.match(mount, /data-drive-window=\{driveWindow \? 'true' : undefined\}/);
+  // The mount's own drive-window state is data-box="drive" (the skin reads any ancestor data-drive-window).
+  assert.match(mount, /data-box=\{driveWindow \? 'drive' : undefined\}/);
+  assert.doesNotMatch(mount, /data-drive-window=/);
   // The skin renders the look tabs and persists the look itself: the mount adds neither.
   assert.doesNotMatch(mount, /role="radiogroup"|onVariantChange=\{|\bvariant=\{/);
   // Fill div, no transform scale (the skin sizes from its container).
