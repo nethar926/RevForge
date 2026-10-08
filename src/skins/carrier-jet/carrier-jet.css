@@ -292,6 +292,71 @@
 .cj-c-lh > .cj-svg { height: auto; flex: none; }
 .cj-c-lh > .cj-c-lad { flex: 0 1 auto; min-height: 0; }
 
+/* ---------------- phones (Frontend's layout picker: data-rf-layout on the pack mount root). Every rule below is
+   scoped under [data-rf-layout="phone-landscape"] or [data-rf-layout="portrait"]; the HUD also turns compact on there.
+   phone-landscape: the reflowed board laid out natively at 16:9 (about 656x369 inside a 750x369 safe area), centred
+   with side padding. The mount supplies the safe-area rect (env(safe-area-inset-*)); no transform scale. */
+[data-rf-layout="phone-landscape"] .cj .cj-in {
+  left: 0; right: 0; margin-inline: auto;
+  width: min(100cqw, calc((100cqh - var(--cj-reserve-bottom, 0px)) * 16 / 9));
+  --k: min(calc(min(100cqw, calc((100cqh - var(--cj-reserve-bottom, 0px)) * 16 / 9)) / 1280), calc((100cqh - var(--cj-reserve-bottom, 0px)) / 590));
+}
+[data-rf-layout="phone-landscape"] .cj .cj-hdr { row-gap: 0; }
+[data-rf-layout="phone-landscape"] .cj .cj-spd-meta, [data-rf-layout="portrait"] .cj .cj-spd-meta { white-space: nowrap; }
+[data-rf-layout="phone-landscape"] .cj[data-layout='reflow'] .cj-a-eng, [data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-eng { grid-template-columns: minmax(0, 150fr) minmax(0, 300fr); }
+/* MACH slot on phones: the same block, given the width its SUPERSONIC tag needs at 11px. */
+[data-rf-layout="phone-landscape"] .cj[data-layout='reflow'] .cj-a-gr { grid-template-columns: minmax(0, 58fr) minmax(0, 42fr); }
+[data-rf-layout="phone-landscape"] .cj[data-layout='reflow'] .cj-a-gr > .cj-crt { padding: 6px 2px; }
+[data-rf-layout="phone-landscape"] .cj[data-layout='reflow'] .cj-b-gr { grid-template-columns: minmax(0, 47fr) minmax(0, 53fr); }
+[data-rf-layout="phone-landscape"] .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-mach-tag, [data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-mach-tag { font-size: 11px; }
+
+/* portrait: the same reflowed board, its three groups stacked; each group keeps a wide-short arrangement. */
+[data-rf-layout="portrait"] .cj .cj-hdr { row-gap: 4px; padding: 4px 6px; }
+[data-rf-layout="portrait"] .cj .cj-sp { display: none; }
+[data-rf-layout="portrait"] .cj .cj-tabs { order: 10; flex: 1 0 100%; }
+[data-rf-layout="portrait"] .cj .cj-tabs .cj-tab { flex: 1 1 0; min-width: 44px; padding-inline: 4px; }
+[data-rf-layout="portrait"] .cj .cj-spd { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 8px; }
+[data-rf-layout="portrait"] .cj .cj-spd > .cj-lab { grid-column: 1 / 3; }
+[data-rf-layout="portrait"] .cj .cj-spd-line { grid-column: 1; grid-row: 2; align-self: end; }
+[data-rf-layout="portrait"] .cj .cj-spd > .cj-spd-meta { grid-column: 2; grid-row: 2; align-self: end; padding-bottom: 4px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-spd-num { font-size: min(calc((100cqh - 18px) * 1.05), 48cqw); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-spd-num { font-size: min(calc((100cqh - 16px) * 1.2), 54cqw); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-rpm .cj-k-num { font-size: min(calc(100cqh - 30px), 46cqw); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-rpm .cj-k-num { font-size: min(calc((100cqh - 28px) * 1.1), 52cqw); }
+
+/* A portrait */
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 37fr) minmax(0, 25fr) minmax(0, 38fr); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-left { grid-template-columns: minmax(0, 40fr) minmax(0, 60fr); grid-template-rows: minmax(0, 44fr) minmax(0, 56fr); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-speed { grid-column: 1; grid-row: 1; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-gr { grid-column: 1; grid-row: 2; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-eng { grid-column: 2; grid-row: 1 / 3; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-mid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-mid .cj-plab-2 { position: absolute; top: 1px; left: calc(50% + 12px); margin: 0; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-right { grid-template-rows: minmax(0, 68fr) minmax(0, 32fr); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-sweep { display: grid; grid-template-columns: minmax(0, 40fr) minmax(0, 60fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 4px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-sweep .cj-a-plan { grid-column: 1; grid-row: 1 / 3; height: 100%; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-sweep .cj-swd { position: static; grid-column: 2; grid-row: 1; flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; column-gap: 8px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-a-sweep .cj-a-tape { grid-column: 2; grid-row: 2; align-self: end; }
+
+/* B portrait */
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='tomcat'] .cj-body { grid-template-columns: minmax(0, 44fr) minmax(0, 150fr) minmax(0, 112fr) minmax(0, 56fr); grid-template-rows: minmax(0, 44fr) minmax(0, 56fr); gap: 6px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-b-left { grid-column: 1 / 3; grid-row: 1; grid-template-rows: minmax(0, 58fr) minmax(0, 42fr); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-b-sweep { grid-column: 3 / 5; grid-row: 1; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-b-aoa { grid-column: 1; grid-row: 2; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-b-mid { grid-column: 2 / 4; grid-row: 2; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-b-acc { grid-column: 4; grid-row: 2; }
+
+/* C portrait */
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 28fr) minmax(0, 40fr) minmax(0, 32fr); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-c-left { grid-template-columns: minmax(0, 46fr) minmax(0, 54fr); grid-template-rows: minmax(0, 55fr) minmax(0, 45fr); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-c-speed { grid-column: 1; grid-row: 1; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-c-gr { grid-column: 1; grid-row: 2; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-c-eng { grid-column: 2; grid-row: 1 / 3; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-deck { display: grid; grid-template-columns: minmax(0, 54fr) minmax(0, 46fr); grid-template-rows: auto minmax(0, 1fr); gap: 4px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-deck .cj-swbox { position: static; grid-column: 1; grid-row: 1; justify-self: start; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-deck .cj-c-tape { grid-column: 1; grid-row: 2; align-self: end; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-deck .cj-c-plan { grid-column: 2; grid-row: 1 / 3; height: 100%; }
+
 /* Reduce Transparency: solid fills only (no scanlines, glows, dot texture or shadows). */
 @media (prefers-reduced-transparency: reduce) {
   .cj .cj-crt, .cj .cj-crt.cj-scan { background: #061309; box-shadow: 0 0 0 2px #535c62; }

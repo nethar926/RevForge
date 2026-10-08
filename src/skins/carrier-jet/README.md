@@ -44,6 +44,16 @@ dense SVG instruments get their own cells, the grid follows the container (conta
 Text stays >= 11px after the SVG viewBox shrink (`--cj-sv` floor), the Look tabs stay >= 44px, no `transform: scale()`.
 Every block carries `data-cj-el="…"`, so tests and gates compare compact against the full board element by element.
 The Look tabs (CARRIER JET / TOMCAT / SWING WING) render in every layout, including compact and the drive window.
+### Phone layouts (Frontend's layout picker)
+The picker puts `data-rf-layout="board|window|portrait|phone-landscape"` on the pack mount root. The HUD reads it from its
+ancestors; `portrait` and `phone-landscape` always use the reflowed board, and every phone CSS rule is scoped under
+`[data-rf-layout="portrait"] .cj …` or `[data-rf-layout="phone-landscape"] .cj …` (no width-only media rules), so the
+board, window and desktop layouts are untouched.
+- `phone-landscape`: each look laid out natively at 16:9 (about 656×369 inside a 750×369 safe area), centred with side
+  padding. The mount supplies the safe-area rect (env(safe-area-inset-*)); the skin adds none of its own.
+- `portrait`: the same reflowed board with its three groups stacked (header wraps, Look tabs get their own full-width row).
+No transform scale; text >= 11px, targets >= 44px.
+
 Hosts that mount full-bleed can reserve space at the bottom with the CSS variable `--cj-reserve-bottom: 120px`.
 
 ## Preview harness (dev only)

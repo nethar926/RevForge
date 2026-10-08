@@ -98,6 +98,8 @@ interface View {
   P: CjPalette;
   variant: CarrierJetVariant;
   compact: boolean;
+  /** Frontend's phone layout (data-rf-layout on an ancestor), else null. Phone-only geometry keys off this. */
+  phone: 'portrait' | 'phone-landscape' | null;
   speed: number;
   unit: 'mph' | 'kph';
   rpm: number;
@@ -369,8 +371,8 @@ function CockpitCompact({ v }: { v: View }) {
             <AoaTape x={8} y={6} h={224} P={P} aoa={v.aoa} active={!v.parked} head={42} />
             <Indexer x={100} y={60} P={P} state={indexerState(v.aoa, !v.parked)} s={1.1} />
           </Svg>
-          <Svg w={280} h={236}>
-            <Engines x={20} y={10} w={238} h={218} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} />
+          <Svg w={v.phone ? 300 : 280} h={236}>
+            <Engines x={v.phone ? 31 : 20} y={10} w={238} h={218} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} />
           </Svg>
         </Sec>
       </div>
@@ -378,7 +380,7 @@ function CockpitCompact({ v }: { v: View }) {
         <span className="cj-plab" data-cj-el="panel-label">VDI</span>
         <div className="cj-crt cj-scan"><Svg w={390} h={250}><g className="cj-glow-sym"><Ladder x={0} y={0} w={390} h={250} P={P} pitch={v.pitch} /></g></Svg></div>
         <span className="cj-plab cj-plab-2" data-cj-el="panel-label">HSD</span>
-        <div className="cj-crt cj-scan"><Svg w={390} h={250}><Rose x={0} y={4} w={390} h={246} P={P} heading={v.heading} /></Svg></div>
+        <div className="cj-crt cj-scan"><Svg w={390} h={v.phone ? 262 : 250}><Rose x={0} y={v.phone ? 16 : 4} w={390} h={246} P={P} heading={v.heading} /></Svg></div>
       </Sec>
       <div className="cj-panel cj-a-right">
         <span data-cj-el="panel-label" className="cj-plab" aria-hidden="true">WING SWEEP</span>
@@ -458,8 +460,8 @@ function DeckCompact({ v }: { v: View }) {
         </Sec>
       </div>
       <SweepMeter v={v} className="cj-deck">
-        <Svg w={360} h={290} className="cj-c-plan">
-          <DeckMarks w={360} h={290} cx={180} />
+        <Svg w={360} h={v.phone ? 250 : 290} className="cj-c-plan">
+          <DeckMarks w={360} h={v.phone ? 250 : 290} cx={180} />
           <Planform cx={178} cy={128} s={1.05} P={P} ghosts arc cmd={v.cmd} />
         </Svg>
         <Svg w={368} h={116} className="cj-c-tape">
@@ -473,8 +475,8 @@ function DeckCompact({ v }: { v: View }) {
           <Svg w={220} h={56}><HeadingTape x={0} y={6} w={220} P={P} heading={v.heading} span={40} /></Svg>
         </div>
         <Svg w={150} h={340}><Approach x={0} y={6} w={150} h={330} P={P} cell={accelCell(v.accel)} active={!v.parked} label={accelWord(v.accel, v.parked)} /></Svg>
-        <Svg w={84} h={420}>
-          <AoaTape x={6} y={6} h={254} P={P} aoa={v.aoa} active={!v.parked} head={38} />
+        <Svg w={v.phone ? 96 : 84} h={420}>
+          <AoaTape x={v.phone ? 12 : 6} y={v.phone ? 18 : 6} h={v.phone ? 242 : 254} P={P} aoa={v.aoa} active={!v.parked} head={38} />
           <Indexer x={14} y={300} P={P} state={indexerState(v.aoa, !v.parked)} />
         </Svg>
       </Sec>
@@ -499,11 +501,16 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
   const compactReq = compactFromQuery() ?? p.compact ?? false;
   const [ancestorDw, setAncestorDw] = useState(false);
   const [small, setSmall] = useState(false);
+  // Frontend's layout picker sets data-rf-layout (board | window | portrait | phone-landscape) on the pack mount root.
+  // Phone layouts always get the reflowed board; their CSS is scoped under [data-rf-layout="…"] .cj.
+  const [rfPhone, setRfPhone] = useState<View['phone']>(null);
   useLayoutEffect(() => {
     const el = rootRef.current;
     if (!el) return;
     const check = () => {
       setAncestorDw(!!el.parentElement?.closest('[data-drive-window="true"]'));
+      const rf = el.parentElement?.closest('[data-rf-layout]')?.getAttribute('data-rf-layout');
+      setRfPhone(rf === 'portrait' || rf === 'phone-landscape' ? rf : null);
       setSmall(el.clientWidth > 0 && (el.clientWidth < AUTO_COMPACT_W || el.clientHeight < AUTO_COMPACT_H));
     };
     check();
@@ -513,16 +520,20 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
     const stage = el.closest('.theme-stage');
     const mo = stage ? new MutationObserver(check) : null;
     mo?.observe(stage!, { attributes: true, attributeFilter: ['data-drive-window'] });
+    // The layout picker may set or change data-rf-layout on any ancestor after mount.
+    const rfo = new MutationObserver(check);
+    for (let a = el.parentElement; a; a = a.parentElement) rfo.observe(a, { attributes: true, attributeFilter: ['data-rf-layout'] });
     return () => {
       ro.disconnect();
       mo?.disconnect();
+      rfo.disconnect();
     };
   }, [compactReq]);
   // compact (true, or 'auto' on a small container) flags data-compact. An explicit compact={false} wins: no ancestor
   // flag (drive window, data-box) can turn it on. The full board still lays itself out to fit, so a small container
   // (or a phone layout) gets the reflowed arrangement of the same board either way.
   const compact = compactReq === true || (compactReq === 'auto' && small);
-  const reflow = compact || small;
+  const reflow = compact || small || rfPhone !== null;
   const dw = !!p.driveWindow || ancestorDw;
 
   // Telemetry.
@@ -645,6 +656,7 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
     P: PALETTES[variant],
     variant,
     compact: reflow,
+    phone: rfPhone,
     speed: Math.max(0, p.speed),
     unit,
     rpm,
