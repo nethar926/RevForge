@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type AnimationEvent, type CSSProperties } from 'react';
 import { useHudCompact, type HudCompact } from './useHudCompact';
 import './night-pursuit.css';
+import './night-pursuit-physical.css';
 
 export type NightPursuitMode = 'power' | 'auto' | 'norm' | 'pursuit';
 
@@ -17,9 +18,17 @@ interface Props {
   redlineRpm?: number;
   /** Current gear, 0 = neutral. Shown as a green 7-seg digit ("N" at 0). */
   gear?: number;
-  /** Initial / controlled mode. Default NORM. */
+  /**
+   * Initial / controlled mode. Default `norm` (button label "Cruise"). `'power'` is kept in the
+   * type for old saves only (Frontend migrates it to `norm`); there is no Power button.
+   */
   mode?: NightPursuitMode;
   onModeChange?: (mode: NightPursuitMode) => void;
+  /**
+   * Auto mode has kicked into pursuit (host decides, e.g. hard throttle). Default false.
+   * Only meaningful while `mode === 'auto'`: the HUD runs hot, only the Auto key stays lit.
+   */
+  autoEngaged?: boolean;
   /**
    * Audio Synth voice envelope, 0..1 (post-gain loudness of the engine bus).
    * Drives the center voice box. Falls back to throttle/rpm/load blend when absent.
@@ -132,18 +141,31 @@ function SegBar({
   );
 }
 
-const MODES: { id: NightPursuitMode; label: string; amber?: boolean }[] = [
-  { id: 'power', label: 'Power' },
-  { id: 'auto', label: 'Auto', amber: true },
-  { id: 'norm', label: 'Norm', amber: true },
+/** Drive-mode keys, in rail order. `norm` keeps its id (saves, audio boost) but reads "Cruise". */
+export const NP_MODES: readonly { id: Exclude<NightPursuitMode, 'power'>; label: string }[] = [
+  { id: 'auto', label: 'Auto' },
+  { id: 'norm', label: 'Cruise' },
   { id: 'pursuit', label: 'Pursuit' },
 ];
+
+/** Hot HUD (fast scanner, red plate, chase status): Pursuit, legacy Power, or Auto once engaged. */
+function npPursuitHot(mode: NightPursuitMode, autoEngaged = false): boolean {
+  return mode === 'pursuit' || mode === 'power' || (mode === 'auto' && autoEngaged);
+}
+
+/** Footer mode text: the key label in caps; engaged Auto reads "AUTO · PURSUIT". */
+function npModeStatus(mode: NightPursuitMode, autoEngaged = false): string {
+  if (mode === 'auto' && autoEngaged) return 'AUTO · PURSUIT';
+  return (NP_MODES.find((m) => m.id === mode)?.label ?? mode).toUpperCase();
+}
+
+let npRailSeq = 0;
 
 const SCANNER_CELLS = 36;
 
 /**
  * Night Pursuit Drive HUD — matte-black command dash with crimson scanner,
- * 7-seg banks, dual CRT pods, and POWER/AUTO/NORM/PURSUIT mode rail.
+ * 7-seg banks, dual CRT pods, and a "Drive mode" rail of AUTO / CRUISE / PURSUIT keys.
  * Original art only. Decorative SPEED 7-seg mirrors telemetry; app may still own hero SPEED.
  */
 export function NightPursuitOverlay({
@@ -154,6 +176,7 @@ export function NightPursuitOverlay({
   speedMph,
   mode: modeProp,
   onModeChange,
+  autoEngaged = false,
   voiceEnvelope,
   onScannerPass,
   rpm: rpmAbs,
@@ -183,7 +206,9 @@ export function NightPursuitOverlay({
   const tachMax = Math.max(8000, Math.ceil((redline * 1.1) / 1000) * 1000);
   const tachFrac = Math.min(1, rpmReal / tachMax);
   const gearText = gear == null ? null : gear <= 0 ? 'N' : String(Math.min(9, gear));
-  const pursuitHot = mode === 'pursuit' || mode === 'power';
+  const pursuitHot = npPursuitHot(mode, autoEngaged);
+  // Stable per-instance id for the rail's aria-labelledby (several HUDs can be on screen).
+  const railLabelId = useMemo(() => `np-mode-label-${++npRailSeq}`, []);
 
   const env = voiceEnvelope == null ? null : Math.max(0, Math.min(1, voiceEnvelope));
   const voiceCols = useMemo(() => {
@@ -247,16 +272,28 @@ export function NightPursuitOverlay({
       })}
     </div>
   );
+  // "Drive mode" is a plain caption (not a control); the keys are a labelled group, so
+  // VoiceOver reads "Drive mode, group". Only the selected key is lit, even when Auto is engaged.
   const modeRail = (extra = '') => (
-    <div className={`np-mode-rail${extra}`} role="group" aria-label="Drive mode" onClick={(e) => e.stopPropagation()}>
-      {MODES.map((m) => (
+    <div
+      className={`np-mode-rail${extra}`}
+      role="group"
+      aria-labelledby={railLabelId}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="np-mode-label" id={railLabelId}>
+        Drive mode
+      </div>
+      {NP_MODES.map((m) => (
         <button
           key={m.id}
           type="button"
-          className={`np-mode-btn${m.amber ? ' amber' : ''}${mode === m.id ? ' active' : ''}`}
+          className={`np-mode-btn${mode === m.id ? ' active' : ''}`}
           aria-pressed={mode === m.id}
+          data-engaged={m.id === 'auto' && mode === 'auto' && autoEngaged ? 'true' : undefined}
           onClick={() => setMode(m.id)}
         >
+          <span className="np-key-lamp" aria-hidden />
           {m.label}
         </button>
       ))}
@@ -398,7 +435,7 @@ export function NightPursuitOverlay({
         <div className="np-status">
           <span className="np-pack-tag">Night Pursuit · Experimental</span>
           <span>
-            {pursuitHot ? 'Scanner chase' : 'Scanner idle'} · Mode {mode.toUpperCase()}
+            {pursuitHot ? 'Scanner chase' : 'Scanner idle'} · Mode {npModeStatus(mode, autoEngaged)}
           </span>
         </div>
         <div className="np-yoke" title="Decorative yoke motif" />

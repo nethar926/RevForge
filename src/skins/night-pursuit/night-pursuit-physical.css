@@ -1,0 +1,236 @@
+/**
+ * Night Pursuit — physical dash layer (loaded after night-pursuit.css).
+ * Drive-mode rail of 1980s push keys + recessed bezels, glass and panel depth on the dash.
+ * Paint only on existing elements (no size / spacing changes; the lamp and caption are new),
+ * so every layout (1280 four-column, <=760px stack, drive-window 'drive' box, compact) keeps
+ * its geometry.
+ * Static: no transitions, no animation, nothing flashes.
+ */
+
+/* ——— Panel surface: matte dash plate with a lit top lip and a shaded lower edge ——— */
+.np-dash {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0, rgba(255, 255, 255, 0) 14px),
+    linear-gradient(180deg, rgba(20, 20, 21, 0.55) 0%, rgba(6, 6, 6, 0.7) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -10px 18px -10px rgba(0, 0, 0, 0.85);
+}
+.np-footer {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+/* ——— Pods sit recessed in the panel: shadow falls in from the top, lip catches light below ——— */
+.np-pod {
+  position: relative;
+  border-color: #0e0e0e #1c1c1c #2e2e2e;
+  box-shadow:
+    inset 0 0 0 1px #2a2a2a,
+    inset 0 4px 8px rgba(0, 0, 0, 0.8),
+    inset 0 0 36px rgba(0, 0, 0, 0.75),
+    0 0 0 1px #000,
+    0 1px 0 1px rgba(255, 255, 255, 0.07);
+}
+/* Instrument glass over each pod: one faint diagonal reflection, no colour shift. */
+.np-pod::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0) 3px),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.022) 0%, rgba(255, 255, 255, 0.008) 34%, rgba(255, 255, 255, 0) 36%);
+}
+
+/* ——— 7-segment banks: recessed smoked window around each bank ———
+ * The glow moves from the row onto the digits / unit (same drop-shadow), so the window
+ * itself does not glow. Window = row box + 2px bezel ring drawn with box-shadow. */
+.np-seg-crimson,
+.np-seg-amber,
+.np-seg-green {
+  filter: none;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #030303 0%, #080808 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.95),
+    0 0 0 2px #040404,
+    0 0 0 3px #262626,
+    0 1px 0 3px rgba(255, 255, 255, 0.05);
+}
+.np-seg-crimson > * {
+  filter: drop-shadow(0 0 8px rgba(255, 26, 26, 0.36));
+}
+.np-seg-amber > * {
+  filter: drop-shadow(0 0 8px var(--skin-amber-glow, rgba(255, 176, 0, 0.45)));
+}
+.np-seg-green > * {
+  filter: drop-shadow(0 0 8px var(--skin-green-glow, rgba(0, 200, 83, 0.4)));
+}
+/* Crimson is the darkest digit colour. Ghost segments are a translucent tint (same dim red on
+ * the smoked window) so the drop-shadow, which glows from alpha, comes from lit segments only;
+ * lit segments a touch hotter and the halo a touch softer, so lit vs ghost / window stays
+ * >= 4.5:1 measured on the rendered pixels with the glass, glow and scanlines on top. */
+.np-seg-crimson .np-seg-off {
+  fill: rgba(255, 26, 26, 0.08);
+}
+.np-seg-crimson .np-seg-on {
+  fill: #ff3333;
+}
+
+/* ——— Drive-mode rail: recessed switch plate, caption, three push keys ——— */
+.np-mode-rail {
+  border-radius: 6px;
+  background: linear-gradient(180deg, #0b0b0c 0%, #060606 100%);
+  box-shadow:
+    0 0 0 4px #080808,
+    0 0 0 5px #1f1f1f,
+    0 1px 0 5px rgba(255, 255, 255, 0.05),
+    inset 0 3px 6px rgba(0, 0, 0, 0.8);
+}
+/* Caption, not a control: sentence case in the DOM, small caps here like the pod labels. */
+.np-mode-label {
+  flex: none;
+  align-self: center;
+  font-size: 11.25px;
+  line-height: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--skin-cyan, #00e5ff);
+  text-shadow: 0 0 6px var(--skin-cyan-glow, rgba(0, 229, 255, 0.35));
+  pointer-events: none;
+  user-select: none;
+}
+.np-compact .np-mode-label {
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+}
+
+/* Keycap (up): dark face with a top bevel, lit top edge, dark skirt and a cast shadow. */
+.np-overlay .np-mode-btn {
+  position: relative;
+  color: #d0d0d0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0, rgba(255, 255, 255, 0) 45%),
+    linear-gradient(180deg, #3a3a3d 0%, #242426 100%);
+  border-color: #505054 #2c2c2f #0c0c0d;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 #040405,
+    0 5px 7px rgba(0, 0, 0, 0.6);
+}
+/* Keycap (down): the selected key is held in, face in shadow, legend lit orange. */
+.np-overlay .np-mode-btn.active,
+.np-overlay .np-mode-btn:active {
+  transform: translateY(2px);
+  background: linear-gradient(180deg, #19191a 0%, #262628 100%);
+  border-color: #0a0a0b #26262a #3a3a3e;
+  box-shadow:
+    inset 0 3px 6px rgba(0, 0, 0, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 0 #040405;
+}
+.np-overlay .np-mode-btn.active {
+  color: #ff9f2e;
+  text-shadow: 0 0 6px rgba(255, 140, 0, 0.45);
+}
+/* Second cue (not colour alone): indicator lamp on the keycap, dark lens when off, lit when on. */
+.np-key-lamp {
+  position: absolute;
+  top: 5px;
+  left: calc(50% - 9px);
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: #1c1206;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+.np-mode-btn.active .np-key-lamp {
+  background: linear-gradient(180deg, #ffd27a 0%, #ff8a00 100%);
+  box-shadow: 0 0 6px 1px rgba(255, 140, 0, 0.75), inset 0 0 0 1px rgba(255, 220, 160, 0.6);
+}
+/* Auto engaged: Auto stays the only lit key; its lamp burns pursuit red. */
+.np-mode-btn.active[data-engaged] .np-key-lamp {
+  background: linear-gradient(180deg, #ff9a8a 0%, #ff1a1a 100%);
+  box-shadow: 0 0 6px 1px rgba(255, 26, 26, 0.75), inset 0 0 0 1px rgba(255, 190, 180, 0.6);
+}
+
+/* ——— Increase Contrast: flat keys, brighter legends, ring lamp vs solid lamp, no glass ——— */
+@media (prefers-contrast: more) {
+  .np-pod::after {
+    display: none;
+  }
+  .np-overlay .np-mode-btn {
+    color: #f2f2f2;
+    background: #2a2a2c;
+    border-color: #9a9a9a;
+    text-shadow: none;
+    /* Edge as an inset ring: some hosts zero the button border. */
+    box-shadow: inset 0 0 0 2px #9a9a9a, 0 3px 0 #040405;
+  }
+  .np-overlay .np-mode-btn.active {
+    color: #ffb24d;
+    background: #121212;
+    border-color: #ffb24d;
+    box-shadow: inset 0 0 0 2px #ffb24d;
+    text-shadow: none;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+  .np-key-lamp {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px #c8c8c8;
+  }
+  .np-mode-btn.active .np-key-lamp,
+  .np-mode-btn.active[data-engaged] .np-key-lamp {
+    top: 4px;
+    height: 6px;
+    background: #ffb24d;
+    box-shadow: 0 0 0 1px #fff;
+  }
+  .np-mode-label {
+    text-shadow: none;
+  }
+}
+
+/* ——— Forced colours (Windows High Contrast etc.): system colours, shape cues kept ——— */
+@media (forced-colors: active) {
+  .np-pod::after {
+    display: none;
+  }
+  .np-overlay .np-mode-btn {
+    forced-color-adjust: none;
+    color: ButtonText;
+    background: ButtonFace;
+    border-color: ButtonText;
+    box-shadow: inset 0 0 0 2px ButtonText;
+    text-shadow: none;
+  }
+  .np-overlay .np-mode-btn.active {
+    color: HighlightText;
+    background: Highlight;
+    border-color: HighlightText;
+    box-shadow: inset 0 0 0 2px HighlightText;
+    text-shadow: none;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+  .np-key-lamp {
+    forced-color-adjust: none;
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px ButtonText;
+  }
+  .np-mode-btn.active .np-key-lamp,
+  .np-mode-btn.active[data-engaged] .np-key-lamp {
+    top: 4px;
+    height: 6px;
+    background: HighlightText;
+    box-shadow: none;
+  }
+}
