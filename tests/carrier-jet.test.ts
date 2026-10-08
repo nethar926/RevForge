@@ -82,7 +82,7 @@ test('AB zone: abZone prop wins as-is; else load thresholds; else throttle', () 
 
 test('variants: ids, labels (tab = header), default swing-wing, storage key shape', () => {
   assert.deepEqual(CARRIER_JET_VARIANTS.map((v) => v.id), ['carrier-jet', 'tomcat', 'swing-wing']);
-  assert.deepEqual(CARRIER_JET_VARIANTS.map((v) => v.label), ['CARRIER JET', 'TOMCAT', 'SWING WING']);
+  assert.deepEqual(CARRIER_JET_VARIANTS.map((v) => v.label), ['Carrier Jet', 'Tomcat', 'Swing Wing']);
   assert.equal(CARRIER_JET_DEFAULT_VARIANT, 'swing-wing');
   assert.equal(CARRIER_JET_VARIANT_KEY, 'revforge.pack.carrier-jet.variant');
   const store = readFileSync(join(SKIN, 'variantStore.ts'), 'utf8');

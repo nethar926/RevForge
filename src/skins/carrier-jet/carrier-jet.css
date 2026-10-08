@@ -50,7 +50,7 @@
 
 /* ---------------- header + pills */
 .cj-hdr { display: flex; align-items: center; gap: calc(10 * var(--k)); min-height: max(56px, calc(60 * var(--k))); padding: 4px calc(12 * var(--k)); }
-.cj-lbl { font-size: max(16px, calc(21 * var(--k))); font-weight: 700; letter-spacing: 0.22em; white-space: nowrap; }
+.cj-lbl { font-size: max(16px, calc(21 * var(--k))); font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; white-space: nowrap; }
 .cj-desig { font-size: max(12px, calc(13 * var(--k))); font-weight: 600; letter-spacing: 0.1em; padding: 3px 6px; border: 1.5px solid currentColor; white-space: nowrap; }
 .cj-sp { flex: 1; }
 .cj-pill { display: inline-flex; align-items: center; height: max(26px, calc(28 * var(--k))); padding: 0 calc(10 * var(--k)); font-size: max(12px, calc(13 * var(--k))); font-weight: 600; letter-spacing: 0.08em; white-space: nowrap; border: 1.5px solid; }
@@ -73,6 +73,7 @@
   font-size: max(13px, calc(14 * var(--k)));
   font-weight: 600;
   letter-spacing: 0.12em;
+  text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;

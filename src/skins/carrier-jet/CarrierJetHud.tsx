@@ -87,7 +87,7 @@ function useReducedMotion(): boolean {
 
 /** Below this the full three-panel board no longer fits (container CSS px) → essential layout when compact='auto'. */
 const AUTO_COMPACT_W = 980;
-const AUTO_COMPACT_H = 520;
+const AUTO_COMPACT_H = 500; // 1280x800 mounts get ~1248x518, which must stay full layout
 
 interface View {
   P: CjPalette;

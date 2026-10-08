@@ -23,7 +23,7 @@ import { CarrierJetHud, CARRIER_JET_VARIANTS } from '../skins/carrier-jet';
   the choice itself under `storageKey('revforge.pack.carrier-jet.variant')`, which becomes `rf.preview.carrier-jet.…` on the preview build.
   It uses the same pattern as Stellar Helm's frame toggle.
 - `driveWindow?: boolean`. An ancestor `[data-drive-window="true"]` also turns it on.
-- `compact?: boolean | 'auto'`. `true` gives the essential layout. `'auto'` switches to it when the container is under 980×520.
+- `compact?: boolean | 'auto'`. `true` gives the essential layout. `'auto'` switches to it when the container is under 980×500 (a 1280×800 screen mounts at about 1248×518 and keeps the full layout).
 - `abZone?: number` (0..5). It is used as given, in the same render. Without it the zone comes from load, then throttle.
 - `parked?`, `heading?`, `accel?` are optional extras. Parked defaults to speed < 0.5 mph held for 2 s.
 
