@@ -19,7 +19,7 @@ export class CharacterEngine implements EngineSynth {
  async start(){await this.base.start();if(!this.disposed){this.running=true;await this.mixer.start();if(this.disposed||!this.running)return;this.fx.start();if(this.base.toPatch().kind==='aerospace'&&Number(this.getParams().jetSimulation??0)!==0)this.jet.start();if(this.graphActive()){this.graph.configure(this.graphDesc);this.graph.start();}}}
  stop(){this.mixer.stop();this.running=false;this.lockStage='none';const hidden=typeof document!=='undefined'&&document.visibilityState==='hidden';this.graph.stop(hidden?0:1.8);this.base.stop();this.fx.stop(hidden);this.jet.stop();}
  dispose(){this.disposed=true;this.mixer.dispose();this.base.dispose();this.fx.dispose();this.jet.dispose();this.graph.dispose();this.envelope.dispose();this.mainSpatial.disconnect();this.mainBus.disconnect();this.mixLimiter.disconnect();this.acoustic.disconnect();this.legacyGate.disconnect();this.raw.disconnect();this.dry.disconnect();this.output.disconnect();}
- setDriving(d:DrivingInput){this.mixer.update(d);const kind=this.base.toPatch().kind;const rpm=Math.max(0,Math.min(1,d.rpmNorm??d.speed));const load=Math.max(0,Math.min(1,d.throttle));this.acoustic.frequency.setTargetAtTime(kind==='ev-whine'?2600+rpm*6200:850+rpm*4500+load*1500,this.context.currentTime,.09);const next=kind==='scifi'&&this.running?nextLockStage(rpm,this.lockStage):'none';if(next!==this.lockStage){this.lockStage=next;this.onLockStageChange?.(next);if(next==='lock'&&this.lockSfx)this.fx.cue('lock');}this.base.setDriving(d);this.fx.update(d);if(this.base.toPatch().kind==='aerospace'&&Number(this.getParams().jetSimulation??0)!==0)this.jet.update(d);}
+ setDriving(d:DrivingInput){this.mixer.update(d);const kind=this.base.toPatch().kind;const rpm=Math.max(0,Math.min(1,d.rpmNorm??d.speed));const load=Math.max(0,Math.min(1,d.throttle));const hint=this.base.getAcousticCutoffHint?.();this.acoustic.frequency.setTargetAtTime(hint!==undefined&&Number.isFinite(hint)?hint:kind==='ev-whine'?2600+rpm*6200:850+rpm*4500+load*1500,this.context.currentTime,.09);const next=kind==='scifi'&&this.running?nextLockStage(rpm,this.lockStage):'none';if(next!==this.lockStage){this.lockStage=next;this.onLockStageChange?.(next);if(next==='lock'&&this.lockSfx)this.fx.cue('lock');}this.base.setDriving(d);this.fx.update(d);if(this.base.toPatch().kind==='aerospace'&&Number(this.getParams().jetSimulation??0)!==0)this.jet.update(d);}
  playStarter(){this.base.playStarter?.();}
  playShutoff(){this.base.playShutoff?.();}
  /** Pack hooks (src/packs/audioBridge PackAudioHooks) — always present on the wrapper so typeof checks pass. */
@@ -30,6 +30,10 @@ export class CharacterEngine implements EngineSynth {
  /** Quiet Current HUD power state (same internal state as the voice); level = wrapper loudness. null on other packs. */
  getPowerState():QuietCurrentEnvelope|null{const s=this.base.getPowerState?.()??null;return s?{...s,level:this.disposed?0:this.envelope.read()}:null;}
  getVoiceEnvelope():number{return this.getEnvelope();}
+ /** Tomcat: lit afterburner zone 0..5 (0 = off); 0 on other packs. Read-only, same state as the sound. */
+ getAfterburnerZone():number{return this.disposed?0:(this.base.getAfterburnerZone?.()??0);}
+ /** Tomcat: subscribe to AB zone changes; returns an unsubscribe. Safe no-op subscription on other packs. */
+ onAfterburnerZoneChange(cb:(zone:number)=>void):()=>void{return this.base.onAfterburnerZoneChange?.(cb)??(()=>undefined);}
  scannerTick(edge:ScannerEdge='right'):void{if(!this.disposed&&this.running)this.base.scannerTick?.(edge);}
  setPursuitBoost(amount:number):void{const v=Math.max(0,Math.min(1,Number.isFinite(amount)?amount:0));if(typeof this.base.setPursuitBoost==='function')this.base.setPursuitBoost(v);else this.base.setParams({pursuitBoost:v});}
  /** Chrono Coupe charge 0..1 — forwarded (base ignores it on other packs). Safe when stopped. */
