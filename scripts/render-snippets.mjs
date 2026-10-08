@@ -128,6 +128,19 @@ async function renderNightPursuitPreview() {
 }
 
 /**
+ * Tomcat preview (aerospace-f14, 7 s): settled idle → throttle to full → twin spool-up → afterburner
+ * zones 1-5. Runs the real live chain (CharacterEngine → EngineSynthImpl → tomcatVoice.js) through
+ * scripts/tomcat-render.mjs, level-matched to the previous preview's integrated loudness.
+ */
+async function renderTomcatPreviewBuffer() {
+  const { renderPreview } = await import('./tomcat-render.mjs');
+  const { chans } = await renderPreview();
+  // bufferToWav writes at 0.9 → pre-compensate so the file lands on the measured target
+  const out = chans.map((x) => x.map((v) => v / 0.9));
+  return { numberOfChannels: out.length, length: out[0].length, sampleRate: SR, getChannelData: (c) => out[c] };
+}
+
+/**
  * Stellar Helm preview (~4.3 s): power-up sweep settling into the hum → cruise rising with
  * speed → boost. Runs the real stellarHelmVoice.js graph (scripts/stellar-helm-render.mjs).
  */
@@ -297,54 +310,6 @@ function buildEv(ctx, master, { climb = false, regen = false, dual = false } = {
     scheduleParam(buzzG.gain, t, 0.03 + rpm * 0.08);
     const regenAmt = regen && d.throttle < 0.25 && d.speed > 0.1 ? 0.2 : 0;
     scheduleParam(roarG.gain, t, 0.05 + rpm * 0.18 + regenAmt);
-  });
-}
-
-function buildAero(ctx, master) {
-  const pink = makeNoise(ctx, 2, true);
-  const white = makeNoise(ctx, 2, false);
-  const spool = ctx.createOscillator();
-  spool.type = 'sawtooth';
-  spool.frequency.value = 90;
-  spool.start();
-  const spoolG = ctx.createGain();
-  spoolG.gain.value = 0;
-  const spoolF = ctx.createBiquadFilter();
-  spoolF.type = 'bandpass';
-  spoolF.Q.value = 6;
-  spool.connect(spoolF);
-  spoolF.connect(spoolG);
-  spoolG.connect(master);
-
-  const roarF = ctx.createBiquadFilter();
-  roarF.type = 'lowpass';
-  roarF.frequency.value = 350;
-  const roarG = ctx.createGain();
-  roarG.gain.value = 0;
-  pink.connect(roarF);
-  roarF.connect(roarG);
-  roarG.connect(master);
-
-  const abF = ctx.createBiquadFilter();
-  abF.type = 'highpass';
-  abF.frequency.value = 2500;
-  const abG = ctx.createGain();
-  abG.gain.value = 0;
-  white.connect(abF);
-  abF.connect(abG);
-  abG.connect(master);
-
-  pink.start();
-  white.start();
-
-  automate(ctx, (t, d) => {
-    const spoolAmt = Math.min(1, d.throttle * 0.7 + d.speed * 0.5);
-    scheduleParam(spool.frequency, t, 70 + spoolAmt * 180);
-    scheduleParam(spoolF.frequency, t, 800 + spoolAmt * 2000);
-    scheduleParam(spoolG.gain, t, 0.04 + spoolAmt * 0.12);
-    scheduleParam(roarG.gain, t, 0.08 + spoolAmt * 0.28 + d.throttle * d.throttle * 0.2);
-    const ab = Math.max(0, d.throttle - 0.55) / 0.45;
-    scheduleParam(abG.gain, t, ab * ab * 0.35);
   });
 }
 
@@ -606,7 +571,7 @@ const PACKS = [
   { id: 'ev-inverter-climb', file: 'ev-inverter-climb.wav', build: (c, m) => buildEv(c, m, { climb: true }) },
   { id: 'ev-regen-howl', file: 'ev-regen-howl.wav', build: (c, m) => buildEv(c, m, { regen: true }) },
   { id: 'ev-dual-motor', file: 'ev-dual-motor.wav', build: (c, m) => buildEv(c, m, { dual: true }) },
-  { id: 'aerospace-f14', file: 'aerospace-f14.wav', build: (c, m) => buildAero(c, m) },
+  { id: 'aerospace-f14', file: 'aerospace-f14.wav', render: renderTomcatPreviewBuffer },
   { id: 'ion-twin', file: 'ion-twin.wav', build: (c, m) => buildScifi(c, m) },
   { id: 'night-pursuit', file: 'night-pursuit.wav', render: renderNightPursuitPreview },
   { id: 'chrono-coupe', file: 'chrono-coupe.wav', render: renderChronoCoupePreview },

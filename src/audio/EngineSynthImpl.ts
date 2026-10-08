@@ -63,6 +63,17 @@ import {
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
 import { storageKey } from '../lib/storageKey';
 import pulseWorkletUrl from './worklets/pulse-engine-processor.js?url';
+import { isTomcatPatch } from './tomcatPack';
+import {
+  TC_SHUTOFF_SECONDS,
+  TomcatVoice,
+  createTomcatDriveState,
+  stepTomcatDrive,
+  tomcatBeginShutdown,
+  tomcatBeginStart,
+  tomcatSetRunning,
+  type TomcatDrive,
+} from './tomcatVoice';
 
 type Kind = EnginePatch['kind'];
 
@@ -223,6 +234,8 @@ interface GraphHandles {
   ccBus?: ChronoCoupeBus;
   /** Stellar Helm drive hum voice (replaces the EV whine graph for that topology) */
   helmVoice?: StellarHelmVoice;
+  /** Tomcat twin-turbofan voice (replaces the legacy aerospace graph for the aerospace-f14 builtin) */
+  tcVoice?: TomcatVoice;
 }
 
 const workletContexts = new WeakSet<BaseAudioContext>();
@@ -303,6 +316,15 @@ export class EngineSynthImpl implements EngineSynth {
   /** Stellar Helm lagged drive state (speed glide, throttle attack/release, reverse, boost). */
   private helmState = createStellarHelmDriveState();
   private helmLastMs = 0;
+  /** Tomcat twin N1/N2 spool + afterburner staging model (drives the voice and the AB zone getter). */
+  private tcState = createTomcatDriveState();
+  private tcLastMs = 0;
+  private tcDrive: TomcatDrive | null = null;
+  private tcSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  private tcZoneListeners = new Set<(zone: number) => void>();
+  private tcLastZone = 0;
+  /** True when the latest setDriving call supplied `load` (Tomcat stages AB from load when given). */
+  private lastLoadProvided = false;
 
   constructor(ctx: AudioContext, patch?: EnginePatch) {
     this.context = ctx;
@@ -365,6 +387,14 @@ export class EngineSynthImpl implements EngineSynth {
 
     smooth(this.output.gain, 1, 0.08, this.context);
     this.started = true;
+    if (this.g.tcVoice) {
+      // Tomcat: start() runs the engine start sequence (air starter → light-off → idle). It is the
+      // audible unlock confirmation, so no idle chuff; a following 'starter' cue is a no-op.
+      tomcatBeginStart(this.tcState);
+      this.tcLastMs = 0;
+      this.applyTomcatDriving(this.driving, false);
+      return;
+    }
     if (this.g.helmVoice) {
       // Stellar Helm: the hum itself powers up (no combustion chuff on a starship drive)
       this.g.helmVoice.powerUp(1.6, undefined, 0);
@@ -377,6 +407,14 @@ export class EngineSynthImpl implements EngineSynth {
 
   stop(): void {
     this.started = false;
+    if (this.g.tcVoice && this.tcState.phase !== 'shutdown') {
+      // Plain stop (no shutdown cue): output fades below; the next start() runs a fresh start sequence.
+      this.tcState = createTomcatDriveState('off');
+      this.tcLastMs = 0;
+      if (this.tcSettleTimer) clearTimeout(this.tcSettleTimer);
+      this.tcSettleTimer = null;
+      this.notifyTomcatZone(0);
+    }
     const now = this.context.currentTime;
     const hold = Math.max(0, this.shutoffUntil - now);
     if (hold > 0.05) {
@@ -397,6 +435,7 @@ export class EngineSynthImpl implements EngineSynth {
     if (this.disposed) return;
     this.disposed = true;
     this.started = false;
+    this.tcZoneListeners.clear();
     try {
       this.teardownGraph();
       this.envelope.dispose();
@@ -408,6 +447,7 @@ export class EngineSynthImpl implements EngineSynth {
 
   setDriving(d: DrivingInput): void {
     this.refreshIdleBandFromPrefs();
+    this.lastLoadProvided = d.load !== undefined && d.load !== null && Number.isFinite(Number(d.load));
     // Preserve Frontend rpmNorm/rpm when supplied (Forge rAF / GPS+Rev).
     // Audio still dual-maps speed→fundamental + throttle→brightness when omitted.
     this.driving = {
@@ -480,7 +520,9 @@ export class EngineSynthImpl implements EngineSynth {
 
   fromPatch(patch: EnginePatch): void {
     const kindChanged =
-      patch.kind !== this.patchMeta.kind || patch.topology !== this.patchMeta.topology;
+      patch.kind !== this.patchMeta.kind ||
+      patch.topology !== this.patchMeta.topology ||
+      isTomcatPatch(patch) !== isTomcatPatch(this.patchMeta);
     this.patchMeta = { ...patch, params: { ...patch.params } };
     this._id = patch.id;
     this.customGraph = patch.graph ? [...patch.graph] : undefined;
@@ -506,6 +548,9 @@ export class EngineSynthImpl implements EngineSynth {
       this.chargeLevel = 0;
       this.helmState = createStellarHelmDriveState();
       this.helmLastMs = 0;
+      this.tcState = createTomcatDriveState();
+      this.tcLastMs = 0;
+      this.tcDrive = null;
       this.g = this.buildGraph(patch.kind, patch.topology);
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
@@ -583,6 +628,14 @@ export class EngineSynthImpl implements EngineSynth {
     const now = this.context.currentTime;
     if (this.lastStarterAt >= 0 && now - this.lastStarterAt < 0.45) return;
     this.lastStarterAt = now;
+    if (this.g.tcVoice) {
+      // Tomcat: (re)start sequence only from off / shutdown; ignored while starting or running.
+      if (tomcatBeginStart(this.tcState)) {
+        this.tcLastMs = 0;
+        this.applyTomcatDriving(this.driving, false);
+      }
+      return;
+    }
     const helm = this.g.helmVoice;
     // Stellar Helm: a starter after a power-down cue brings the hum back up under the sweep
     if (helm && helm.powerTarget < 0.5) helm.powerUp(1.6);
@@ -607,7 +660,7 @@ export class EngineSynthImpl implements EngineSynth {
     if (this.disposed) return;
     if (this.context.state === 'closed') return;
     const kind = this.patchMeta.kind;
-    const dur = shutoffDuration(kind, this.patchMeta.topology);
+    const dur = this.g.tcVoice ? TC_SHUTOFF_SECONDS : shutoffDuration(kind, this.patchMeta.topology);
     const now = this.context.currentTime;
     this.shutoffUntil = Math.max(this.shutoffUntil, now + dur);
     // Hold master so stop()'s fade does not mute the tail immediately.
@@ -619,6 +672,11 @@ export class EngineSynthImpl implements EngineSynth {
       if (cur < 0.85) g.linearRampToValueAtTime(1, now + 0.02);
     } catch {
       /* ignore */
+    }
+    if (this.g.tcVoice) {
+      // Tomcat: fuel cut → afterburner de-stages → both spools run down (the voice is the tail)
+      if (tomcatBeginShutdown(this.tcState)) this.applyTomcatDriving(this.driving, false);
+      return;
     }
     // Stellar Helm: the hum winds down (pitch falls, level fades) under the shutoff sweep
     this.g.helmVoice?.powerDown(dur * 0.85);
@@ -985,6 +1043,11 @@ export class EngineSynthImpl implements EngineSynth {
       this.buildIce(g);
     } else if (kind === 'ev-whine') {
       this.buildEv(g);
+    } else if (kind === 'aerospace' && isTomcatPatch(this.patchMeta)) {
+      // Tomcat: dedicated twin-turbofan voice (shares the engine's runtime noise buffers)
+      g.tcVoice = new TomcatVoice(ctx, master, { whiteBuf: this.whiteBuf, pinkBuf: this.pinkBuf });
+      // Switched to this pack while running → settle straight at idle (voice level glides in)
+      if (this.started) tomcatSetRunning(this.tcState);
     } else if (kind === 'aerospace') {
       this.buildAerospace(g);
     } else {
@@ -2050,6 +2113,13 @@ export class EngineSynthImpl implements EngineSynth {
       /* ignore */
     }
     try {
+      g.tcVoice?.dispose();
+    } catch {
+      /* ignore */
+    }
+    if (this.tcSettleTimer) clearTimeout(this.tcSettleTimer);
+    this.tcSettleTimer = null;
+    try {
       g.pulseNode?.disconnect();
       g.pulseGainOut?.disconnect();
     } catch {
@@ -2187,6 +2257,8 @@ export class EngineSynthImpl implements EngineSynth {
       if (g.ccBus && this.ccDrive) g.ccBus.update(p, this.ccDrive, this.throttleLag, tc);
     } else if (kind === 'ev-whine') {
       this.applyEvDriving(rpmNorm, d, tc);
+    } else if (kind === 'aerospace' && g.tcVoice) {
+      this.applyTomcatDriving(d, immediate);
     } else if (kind === 'aerospace') {
       this.applyAerospaceDriving(rpmNorm, d, tc);
     } else {
@@ -2215,6 +2287,89 @@ export class EngineSynthImpl implements EngineSynth {
     else if (drv.speed < 0.04 && drv.thr < 0.12) this.driveMood = 'idle';
     else if (drv.thr > 0.7 || drv.boost > 0.5) this.driveMood = 'pull';
     else this.driveMood = 'cruise';
+  }
+
+  /**
+   * Tomcat: one drive step (twin N1/N2 spools, start / shutdown sequence, afterburner staging) →
+   * voice. Frontend rpm / rpmNorm are ignored (a gearbox simulation must not put shift cliffs into
+   * a jet). AB zones stage from `load` when the caller supplied it, else from throttle. A settle
+   * loop keeps the model gliding (spool, zone sequence, shutdown rundown after stop()) when the
+   * caller only calls setDriving on change.
+   */
+  private applyTomcatDriving(d: DrivingInput, immediate: boolean): void {
+    const v = this.g.tcVoice;
+    if (!v || this.disposed) return;
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const dt =
+      immediate || !this.tcLastMs ? 1 / 60 : Math.min(0.25, Math.max(0.004, (nowMs - this.tcLastMs) / 1000));
+    this.tcLastMs = nowMs;
+    const input: DrivingInput = { ...d, load: this.lastLoadProvided ? d.load : undefined };
+    const drv = stepTomcatDrive(this.tcState, input, dt, this.params);
+    this.tcDrive = drv;
+    try {
+      v.update(this.params, drv, immediate ? 0.02 : 0.05, this.context.currentTime);
+    } catch {
+      /* never block drive path */
+    }
+    this.hud.rpmNorm = drv.spool;
+    this.hud.fundamentalHz = v.shaftHz();
+    if (drv.abZone > 0) this.driveMood = 'ab';
+    else if (drv.phase === 'starting' || Math.abs(drv.rate) > 0.06) this.driveMood = 'spooling';
+    else if (drv.spool < 0.08 && drv.speed < 0.04) this.driveMood = 'idle';
+    else this.driveMood = 'cruise';
+    // One notification per zone step, even when a long frame moved several zones at once
+    for (const ev of drv.events) {
+      if (ev.type === 'abLight') this.notifyTomcatZone(ev.zone);
+      else if (ev.type === 'abDestage') this.notifyTomcatZone(ev.zone - 1);
+    }
+    this.notifyTomcatZone(drv.abZone);
+    if (this.tcSettleTimer) clearTimeout(this.tcSettleTimer);
+    this.tcSettleTimer = null;
+    const live = this.started || drv.phase === 'shutdown' || drv.phase === 'starting';
+    if (!drv.settled && live && !this.disposed) {
+      this.tcSettleTimer = setTimeout(() => {
+        this.tcSettleTimer = null;
+        if (!this.disposed && this.g.tcVoice) this.applyTomcatDriving(this.driving, false);
+      }, 40);
+    }
+  }
+
+  private notifyTomcatZone(zone: number): void {
+    if (zone === this.tcLastZone) return;
+    this.tcLastZone = zone;
+    for (const cb of [...this.tcZoneListeners]) {
+      try {
+        cb(zone);
+      } catch {
+        /* listener errors never block audio */
+      }
+    }
+  }
+
+  /**
+   * Tomcat: currently lit afterburner zone, integer 0..5 (0 = off). Read-only; the same state that
+   * drives the afterburner sound, so a HUD reading it lights exactly with the audio. 0 on other packs.
+   */
+  getAfterburnerZone(): number {
+    return this.g.tcVoice ? this.tcState.abZone : 0;
+  }
+
+  /** Tomcat: subscribe to lit-zone changes (0..5). Returns an unsubscribe function. */
+  onAfterburnerZoneChange(cb: (zone: number) => void): () => void {
+    if (typeof cb !== 'function') return () => undefined;
+    this.tcZoneListeners.add(cb);
+    return () => {
+      this.tcZoneListeners.delete(cb);
+    };
+  }
+
+  /**
+   * Hint for the CharacterEngine cabin low-pass (Hz), or undefined to keep its default mapping.
+   * Tomcat follows fan speed so the whine is audible at idle and the roar opens with thrust.
+   */
+  getAcousticCutoffHint(): number | undefined {
+    if (!this.g.tcVoice || !this.tcDrive) return undefined;
+    return 3200 + 4800 * Math.max(0, Math.min(1, this.tcDrive.n1));
   }
 
   private supportsLockLadder(): boolean {
@@ -2334,6 +2489,7 @@ export class EngineSynthImpl implements EngineSynth {
     const kind = this.patchMeta.kind;
     if (kind === 'scifi') return;
     if (this.g.helmVoice) return; // Stellar Helm has no gearbox to bark
+    if (this.g.tcVoice) return; // Tomcat: a jet has no gearbox to bark
 
     let scale = 1;
     if (kind === 'ev-whine') scale = 0.32;

@@ -382,6 +382,12 @@ export interface EngineSynth {
   getEnvelope?(): number;
   /** Alias of getEnvelope(). */
   getVoiceEnvelope?(): number;
+  /** Tomcat: lit afterburner zone 0..5 (0 = off), read-only — same state that drives the AB sound. */
+  getAfterburnerZone?(): number;
+  /** Tomcat: subscribe to afterburner zone changes; returns an unsubscribe function. */
+  onAfterburnerZoneChange?(cb: (zone: number) => void): () => void;
+  /** Optional cabin low-pass hint (Hz) for the CharacterEngine wrapper; undefined = default mapping. */
+  getAcousticCutoffHint?(): number | undefined;
   /** Night Pursuit: soft original electronic tick at a scanner sweep edge (level = params.scannerTick). */
   scannerTick?(edge: ScannerEdge): void;
   /** Night Pursuit: PURSUIT seasoning 0..1 (PURSUIT 1 · POWER 0.5 · AUTO/NORM 0). */
