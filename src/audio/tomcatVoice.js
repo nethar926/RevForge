@@ -9,14 +9,16 @@
 //
 //   drive model:  throttle → N2 target (rate-limited accel / faster decel, per engine, B detuned)
 //                 N1 lags N2 · start: air starter → light-off → idle · shutdown: fuel cut → rundown
-//                 afterburner demand (load if supplied, else throttle) → zones 1..5 lit in sequence
+//                 afterburner engages by speed (≥ 75 mph on, < 72 mph off); once engaged, demand
+//                 (load if supplied, else throttle) stages zones 1..5 in sequence (zone 1 minimum)
+//                 no gearbox: rpm / rpmNorm / shift cues are not inputs and a shift never dips spool
 //   per engine:   N2/N1 ConstantSources → blade-pass whine (3 tones + fan tone) · buzz-saw (N1 saw →
 //                 rasp shaper), both ducking under thrust · idle/spool bed · core roar (deep rumble
 //                 25–120 Hz, body 120–300 Hz, small hot band) rolled by slow random AM · starter → pan
 //   shared:       rear-arc rumble · afterburner (dark roar ≤ 1.2 kHz, chest-weight body, wide stereo
 //                 deep rumble, sparse low crackle, faint hiss, per-zone thumps) · mechanical
 //                 (gearbox / mesh / shaft tones, ticks, intake rumble) · ram airflow
-//   out:          sum → 2 × 20 Hz high-pass (DC + subsonic) → level → engine master (→ limiter)
+//   out:          sum → 2 × 25 Hz high-pass (DC + infrasonic) → level → engine master (→ limiter)
 //
 // Node budget (~22 oscillators, 4 looping runtime-noise + 2 runtime random-walk sources, ~39
 // filters, 3 fixed shapers, 4 stereo panners) is light enough for in-car Chromium; no AudioWorklet.
@@ -36,7 +38,19 @@ const sstep = (x) => {
 export const TC_IDLE_N2 = 0.62;
 /** Throttle (0..1) at military power (100 % N2, no afterburner). */
 export const TC_MIL_THROTTLE = 0.8;
-/** Afterburner demand needed to light zone k (index k-1). Demand = load if supplied, else throttle. */
+/** Normalised drive speed 1.0 ≙ 120 mph (mphToSpeed default; setDriving clamps speed to 0..1). */
+export const TC_SPEED_FULL_MPH = 120;
+/**
+ * The afterburner engages by speed: on at ≥ 75 mph, off again below 72 mph (3 mph hysteresis, so
+ * it never chatters around one speed). Below the engaged state the lit zone is 0 at any throttle.
+ * 75 mph = 120.7 km/h = 33.53 m/s → 0.625 normalised; 72 mph → 0.6.
+ */
+export const TC_AB_ENGAGE_MPH = 75;
+export const TC_AB_DISENGAGE_MPH = 72;
+export const TC_AB_ENGAGE_SPEED = TC_AB_ENGAGE_MPH / TC_SPEED_FULL_MPH;
+export const TC_AB_DISENGAGE_SPEED = TC_AB_DISENGAGE_MPH / TC_SPEED_FULL_MPH;
+/** Afterburner demand needed to light zone k (index k-1) once engaged. Demand = load if supplied,
+ * else throttle. Zone 1 is the engaged minimum; these thresholds stage zones 2..5 above it. */
 export const TC_AB_ZONE_ON = [0.83, 0.87, 0.91, 0.945, 0.975];
 /** A lit zone stays lit until demand drops this far below its light threshold (zone 1 still goes
  * out at military power: 0.83 − 0.02 > 0.8). */
@@ -86,6 +100,39 @@ export const TC_LOW = {
   duckAb: 0.25, // extra duck at zone 5
 };
 
+/**
+ * Heavy bass (full power + afterburner lift). The extra level at full throttle and in the zones
+ * comes from the low end: one mono heavy sub layer (white noise → 30 Hz HP → 120 Hz LP → soft
+ * saturator → 2 × LP ≈ 95–110 Hz). The saturator makes it a dense, low-crest rumble, so it adds
+ * loudness without driving the limiters. It only opens near military power (spool ≥ 0.75), so
+ * idle, cruise and mid stay as they were. Nothing is added above ≈ 300 Hz, so the top end
+ * (> 2 kHz) stays where the approved voice has it. Per engine share: sub × spool gate +
+ * abSub × abLevel^1.2; the two shares are power-summed into the mono layer.
+ */
+export const TC_HEAVY = {
+  sub: 0.32, // heavy sub share per engine at full spool (× the spool gate)
+  abSub: 0.45, // extra heavy sub share per engine at full afterburner (× abLevel^1.2)
+  subHz: 110, // heavy sub low-pass at full spool (drops to subHzAb at zone 5)
+  subHzAb: 95,
+  drive: 9, // pre-gain of the band-limited noise into the body saturator (σ ≈ 0.35 of the curve range)
+  sat: 2.5, // body saturator curve: tanh(sat·x) / tanh(sat), a dense low-crest rumble
+  glide: 0.16, // time constant (s) of the heavy layer's level glide
+};
+/** Odd-symmetric soft-saturation curve for the heavy sub (no DC; lowers its crest factor). */
+export function tomcatHeavyCurve(n = 1025, sat = TC_HEAVY.sat) {
+  const c = new Float32Array(n);
+  const norm = Math.tanh(sat);
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    c[i] = Math.tanh(sat * x) / norm;
+  }
+  return c;
+}
+/** Spool gate for the heavy bass: 0 up to spool 0.75 (mid / cruise untouched), 1 at military. */
+export function tomcatHeavyGate(s) {
+  return sstep((clip(s) - 0.75) / 0.25);
+}
+
 /* ───────────────────────────── drive model ───────────────────────────── */
 
 function engineState() {
@@ -103,6 +150,7 @@ export function createTomcatDriveState(phase = 'off') {
     speed: 0,
     thrCmd: 0,
     abDemand: 0,
+    abEngaged: false,
     abZone: 0,
     abTimer: 0,
     abLevel: 0,
@@ -166,7 +214,18 @@ export function tomcatAbDemand(input) {
   return clip(num(d.throttle, 0));
 }
 
-/** Zone (0..5) the demand asks for, with per-zone hysteresis and the spool gate. */
+/**
+ * Speed engage state with hysteresis: engages at ≥ TC_AB_ENGAGE_SPEED (75 mph), stays engaged down
+ * to TC_AB_DISENGAGE_SPEED (72 mph) and drops below it. `speed` is the normalised setDriving speed.
+ */
+export function tomcatAbEngaged(speed, engaged) {
+  const v = clip(num(speed, 0));
+  const eps = 1e-9; // float noise from mph / km/h / m/s conversions never flips the edge
+  return engaged ? v >= TC_AB_DISENGAGE_SPEED - eps : v >= TC_AB_ENGAGE_SPEED - eps;
+}
+
+/** Zone (0..5) the demand asks for, with per-zone hysteresis and the spool gate (staging only;
+ * the speed engage and the zone-1 minimum are applied in stepTomcatDrive). */
 export function tomcatZoneTarget(demand, zone, spool) {
   const gate = zone > 0 ? spool >= TC_AB_HOLD_SPOOL : spool >= TC_AB_LIGHT_SPOOL;
   if (!gate) return 0;
@@ -195,8 +254,12 @@ export function tomcatTimeScale(params = {}) {
 
 /**
  * One drive step (dt seconds). Input: DrivingInput (speed, throttle, load?, shifting?).
- * Frontend rpm / rpmNorm are ignored on purpose: a gearbox simulation must not put shift cliffs
- * into a jet. While `shifting` is true the throttle command is held (the car sim dips throttle).
+ * The jet has no gearbox: frontend rpm / rpmNorm are not inputs, so a gearbox simulation never puts
+ * a shift sawtooth into the spool, and the model emits no gear or shift events. Spool follows
+ * throttle (and a little ram air from speed) continuously. If a car sim flags `shifting` while it
+ * dips the throttle it sends, the command may rise but never falls for that frame (no shift dip).
+ * Afterburner: engaged by speed (tomcatAbEngaged), zone 1 minimum while engaged, zones 2..5 staged
+ * by demand exactly as before.
  * Returns the drive snapshot incl. one-shot `events` (lightoff, igniter, abLight, abDestage, stall).
  */
 export function stepTomcatDrive(state, input, dt, params = {}) {
@@ -207,14 +270,21 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
   const ts = tomcatTimeScale(p);
   const loadGiven = d.load !== undefined && d.load !== null && Number.isFinite(Number(d.load));
   const demand = tomcatAbDemand(d);
-  if (!d.shifting) {
-    const thr = clip(num(d.throttle, 0));
-    state.thrCmd = loadGiven ? Math.max(thr, demand) : thr;
+  const thr = clip(num(d.throttle, 0));
+  const cmd = loadGiven ? Math.max(thr, demand) : thr;
+  if (d.shifting) {
+    // no gearbox: a car-sim shift dip never reaches the spool (rises still pass straight through)
+    state.thrCmd = Math.max(state.thrCmd, cmd);
+    state.abDemand = Math.max(state.abDemand, demand);
+  } else {
+    state.thrCmd = cmd;
     state.abDemand = demand;
   }
   state.time += step;
   state.phaseTime += step;
-  state.speed = lag(state.speed, clip(num(d.speed, 0)), step, 0.8);
+  const speedIn = clip(num(d.speed, 0));
+  state.speed = lag(state.speed, speedIn, step, 0.8);
+  state.abEngaged = tomcatAbEngaged(speedIn, state.abEngaged);
 
   const x = clip(state.thrCmd / TC_MIL_THROTTLE);
   const sCmd = clip(Math.pow(x, 0.75) + state.speed * 0.03);
@@ -297,8 +367,10 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
   const spool = (sA + sB) / 2;
   const running = state.phase === 'run';
 
-  // afterburner staging (sequential light, sequential de-stage)
-  const zt = running ? tomcatZoneTarget(state.abDemand, state.abZone, Math.min(sA, sB)) : 0;
+  // afterburner: engaged by speed; zone 1 minimum while engaged, demand stages zones 2..5
+  // (sequential light, sequential de-stage, same delays and glide as before)
+  const staged = running && state.abEngaged ? tomcatZoneTarget(state.abDemand, state.abZone, Math.min(sA, sB)) : 0;
+  const zt = running && state.abEngaged ? Math.max(1, staged) : 0;
   if (zt !== state.abZone) {
     state.abTimer += step;
     while (zt !== state.abZone) {
@@ -365,6 +437,7 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
     speed: state.speed,
     thr: state.thrCmd,
     demand: state.abDemand,
+    abEngaged: state.abEngaged,
     abZone: state.abZone,
     abTarget: zt,
     abLevel: state.abLevel,
@@ -403,6 +476,8 @@ function engineTargets(L, n2, n1, s, comb, starter, rate, pitch, ab) {
   const duck = clip(1 - TC_LOW.duckSpool * s * s - TC_LOW.duckAb * ab);
   // low end grows faster than the shared thrust curve: modest at cruise, full at military power
   const lowT = thrust * (0.47 + 0.53 * s);
+  // heavy bass near military power + in the afterburner (0 at mid / cruise / idle)
+  const hv = tomcatHeavyGate(s) * comb * presence;
   const whine = L.whine * 0.04 * Math.pow(presence, 1.5) * (0.75 + 0.25 * s) * duck;
   return {
     n2Hz: TC_N2_HZ * n2 * pitch,
@@ -418,6 +493,8 @@ function engineTargets(L, n2, n1, s, comb, starter, rate, pitch, ab) {
     idleBed: L.idle * presence * (0.4 * (1 - 0.55 * s) * (0.3 + 0.7 * comb) + 0.2 * clip(Math.abs(rate) * 1.5)),
     idleHz: 420 + 900 * s,
     roarLow: L.roar * TC_LOW.deep * lowT,
+    heavy: L.roar * TC_HEAVY.sub * hv + L.ab * TC_HEAVY.abSub * Math.pow(clip(ab), 1.2) * comb,
+    heavyHz: TC_HEAVY.subHz - (TC_HEAVY.subHz - TC_HEAVY.subHzAb) * clip(ab),
     roarLowHz: 90 + 60 * thrust,
     roarBody: L.roar * TC_LOW.body * lowT,
     roarBodyHz: 130 + 120 * s + 30 * ab,
@@ -630,10 +707,10 @@ export class TomcatVoice {
     };
 
     // ── output: sum → DC-blocking HP → level → dest
-    // two cascaded 20 Hz high-passes: DC + subsonic safety under the boosted low end (24 dB/oct)
+    // two cascaded 25 Hz high-passes: DC + infrasonic safety under the heavy low end (24 dB/oct)
     this.out = gain(0, dest);
-    this.dcBlock = filt('highpass', 20, 0.707, this.out);
-    this.subsonic = filt('highpass', 20, 0.707, this.dcBlock);
+    this.dcBlock = filt('highpass', 25, 0.707, this.out);
+    this.subsonic = filt('highpass', 25, 0.707, this.dcBlock);
     this.sum = gain(1, this.subsonic);
 
     // noise sources (decorrelated by loop offset)
@@ -732,6 +809,18 @@ export class TomcatVoice {
       whiteE.connect(sh);
       return e;
     });
+
+    // ── shared: heavy sub (full power + afterburner), mono: white noise → 30 Hz HP (no infrasonic
+    // build-up) → 120 Hz LP → body saturator (dense, low crest) → 2 × LP (cleans the harmonics)
+    this.heavy = gain(0, this.sum);
+    this.heavyLp2 = filt('lowpass', TC_HEAVY.subHz, 0.6, this.heavy);
+    this.heavyLp1 = filt('lowpass', TC_HEAVY.subHz, 0.6, this.heavyLp2);
+    const heavySat = shaper(tomcatHeavyCurve());
+    heavySat.connect(this.heavyLp1);
+    const heavyDrive = gain(TC_HEAVY.drive, heavySat);
+    const heavyPre = filt('lowpass', 120, 0.6, heavyDrive);
+    const heavyHp = filt('highpass', 30, 0.6, heavyPre);
+    this.whiteB.connect(heavyHp);
 
     // ── shared: rear-arc rumble with slow AM
     this.rumble = gain(0, this.sum);
@@ -881,6 +970,12 @@ export class TomcatVoice {
       setT(e.starterOsc2.frequency, E.starterHz * 1.47, t, gp);
       setT(e.starterHiss.gain, E.starterHiss, t, g);
     }
+    // mono heavy sub: the two engines' shares, power-summed; slower glide than the zone layers so the
+    // engage / disengage swell spreads over ≈ 0.5 s (no step larger than the approved zone-1 entry)
+    setT(this.heavy.gain, Math.hypot(T.a.heavy, T.b.heavy), t, Math.max(g, TC_HEAVY.glide));
+    const heavyHz = (T.a.heavyHz + T.b.heavyHz) / 2;
+    setT(this.heavyLp1.frequency, heavyHz, t, g);
+    setT(this.heavyLp2.frequency, heavyHz, t, g);
     setT(this.rumble.gain, T.rumble, t, g);
     setT(this.rumbleLfo.frequency, T.rumbleAmRate, t, 0.3);
     setT(this.rumbleNoiseDepth.gain, T.rumbleNoiseAm, t, 0.2);

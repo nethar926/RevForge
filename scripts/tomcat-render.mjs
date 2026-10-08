@@ -38,13 +38,15 @@ export function app(speed, throttle) {
   return { speed, throttle, load: throttle, rpmNorm, rpm: 650 + rpmNorm * 9350 };
 }
 
-/** Steady measurement profiles (settle `pre` s, measure the next `dur` s). */
+/** Steady measurement profiles (settle `pre` s, measure the next `dur` s). The afterburner engages
+ * by speed (≥ 75 mph, off below 72 mph), so military power is measured at 70 mph and the zones at
+ * 90-100 mph. */
 export const STEADY = {
   idle: { pre: 7, dur: 6, f: () => app(0, 0) },
   cruise: { pre: 8, dur: 6, f: () => app(S(45), 0.22) },
   'cruise-np-profile': { pre: 8, dur: 6, f: () => ({ speed: S(45), throttle: 0.22, load: 0.1 }) },
   mid: { pre: 8, dur: 6, f: () => app(S(40), 0.5) },
-  mil: { pre: 8, dur: 6, f: () => app(S(80), 0.8) },
+  mil: { pre: 8, dur: 6, f: () => app(S(70), 0.8) },
   'ab-z1': { pre: 9, dur: 5, f: () => app(S(90), 0.83) },
   'ab-z3': { pre: 9, dur: 5, f: () => app(S(95), 0.91) },
   'ab-z5': { pre: 9, dur: 5, f: () => app(S(100), 1) },
@@ -63,15 +65,18 @@ export const CLIPS = [
     f: (t) => app(0, t < 6 ? 0 : t < 11 ? 0.8 * ramp(t, 6, 6.4) : 0.8 * (1 - ramp(t, 11, 11.3))),
   },
   { name: '03-turbine-whine', pre: 8, dur: 10, f: () => app(S(40), 0.5) },
-  { name: '04-thrust', pre: 8, dur: 10, f: () => app(S(80), 0.8) },
+  { name: '04-thrust', pre: 8, dur: 10, f: () => app(S(70), 0.8) },
   {
+    // mil at 70 mph → full throttle, speed climbs through 75 mph (AB engages, zones 1-5) → lift,
+    // coast back below 72 mph (AB out)
     name: '05-afterburner-kickin',
     pre: 8,
     dur: 15,
     f: (t) => {
       const u = t - 8;
-      const thr = u < 3 ? 0.8 : u < 9 ? 0.8 + 0.2 * ramp(u, 3, 3.15) : u < 12 ? 0.8 : 0.8 - 0.35 * ramp(u, 12, 12.3);
-      return app(S(90), thr);
+      if (u < 3) return app(S(70), 0.8);
+      if (u < 12) return app(S(70) + S(25) * ramp(u, 3, 9), 0.8 + 0.2 * ramp(u, 3, 3.15));
+      return app(S(95) - S(30) * ramp(u, 12, 15), 1 - 0.55 * ramp(u, 12, 12.3));
     },
   },
   {
@@ -164,9 +169,12 @@ async function levels() {
   return rows;
 }
 
-/** Engines-page preview: idle → throttle to full → spool-up → afterburner zones 1-5 → hold. */
+/**
+ * Engines-page preview: idle → throttle to full → spool-up while the speed climbs → afterburner
+ * engages as the speed passes 75 mph (≈ 4.0 s) → zones 1-5 → hold at 100 mph. Same live synth.
+ */
 export function previewProfile(t) {
-  return app(S(30) * ramp(t, 1, 7), t < 0.6 ? 0 : 1);
+  return app(S(100) * ramp(t, 0.6, 5.13), t < 0.6 ? 0 : 1);
 }
 export const PREVIEW_SECONDS = 7;
 /** Same integrated loudness the previous aerospace-f14 preview had (scripts/preview-loudness.mjs). */

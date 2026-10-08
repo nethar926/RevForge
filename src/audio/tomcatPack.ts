@@ -13,13 +13,25 @@
  * Web Audio synthesis only — no samples, loops, wavetables or impulse responses.
  * See docs/tomcat-engine.md.
  */
-import type { EngineParams, EnginePatch, ParamMeta } from './types';
+import type { DrivingInput, EngineParams, EnginePatch, ParamMeta } from './types';
 
 export const TOMCAT_PACK = {
   /** Builtin id / topology / snippet key — never changes. */
   id: 'aerospace-f14',
   /** Human-readable label for this engine. */
   name: 'Tomcat',
+  /**
+   * Pack-level drivetrain flag: the jet has no gearbox. The audio layer opts this pack out of every
+   * gearbox output a car sim sends (rpm / rpmNorm sawtooth, upshift / downshift cues, shift dips);
+   * spool follows speed + throttle continuously. Other packs are untouched.
+   */
+  gearless: true,
+  /**
+   * Limiter headroom (dB) for the heavy-bass full-power / afterburner states. The voice enters the
+   * engine and mix limiters this much lower and the wrapper output restores the same gain, so the
+   * linear (idle / cruise / mid) level is unchanged and full / AB are not squashed. Other packs: 0.
+   */
+  headroomDb: 4,
 } as const;
 
 export const TOMCAT_EXPERIMENTAL = false;
@@ -29,6 +41,29 @@ export function isTomcatPatch(patch: Pick<EnginePatch, 'id' | 'kind' | 'params'>
   if (!patch || patch.kind !== 'aerospace') return false;
   if (patch.id === TOMCAT_PACK.id) return true;
   return Number(patch.params?.tomcatVoice ?? 0) === 1;
+}
+
+/** True when the patch runs a gearless pack voice (today: the Tomcat voice). */
+export function isGearlessPatch(patch: Pick<EnginePatch, 'id' | 'kind' | 'params'> | null | undefined): boolean {
+  return TOMCAT_PACK.gearless && isTomcatPatch(patch);
+}
+
+/** Linear pad for the Tomcat limiter headroom (1 on every other patch). */
+export function tomcatHeadroomGain(patch: Pick<EnginePatch, 'id' | 'kind' | 'params'> | null | undefined): number {
+  return isTomcatPatch(patch) ? 10 ** (-TOMCAT_PACK.headroomDb / 20) : 1;
+}
+
+/**
+ * Driving input with the car sim's gearbox outputs removed (rpm / rpmNorm sawtooth, `shifting`).
+ * Used for the wrapper-side layers of a gearless pack; the input object of other packs is never
+ * passed through here.
+ */
+export function gearlessDrivingInput(d: DrivingInput): DrivingInput {
+  const out: DrivingInput = { ...d };
+  delete out.rpm;
+  delete out.rpmNorm;
+  delete out.shifting;
+  return out;
 }
 
 /**
