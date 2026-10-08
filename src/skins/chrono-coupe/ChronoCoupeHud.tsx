@@ -3,6 +3,7 @@ import type { PackHudProps } from '../../packs/types';
 import { DestinationDialog } from './DestinationDialog';
 import { JUMP_THRESHOLD, bankParts, defaultDestination, readStoredDate, storeDate } from './chronoModel';
 import { useHudCompact, type HudCompact } from './useHudCompact';
+import { cc88FromQuery, useCc88Demo, useCoreAnchor, useTimeJump, useTimeJumpMotion, type TimeJumpPhase } from './useTimeJump';
 import './chrono-coupe.css';
 
 export interface ChronoCoupeHudProps extends PackHudProps {
@@ -30,6 +31,19 @@ export interface ChronoCoupeHudProps extends PackHudProps {
   onModeChange: (mode: RailMode) => void;
   /** 0..1 engine envelope when the engine exposes one (charge-core node shimmer). */
   envelope?: number;
+  /**
+   * Time-jump light: Frontend holds this true for 2.0 s in sync with Audio's time-jump cue
+   * (already false when the time-jump toggle is off). A blue-white surge runs through the
+   * FLUX core and out to the HUD frame edges while true; it ends dark by 2.0 s and fades
+   * out over 0.24 s if the prop drops early. Idle (false/undefined) renders nothing extra.
+   * Preview override: `?cc88=1` (loop), `?cc88=dw` (loop, drive-window variant), `?cc88=drop` (early release).
+   */
+  timeJumpActive?: boolean;
+  /**
+   * Drive-window stage (5:4, e.g. 773x601): the time-jump light stays localized around the
+   * FLUX core (no sweep to the frame edges). An ancestor `[data-drive-window="true"]` does the same.
+   */
+  driveWindow?: boolean;
 }
 
 export type RailMode = 'cruise' | 'jump' | 'off';
@@ -118,7 +132,7 @@ function DateBank({ tone, label, date }: { tone: 'dest' | 'present' | 'departed'
 }
 
 /** Three-electrode charge glow; intensity follows charge, flash on threshold. */
-function ChargeCore({ charge, flash, voice }: { charge: number; flash: number; voice: number }) {
+function ChargeCore({ charge, flash, voice, jump, jumpRun }: { charge: number; flash: number; voice: number; jump: TimeJumpPhase; jumpRun: number }) {
   return (
     <svg className="cc-core-svg" viewBox="0 0 240 190" preserveAspectRatio="xMidYMid meet" aria-hidden="true" style={{ '--cc-charge': charge, '--cc-voice': voice } as CSSProperties}>
       <defs>
@@ -130,15 +144,16 @@ function ChargeCore({ charge, flash, voice }: { charge: number; flash: number; v
       </defs>
       <rect className="cc-core-window" x="10" y="4" width="220" height="182" rx="12" fill="#0d0e10" stroke="#3b3d41" strokeWidth="3" />
       <g className="cc-core-glow" filter="url(#cc-core-blur)">
-        <path d="M40 30 L120 100 L200 30 M120 100 L120 170" fill="none" stroke="#ffd36b" strokeWidth="14" strokeLinecap="round" />
+        <path d={Y_PATH} fill="none" stroke="#ffd36b" strokeWidth="14" strokeLinecap="round" />
         <circle cx="120" cy="100" r="13" fill="#fff" />
       </g>
       <g className="cc-core-wire">
-        <path d="M40 30 L120 100 L200 30 M120 100 L120 170" fill="none" stroke="url(#cc-core-line)" strokeWidth="5" strokeLinecap="round" />
+        <path d={Y_PATH} fill="none" stroke="url(#cc-core-line)" strokeWidth="5" strokeLinecap="round" />
         <circle cx="120" cy="100" r="7" fill="#fff" />
       </g>
       <circle className="cc-core-voice" cx="120" cy="100" r="16" fill="#fff6d8" />
       {flash > 0 && <circle key={flash} className="cc-core-flash" cx="120" cy="100" r="70" fill="#fff" />}
+      {jump !== 'idle' && <JumpCore key={jumpRun} />}
       <g className="cc-core-nodes" fill="#2a2c30" stroke="#5a5d62"><circle cx="40" cy="30" r="9" /><circle cx="200" cy="30" r="9" /><circle cx="120" cy="170" r="9" /></g>
       {/* glass in front of the core window: diagonal glare + inner edge (hidden under Reduce Transparency) */}
       <g className="cc-core-glare">
@@ -147,6 +162,46 @@ function ChargeCore({ charge, flash, voice }: { charge: number; flash: number; v
         <rect x="11.5" y="5.5" width="217" height="179" rx="11" fill="none" stroke="#fff" strokeOpacity="0.09" strokeWidth="1" />
       </g>
     </svg>
+  );
+}
+
+/** Y core path (shared by the wire, glow and the time-jump overlay). */
+const Y_PATH = 'M40 30 L120 100 L200 30 M120 100 L120 170';
+
+/**
+ * Time-jump light inside the core window: blue-white halo (clipped to the window), the Y
+ * re-lit blue-white, two arc sets that flicker once each in the first ~150 ms, and a solid
+ * ring used only under Reduce Transparency. Opacity/transform keyframes in chrono-coupe.css.
+ */
+function JumpCore() {
+  return (
+    <g className="cc-tj-fade" aria-hidden="true">
+      <defs>
+        <clipPath id="cc-tj-window"><rect x="10" y="4" width="220" height="182" rx="12" /></clipPath>
+        <radialGradient id="cc-tj-halo-fill">
+          <stop offset="0" stopColor="#e3f3ff" stopOpacity="0.62" />
+          <stop offset="0.3" stopColor="#bfe3ff" stopOpacity="0.36" />
+          <stop offset="0.65" stopColor="#8fc6f2" stopOpacity="0.12" />
+          <stop offset="1" stopColor="#8fc6f2" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <g clipPath="url(#cc-tj-window)">
+        <circle className="cc-tj-halo" cx="120" cy="100" r="120" fill="url(#cc-tj-halo-fill)" />
+      </g>
+      <g className="cc-tj-wire">
+        <path d={Y_PATH} fill="none" stroke="#bfe3ff" strokeWidth="6" strokeLinecap="round" />
+        <circle cx="120" cy="100" r="8" fill="#e3f3ff" />
+      </g>
+      <g className="cc-tj-arc cc-tj-arc-a" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M120 100 L106 92 L98 76 L82 70 L70 52 L56 46 L40 30 M120 100 L136 88 L142 74 L160 66 L170 50 L186 44 L200 30 M120 100 L128 116 L114 128 L126 142 L114 156 L120 170" stroke="#bfe3ff" strokeOpacity="0.45" strokeWidth="5" />
+        <path d="M120 100 L106 92 L98 76 L82 70 L70 52 L56 46 L40 30 M120 100 L136 88 L142 74 L160 66 L170 50 L186 44 L200 30 M120 100 L128 116 L114 128 L126 142 L114 156 L120 170" stroke="#eef8ff" strokeWidth="1.6" />
+      </g>
+      <g className="cc-tj-arc cc-tj-arc-b" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M120 100 L100 98 L94 82 L76 78 L66 60 L48 50 L40 30 M120 100 L130 82 L150 80 L156 62 L176 56 L184 38 L200 30 M120 100 L112 114 L128 124 L112 140 L126 152 L120 170" stroke="#bfe3ff" strokeOpacity="0.45" strokeWidth="5" />
+        <path d="M120 100 L100 98 L94 82 L76 78 L66 60 L48 50 L40 30 M120 100 L130 82 L150 80 L156 62 L176 56 L184 38 L200 30 M120 100 L112 114 L128 124 L112 140 L126 152 L120 170" stroke="#eef8ff" strokeWidth="1.6" />
+      </g>
+      <circle className="cc-tj-ring" cx="120" cy="100" r="34" fill="none" stroke="#8ec9f5" strokeWidth="7" />
+    </g>
   );
 }
 
@@ -204,6 +259,12 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
   const { mode } = props;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [flash, setFlash] = useState(0);
+  const demo88 = useState(cc88FromQuery)[0];
+  const demoJump = useCc88Demo(demo88);
+  const jump = useTimeJump(!!props.timeJumpActive || demoJump);
+  const driveWindow = !!props.driveWindow || !!demo88?.driveWindow;
+  useCoreAnchor(rootRef, jump.run, jump.phase !== 'idle');
+  useTimeJumpMotion(rootRef, jump, still);
 
   const saveMode = (m: RailMode) => props.onModeChange(m);
 
@@ -273,9 +334,18 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
       data-running={running ? 'true' : 'false'}
       data-compact={cfit.compact ? 'true' : undefined}
       data-cc-tight={cfit.compact && cfit.realH < 330 ? '' : undefined}
+      data-time-jump={jump.phase !== 'idle' ? jump.phase : undefined}
+      data-cc-dw={driveWindow && jump.phase !== 'idle' ? '' : undefined}
       style={cfit.compact ? ({ '--u': `${cfit.unit}px` } as CSSProperties) : undefined}
     >
-      <p className="rf-sr-only">{`Flux ${Math.round(charge * 100)} percent of jump threshold ${threshold} ${unit === 'kph' ? 'kilometers per hour' : 'miles per hour'}${mode === 'jump' ? ', jump sequence armed' : ''}. Core output ${output.toFixed(2)}.`}</p>
+      <p className="rf-sr-only">{`Flux ${Math.round(charge * 100)} percent of jump threshold ${threshold} ${unit === 'kph' ? 'kilometers per hour' : 'miles per hour'}${mode === 'jump' ? ', jump sequence armed' : ''}. Core output ${output.toFixed(2)}.${jump.phase === 'on' ? ' Time jump.' : ''}`}</p>
+      {jump.phase !== 'idle' && (
+        <div key={jump.run} className="cc-tj-fade cc-tj-frame" aria-hidden="true">
+          <i className="cc-tj-wave" />
+          <i className="cc-tj-bloom" />
+          <i className="cc-tj-rim" />
+        </div>
+      )}
       <div className="cc-left">
         <div className="cc-banks">
           <DateBank tone="dest" label="DESTINATION" date={destination} />
@@ -284,8 +354,13 @@ export function ChronoCoupeHud(props: ChronoCoupeHudProps) {
         </div>
         <div className="cc-lower">
           <section className="cc-panel cc-charge" aria-hidden="true">
+            {jump.phase !== 'idle' && (
+              <i key={jump.run} className="cc-tj-fade cc-tj-panel">
+                <i className="cc-tj-panel-glow" />
+              </i>
+            )}
             <h4>FLUX</h4>
-            <div className="cc-core-wrap"><ChargeCore charge={charge} flash={flash} voice={running ? clamp01(props.envelope ?? 0) : 0} /></div>
+            <div className="cc-core-wrap"><ChargeCore charge={charge} flash={flash} voice={running ? clamp01(props.envelope ?? 0) : 0} jump={jump.phase} jumpRun={jump.run} /></div>
             <span className="cc-charge-pct">{Math.round(charge * 100)}%</span>
           </section>
           <section className="cc-panel cc-output" aria-hidden="true">

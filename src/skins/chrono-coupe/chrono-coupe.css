@@ -401,3 +401,102 @@
    speed digits cap to the panel so they clear the header. */
 .cc-compact[data-cc-tight] .cc-dest, .cc-compact[data-cc-tight] .cc-departed { display: none; }
 .cc-compact[data-cc-tight] .cc-big { font-size: min(calc(72 * var(--u, 1px)), 32cqh); }
+
+/* ---- Time-jump light (timeJumpActive prop / ?cc88 preview) ----
+ * A blue-white surge through the FLUX core that radiates out to the HUD frame edges.
+ * 2.0 s run: two short arc flickers in the first ~150 ms (audio peak), the glow settles,
+ * dark by 2.0 s. Layers mount only while running (idle = no extra DOM, no extra style).
+ * Opacity/transform keyframes only: no backdrop-filter, no filters, no SMIL.
+ * The frame light sits behind the panels (z-index -1 inside the isolated HUD) and the
+ * FLUX panel glow behind that panel's content, so readouts, 7-seg glass, labels and the
+ * rail are never covered; the HUD's own overflow + radius clips everything.
+ * Night cap: cool #bfe3ff at <= 0.5 alpha in the gradients, never pure white.
+ * Luminance: rise, one dip, rise, then a monotonic fade = 2 flashes per run (< 3/s).
+ */
+.cc[data-time-jump] { isolation: isolate; --cc-tj-rgb: 191 227 255; }
+.cc[data-time-jump] .cc-charge { isolation: isolate; }
+/* the white threshold burst would stack on top of the surge: the surge replaces it */
+.cc[data-time-jump] .cc-core-flash { display: none; }
+.cc-tj-fade { pointer-events: none; }
+/* Prop dropped early (data-time-jump="out"): useTimeJumpMotion freezes the layers where they
+   are and fades the .cc-tj-fade wrappers to dark over 0.24 s (WAAPI, so it also works under
+   the app-wide reduced-motion / motion-off animation kill). */
+
+.cc-tj-frame { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; }
+.cc-tj-frame > i, .cc-tj-panel-glow { position: absolute; display: block; opacity: 0; animation-duration: 2s; animation-timing-function: linear; animation-fill-mode: both; }
+/* far field: whole frame, brightest at the core, reaching the edges */
+.cc-tj-wave {
+  inset: 0;
+  background: radial-gradient(circle farthest-corner at var(--cc-tj-x, 22%) var(--cc-tj-y, 70%), rgb(var(--cc-tj-rgb) / 0.34) 0, rgb(var(--cc-tj-rgb) / 0.16) 45%, rgb(var(--cc-tj-rgb) / 0.08) 100%);
+  animation-name: cc-tj-wave;
+}
+/* near field: grows out of the core (transform only) */
+.cc-tj-bloom {
+  left: var(--cc-tj-x, 22%);
+  top: var(--cc-tj-y, 70%);
+  width: 860px;
+  height: 860px;
+  margin: -430px 0 0 -430px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(var(--cc-tj-rgb) / 0.5), rgb(var(--cc-tj-rgb) / 0.2) 45%, rgb(var(--cc-tj-rgb) / 0) 100%);
+  animation-name: cc-tj-bloom;
+}
+/* frame edge light, arrives last */
+.cc-tj-rim {
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 calc(2 * var(--s)) rgb(var(--cc-tj-rgb) / 0.6), inset 0 0 calc(16 * var(--s)) calc(2 * var(--s)) rgb(var(--cc-tj-rgb) / 0.3);
+  animation-name: cc-tj-rim;
+}
+/* FLUX panel surface lit from the core, behind the panel's label, core window and % */
+.cc-tj-panel { position: absolute; inset: 0; z-index: -1; display: block; overflow: hidden; border-radius: inherit; }
+.cc-tj-panel-glow {
+  inset: 0;
+  background: radial-gradient(circle farthest-corner at var(--cc-tj-px, 50%) var(--cc-tj-py, 55%), rgb(var(--cc-tj-rgb) / 0.42), rgb(var(--cc-tj-rgb) / 0.18) 55%, rgb(var(--cc-tj-rgb) / 0.07) 100%);
+  animation-name: cc-tj-glow;
+}
+/* inside the core window (SVG) */
+.cc-tj-halo, .cc-tj-wire, .cc-tj-arc, .cc-tj-ring { opacity: 0; animation-duration: 2s; animation-timing-function: linear; animation-fill-mode: both; }
+.cc-tj-halo { transform-origin: 120px 100px; transform-box: view-box; animation-name: cc-tj-halo; }
+.cc-tj-wire { animation-name: cc-tj-core; }
+.cc-tj-arc-a { animation-name: cc-tj-arc-a; }
+.cc-tj-arc-b { animation-name: cc-tj-arc-b; }
+.cc-tj-ring { display: none; }
+
+@keyframes cc-tj-arc-a { 0% { opacity: 0; } 1.5% { opacity: 1; } 3.5%, 100% { opacity: 0; } }
+@keyframes cc-tj-arc-b { 0%, 3% { opacity: 0; } 5.5% { opacity: 0.9; } 7.5%, 100% { opacity: 0; } }
+@keyframes cc-tj-core { 0% { opacity: 0; } 1.5% { opacity: 0.85; } 3.5% { opacity: 0.55; } 5.5% { opacity: 1; } 15% { opacity: 0.9; } 50% { opacity: 0.75; } 80% { opacity: 0.35; } 100% { opacity: 0; } }
+@keyframes cc-tj-halo { 0% { opacity: 0; transform: scale(0.5); } 5.5% { opacity: 1; } 15% { transform: scale(1); } 50% { opacity: 0.8; } 85% { opacity: 0.25; } 100% { opacity: 0; transform: scale(1); } }
+@keyframes cc-tj-glow { 0% { opacity: 0; } 5.5% { opacity: 0.8; } 15% { opacity: 1; } 50% { opacity: 0.75; } 85% { opacity: 0.22; } 100% { opacity: 0; } }
+@keyframes cc-tj-bloom { 0% { opacity: 0; transform: scale(0.3); } 7.5% { opacity: 0.85; } 15% { opacity: 1; } 22% { transform: scale(1); } 50% { opacity: 0.75; } 85% { opacity: 0.22; } 100% { opacity: 0; transform: scale(1); } }
+@keyframes cc-tj-wave { 0%, 5% { opacity: 0; } 20% { opacity: 1; } 50% { opacity: 0.7; } 85% { opacity: 0.18; } 100% { opacity: 0; } }
+@keyframes cc-tj-rim { 0%, 10% { opacity: 0; } 25% { opacity: 1; } 55% { opacity: 0.6; } 92%, 100% { opacity: 0; } }
+/* local (drive window) + Reduce Motion variants */
+@keyframes cc-tj-bloom-local { 0% { opacity: 0; transform: scale(0.4); } 7.5% { opacity: 0.85; } 15% { opacity: 1; } 50% { opacity: 0.75; } 85% { opacity: 0.22; } 100% { opacity: 0; transform: scale(0.4); } }
+@keyframes cc-tj-solid { 0% { opacity: 0; } 8%, 85% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Drive window (prop or ancestor attribute): light stays around the FLUX core, no sweep to the edges */
+.cc[data-cc-dw] .cc-tj-wave, .cc[data-cc-dw] .cc-tj-rim,
+[data-drive-window='true'] .cc[data-time-jump] .cc-tj-wave, [data-drive-window='true'] .cc[data-time-jump] .cc-tj-rim { display: none; }
+.cc[data-cc-dw] .cc-tj-bloom, [data-drive-window='true'] .cc[data-time-jump] .cc-tj-bloom { animation-name: cc-tj-bloom-local; }
+
+/* Reduce Motion / Animated environment off: no arcs, no sweep. The app stops every CSS
+   animation in the stage in these modes, so the one steady glow (fade in, hold, fade out over
+   2 s) is driven by useTimeJumpMotion (WAAPI, opacity only); CSS only picks the layers. */
+.cc.cc-still[data-time-jump] .cc-tj-arc, .cc.cc-still[data-time-jump] .cc-tj-wave, .cc.cc-still[data-time-jump] .cc-tj-rim { display: none; }
+.cc.cc-still[data-time-jump] .cc-tj-halo, .cc.cc-still[data-time-jump] .cc-tj-wire, .cc.cc-still[data-time-jump] .cc-tj-panel-glow, .cc.cc-still[data-time-jump] .cc-tj-bloom, .cc.cc-still[data-time-jump] .cc-tj-ring { animation-name: none; }
+.cc.cc-still[data-time-jump] .cc-tj-halo { transform: none; }
+.cc.cc-still[data-time-jump] .cc-tj-bloom { transform: scale(0.4); }
+@media (prefers-reduced-motion: reduce) {
+  .cc[data-time-jump][data-time-jump] .cc-tj-arc, .cc[data-time-jump][data-time-jump] .cc-tj-wave, .cc[data-time-jump][data-time-jump] .cc-tj-rim { display: none; }
+  .cc[data-time-jump][data-time-jump] .cc-tj-halo, .cc[data-time-jump][data-time-jump] .cc-tj-wire, .cc[data-time-jump][data-time-jump] .cc-tj-panel-glow, .cc[data-time-jump][data-time-jump] .cc-tj-bloom { animation-name: none; }
+  .cc[data-time-jump][data-time-jump] .cc-tj-halo { transform: none; }
+  .cc[data-time-jump][data-time-jump] .cc-tj-bloom { transform: scale(0.4); }
+}
+/* Reduce Transparency: no gradient glow; a solid tinted ring around the core */
+@media (prefers-reduced-transparency: reduce) {
+  .cc[data-time-jump][data-time-jump] .cc-tj-frame, .cc[data-time-jump][data-time-jump] .cc-tj-panel,
+  .cc[data-time-jump][data-time-jump] .cc-tj-halo, .cc[data-time-jump][data-time-jump] .cc-tj-wire, .cc[data-time-jump][data-time-jump] .cc-tj-arc { display: none; }
+  .cc[data-time-jump][data-time-jump] .cc-tj-ring { display: inline; animation-name: cc-tj-solid; }
+  .cc.cc-still[data-time-jump][data-time-jump] .cc-tj-ring { animation-name: none; }
+}
