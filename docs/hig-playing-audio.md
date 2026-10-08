@@ -13,7 +13,9 @@ This covers sheet rows **SH-10, SH-11, SP-06, GA-07, PB-09, SB-07** in
 | Every engine voice feeds a **master bus**: fade gain → DynamicsCompressor (threshold −3 dBFS, hard knee, ratio 20:1, attack 2 ms, release 200 ms, built-in makeup gain cancelled) → WaveShaper soft ceiling (identity below −3 dBFS, tanh into **−1 dBFS** sample peak, cannot go above it) → speakers / media element. | `createMasterBus()` |
 | Below −3 dBFS the bus is **exactly unity**. It only ever turns things down: no makeup gain, no gain above 1, and it never touches system or element volume. | |
 | **Start, resume and pack switch** all ramp in from silence over **250 ms** (a pack switch dips for 30 ms and then ramps; editing a knob on the same pack does not dip). | `rampIn()`, `switchRamp()` |
-| **Interruptions.** On AudioContext `interrupted`, an unexpected `suspended`, `visibilitychange` → hidden, or `pagehide`: fade to silence over **150 ms**, go `paused`, pause the media element and suspend the context. It **never auto-resumes**. Only `resume()` brings sound back, and that is called from a tap or a hardware play button. | `PlaybackSession` |
+| **Interruptions.** On AudioContext `interrupted`, an unexpected `suspended`, `visibilitychange` → hidden, or `pagehide`: fade to silence over **150 ms**, go `paused`, pause the media element and suspend the context. | `PlaybackSession` |
+| **Auto-resume when the interruption ends** (HIG: resume after an interruption when appropriate; tap-to-resume is the wrong default while driving). Only for the OS-level reasons above (`interrupted`, `suspended`, `hidden`, `pagehide`): when the context's `statechange` goes back to `running` (the OS resumed it), or the page becomes visible again / `pageshow`, the session makes **one attempt per event** to bring back the same context that was running before (`ctx.resume()` only if it isn't running yet). Granted → silence, **250 ms ramp from silence** through the limiter, `running`. Rejected, or left pending past the 1.5 s give-up → stays `paused` with `canResume: true`, and the tap (`resume()`) still works. No retry loop. | `PlaybackSession` (`autoResume()`) |
+| **Never auto-resumes** after `user` or `media-pause` (steering-wheel / hardware pause; a user or media pause during an OS interruption takes over the reason and disarms it), after Shutdown / `markStopped` / dispose, while the page is still hidden (with pause-when-hidden on), or into a pack preview (previews stay ended; an engine that was running under a preview comes back alone). It never creates an AudioContext. | `PlaybackSession` |
 | **Media Session, only when the session owns it** (feature-detected, no-op where unsupported): title = pack name, artist `RevForge`, album = gearbox mode, procedural artwork, `playbackState` playing/paused/none, and play/pause/stop handlers. **On the live root Frontend's `useVehicleMedia` owns Media Session, so the session leaves it alone** (see below). | `PlaybackSession.applyMediaSession()` |
 | **Gesture-only.** No AudioContext is created or resumed on import or mount. The context is created inside `start()` (Ignition/Audition tap). A hardware play press while idle restarts the engine only if the context is already running. A resume the browser doesn't grant times out after 1.5 s and stays paused. | `useAudioEngine.start`, `PlaybackSession.resume` |
 | Tapping Ignition/Start while paused resumes the engine; it doesn't re-ignite. `playStarter()` is skipped for 1.5 s after a resume. | `useAudioEngine` |
@@ -60,7 +62,8 @@ a reader gets "session owns it".
 audio.playback       // PlaybackSession (page-wide singleton)
 audio.playbackState  // { state: 'idle'|'running'|'paused', reason: PauseReason|null, canResume: boolean, pageVisible: boolean }
 audio.paused         // boolean shortcut: playbackState.state === 'paused'
-audio.resume()       // Promise<boolean>. Call from a tap only (same path as audio.start() while paused)
+audio.resume()       // Promise<boolean>. Call from a tap only (same path as audio.start() while paused).
+                     // OS-level pauses usually come back on their own (auto-resume); this is the fallback.
 // PauseReason = 'hidden' | 'pagehide' | 'interrupted' | 'suspended' | 'media-pause' | 'user'
 ```
 `audio.running` is `false` while paused.
@@ -92,7 +95,7 @@ interface UsePlaybackSessionOptions {
 interface UsePlaybackSessionResult {
   state: 'idle' | 'running' | 'paused'; reason: PauseReason | null; canResume: boolean; pageVisible: boolean;
   paused: boolean;
-  resume: () => Promise<boolean>;   // tap only
+  resume: () => Promise<boolean>;   // tap only (fallback when auto-resume was refused)
   pause: () => boolean;
   // useVehicleMedia-compatible:
   arm: () => void;                  // no-op (the session arms itself on Ignition)
@@ -130,17 +133,21 @@ After that, delete the "Experimental media-button controls" checkbox, or keep on
 </button>
 {audio.paused && <p role="status" className="rf-paused">Paused — tap to resume</p>}
 ```
-`start` already routes to resume while paused (no starter cue). Use `audio.resume()` directly if
-you'd rather. Render the status after the page becomes visible again: `audio.playbackState.pageVisible`
-flips back to `true`, `state` stays `'paused'`. **Never call `resume()` from an effect, a timer, or
-`visibilitychange`.** It must come from the tap.
+After an OS-level interruption (call, other app, page hidden / pagehide) the session resumes on its
+own when the interruption ends (ramp from silence), so `audio.paused` usually clears by itself and
+`audio.running` flips back to `true`. The "Paused — tap to resume" state only stays up when the
+browser refused or ignored that one attempt (`canResume` stays `true`), or after a `user` /
+`media-pause` pause, which never auto-resume. `start` already routes to resume while paused (no
+starter cue). Use `audio.resume()` directly if you'd rather. **Never call `resume()` from an
+effect, a timer, or `visibilitychange`.** The session already does the one gesture-free attempt
+per interruption-end; anything more from Frontend must come from the tap.
 
 ### Background audio toggle: decision for Wilson
 HIG says pause when the page is hidden, so that's now the default even with "Background audio"
 on. Background audio still routes the mix through the media element, which helps Media Session
 and output stability. If Wilson wants engine sound to keep playing behind other in-car apps, one
 line restores it: `audio.playback.setPauseWhenHidden(!audio.background)`. Interruptions
-(calls, other audio) always pause.
+(calls, other audio) always pause, and auto-resume when they end.
 
 ## Pack previews through the master chain (`playPreview`)
 Previews (`public/snippets/<id>.wav`) now play through the **same** AudioContext and master chain as the engine instead of a separate `new Audio()` element:
@@ -149,7 +156,7 @@ Previews (`public/snippets/<id>.wav`) now play through the **same** AudioContext
 - a preview **ducks a running engine** (0.15 s) and un-ducks it (0.25 s) when it ends or is stopped. The duck is on the engine input only; the preview joins after the start/resume fade;
 - one at a time: a new preview stops the previous one with a 0.12 s fade; Ignition stops any preview;
 - `ctx.resume()` is called synchronously inside the tap; buffers are decoded with `decodeAudioData` and cached (no `<audio>` element, no extra autoplay policy);
-- Media Session shows "<Pack> — preview" (album "Preview") while the engine isn't running; hardware pause/stop, hiding the page, pagehide and interruptions stop the preview;
+- Media Session shows "<Pack> — preview" (album "Preview") while the engine isn't running; hardware pause/stop, hiding the page, pagehide and interruptions stop the preview, and it is **not** auto-resumed when the interruption ends;
 - no storage: preview state lives in memory only (`previewState`, `previewingId`).
 
 ```ts
@@ -240,10 +247,10 @@ Frontend, for the Chrono Coupe toggle: `<Switch checked={audio.timeJumpCue} onCh
 1. Tap **IGNITION**. Sound fades in, with no pop or click at the start.
 2. Switch packs in the Garage while running. A short dip, then a smooth fade-in, no loud jump.
 3. Open another in-car app full screen, or **switch to Spotify** and play music. RevForge fades out within about 0.15 s and Spotify plays alone.
-4. Make or receive a **phone call**. RevForge stays silent for the whole call, and after it.
-5. Come back to the browser. The dock shows **Resume** and "Paused — tap to resume". **No sound** until you tap.
-6. Tap **Resume**. Sound fades in over about 0.25 s with no starter cue, no pop, and no level jump compared with before.
-7. Steering-wheel or media **pause** pauses it (or shifts, if "pause shifts" is on in manual). **Play** resumes.
+4. Make or receive a **phone call**. RevForge stays silent for the whole call. When the call ends, it comes back on its own: a fade-in over about 0.25 s, no starter cue, no pop, no level jump.
+5. Come back to the browser from the other app. Sound fades in over about 0.25 s by itself, with no starter cue, no pop, and no level jump compared with before.
+6. If the browser refuses that automatic resume, the dock shows **Resume** and "Paused — tap to resume", with **no sound** until you tap. Tapping **Resume** fades in over about 0.25 s.
+7. Steering-wheel or media **pause** pauses it (or shifts, if "pause shifts" is on in manual), and it **stays paused** through app switches and calls. **Play** resumes.
 8. Turn the **volume knob** all the way through its range while running. It controls the level the whole time, and RevForge never gets louder by itself.
 9. Hold to rev to the redline with Pulse Burst and a gear change at once. Loud but clean, and no harsh clipping.
 10. Media card or notification: shows the pack name, "RevForge", and Automatic/Manual gearbox.

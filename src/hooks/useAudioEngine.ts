@@ -76,6 +76,20 @@ export function useAudioEngine(
       "Engine",
   );
 
+  // paused → running without a tap (PlaybackSession auto-resume after an OS interruption ends):
+  // mirror it into `running` and skip the starter cue, exactly like a tapped resume. Reads only
+  // refs; never creates or resumes a context.
+  useEffect(() => {
+    let prev = session.getSnapshot().state;
+    return session.subscribe((snap) => {
+      const was = prev;
+      prev = snap.state;
+      if (was !== "paused" || snap.state !== "running") return;
+      resumedAtRef.current = typeof performance !== "undefined" ? performance.now() : Date.now();
+      setRunning(wantsRunning.current && ctxRef.current?.state === "running" && !!engineRef.current?.getDiag().running);
+    });
+  }, [session]);
+
   /** Engines feed the master bus (fade + limiter), never ctx.destination directly. */
   const routeToMaster = (eng: EngineSynth) => {
     const master = masterRef.current;

@@ -6,8 +6,17 @@
  *    element. Unity below −3 dBFS, never above unity: no surprise loudness, system volume rules.
  *  - Ramps: every start, resume and pack switch enters from silence over RAMP_IN_S.
  *  - Interruptions: AudioContext 'interrupted' / unexpected 'suspended', page hidden, pagehide →
- *    fade to silence over FADE_OUT_S and go 'paused'. Never auto-resumes: only resume(), called
- *    from a user tap (or a hardware play button where the browser grants it).
+ *    fade to silence over FADE_OUT_S and go 'paused'.
+ *  - Auto-resume (HIG: resume after an interruption ends when appropriate; a tap-to-resume
+ *    default is wrong while driving): when the pause was OS-level ('interrupted', 'suspended',
+ *    'hidden', 'pagehide'), the end of the interruption — the context's 'statechange' back to
+ *    'running', or the page becoming visible again / 'pageshow' — makes ONE attempt per event to
+ *    bring the same, already-unlocked context back (ctx.resume() only if it is not running yet).
+ *    Granted → silence, ramp in from silence over RAMP_IN_S through the limiter, 'running'.
+ *    Rejected or left pending (RESUME_TIMEOUT_MS) → stays 'paused' with canResume, so the tap
+ *    fallback resume() still works. Never auto-resumes after 'user' / 'media-pause', after
+ *    markStopped / dispose, while hidden (pauseWhenHidden), or into a pack preview (previews
+ *    stay ended). Never creates an AudioContext.
  *  - Media Session: metadata + playbackState + play/pause/stop (feature-detected), only while
  *    the session owns it. On the live root Frontend's useVehicleMedia owns navigator.mediaSession
  *    (useAudioEngine reports that through setLegacyMediaFlagReader), so the session stays off it
@@ -409,10 +418,21 @@ export function albumForMode(mode?: string): string {
   return mode;
 }
 
+/** Pause reasons that come from the OS / browser (eligible for auto-resume). */
+const OS_PAUSE_REASONS: ReadonlySet<PauseReason> = new Set<PauseReason>(['interrupted', 'suspended', 'hidden', 'pagehide']);
+
 /**
  * Playback state machine + lifecycle listeners + Media Session bridge.
- * idle ──markRunning──▶ running ──pause(reason)──▶ paused ──resume() [tap]──▶ running
- *   ▲                      │                          │
+ *
+ * idle ──markRunning──▶ running ──pause(reason)──▶ paused ──resume() [tap / hardware play]──▶ running
+ *   ▲                      │  ▲                       │
+ *   │                      │  └── auto-resume ◀───────┤ OS reason ('interrupted' | 'suspended' |
+ *   │                      │      (ramp in from       │ 'hidden' | 'pagehide') and the interruption
+ *   │                      │       silence)           │ ends: ctx 'statechange' → 'running', page
+ *   │                      │                          │ visible again, or 'pageshow'. One attempt
+ *   │                      │                          │ per event; rejected / pending → stay paused
+ *   │                      │                          │ (canResume, tap fallback). 'user' /
+ *   │                      │                          │ 'media-pause' never auto-resume.
  *   └──────markStopped─────┴──────────markStopped─────┘
  */
 export class PlaybackSession {
@@ -433,6 +453,15 @@ export class PlaybackSession {
   private selfSuspending = false;
   private suspendTimer: unknown = null;
   private resuming: Promise<boolean> | null = null;
+  /** Kind of the in-flight resume ('tap' supersedes 'auto'; 'auto' joins anything in flight). */
+  private resumingKind: 'tap' | 'auto' | null = null;
+  private resumeToken = 0;
+  /**
+   * The context that was running when an OS-level interruption paused us. Non-null = armed for
+   * auto-resume (only this existing context is ever resumed). Cleared by markRunning,
+   * markStopped, detach, a successful resume and a user / media pause.
+   */
+  private autoResumeCtx: ContextLike | null = null;
   private lastAction = -Infinity;
   private elementWasPlaying: MediaElementLike | null = null;
   private registered = new Set<string>();
@@ -460,6 +489,7 @@ export class PlaybackSession {
     if (!this.bound) {
       this.env.document?.addEventListener('visibilitychange', this.onVisibility);
       this.env.window?.addEventListener('pagehide', this.onPageHide);
+      this.env.window?.addEventListener('pageshow', this.onPageShow);
       this.bound = true;
     }
     ctx.addEventListener('statechange', this.onContextState);
@@ -489,8 +519,10 @@ export class PlaybackSession {
     if (this.bound) {
       this.env.document?.removeEventListener('visibilitychange', this.onVisibility);
       this.env.window?.removeEventListener('pagehide', this.onPageHide);
+      this.env.window?.removeEventListener('pageshow', this.onPageShow);
       this.bound = false;
     }
+    this.autoResumeCtx = null;
     this.clearSuspendTimer();
     this.stopCarrier(true);
     this.ctx = null;
@@ -517,6 +549,7 @@ export class PlaybackSession {
   /** The engine is audible after a gesture start (Ignition / Audition). */
   markRunning(): void {
     this.clearSuspendTimer();
+    this.autoResumeCtx = null;
     this.everRan = true;
     this.set({ state: 'running', reason: null, canResume: false });
     this.ensureCarrier();
@@ -525,6 +558,7 @@ export class PlaybackSession {
   /** The user (or host) stopped the engine. */
   markStopped(): void {
     this.clearSuspendTimer();
+    this.autoResumeCtx = null;
     if (this.snap.state === 'idle') return;
     this.set({ state: 'idle', reason: null, canResume: false });
     this.stopCarrier(false);
@@ -532,13 +566,22 @@ export class PlaybackSession {
 
   /**
    * Fade to silence and go paused. No-op unless running. OS-level reasons (hidden, pagehide,
-   * interrupted, suspended) also suspend the context after the fade.
+   * interrupted, suspended) also suspend the context after the fade and arm auto-resume for
+   * when the interruption ends. A 'user' / 'media-pause' while already paused by the OS takes
+   * over the reason and disarms auto-resume (still returns false: nothing new to fade).
    */
   pause(reason: PauseReason = 'user'): boolean {
+    const osLevel = OS_PAUSE_REASONS.has(reason);
+    if (this.snap.state === 'paused' && !osLevel) {
+      this.autoResumeCtx = null;
+      this.set({ reason });
+      return false;
+    }
     if (this.snap.state !== 'running') return false;
     this.master?.fadeOut(this.opts.fadeOutSeconds);
+    // Only an existing context that was running until now is ever auto-resumed.
+    this.autoResumeCtx = osLevel ? this.ctx : null;
     this.set({ state: 'paused', reason, canResume: true });
-    const osLevel = reason === 'hidden' || reason === 'pagehide' || reason === 'interrupted' || reason === 'suspended';
     this.clearSuspendTimer();
     const after = () => {
       this.suspendTimer = null;
@@ -562,44 +605,103 @@ export class PlaybackSession {
   }
 
   /**
-   * Resume after an interruption. Call ONLY from a user gesture (tap, or a hardware play
-   * button routed by the browser). Never called automatically. Resolves true when audible.
+   * Resume after an interruption from a user gesture (tap, or a hardware play button routed by
+   * the browser): calls ctx.resume() synchronously inside the gesture. A tap during an
+   * in-flight auto-resume attempt starts its own (gesture-backed) attempt. Resolves true when
+   * audible. Auto-resume (OS-level pauses only) goes through the same path, see autoResume().
    */
   resume(): Promise<boolean> {
+    return this.requestResume('tap');
+  }
+
+  private requestResume(kind: 'tap' | 'auto'): Promise<boolean> {
     if (this.snap.state !== 'paused') return Promise.resolve(this.snap.state === 'running');
-    if (this.resuming) return this.resuming;
-    this.resuming = (async () => {
-      try {
-        this.clearSuspendTimer();
-        const ctx = this.ctx;
-        if (!ctx) return false;
-        if (ctx.state !== 'running') {
-          // Without a user activation some browsers leave resume() pending forever: give up
-          // after RESUME_TIMEOUT_MS and stay paused (the next tap tries again).
-          let timer: unknown = null;
-          const granted = await Promise.race([
-            ctx.resume().then(
-              () => true,
-              () => false,
-            ),
-            new Promise<boolean>((r) => {
-              timer = this.env.setTimeout(() => r(false), RESUME_TIMEOUT_MS);
-            }),
-          ]);
-          if (timer !== null) this.env.clearTimeout(timer);
-          if (!granted) return false;
+    if (this.resuming && (kind === 'auto' || this.resumingKind === 'tap')) return this.resuming;
+    const token = ++this.resumeToken;
+    let settle: (v: boolean) => void = () => undefined;
+    // Published before the attempt runs, so a synchronous 'statechange' from ctx.resume() joins it.
+    const p = new Promise<boolean>((r) => {
+      settle = r;
+    });
+    this.resuming = p;
+    this.resumingKind = kind;
+    this.runResume(token, kind)
+      .then(settle, () => settle(false))
+      .finally(() => {
+        if (this.resumeToken === token) {
+          this.resuming = null;
+          this.resumingKind = null;
         }
-        if (ctx.state !== 'running' || this.snap.state !== 'paused') return false;
-        this.master?.silence();
-        await this.playElementsAfterResume();
-        this.master?.rampIn(this.opts.rampInSeconds);
-        this.set({ state: 'running', reason: null, canResume: false });
-        return true;
-      } finally {
-        this.resuming = null;
-      }
-    })();
-    return this.resuming;
+      });
+    return p;
+  }
+
+  private async runResume(token: number, kind: 'tap' | 'auto'): Promise<boolean> {
+    const superseded = () => this.resumeToken !== token;
+    const newer = () => this.resuming ?? Promise.resolve(this.snap.state === 'running');
+    const ok = () => this.snap.state === 'paused' && (kind === 'tap' || this.autoResumeEligible());
+    const hadPendingPause = this.suspendTimer !== null;
+    this.clearSuspendTimer();
+    const fail = () => {
+      // The post-fade element pause was cancelled above: do it now that we stay paused.
+      if (hadPendingPause && this.snap.state === 'paused') this.pauseElements();
+      return false;
+    };
+    const ctx = this.ctx;
+    if (!ctx || !ok()) return fail();
+    if (ctx.state !== 'running') {
+      // Without a user activation some browsers leave resume() pending forever (or reject it):
+      // give up after RESUME_TIMEOUT_MS and stay paused (the next tap tries again).
+      let timer: unknown = null;
+      const granted = await Promise.race([
+        ctx.resume().then(
+          () => true,
+          () => false,
+        ),
+        new Promise<boolean>((r) => {
+          timer = this.env.setTimeout(() => r(false), RESUME_TIMEOUT_MS);
+        }),
+      ]);
+      if (timer !== null) this.env.clearTimeout(timer);
+      if (superseded()) return newer();
+      if (!granted) return fail();
+    }
+    if (superseded()) return newer();
+    if (ctx !== this.ctx || ctx.state !== 'running' || !ok()) return fail();
+    this.master?.silence();
+    await this.playElementsAfterResume();
+    if (superseded()) return newer();
+    if (ctx !== this.ctx || ctx.state !== 'running' || !ok()) return false;
+    // Always from silence (silence() above), over RAMP_IN_S, through the limiter: no overshoot.
+    this.master?.rampIn(this.opts.rampInSeconds);
+    this.autoResumeCtx = null;
+    this.set({ state: 'running', reason: null, canResume: false });
+    return true;
+  }
+
+  /**
+   * True while an OS-level interruption paused a running engine and the interruption may now
+   * be over: same (unclosed) context, page visible (when pauseWhenHidden), no pack preview.
+   */
+  private autoResumeEligible(): boolean {
+    const ctx = this.ctx;
+    const reason = this.snap.reason;
+    return (
+      this.snap.state === 'paused' &&
+      reason !== null &&
+      OS_PAUSE_REASONS.has(reason) &&
+      ctx !== null &&
+      this.autoResumeCtx === ctx &&
+      ctx.state !== 'closed' &&
+      this.preview === null &&
+      !(this.opts.pauseWhenHidden && this.env.document?.visibilityState === 'hidden')
+    );
+  }
+
+  /** One auto-resume attempt for one interruption-end event (no retry loop). */
+  private autoResume(): void {
+    if (!this.autoResumeEligible()) return;
+    void this.requestResume('auto');
   }
 
   getSnapshot = (): PlaybackSnapshot => this.snap;
@@ -742,13 +844,22 @@ export class PlaybackSession {
     if (hidden && this.opts.pauseWhenHidden) {
       this.endPreview();
       this.pause('hidden');
+      return;
     }
-    else this.applyMediaSession(); // visible again: re-assert handlers, stay paused
+    this.applyMediaSession(); // visible again: re-assert handlers
+    if (!hidden) this.autoResume(); // interruption over → one auto-resume attempt (OS reasons only)
   };
 
   private onPageHide = () => {
     this.endPreview();
     this.pause('pagehide');
+  };
+
+  /** Back from the back/forward cache or a page switch: one auto-resume attempt (OS reasons only). */
+  private onPageShow = () => {
+    const hidden = this.env.document?.visibilityState === 'hidden';
+    this.set({ pageVisible: !hidden });
+    if (!hidden) this.autoResume();
   };
 
   private onContextState = () => {
@@ -760,6 +871,11 @@ export class PlaybackSession {
     }
     if (this.selfSuspending) return;
     if (ctx.state === 'interrupted' || ctx.state === 'suspended') this.endPreview();
+    if (ctx.state === 'running' && this.snap.state === 'paused') {
+      // The OS handed the context back (interruption over): one auto-resume attempt.
+      this.autoResume();
+      return;
+    }
     if (this.snap.state !== 'running') return;
     if (ctx.state === 'interrupted') this.pause('interrupted');
     else if (ctx.state === 'suspended') this.pause('suspended');

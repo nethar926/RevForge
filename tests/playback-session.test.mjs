@@ -1,7 +1,8 @@
 /**
  * HIG "Playing audio" — src/audio/playbackSession.ts + useAudioEngine wiring.
- * State machine (running → interrupted → paused, no auto-resume, resume ramps in), master-bus
- * limiter ceiling / unity at normal levels (real Web Audio renderer), gesture gating.
+ * State machine (running → interrupted → paused; auto-resume from silence once an OS interruption
+ * ends; 'user' / 'media-pause' never auto-resume; tap fallback), master-bus limiter ceiling /
+ * unity at normal levels (real Web Audio renderer), gesture gating.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -38,7 +39,8 @@ class Target {
 }
 class FakeCtx extends Target {
   constructor() { super(); this.state = 'running'; this.currentTime = 0; this.resumes = 0; this.suspends = 0; this.grant = true; }
-  async resume() { this.resumes++; if (this.grant) { this.state = 'running'; this.emit('statechange'); } else return new Promise(() => {}); }
+  // grant: true = granted, false = left pending forever, 'reject' = NotAllowedError
+  async resume() { this.resumes++; if (this.grant === 'reject') throw new Error('NotAllowedError'); if (this.grant) { this.state = 'running'; this.emit('statechange'); } else return new Promise(() => {}); }
   async suspend() { this.suspends++; this.state = 'suspended'; this.emit('statechange'); }
   setState(s) { this.state = s; this.emit('statechange'); }
 }
@@ -73,6 +75,17 @@ function env(over = {}) {
   const advance = (ms) => { t += ms; for (const id of [...timers]) if (id.at <= t) { timers.splice(timers.indexOf(id), 1); id.fn(); } };
   return { e, dom, win, ms, advance };
 }
+const flush = async (n = 4) => { for (let i = 0; i < n; i++) await new Promise((r) => setImmediate(r)); };
+const ramps = (m) => m.calls.filter((c) => Array.isArray(c) && c[0] === 'rampIn');
+/** silence() immediately followed by exactly one rampIn(RAMP_IN_S) as the latest master calls. */
+function assertRampFromSilence(master) {
+  const i = master.calls.findLastIndex((c) => Array.isArray(c) && c[0] === 'rampIn');
+  assert.ok(i > 0, 'ramped in');
+  assert.equal(master.calls[i - 1], 'silence', 'ramp starts from silence');
+  assert.equal(master.calls[i][1], PS.RAMP_IN_S, 'ramp over RAMP_IN_S (250 ms)');
+  assert.equal(ramps(master).length, 1, 'exactly one ramp');
+  assert.ok(master.level <= 1);
+}
 function session(over) {
   const h = env(over);
   const s = new PS.PlaybackSession({ env: h.e });
@@ -83,8 +96,8 @@ function session(over) {
 
 /* ---------------- state machine ---------------- */
 
-test('running → interrupted → paused: 150 ms fade, Media Session paused, no auto-resume', async () => {
-  const { s, ctx, master, ms, advance, dom } = session();
+test('running → interrupted → paused: 150 ms fade, Media Session paused, silent until the interruption ends', async () => {
+  const { s, ctx, master, ms, advance } = session();
   s.attach(ctx, master);
   s.setMediaInfo({ title: 'Twin Ion', album: 'Automatic gearbox' });
   s.markRunning();
@@ -103,18 +116,337 @@ test('running → interrupted → paused: 150 ms fade, Media Session paused, no 
   assert.equal(s.getSnapshot().reason, 'interrupted');
   assert.equal(s.getSnapshot().canResume, true);
   assert.equal(ms.playbackState, 'paused');
-  advance(500);
-
-  // The OS hands the context back, the page becomes visible: still paused, still silent.
-  ctx.setState('running');
-  dom.visibilityState = 'visible';
-  dom.emit('visibilitychange');
   advance(5000);
+  await flush();
+  // Still interrupted (phone call in progress): stays paused and silent, no resume attempt.
   assert.equal(s.getSnapshot().state, 'paused');
   assert.equal(master.level, 0);
-  assert.equal(ctx.resumes, 0, 'never resumes on its own');
-  assert.ok(!master.calls.some((c) => Array.isArray(c) && c[0] === 'rampIn'));
+  assert.equal(ctx.resumes, 0);
+  assert.equal(ramps(master).length, 0);
   assert.deepEqual(seen, ['paused']);
+});
+
+test('auto-resume: OS interruption → context running again → resumes with a 250 ms ramp from silence', async () => {
+  const { s, ctx, master, ms, advance } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  const seen = [];
+  s.subscribe((x) => seen.push(x.state));
+  ctx.setState('interrupted');
+  advance(500);
+  ctx.setState('running'); // the OS handed the context back (call ended)
+  await flush();
+  assert.equal(s.getSnapshot().state, 'running');
+  assert.equal(s.getSnapshot().reason, null);
+  assert.equal(s.getSnapshot().canResume, false);
+  assert.equal(ctx.resumes, 0, 'context already running: no ctx.resume() needed');
+  assertRampFromSilence(master);
+  assert.equal(master.level, 1);
+  assert.equal(ms.playbackState, 'playing');
+  assert.deepEqual(seen, ['paused', 'running']);
+  // Further events while running change nothing (no second ramp).
+  ctx.emit('statechange');
+  await flush();
+  assert.equal(ramps(master).length, 1);
+});
+
+test('auto-resume: unexpected suspend → OS resumes the context → resumes from silence', async () => {
+  const { s, ctx, master } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  ctx.setState('suspended'); // not ours
+  assert.equal(s.getSnapshot().reason, 'suspended');
+  ctx.setState('running');
+  await flush();
+  assert.equal(s.getSnapshot().state, 'running');
+  assertRampFromSilence(master);
+});
+
+test('auto-resume: hidden → visible → one ctx.resume() attempt, ramps in from silence', async () => {
+  const { s, ctx, master, dom, advance } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  dom.visibilityState = 'hidden';
+  dom.emit('visibilitychange');
+  advance(PS.FADE_OUT_S * 1000 + 25);
+  assert.equal(ctx.state, 'suspended', 'we suspended it after the fade');
+  assert.equal(ctx.resumes, 0, 'nothing while hidden');
+  dom.visibilityState = 'visible';
+  dom.emit('visibilitychange');
+  await flush();
+  assert.equal(ctx.resumes, 1, 'exactly one attempt');
+  assert.equal(s.getSnapshot().state, 'running');
+  assert.equal(s.getSnapshot().pageVisible, true);
+  assertRampFromSilence(master);
+});
+
+test('auto-resume: hidden → visible inside the 150 ms fade → straight back, no suspend, no ctx.resume()', async () => {
+  const { s, ctx, master, dom, advance } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  dom.visibilityState = 'hidden';
+  dom.emit('visibilitychange');
+  advance(50);
+  dom.visibilityState = 'visible';
+  dom.emit('visibilitychange');
+  await flush();
+  advance(1000);
+  assert.equal(s.getSnapshot().state, 'running');
+  assert.equal(ctx.suspends, 0, 'pending post-fade suspend cancelled');
+  assert.equal(ctx.resumes, 0);
+  assertRampFromSilence(master);
+});
+
+test('auto-resume: pagehide → pageshow (back/forward cache) → resumes from silence', async () => {
+  const { s, ctx, master, win } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  win.emit('pagehide');
+  assert.equal(s.getSnapshot().reason, 'pagehide');
+  assert.equal(ctx.suspends, 1, 'pagehide acts immediately');
+  win.emit('pageshow');
+  await flush();
+  assert.equal(ctx.resumes, 1);
+  assert.equal(s.getSnapshot().state, 'running');
+  assertRampFromSilence(master);
+});
+
+test('auto-resume: interruption ends while the page is hidden → waits until it is visible', async () => {
+  const { s, ctx, master, dom } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  ctx.setState('interrupted');
+  dom.visibilityState = 'hidden';
+  dom.emit('visibilitychange');
+  ctx.setState('running');
+  await flush();
+  assert.equal(s.getSnapshot().state, 'paused', 'HIG: no sound while hidden');
+  assert.equal(ramps(master).length, 0);
+  dom.visibilityState = 'visible';
+  dom.emit('visibilitychange');
+  await flush();
+  assert.equal(s.getSnapshot().state, 'running');
+  assertRampFromSilence(master);
+});
+
+test('auto-resume rejected by the browser → stays paused (canResume), no retry; tap resumes', async () => {
+  const { s, ctx, master, dom, advance } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  dom.visibilityState = 'hidden';
+  dom.emit('visibilitychange');
+  advance(PS.FADE_OUT_S * 1000 + 25);
+  ctx.grant = 'reject';
+  dom.visibilityState = 'visible';
+  dom.emit('visibilitychange');
+  await flush();
+  advance(PS.RESUME_TIMEOUT_MS * 4);
+  await flush();
+  assert.equal(ctx.resumes, 1, 'one attempt for one interruption-end event, no loop');
+  assert.equal(s.getSnapshot().state, 'paused');
+  assert.equal(s.getSnapshot().canResume, true);
+  assert.equal(master.level, 0);
+  assert.equal(ramps(master).length, 0);
+  ctx.grant = true; // the tap carries a user activation
+  assert.equal(await s.resume(), true);
+  assert.equal(ctx.resumes, 2);
+  assert.equal(s.getSnapshot().state, 'running');
+  assertRampFromSilence(master);
+});
+
+test('auto-resume left pending → gives up after RESUME_TIMEOUT_MS, stays paused; tap resumes', async () => {
+  const { s, ctx, master, win, advance } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  win.emit('pagehide');
+  ctx.grant = false; // resume() never settles without a user activation
+  win.emit('pageshow');
+  await flush();
+  assert.equal(ctx.resumes, 1);
+  advance(PS.RESUME_TIMEOUT_MS + 10);
+  await flush();
+  advance(PS.RESUME_TIMEOUT_MS * 4);
+  await flush();
+  assert.equal(ctx.resumes, 1, 'no retry loop');
+  assert.equal(s.getSnapshot().state, 'paused');
+  assert.equal(s.getSnapshot().canResume, true);
+  assert.equal(ramps(master).length, 0);
+  ctx.grant = true;
+  assert.equal(await s.resume(), true);
+  assert.equal(s.getSnapshot().state, 'running');
+  assertRampFromSilence(master);
+});
+
+test('tap during a pending auto-resume attempt calls ctx.resume() again inside the gesture', async () => {
+  const { s, ctx, master, dom, advance } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  dom.visibilityState = 'hidden';
+  dom.emit('visibilitychange');
+  advance(PS.FADE_OUT_S * 1000 + 25);
+  ctx.grant = false;
+  dom.visibilityState = 'visible';
+  dom.emit('visibilitychange');
+  await flush();
+  assert.equal(ctx.resumes, 1);
+  ctx.grant = true;
+  const p = s.resume(); // synchronous ctx.resume() in the tap, not a join of the pending attempt
+  assert.equal(ctx.resumes, 2);
+  assert.equal(await p, true);
+  advance(PS.RESUME_TIMEOUT_MS + 10); // the stale auto attempt times out harmlessly
+  await flush();
+  assert.equal(s.getSnapshot().state, 'running');
+  assertRampFromSilence(master);
+});
+
+test('user pause and media-pause never auto-resume (visibility, pageshow, statechange)', async () => {
+  for (const how of ['user', 'media-pause']) {
+    const { s, ctx, master, dom, win, ms, advance } = session();
+    s.attach(ctx, master);
+    s.markRunning();
+    if (how === 'user') s.pause('user');
+    else ms.handlers.pause(); // steering-wheel / hardware pause
+    assert.equal(s.getSnapshot().reason, how);
+    advance(1000);
+    dom.visibilityState = 'hidden';
+    dom.emit('visibilitychange');
+    dom.visibilityState = 'visible';
+    dom.emit('visibilitychange');
+    win.emit('pagehide');
+    win.emit('pageshow');
+    ctx.setState('suspended');
+    ctx.setState('interrupted');
+    ctx.setState('running');
+    await flush();
+    advance(PS.RESUME_TIMEOUT_MS * 2);
+    await flush();
+    assert.equal(s.getSnapshot().state, 'paused', how);
+    assert.equal(s.getSnapshot().reason, how, `${how}: reason kept`);
+    assert.equal(s.getSnapshot().canResume, true, `${how}: tap still resumes`);
+    assert.equal(ctx.resumes, 0, `${how}: never resumes on its own`);
+    assert.equal(ramps(master).length, 0, `${how}: no ramp`);
+    assert.equal(master.level, 0);
+  }
+});
+
+test('user / media pause during an OS interruption takes over and disarms auto-resume', async () => {
+  for (const how of ['user', 'media-pause']) {
+    const { s, ctx, master, dom, advance } = session();
+    s.attach(ctx, master);
+    s.markRunning();
+    ctx.setState('interrupted');
+    assert.equal(s.pause(how), false, 'nothing new to fade');
+    assert.equal(s.getSnapshot().reason, how);
+    ctx.setState('running');
+    dom.emit('visibilitychange');
+    await flush();
+    advance(PS.RESUME_TIMEOUT_MS * 2);
+    assert.equal(s.getSnapshot().state, 'paused', how);
+    assert.equal(ramps(master).length, 0);
+    assert.equal(await s.resume(), true, 'tap still works');
+  }
+});
+
+test('stopped or disposed engine → no auto-resume', async () => {
+  const a = session();
+  a.s.attach(a.ctx, a.master);
+  a.s.markRunning();
+  a.ctx.setState('interrupted');
+  a.s.markStopped(); // Shutdown during the call
+  a.ctx.setState('running');
+  a.dom.emit('visibilitychange');
+  a.win.emit('pageshow');
+  await flush();
+  assert.equal(a.s.getSnapshot().state, 'idle');
+  assert.equal(a.ctx.resumes, 0);
+  assert.equal(ramps(a.master).length, 0);
+
+  const b = session();
+  b.s.attach(b.ctx, b.master);
+  b.s.markRunning();
+  b.dom.visibilityState = 'hidden';
+  b.dom.emit('visibilitychange');
+  b.advance(PS.FADE_OUT_S * 1000 + 25);
+  b.s.dispose();
+  assert.equal(b.ctx.count('statechange'), 0, 'listeners removed');
+  assert.equal(b.win.count('pageshow'), 0);
+  b.dom.visibilityState = 'visible';
+  b.dom.emit('visibilitychange');
+  b.win.emit('pageshow');
+  b.ctx.setState('running');
+  await flush();
+  assert.equal(b.s.getSnapshot().state, 'idle');
+  assert.equal(b.ctx.resumes, 0);
+  assert.equal(ramps(b.master).length, 0);
+});
+
+test('pack preview is never resumed: preview-only stays idle; engine + preview → engine back, preview stays ended', async () => {
+  // Preview only (engine idle): the interruption ends the preview; nothing comes back.
+  const a = session();
+  let stopsA = 0;
+  a.s.attach(a.ctx, a.master, { host: { stopPreview: () => { stopsA++; a.s.setPreview(null); } } });
+  a.s.setPreview({ title: 'V8 Rumble — preview' });
+  a.ctx.setState('interrupted');
+  assert.equal(stopsA, 1);
+  a.ctx.setState('running');
+  a.dom.emit('visibilitychange');
+  a.win.emit('pageshow');
+  await flush();
+  assert.equal(a.s.getSnapshot().state, 'idle');
+  assert.equal(a.s.hasPreview(), false);
+  assert.equal(a.ctx.resumes, 0);
+  assert.equal(ramps(a.master).length, 0);
+  assert.equal(stopsA, 1);
+
+  // Engine running with a preview on top: preview ended by the hide, engine auto-resumes alone.
+  const b = session();
+  let stopsB = 0;
+  b.s.attach(b.ctx, b.master, { host: { stopPreview: () => { stopsB++; b.s.setPreview(null); } } });
+  b.s.markRunning();
+  b.s.setPreview({ title: 'Night Pursuit — preview' });
+  b.dom.visibilityState = 'hidden';
+  b.dom.emit('visibilitychange');
+  assert.equal(stopsB, 1);
+  b.advance(PS.FADE_OUT_S * 1000 + 25);
+  b.dom.visibilityState = 'visible';
+  b.dom.emit('visibilitychange');
+  await flush();
+  assert.equal(b.s.getSnapshot().state, 'running');
+  assert.equal(b.s.hasPreview(), false, 'preview stays ended');
+  assert.equal(stopsB, 1);
+
+  // A preview still registered while paused (host did not clear it) blocks auto-resume.
+  const c = session();
+  c.s.attach(c.ctx, c.master, { host: { stopPreview: () => {} } });
+  c.s.markRunning();
+  c.ctx.setState('interrupted');
+  c.s.setPreview({ title: 'still previewing' });
+  c.ctx.setState('running');
+  await flush();
+  assert.equal(c.s.getSnapshot().state, 'paused');
+  assert.equal(ramps(c.master).length, 0);
+});
+
+test('auto-resume never creates a context and only resumes the one that was running', async () => {
+  const { s, ctx, master, dom, advance } = session();
+  s.attach(ctx, master);
+  s.markRunning();
+  dom.visibilityState = 'hidden';
+  dom.emit('visibilitychange');
+  advance(PS.FADE_OUT_S * 1000 + 25);
+  // Host swapped in a different context while paused (re-attach): the old pause is not resumed.
+  const other = new FakeCtx();
+  other.state = 'suspended';
+  s.attach(other, master);
+  dom.visibilityState = 'visible';
+  dom.emit('visibilitychange');
+  await flush();
+  assert.equal(other.resumes, 0);
+  assert.equal(ctx.resumes, 0);
+  assert.equal(ramps(master).length, 0);
+  const src = readFileSync(join(root, 'src/audio/playbackSession.ts'), 'utf8');
+  assert.doesNotMatch(src, /new (window\.)?(webkit)?(Offline)?AudioContext/);
+  assert.doesNotMatch(src, /localStorage|sessionStorage|indexedDB/);
 });
 
 test('resume() (user tap) resumes the context and ramps in from silence', async () => {
@@ -235,10 +567,26 @@ test('live root: Frontend useVehicleMedia owns Media Session → session never t
   h.ctx.setState('interrupted'); // interruption still fades + pauses
   assert.deepEqual(h.master.calls.at(-1), ['fadeOut', 0.15]);
   assert.equal(h.s.getSnapshot().state, 'paused');
-  h.ctx.setState('running');
-  assert.equal(await h.s.resume(), true);
+  h.ctx.setState('running'); // interruption over → auto-resume
+  await flush();
   assert.equal(h.s.getSnapshot().state, 'running');
   assert.ok(h.master.calls.some((c) => Array.isArray(c) && c[0] === 'rampIn'));
+  assert.deepEqual(before(), snap0, 'auto-resume after an interruption leaves Media Session alone');
+  h.dom.visibilityState = 'hidden';
+  h.dom.emit('visibilitychange');
+  h.advance(PS.FADE_OUT_S * 1000 + 25);
+  h.dom.visibilityState = 'visible';
+  h.dom.emit('visibilitychange');
+  await flush();
+  assert.equal(h.s.getSnapshot().state, 'running', 'hidden → visible auto-resumes');
+  assert.deepEqual(before(), snap0, 'auto-resume after hidden leaves Media Session alone');
+  h.ctx.setState('interrupted');
+  h.ctx.grant = 'reject';
+  h.ctx.setState('suspended');
+  h.win.emit('pageshow');
+  await flush();
+  h.ctx.grant = true;
+  assert.equal(await h.s.resume(), true, 'tap fallback');
   h.s.setPreview({ title: 'Preview' });
   h.s.setPreview(null);
   h.s.markStopped(); // engine off: Frontend released the wheel; the session must not re-register
@@ -256,6 +604,18 @@ test('useAudioEngine: Frontend owns Media Session (always-true reader, set once,
   assert.match(hook, /session\.setLegacyMediaFlagReader\(FRONTEND_OWNS_MEDIA_SESSION\);/);
   assert.doesNotMatch(hook, /setLegacyMediaFlagReader\(null\)/, 'never cleared on unmount');
   assert.doesNotMatch(hook, /LEGACY_MEDIA_FLAG/);
+});
+
+test('useAudioEngine mirrors an auto-resume into running (subscription only: no context created or resumed)', () => {
+  const hook = readFileSync(join(root, 'src/hooks/useAudioEngine.ts'), 'utf8');
+  const a = hook.indexOf('// paused → running without a tap');
+  assert.ok(a > 0);
+  const body = hook.slice(a, hook.indexOf('}, [session]);', a));
+  assert.match(body, /session\.subscribe\(/);
+  assert.match(body, /was !== "paused" \|\| snap\.state !== "running"/);
+  assert.match(body, /resumedAtRef\.current = /, 'no starter cue right after an auto-resume');
+  assert.match(body, /setRunning\(/);
+  assert.doesNotMatch(body, /\.resume\(|ensureContext|new AC|localStorage|sessionStorage/);
 });
 
 test('silent procedural carrier only when the mix is not routed through a media element', () => {
@@ -369,6 +729,43 @@ test('fadeOut reaches silence within 150 ms', async () => {
   assert.ok(end > 0, 'fadeOut ran');
   assert.ok(end - t0 <= 0.15 + 1e-6, `fade scheduled within 150 ms (${((end - t0) * 1000).toFixed(1)} ms)`);
   assert.ok(peak(x, Math.min(x.length - 1, Math.ceil((end + 0.01) * sr))) < 1e-3, 'silent after the fade');
+});
+
+test('auto-resume through the real master bus: from silence, 250 ms ramp, back to the same level, never louder', async () => {
+  const sr = 44100;
+  const off = new OfflineAudioContext(1, Math.round(2.2 * sr), sr);
+  const bus = PS.createMasterBus(off);
+  const amp = 0.25;
+  sine(off, bus.input, amp);
+  const h = env();
+  const s = new PS.PlaybackSession({ env: h.e });
+  const ctx = new FakeCtx(); // lifecycle events; the bus runs on the offline renderer
+  s.attach(ctx, bus);
+  bus.rampIn();
+  s.markRunning();
+  const at = {};
+  const step = (t, fn) => off.suspend(t).then(async () => { at[t] = off.currentTime; fn(); await flush(); off.resume(); });
+  step(0.5, () => ctx.setState('interrupted'));
+  step(0.55, () => ctx.setState('running')); // call ends 50 ms into the 150 ms fade
+  step(1.2, () => { h.dom.visibilityState = 'hidden'; h.dom.emit('visibilitychange'); h.advance(PS.FADE_OUT_S * 1000 + 25); });
+  step(1.6, () => { h.dom.visibilityState = 'visible'; h.dom.emit('visibilitychange'); });
+  const y = (await off.startRendering()).getChannelData(0);
+  const i = (t) => Math.round(t * sr);
+  assert.ok(peak(y) <= amp + 1e-4, `never above the pre-interruption level (peak ${peak(y).toFixed(4)})`);
+  for (const t of [0.55, 1.6]) {
+    // The offline renderer applies scheduled events a quantum or two late (see the fadeOut test),
+    // so find where the ramp starts: the quietest 1 ms window shortly after the event.
+    let t1 = at[t], quiet = Infinity;
+    for (let ms = 0; ms < 40; ms++) {
+      const p = peak(y, i(at[t] + ms / 1000), i(at[t] + (ms + 1) / 1000));
+      if (p < quiet) { quiet = p; t1 = at[t] + ms / 1000; }
+    }
+    assert.ok(quiet < amp * 0.06, `${t}: passes through silence before the ramp (${db(quiet / amp).toFixed(1)} dB)`);
+    assert.ok(rms(y, i(t1 + 0.09), i(t1 + 0.11)) < rms(y, i(t1 + 0.4), i(t1 + 0.5)) * 0.6, `${t}: still ramping at ~100 ms`);
+    assert.ok(Math.abs(db(peak(y, i(t1 + 0.3), i(t1 + 0.5))) - db(amp)) < 0.05, `${t}: unity after the ramp`);
+  }
+  assert.ok(peak(y, i(at[1.2] + 0.17), i(at[1.6])) < 1e-3, 'silent while hidden');
+  assert.equal(s.getSnapshot().state, 'running');
 });
 
 /* ---------------- gesture gating ---------------- */
