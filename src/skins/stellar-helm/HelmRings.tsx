@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 const C = 150;
 
@@ -69,8 +69,27 @@ export function HelmRings({ rpm, mph, gear, still, compact = false }: { rpm: num
     return () => cancelAnimationFrame(raf);
   }, [frozen]);
 
+  // GEAR label in on-screen px: --sh-rings-scale = rendered px per viewBox unit (incl. host fit).
+  const svgRef = useRef<SVGSVGElement>(null);
+  useLayoutEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width && r.height) el.style.setProperty('--sh-rings-scale', (Math.min(r.width, r.height) / 300).toFixed(4));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    for (let a: Element | null = el, i = 0; a && i < 6; a = a.parentElement, i++) ro.observe(a);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
+
   return (
-    <svg className="sh-rings" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" data-frozen={frozen ? 'true' : 'false'}>
+    <svg ref={svgRef} className="sh-rings" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" data-frozen={frozen ? 'true' : 'false'}>
       <defs>
         <radialGradient id="sh-core" cx="50%" cy="45%" r="60%">
           <stop offset="0" stopColor="#16223a" />

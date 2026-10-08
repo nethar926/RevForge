@@ -93,7 +93,7 @@
 .sh-ring-outer .sh-ring-mark { fill: var(--sh-ring-outer); }
 .sh-ring-inner .sh-ring-mark { fill: var(--sh-ring-mark-inner, #fff); }
 .sh-gear-num { font: 600 76px var(--sh-display); fill: var(--sh-gear); }
-.sh-gear-label { font: 400 15px var(--sh-display); letter-spacing: 3px; fill: var(--sh-muted); }
+.sh-gear-label { font: 400 15px var(--sh-display); font-size: max(15px, calc(11.5px / var(--sh-rings-scale, 1))); letter-spacing: 3px; fill: var(--sh-muted); }
 
 /* POWER bar (red + hatched + REDLINE label past redline: not colour alone) */
 .sh-power { grid-area: power; display: flex; flex-direction: column; }
