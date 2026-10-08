@@ -20,18 +20,18 @@ export interface PreviewTrimInfo {
 export const PREVIEW_PEAK_CEILING_DB = -3;
 
 export const PREVIEW_TRIM_INFO: Readonly<Record<string, PreviewTrimInfo>> = {
-  'aerospace-f14': {liveCruiseLufs: -29.21, previewLufs: -19.72, previewPeakDb: -7.53, exactDb: -9.49, trimDb: -9.49, clamped: false},
-  [CHRONO_COUPE.id]: {liveCruiseLufs: -19.73, previewLufs: -19.67, previewPeakDb: -7.34, exactDb: -0.06, trimDb: -0.06, clamped: false},
-  'ev-dual-motor': {liveCruiseLufs: -19.65, previewLufs: -21.66, previewPeakDb: -10.9, exactDb: 2.01, trimDb: 2.01, clamped: false},
-  'ev-inverter-climb': {liveCruiseLufs: -16.8, previewLufs: -28.18, previewPeakDb: -14.88, exactDb: 11.38, trimDb: 11.38, clamped: false},
-  'ev-regen-howl': {liveCruiseLufs: -16.08, previewLufs: -25.23, previewPeakDb: -14.71, exactDb: 9.16, trimDb: 9.16, clamped: false},
-  'ev-whine': {liveCruiseLufs: -18.5, previewLufs: -25.34, previewPeakDb: -13.96, exactDb: 6.84, trimDb: 6.84, clamped: false},
-  'i4-zip': {liveCruiseLufs: -30.26, previewLufs: -23.52, previewPeakDb: -9.81, exactDb: -6.74, trimDb: -6.74, clamped: false},
-  'i6-silk': {liveCruiseLufs: -29.47, previewLufs: -20.52, previewPeakDb: -7.37, exactDb: -8.96, trimDb: -8.96, clamped: false},
-  'night-pursuit': {liveCruiseLufs: -19.7, previewLufs: -15.3, previewPeakDb: -2.14, exactDb: -4.4, trimDb: -4.4, clamped: false},
-  'rotary-hum': {liveCruiseLufs: -22.03, previewLufs: -17.86, previewPeakDb: -6.59, exactDb: -4.16, trimDb: -4.16, clamped: false},
-  'stellar-helm': {liveCruiseLufs: -21.1, previewLufs: -22.15, previewPeakDb: -10.63, exactDb: 1.05, trimDb: 1.05, clamped: false},
-  'v8-rumble': {liveCruiseLufs: -25.73, previewLufs: -20.69, previewPeakDb: -9.74, exactDb: -5.04, trimDb: -5.04, clamped: false},
+  'aerospace-f14': {liveCruiseLufs: -29.21, previewLufs: -19.97, previewPeakDb: -7.3, exactDb: -9.25, trimDb: -9.25, clamped: false},
+  [CHRONO_COUPE.id]: {liveCruiseLufs: -19.73, previewLufs: -19.72, previewPeakDb: -8.23, exactDb: -0.01, trimDb: -0.01, clamped: false},
+  'ev-dual-motor': {liveCruiseLufs: -19.65, previewLufs: -21.67, previewPeakDb: -11.4, exactDb: 2.03, trimDb: 2.03, clamped: false},
+  'ev-inverter-climb': {liveCruiseLufs: -16.8, previewLufs: -28.11, previewPeakDb: -14.67, exactDb: 11.31, trimDb: 11.31, clamped: false},
+  'ev-regen-howl': {liveCruiseLufs: -16.08, previewLufs: -25.18, previewPeakDb: -15.11, exactDb: 9.11, trimDb: 9.11, clamped: false},
+  'ev-whine': {liveCruiseLufs: -18.5, previewLufs: -25.11, previewPeakDb: -13.95, exactDb: 6.61, trimDb: 6.61, clamped: false},
+  'i4-zip': {liveCruiseLufs: -30.26, previewLufs: -24.07, previewPeakDb: -9.6, exactDb: -6.19, trimDb: -6.19, clamped: false},
+  'i6-silk': {liveCruiseLufs: -29.49, previewLufs: -20.48, previewPeakDb: -8.55, exactDb: -9.01, trimDb: -9.01, clamped: false},
+  'night-pursuit': {liveCruiseLufs: -19.7, previewLufs: -15.07, previewPeakDb: -2.18, exactDb: -4.63, trimDb: -4.63, clamped: false},
+  'rotary-hum': {liveCruiseLufs: -22.03, previewLufs: -18.02, previewPeakDb: -7.01, exactDb: -4.01, trimDb: -4.01, clamped: false},
+  'stellar-helm': {liveCruiseLufs: -21.1, previewLufs: -22.15, previewPeakDb: -10.64, exactDb: 1.05, trimDb: 1.05, clamped: false},
+  'v8-rumble': {liveCruiseLufs: -25.73, previewLufs: -20.97, previewPeakDb: -9.16, exactDb: -4.76, trimDb: -4.76, clamped: false},
 };
 
 export const PREVIEW_TRIMS_DB: Readonly<Record<string, number>> = Object.fromEntries(
