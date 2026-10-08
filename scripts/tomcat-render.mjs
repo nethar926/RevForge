@@ -5,7 +5,9 @@
  *
  *   node scripts/tomcat-render.mjs levels                 LUFS / peak table (cruise, idle, mil, AB zones)
  *   node scripts/tomcat-render.mjs spectra                centroid, band split, tonal peaks per state
- *   node scripts/tomcat-render.mjs ab <outDir> [baseRoot]  before/after A/B WAVs (+ MP3 when ffmpeg exists)
+ *   node scripts/tomcat-render.mjs ab <outDir> <baseRoot> [clips] [labels]
+ *                                                          before/after A/B WAVs (+ MP3 when ffmpeg exists);
+ *                                                          clips e.g. 04,05,07; labels e.g. prev,retune
  *   node scripts/tomcat-render.mjs preview                 public/snippets/aerospace-f14.wav only
  *
  * `baseRoot` is a checkout of the previous code (e.g. `git archive e2ace06`) for the "before" files.
@@ -188,7 +190,7 @@ export async function renderPreview() {
   return { chans, lufs: lufs + g, peak: peak + g };
 }
 
-async function ab(outDir, baseRoot) {
+async function ab(outDir, baseRoot, only = [], labels = ['before', 'after']) {
   mkdirSync(outDir, { recursive: true });
   // Level match on cruise (car chain): offset applied to every "before" file
   const after = await renderSteady('cruise');
@@ -205,6 +207,7 @@ async function ab(outDir, baseRoot) {
   })();
   const report = [];
   for (const clip of CLIPS) {
+    if (only.length && !only.some((o) => clip.name.startsWith(o))) continue;
     for (const side of ['before', 'after']) {
       const root = side === 'before' ? baseRoot : ROOT;
       const params = side === 'after' ? clip.afterParams : undefined;
@@ -221,14 +224,14 @@ async function ab(outDir, baseRoot) {
       if (side === 'before') scale(chans, offset);
       if (clip.name === '06-mechanical' && side === 'after') {
         // soloed layer: match the full "before" mix loudness so it is audible
-        const prev = report.find((r) => r.file === `${clip.name}-before.wav`);
+        const prev = report.find((r) => r.file === `${clip.name}-${labels[0]}.wav`);
         scale(chans, prev.lufs - integratedLufs(chans, SR));
       }
       fade(chans, SR, clip.pre ? 0.02 : 0.005, 0.12);
       const lufs = integratedLufs(chans, SR);
       const peak = samplePeakDb(chans);
       if (peak > -0.3) scale(chans, -0.3 - peak);
-      const file = `${clip.name}-${side}.wav`;
+      const file = `${clip.name}-${side === 'before' ? labels[0] : labels[1]}.wav`;
       writeFileSync(join(outDir, file), bufferToWav(chans, SR));
       if (ff) {
         execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', join(outDir, file), '-codec:a', 'libmp3lame', '-b:a', '192k', join(outDir, file.replace(/\.wav$/, '.mp3'))]);
@@ -240,7 +243,7 @@ async function ab(outDir, baseRoot) {
   writeFileSync(join(outDir, 'levels.json'), JSON.stringify({ cruiseOffsetDb: offset, before: before.lufs, after: after.lufs, files: report }, null, 2));
 }
 
-const [cmd, a1, a2] = process.argv.slice(2);
+const [cmd, a1, a2, a3, a4] = process.argv.slice(2);
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (cmd === 'levels') await levels();
   else if (cmd === 'spectra') {
@@ -257,7 +260,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.error('usage: node scripts/tomcat-render.mjs ab <outDir> <baseRoot>');
       process.exit(1);
     }
-    await ab(a1, a2);
+    await ab(a1, a2, a3 ? a3.split(',') : [], a4 ? a4.split(',') : undefined);
   } else if (cmd === 'preview') {
     const { chans, lufs, peak } = await renderPreview();
     const dest = join(ROOT, 'public', 'snippets', `${ID}.wav`);

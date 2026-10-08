@@ -11,13 +11,16 @@
 //                 N1 lags N2 · start: air starter → light-off → idle · shutdown: fuel cut → rundown
 //                 afterburner demand (load if supplied, else throttle) → zones 1..5 lit in sequence
 //   per engine:   N2/N1 ConstantSources → blade-pass whine (3 tones + fan tone) · buzz-saw (N1 saw →
-//                 rasp shaper) · idle/spool bed · core roar (low / body / hot) · starter whine → pan
-//   shared:       rear-arc rumble · afterburner (roar, low end, crackle, nozzle hiss, whump events)
-//                 mechanical (gearbox / mesh / shaft tones, ticks, intake rumble) · ram airflow
-//   out:          sum → 18 Hz DC-blocking high-pass → level → engine master (→ limiter)
+//                 rasp shaper), both ducking under thrust · idle/spool bed · core roar (deep rumble
+//                 25–120 Hz, body 120–300 Hz, small hot band) rolled by slow random AM · starter → pan
+//   shared:       rear-arc rumble · afterburner (dark roar ≤ 1.2 kHz, chest-weight body, wide stereo
+//                 deep rumble, sparse low crackle, faint hiss, per-zone thumps) · mechanical
+//                 (gearbox / mesh / shaft tones, ticks, intake rumble) · ram airflow
+//   out:          sum → 2 × 20 Hz high-pass (DC + subsonic) → level → engine master (→ limiter)
 //
-// Node budget (~22 oscillators, 4 looping runtime-noise sources, ~34 filters, 3 fixed shapers) is
-// light enough for in-car Chromium; no AudioWorklet. WaveShaper curves are assigned once.
+// Node budget (~22 oscillators, 4 looping runtime-noise + 2 runtime random-walk sources, ~39
+// filters, 3 fixed shapers, 4 stereo panners) is light enough for in-car Chromium; no AudioWorklet.
+// WaveShaper curves are assigned once.
 
 const clip = (x, a = 0, b = 1) => Math.max(a, Math.min(b, Number.isFinite(x) ? x : a));
 const num = (v, d) => (v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -63,6 +66,25 @@ export const TC_N1_HZ = 160;
 export const TC_RATIOS = { comp1: 17.6, comp1h: 35.2, comp2: 29.3, fan: 22, gear: 0.47, mesh: 10.8 };
 /** Calibrated output trim (cruise loudness matched to the previous aerospace voice in the car chain). */
 export const TC_OUT_TRIM = 0.454;
+/**
+ * Low-end mix (thrust + afterburner). Thrust and afterburner energy sits in a deep exhaust rumble
+ * (≈25–120 Hz) with a body band (≈120–300 Hz); the hot band and nozzle hiss are kept small, and the
+ * whine / fan buzz duck under thrust so the low end leads.
+ */
+export const TC_LOW = {
+  deep: 1.15, // per-engine deep rumble (LP 70–120 Hz) × thrust
+  body: 2.45, // per-engine body band (BP 130–280 Hz) × thrust
+  hot: 0.19, // per-engine hot band (BP 650–1100 Hz) × thrust²
+  rumble: 0.75, // shared rear-arc rumble × thrust^1.5
+  am: 0.3, // max depth of the slow random roll on the roar (0..1)
+  abRoar: 0.7, // AB roar (LP ≤ 1.2 kHz, darker per zone)
+  abBody: 2.0, // AB chest weight (BP ≈ 110–160 Hz)
+  abLow: 2.4, // AB deep rumble, stereo pair (LP 45–70 Hz), widening per zone
+  crackle: 0.3,
+  hiss: 0.006,
+  duckSpool: 0.32, // whine / fan duck at full spool
+  duckAb: 0.25, // extra duck at zone 5
+};
 
 /* ───────────────────────────── drive model ───────────────────────────── */
 
@@ -378,7 +400,10 @@ export function tomcatLayerGains(params = {}) {
 function engineTargets(L, n2, n1, s, comb, starter, rate, pitch, ab) {
   const presence = clip(n2 / TC_IDLE_N2);
   const thrust = comb * presence * (0.1 + 0.9 * Math.pow(s, 1.6));
-  const whine = L.whine * 0.04 * Math.pow(presence, 1.5) * (0.75 + 0.25 * s);
+  const duck = clip(1 - TC_LOW.duckSpool * s * s - TC_LOW.duckAb * ab);
+  // low end grows faster than the shared thrust curve: modest at cruise, full at military power
+  const lowT = thrust * (0.47 + 0.53 * s);
+  const whine = L.whine * 0.04 * Math.pow(presence, 1.5) * (0.75 + 0.25 * s) * duck;
   return {
     n2Hz: TC_N2_HZ * n2 * pitch,
     n1Hz: TC_N1_HZ * n1 * pitch,
@@ -387,17 +412,18 @@ function engineTargets(L, n2, n1, s, comb, starter, rate, pitch, ab) {
     whine,
     whine2: whine * (0.35 + 0.35 * s),
     whineH: whine * 0.22,
-    fanTone: L.fan * 0.03 * Math.pow(clip(n1 / 0.35), 1.2) * (0.6 + 0.4 * s),
-    buzz: L.fan * 0.05 * sstep((n1 - 0.62) / 0.33),
+    fanTone: L.fan * 0.03 * Math.pow(clip(n1 / 0.35), 1.2) * (0.6 + 0.4 * s) * duck,
+    buzz: L.fan * 0.05 * sstep((n1 - 0.62) / 0.33) * duck,
     buzzDrive: 1 + 6 * sstep((n1 - 0.8) / 0.2),
     idleBed: L.idle * presence * (0.4 * (1 - 0.55 * s) * (0.3 + 0.7 * comb) + 0.2 * clip(Math.abs(rate) * 1.5)),
     idleHz: 420 + 900 * s,
-    roarLow: L.roar * 0.7 * thrust,
-    roarLowHz: Math.max(160, 300 + 1100 * thrust - 140 * ab),
-    roarBody: L.roar * 0.56 * thrust,
-    roarBodyHz: 150 + 230 * s,
-    roarHot: L.roar * 0.4 * thrust * thrust,
-    roarHotHz: 1000 + 1200 * s,
+    roarLow: L.roar * TC_LOW.deep * lowT,
+    roarLowHz: 90 + 60 * thrust,
+    roarBody: L.roar * TC_LOW.body * lowT,
+    roarBodyHz: 130 + 120 * s + 30 * ab,
+    roarHot: L.roar * TC_LOW.hot * thrust * thrust,
+    roarHotHz: 650 + 450 * s,
+    roarAm: TC_LOW.am * (0.35 + 0.65 * thrust),
     starterHz: 1500 + 5200 * clip(n2 / 0.45),
     starter: L.starter * 0.05 * starter,
     starterHiss: L.starter * 0.06 * starter,
@@ -423,15 +449,20 @@ export function tomcatTargets(params = {}, drv = {}) {
     a,
     b,
     thrust,
-    rumble: L.rumble * (0.2 * thrust + 0.75 * Math.pow(thrust, 1.5)),
+    rumble: L.rumble * (0.2 * thrust + TC_LOW.rumble * Math.pow(thrust, 1.5) * (0.4 + 0.6 * s)),
+    rumbleNoiseAm: TC_LOW.am * 0.8 * (0.3 + 0.7 * thrust),
     rumbleAmRate: 0.7 + 2.2 * s,
-    abRoar: abOn * 1.15 * Math.pow(ab, 0.75),
-    abRoarHz: 260 + 900 * ab,
-    abLow: abOn * 1.3 * ab,
-    abLowHz: 52 + 26 * ab,
-    crackleDrive: 0.5 + 1.1 * Math.pow(ab, 0.8),
-    crackle: abOn * L.crackle * 0.5 * sstep(ab * 1.25),
-    abHiss: abOn * L.crackle * 0.035 * ab,
+    abRoar: abOn * TC_LOW.abRoar * Math.pow(ab, 1.1),
+    abRoarHz: 700 - 250 * ab,
+    abBody: abOn * TC_LOW.abBody * Math.pow(ab, 1.35),
+    abBodyHz: 160 - 50 * ab,
+    abLow: abOn * TC_LOW.abLow * Math.pow(ab, 1.4),
+    abLowHz: 45 + 25 * ab,
+    abWidth: 0.25 + 0.6 * ab,
+    abAm: TC_LOW.am * 0.8 * ab,
+    crackleDrive: 0.45 + 0.8 * Math.pow(ab, 0.8),
+    crackle: abOn * L.crackle * TC_LOW.crackle * sstep(ab * 1.25),
+    abHiss: abOn * L.crackle * TC_LOW.hiss * ab,
     gearHz: a.n2Hz * TC_RATIOS.gear,
     gear: L.mech * 0.011 * presence * (0.6 + 0.4 * s),
     mesh: L.mech * 0.009 * presence,
@@ -484,6 +515,36 @@ function raspCurve(n = 1024) {
     c[i] = Math.tanh(x * 2.2) / Math.tanh(2.2);
   }
   return c;
+}
+
+/**
+ * Smooth random control signal (≈2.5 Hz bandwidth, zero mean, unit RMS) at a low buffer rate,
+ * generated at runtime from Math.random and cross-faded so the loop seam is continuous.
+ */
+function makeRoll(ctx, seconds, hz = 2.5) {
+  const sr = 3000;
+  const len = Math.floor(sr * seconds);
+  const fade = sr;
+  const x = new Float32Array(len + fade);
+  const k = 1 - Math.exp((-2 * Math.PI * hz) / sr);
+  let a = 0;
+  let b = 0;
+  for (let i = -sr * 2; i < len + fade; i++) {
+    a += k * (Math.random() * 2 - 1 - a);
+    b += k * (a - b);
+    if (i >= 0) x[i] = b;
+  }
+  const buf = ctx.createBuffer(1, len, sr);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = i < fade ? x[i] * (i / fade) + x[len + i] * (1 - i / fade) : x[i];
+  let mean = 0;
+  for (let i = 0; i < len; i++) mean += d[i];
+  mean /= len;
+  let sq = 0;
+  for (let i = 0; i < len; i++) sq += (d[i] - mean) ** 2;
+  const g = 1 / Math.max(1e-9, Math.sqrt(sq / len));
+  for (let i = 0; i < len; i++) d[i] = (d[i] - mean) * g;
+  return buf;
 }
 
 function makeNoise(ctx, seconds, pink) {
@@ -569,9 +630,11 @@ export class TomcatVoice {
     };
 
     // ── output: sum → DC-blocking HP → level → dest
+    // two cascaded 20 Hz high-passes: DC + subsonic safety under the boosted low end (24 dB/oct)
     this.out = gain(0, dest);
-    this.dcBlock = filt('highpass', 18, 0.6, this.out);
-    this.sum = gain(1, this.dcBlock);
+    this.dcBlock = filt('highpass', 20, 0.707, this.out);
+    this.subsonic = filt('highpass', 20, 0.707, this.dcBlock);
+    this.sum = gain(1, this.subsonic);
 
     // noise sources (decorrelated by loop offset)
     this.pinkA = noise(pink, 0);
@@ -584,6 +647,16 @@ export class TomcatVoice {
     const hay2 = filt('lowpass', 32, 0.7);
     this.whiteB.connect(hay);
     hay.connect(hay2);
+    // slow random roll for the exhaust roar (jet roar "breathes" instead of sitting still):
+    // runtime-generated smooth random walks (unit RMS), two decorrelated loop lengths
+    const roll = [23.3, 29.1].map((sec) => {
+      const s = this.n(ctx.createBufferSource());
+      s.buffer = makeRoll(ctx, sec);
+      s.loop = true;
+      s.start(t0);
+      this.sources.push(s);
+      return s;
+    });
 
     // ── per engine
     this.eng = [0, 1].map((i) => {
@@ -636,14 +709,17 @@ export class TomcatVoice {
       e.idleBp = filt('bandpass', 500, 0.9, e.idleBed);
       pinkE.connect(e.idleBp);
       // core roar: low (LP), body (BP), hot (white BP)
-      e.roarLow = gain(0, e.bus);
-      e.roarLowLp = filt('lowpass', 400, 0.6, e.roarLow);
+      e.roarAm = gain(1, e.bus);
+      e.roarAmDepth = gain(0, e.roarAm.gain);
+      roll[i].connect(e.roarAmDepth);
+      e.roarLow = gain(0, e.roarAm);
+      e.roarLowLp = filt('lowpass', 90, 0.75, e.roarLow);
       pinkE.connect(e.roarLowLp);
-      e.roarBody = gain(0, e.bus);
-      e.roarBodyBp = filt('bandpass', 220, 0.8, e.roarBody);
+      e.roarBody = gain(0, e.roarAm);
+      e.roarBodyBp = filt('bandpass', 180, 0.75, e.roarBody);
       pinkE.connect(e.roarBodyBp);
       e.roarHot = gain(0, e.bus);
-      e.roarHotBp = filt('bandpass', 1300, 0.7, e.roarHot);
+      e.roarHotBp = filt('bandpass', 800, 0.7, e.roarHot);
       whiteE.connect(e.roarHotBp);
       // air-turbine starter whine + starter air hiss
       e.starter = gain(0, e.bus);
@@ -664,23 +740,44 @@ export class TomcatVoice {
     const rLp1 = filt('lowpass', 85, 0.7, rLp2);
     this.pinkA.connect(rLp1);
     this.rumbleLfo = osc('sine', 1.1, null);
-    const rDepth = gain(0.25, rumbleAm.gain);
+    const rDepth = gain(0.12, rumbleAm.gain);
     this.rumbleLfo.connect(rDepth);
+    this.rumbleNoiseDepth = gain(0, rumbleAm.gain);
+    roll[1].connect(this.rumbleNoiseDepth);
 
     // ── afterburner
-    this.abRoar = gain(0, this.sum);
-    this.abRoarLp = filt('lowpass', 300, 0.6, this.abRoar);
+    // roar: moving LP (darker per zone) → fixed 1.2 kHz LP, rolled by the slow random AM
+    this.abAm = gain(1, this.sum);
+    this.abAmDepth = gain(0, this.abAm.gain);
+    roll[0].connect(this.abAmDepth);
+    this.abRoar = gain(0, this.abAm);
+    const abDark = filt('lowpass', 1200, 0.6, this.abRoar);
+    this.abRoarLp = filt('lowpass', 600, 0.6, abDark);
     this.pinkB.connect(this.abRoarLp);
-    this.abLow = gain(0, this.sum);
+    // chest weight
+    this.abBody = gain(0, this.abAm);
+    this.abBodyBp = filt('bandpass', 140, 0.8, this.abBody);
+    this.pinkA.connect(this.abBodyBp);
+    // deep rumble: decorrelated L/R pair that widens with each zone
+    this.abLowPanL = this.n(ctx.createStereoPanner());
+    this.abLowPanR = this.n(ctx.createStereoPanner());
+    this.abLowPanL.connect(this.abAm);
+    this.abLowPanR.connect(this.abAm);
+    this.abLow = gain(0, this.abLowPanL);
     this.abLowLp2 = filt('lowpass', 60, 0.8, this.abLow);
     this.abLowLp1 = filt('lowpass', 60, 0.8, this.abLowLp2);
     this.pinkA.connect(this.abLowLp1);
+    this.abLowR = gain(0, this.abLowPanR);
+    this.abLowRLp2 = filt('lowpass', 60, 0.8, this.abLowR);
+    this.abLowRLp1 = filt('lowpass', 60, 0.8, this.abLowRLp2);
+    this.pinkB.connect(this.abLowRLp1);
+    // crackle: sparse, low pops
     this.crackle = gain(0, this.sum);
-    const crackBp = filt('bandpass', 950, 0.55, this.crackle);
-    const crackShape = shaper(thresholdCurve(0.8, 1.4));
+    const crackBp = filt('bandpass', 520, 0.6, this.crackle);
+    const crackShape = shaper(thresholdCurve(0.87, 1.4));
     crackShape.connect(crackBp);
     this.crackleDrive = gain(0.5, crackShape);
-    const crackLp = filt('lowpass', 3000, 0.7, this.crackleDrive);
+    const crackLp = filt('lowpass', 1600, 0.7, this.crackleDrive);
     this.whiteA.connect(crackLp);
     this.abHiss = gain(0, this.sum);
     const hissHp = filt('highpass', 4500, 0.7, this.abHiss);
@@ -778,6 +875,7 @@ export class TomcatVoice {
       setT(e.roarBodyBp.frequency, E.roarBodyHz, t, g);
       setT(e.roarHot.gain, E.roarHot, t, g);
       setT(e.roarHotBp.frequency, E.roarHotHz, t, g);
+      setT(e.roarAmDepth.gain, E.roarAm, t, 0.2);
       setT(e.starter.gain, E.starter, t, g);
       setT(e.starterOsc.frequency, E.starterHz, t, gp);
       setT(e.starterOsc2.frequency, E.starterHz * 1.47, t, gp);
@@ -785,11 +883,17 @@ export class TomcatVoice {
     }
     setT(this.rumble.gain, T.rumble, t, g);
     setT(this.rumbleLfo.frequency, T.rumbleAmRate, t, 0.3);
+    setT(this.rumbleNoiseDepth.gain, T.rumbleNoiseAm, t, 0.2);
     setT(this.abRoar.gain, T.abRoar, t, g);
     setT(this.abRoarLp.frequency, T.abRoarHz, t, g);
-    setT(this.abLow.gain, T.abLow, t, g);
-    setT(this.abLowLp1.frequency, T.abLowHz, t, g);
-    setT(this.abLowLp2.frequency, T.abLowHz, t, g);
+    setT(this.abBody.gain, T.abBody, t, g);
+    setT(this.abBodyBp.frequency, T.abBodyHz, t, g);
+    setT(this.abLow.gain, T.abLow * 0.5, t, g);
+    setT(this.abLowR.gain, T.abLow * 0.5, t, g);
+    for (const f of [this.abLowLp1, this.abLowLp2, this.abLowRLp1, this.abLowRLp2]) setT(f.frequency, T.abLowHz, t, g);
+    setT(this.abLowPanL.pan, -T.abWidth, t, 0.2);
+    setT(this.abLowPanR.pan, T.abWidth, t, 0.2);
+    setT(this.abAmDepth.gain, T.abAm, t, 0.2);
     setT(this.crackleDrive.gain, T.crackleDrive, t, g);
     setT(this.crackle.gain, T.crackle, t, g);
     setT(this.abHiss.gain, T.abHiss, t, g);
@@ -846,8 +950,9 @@ export class TomcatVoice {
     for (const ev of events) {
       if (ev.type === 'abLight') {
         // zone 1 = ignition whump; later zones add smaller thumps (roar ramps via abLevel)
-        const peak = T.whumpScale * (ev.zone === 1 ? 0.42 : 0.16);
-        this.pulse(peak, ev.zone === 1 ? 0.045 : 0.035, ev.zone === 1 ? 0.13 : 0.09, ev.zone === 1 ? 58 : 50, 30, t);
+        // each later zone lands a lower, heavier chest thump
+        const peak = T.whumpScale * (ev.zone === 1 ? 0.42 : 0.2 + 0.02 * ev.zone);
+        this.pulse(peak, ev.zone === 1 ? 0.045 : 0.04, ev.zone === 1 ? 0.14 : 0.11, ev.zone === 1 ? 56 : 46 - 2 * ev.zone, 28, t);
       } else if (ev.type === 'lightoff') {
         this.pulse(0.22 * T.lightoffScale, 0.06, 0.22, 46, 27, t);
       } else if (ev.type === 'igniter') {
