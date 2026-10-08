@@ -1,5 +1,7 @@
 import { PACK_THEME_MIGRATIONS, THEME_ID_MIGRATIONS } from '../packs/migrations';
 import type { PackIdentity } from '../packs/types';
+import { FALLBACK_THEME_ID, isThemeListed, resolveListedThemeId } from './visibility';
+export { VISIBLE_THEME_IDS, FALLBACK_THEME_ID, isThemeListed } from './visibility';
 export type ThemeFamily = 'Minimal' | 'Gauge Cluster' | 'Cockpit' | 'RoadView' | 'Full Screen';
 export type ThemeLayout = 'numerical' | 'arc' | 'line' | 'bar' | 'digital' | 'analog' | 'driver' | 'scanner' | 'time' | 'jet' | 'space' | 'road' | 'custom' | 'gradient' | 'gradient-macro';
 export interface ThemePreset { id: string; name: string; family: ThemeFamily; group: string; layout: ThemeLayout | 'pack'; accent: string; secondary: string; description: string; feature: string; sceneId?: string; }
@@ -47,7 +49,14 @@ const roads = [
 ];
 for(const [id,name,accent,group] of roads) THEMES.push({...skin(`road-${id}`,name,'RoadView',group,'road',accent,'#9caac3','Procedural RevForge environment with speed-linked motion and atmospheric effects.','Reactive road atmosphere'),sceneId:id});
 export const FAMILIES: ThemeFamily[] = ['Minimal','Gauge Cluster','Cockpit','RoadView','Full Screen'];
-export const DEFAULT_THEME = 'road-road-66';
+/**
+ * Fresh-user theme. Was 'road-road-66'; that theme is hidden by the Oct 8 catalogue trim,
+ * so the default moved to Night Pursuit (the trim fallback).
+ */
+export const DEFAULT_THEME = FALLBACK_THEME_ID;
+/** RoadView scene used for atmosphere defaults and behind the locked IGNITION splash (unchanged). */
+export const DEFAULT_ATMOSPHERE = 'road-road-66';
+export const SPLASH_BACKDROP_THEME = DEFAULT_ATMOSPHERE;
 /** Legacy Theme Lab ids → Trenchlight (craft-named Galactic Enforcer ids live reversed in packs/migrations.ts). */
 export const RETIRED_THEME_IDS: Record<string, string> = {
   'road-tie-fighter': 'road-trenchlight',
@@ -60,3 +69,7 @@ export const themeForId = (id: string) => {
   const resolved = RETIRED_THEME_IDS[id] ?? id;
   return THEMES.find(t=>t.id===resolved) ?? THEMES.find(t=>t.id===DEFAULT_THEME)!;
 };
+/** The visible catalogue (allowlist in ./visibility) — the only themes any picker may list. */
+export const LISTED_THEMES: readonly ThemePreset[] = THEMES.filter((t) => isThemeListed(t.id));
+/** Saved / selected / deep-linked id → visible theme id (retired maps first, else Night Pursuit). */
+export const resolveThemeId = (id: string | null | undefined) => resolveListedThemeId(id, RETIRED_THEME_IDS);

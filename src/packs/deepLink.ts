@@ -1,6 +1,7 @@
 import { PACK_THEME_MIGRATIONS } from './migrations';
 import { THEME_PACKS } from './registry';
 import { storageKey } from '../lib/storageKey';
+import { isThemeListed } from '../themes/visibility';
 
 const THEME_KEY = 'drivesynth.theme.v2';
 const UI_PREFS_KEY = 'drivesynth.ui.v1';
@@ -63,7 +64,8 @@ export function applyPackDeepLink(migrated = ''): void {
   if (!want) want = migrated;
   if (!want) return;
   want = PACK_THEME_MIGRATIONS[want] ?? want;
-  const pack = THEME_PACKS.find((p) => p.id === want || p.previewSlug === want);
+  // Only allowlisted packs can be deep-linked (catalogue trim); anything else is ignored.
+  const pack = THEME_PACKS.find((p) => (p.id === want || p.previewSlug === want) && isThemeListed(p.themeId));
   if (fromUrl) stripPackParam();
   if (!pack) return;
   try {

@@ -2,7 +2,7 @@ import {sanitizeCluster,defaultCluster,type ClusterWidget} from './clusterModel'
 import type {FontChoice} from './FontPicker';
 import { useCallback, useState } from 'react';
 import type { EnginePatch } from '../audio';
-import { DEFAULT_THEME, themeForId } from './catalog';
+import { DEFAULT_ATMOSPHERE, DEFAULT_THEME, resolveThemeId, themeForId } from './catalog';
 import { storageKey } from '../lib/storageKey';
 export interface Combination { id: string; name: string; skinId: string; atmosphereId?:string; sound: EnginePatch; widgets?:ClusterWidget[];fonts?:Record<string,FontChoice>;colors?:Record<string,Record<string,string>>; }
 const THEME_KEY = 'drivesynth.theme.v2';
@@ -17,12 +17,12 @@ export function useThemes() {
   const setColor=(id:string,key:string,value:string)=>{if(/^#[0-9a-f]{6}$/i.test(value))saveColors({...colors,[id]:{...colors[id],[key]:value}});};
   const resetColors=(id:string)=>{const next={...colors};delete next[id];saveColors(next);};
 
-  const [skinId,setSkin] = useState(()=>{try{const next=themeForId(localStorage.getItem(storageKey(THEME_KEY)) ?? DEFAULT_THEME).id;try{localStorage.setItem(storageKey(THEME_KEY),next);}catch{/* session */}return next;}catch{return DEFAULT_THEME;}});
-  const [atmosphereId,setAtmosphere]=useState(()=>{try{const next=themeForId(localStorage.getItem(storageKey("revforge.atmosphere"))??DEFAULT_THEME).id;try{localStorage.setItem(storageKey("revforge.atmosphere"),next);}catch{/* session */}return next;}catch{return DEFAULT_THEME;}});
+  const [skinId,setSkin] = useState(()=>{try{const next=resolveThemeId(localStorage.getItem(storageKey(THEME_KEY)) ?? DEFAULT_THEME);try{localStorage.setItem(storageKey(THEME_KEY),next);}catch{/* session */}return next;}catch{return DEFAULT_THEME;}});
+  const [atmosphereId,setAtmosphere]=useState(()=>{try{const saved=themeForId(localStorage.getItem(storageKey("revforge.atmosphere"))??DEFAULT_ATMOSPHERE);const next=saved.family==="RoadView"?saved.id:DEFAULT_ATMOSPHERE;try{localStorage.setItem(storageKey("revforge.atmosphere"),next);}catch{/* session */}return next;}catch{return DEFAULT_ATMOSPHERE;}});
   const selectAtmosphere=useCallback((id:string)=>{const t=themeForId(id);if(t.family!=="RoadView")return;setAtmosphere(t.id);try{localStorage.setItem(storageKey("revforge.atmosphere"),t.id);}catch{/* session only */}},[]);
   const [combinations,setCombinations] = useState<Combination[]>(()=>{try {const data=JSON.parse(localStorage.getItem(storageKey(PAIRS_KEY))??'[]');return Array.isArray(data)?data.filter(x=>x && typeof x.id==='string' && typeof x.name==='string' && x.sound?.params && typeof x.skinId==='string'):[];}catch{return [];}});
   const [storageError,setStorageError]=useState('');
-  const selectSkin = useCallback((id:string)=>{const next=themeForId(id).id;setSkin(next);try{localStorage.setItem(storageKey(THEME_KEY),next);setStorageError('');}catch{setStorageError('This browser could not save your theme.');}},[]);
+  const selectSkin = useCallback((id:string)=>{const next=resolveThemeId(id);setSkin(next);try{localStorage.setItem(storageKey(THEME_KEY),next);setStorageError('');}catch{setStorageError('This browser could not save your theme.');}},[]);
   const saveCombination = (name:string,sound:EnginePatch) => {
     const id=crypto.randomUUID();
     const next=[...combinations,{id,name:name.trim()||`${themeForId(skinId).name} + ${sound.name}`,skinId,atmosphereId,widgets:structuredClone(widgets),fonts:structuredClone(fonts),colors:structuredClone(colors),sound:{...structuredClone(sound),id:`user-combination-${id}`}}];

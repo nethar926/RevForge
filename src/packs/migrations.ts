@@ -8,6 +8,7 @@
  */
 import { storageKey } from '../lib/storageKey';
 import STELLAR_HELM from './stellar-helm.identity';
+import { FALLBACK_THEME_ID, isThemeListed } from '../themes/visibility';
 
 export const NIGHT_PURSUIT_ID = 'night-pursuit' as const;
 
@@ -167,6 +168,11 @@ function runThemeRenameMigrations(): void {
         enableExperimental(pack);
         changed = true;
       }
+      // Catalogue trim (Oct 8 2026): a saved combination on a hidden skin loads Night Pursuit.
+      if (typeof c.skinId === 'string' && !isThemeListed(c.skinId)) {
+        c.skinId = FALLBACK_THEME_ID;
+        changed = true;
+      }
       if (isObject(c.fonts) && [rekeyThemeMap(c.fonts), migrateFontChoices(c.fonts)].some(Boolean)) changed = true;
       if (isObject(c.colors) && rekeyThemeMap(c.colors)) changed = true;
     }
@@ -206,6 +212,11 @@ export function runPackPrefMigrations(): string {
       if (EXPERIMENTAL_TARGETS.has(next)) enableExperimental(next);
       if (SELECT_ON_MIGRATE.has(next)) select = next;
     }
+    // Catalogue trim (Oct 8 2026): after the retired-id maps above (saffron → Stellar Helm
+    // keeps winning), any saved pick that is still hidden or unknown becomes Night Pursuit.
+    // Theme only: the saved engine / sound is left exactly as it was.
+    const saved = localStorage.getItem(storageKey(THEME_KEY));
+    if (saved && !isThemeListed(saved)) localStorage.setItem(storageKey(THEME_KEY), FALLBACK_THEME_ID);
     const rawPrefs = localStorage.getItem(storageKey(UI_PREFS_KEY));
     if (rawPrefs) {
       const prefs = JSON.parse(rawPrefs) as { selectedEngineId?: unknown };
