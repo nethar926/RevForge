@@ -26,6 +26,9 @@ const OUT = join(ROOT, 'src/audio/previewTrims.ts');
 const PEAK_CEILING_DB = -3;
 const CRUISE = () => ({ speed: 0.5, throttle: 0.35, load: 0.3 });
 const DUR = 6, FROM = 2;
+// Packs whose start() runs an audible start sequence get a longer settle before the cruise window
+// (Tomcat: air starter → light-off → idle ≈ 3.4 s, then spool to cruise).
+const SETTLE = { 'aerospace-f14': { dur: 11, from: 7 } };
 // Packs that get no preview trim at all (Twin Ion: rework pending; plays at file level).
 export const NO_TRIM = new Set(['ion-twin']);
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -40,8 +43,9 @@ const ids = readdirSync(dir).filter((f) => f.endsWith('.wav')).map((f) => f.slic
 
 const rows = [];
 for (const id of ids) {
-  const buf = await renderLive(id, CRUISE, DUR);
-  const s = Math.round(FROM * buf.sampleRate);
+  const win = SETTLE[id] ?? { dur: DUR, from: FROM };
+  const buf = await renderLive(id, CRUISE, win.dur);
+  const s = Math.round(win.from * buf.sampleRate);
   const live = integratedLufs(Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c).subarray(s)), buf.sampleRate);
   const { fs, channels } = readWav16(readFileSync(join(dir, `${id}.wav`)));
   const file = integratedLufs(channels, fs);

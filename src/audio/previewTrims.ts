@@ -20,7 +20,7 @@ export interface PreviewTrimInfo {
 export const PREVIEW_PEAK_CEILING_DB = -3;
 
 export const PREVIEW_TRIM_INFO: Readonly<Record<string, PreviewTrimInfo>> = {
-  'aerospace-f14': {liveCruiseLufs: -29.21, previewLufs: -19.72, previewPeakDb: -7.53, exactDb: -9.49, trimDb: -9.49, clamped: false},
+  'aerospace-f14': {liveCruiseLufs: -28.86, previewLufs: -20.08, previewPeakDb: -6.5, exactDb: -8.78, trimDb: -8.78, clamped: false},
   [CHRONO_COUPE.id]: {liveCruiseLufs: -19.73, previewLufs: -19.67, previewPeakDb: -7.34, exactDb: -0.06, trimDb: -0.06, clamped: false},
   'ev-dual-motor': {liveCruiseLufs: -19.65, previewLufs: -21.66, previewPeakDb: -10.9, exactDb: 2.01, trimDb: 2.01, clamped: false},
   'ev-inverter-climb': {liveCruiseLufs: -16.8, previewLufs: -28.18, previewPeakDb: -14.88, exactDb: 11.38, trimDb: 11.38, clamped: false},

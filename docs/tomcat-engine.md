@@ -165,6 +165,12 @@ throttle 0.22.
 * The output passes an 18 Hz high-pass, all shaper curves are odd-symmetric, and the transients
   are ramped. Tests assert that the mean is below 0.1 % FS at cruise, mil and zone 5.
 
+On the trunk's HIG cruise point (`scripts/gen-preview-trims.mjs`: speed 0.5, throttle 0.35, load
+0.3), Tomcat measures −28.8 LUFS against the old voice's −29.2 LUFS (+0.35 dB). The generator gives
+`aerospace-f14` a longer settle window (render 11 s, measure from 7 s), because `start()` runs the
+≈3.4 s start sequence before the engine reaches cruise. The resulting preview trim is −8.78 dB
+(`src/audio/previewTrims.ts`).
+
 Preview `public/snippets/aerospace-f14.wav` (7 s, rendered with `node scripts/render-snippets.mjs
 aerospace-f14`) runs from settled idle to full throttle, spool-up and zones 1–5. It is level-matched
 to the previous preview's integrated loudness (−19.8 LUFS target) with a −6.5 dBFS peak cap. The peak
