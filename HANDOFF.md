@@ -1,0 +1,3 @@
+Tip (code): 38e677a = 7ae637d + one HIG shell-port commit (2a7f0f9 + Text Size fixes: rem floors max(11px,…), dock labels hold at xxxL, menu glyph holds at Default); parked, not pushed.
+Done: xS min-text/targets at all 5 sizes (pre-fix 0 fails on requested surfaces; Garage page pills 9.7px fixed), AX3 760x560 overflow check (dock Shutdown off-screen + menu glyph spill fixed), tsc 0, tests 90/90 x6 (no flake seen); evidence in /workspace/frontend-handoff/hig-shell-port-v2/text-size/.
+Left: post-fix xS rerun with the corrected probe, default-size regression gate + splash 0px/CTA, storage-prefix + Twin Ion/banned-name checks on 38e677a, more test repeats for the flaky test, README in text-size/.
