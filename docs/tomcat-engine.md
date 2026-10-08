@@ -30,7 +30,7 @@ DrivingInput ─► stepTomcatDrive (60 Hz, JS) ─► tomcatTargets ─► Tomc
                  AB zone staging, events                           ▼
   per engine (A panned left, B panned right):   whine · fan tone · buzz-saw · idle bed · core roar · starter
   shared:                                         rear-arc rumble · afterburner · mechanical · ram airflow
-  sum ─► 18 Hz DC-blocking high-pass ─► level ─► engine master ─► existing limiter ─► CharacterEngine (acoustic LP, mix limiter)
+  sum ─► 2 × 20 Hz high-pass (DC + subsonic) ─► level ─► engine master ─► existing limiter ─► CharacterEngine (acoustic LP, mix limiter)
 ```
 
 The node budget is about 22 oscillators, 4 looping runtime-noise sources, about 34 biquads and 3
@@ -93,11 +93,18 @@ therefore never lights the burner.
 * **Per-zone light delay:** zone 1 lights **0.15 s** after demand (ignition delay). Each further zone
   follows **0.16 s** after the previous one, one zone at a time, so 0 → 5 takes **0.79 s**.
 * **De-stage:** zones go out top-first, one every **0.07 s**.
-* **Sound per zone:** zone 1 gives an ignition *whump*, a ramped low-frequency pressure pulse with no
-  step. Each later zone adds a smaller thump. The roar (band-passed noise opening upward), the deep
-  low end (~52–78 Hz), the crackle (sparse pops from thresholded noise through an odd curve) and the
-  nozzle hiss glide toward the zone intensity (attack τ ≈ 90 ms, release τ ≈ 160 ms). There are no
-  raw level jumps.
+* **Sound per zone:** each zone adds low-frequency roar and chest weight, not top end.
+  * Zone 1 gives an ignition *whump*, a ramped low-frequency pressure pulse with no step. Each later
+    zone lands a lower, heavier thump (46 → 36 Hz).
+  * The roar is dark: a moving low-pass (700 → 450 Hz across the zones) feeds a fixed 1.2 kHz
+    low-pass.
+  * A chest-weight body band (160 → 110 Hz) sits under it.
+  * A deep rumble (45–70 Hz) runs as a decorrelated stereo pair that widens with each zone, from
+    ±0.25 to ±0.85 pan at zone 5.
+  * Everything glides toward the zone intensity (attack τ ≈ 90 ms, release τ ≈ 160 ms), and the
+    whole afterburner bus rolls with the slow random AM. There are no raw level jumps.
+  * The crackle (sparse pops from thresholded noise through an odd curve) is sparser and lower
+    (≈520 Hz band, ≤1.6 kHz). The nozzle hiss is only a trace.
 
 ### Zone API (for the visual skin)
 
@@ -122,10 +129,10 @@ sliders appear in the Builder via `paramMetaForKind('aerospace', 'aerospace-f14'
 | Layer | Params | What it is | Driven by |
 | --- | --- | --- | --- |
 | 1 · Idle + spool bed | `tcIdleOn`, `tcIdleGain` | band-passed airflow bed that breathes with spool rate | N2, spool rate |
-| 2a · Turbine / compressor whine | `tcWhineOn`, `tcWhineGain` | three blade-pass tones on N2 (×17.6, ×35.2, ×29.3) with per-engine jitter and slow "haystack" AM | N2 (pitch + level) |
-| 2b · Fan buzz-saw | `tcFanOn`, `tcFanGain` | fan blade-pass tone on N1 (×22) plus N1-order saw → presence peak → rasp shaper whose drive rises above ~80 % N1 | N1 |
-| 3 · Thrust / core roar | `tcRoarOn`, `tcRoarGain` | three shaped-noise bands (low, body, hot) plus rear-arc rumble with slow AM | thrust ∝ spool^1.6 |
-| 4 · Afterburner | `tcAbOn`, `tcAbGain`, `tcCrackle` | roar, low end, crackle, nozzle hiss, whumps | lit zone (above) |
+| 2a · Turbine / compressor whine | `tcWhineOn`, `tcWhineGain` | three blade-pass tones on N2 (×17.6, ×35.2, ×29.3) with per-engine jitter and slow "haystack" AM; ducks up to −32 % at full spool and a further −25 % at zone 5 | N2 (pitch + level) |
+| 2b · Fan buzz-saw | `tcFanOn`, `tcFanGain` | fan blade-pass tone on N1 (×22) plus N1-order saw → presence peak → rasp shaper whose drive rises above ~80 % N1; same duck as the whine | N1 |
+| 3 · Thrust / core roar | `tcRoarOn`, `tcRoarGain` | deep rumble (LP 90–150 Hz), body band (BP 130–280 Hz), a small hot band (BP 650–1100 Hz) and the rear-arc rumble (LP 85 Hz), all rolled by a slow random AM (runtime random walks, ≈2.5 Hz, depth grows with thrust) | thrust ∝ spool^1.6; the low bands grow faster (× (0.47 + 0.53·spool)) |
+| 4 · Afterburner | `tcAbOn`, `tcAbGain`, `tcCrackle` | dark roar (≤1.2 kHz), chest-weight body, wide stereo deep rumble, sparse low crackle, faint hiss, per-zone thumps | lit zone (above) |
 | 5 · Mechanical | `tcMechOn`, `tcMechGain` | accessory gearbox hum (N2 × 0.47) and gear mesh (×10.8), N1/N2 shaft tones, idle ticks/rattles, intake rumble | N2/N1; strongest at idle, ducks with speed |
 | Airflow (speed) | `tcRamOn`, `tcRamGain` | ram-air wind and buffet | speed |
 | Starter | `tcStarterOn`, `tcStarterGain` | air-turbine starter whine, starter air hiss, igniter ticks | start sequence |
@@ -147,28 +154,42 @@ throttle 0.22.
 
 | State | Before (e2ace06) | Tomcat |
 | --- | --- | --- |
-| Idle | −35.0 LUFS | −33.3 LUFS / −23.7 dBFS |
-| **Cruise** | **−30.9 LUFS** | **−30.9 LUFS** / −21.0 dBFS (Δ +0.03 dB) |
-| Mid (throttle 0.5) | | −26.3 LUFS |
-| Military power | −16.1 LUFS | −20.9 LUFS / −10.1 dBFS |
-| AB zone 1 | | −19.9 LUFS |
-| AB zone 3 | | −18.6 LUFS |
+| Idle | −35.0 LUFS | −33.4 LUFS / −23.3 dBFS |
+| **Cruise** | **−30.9 LUFS** | **−31.0 LUFS** / −20.5 dBFS (Δ −0.1 dB) |
+| Mid (throttle 0.5) | | −25.7 LUFS |
+| Military power | −16.1 LUFS | −21.0 LUFS / −8.8 dBFS |
+| AB zone 1 | | −19.8 LUFS / −5.6 dBFS |
+| AB zone 3 | | −18.7 LUFS / −5.9 dBFS |
 | **AB zone 5** | −12.2 LUFS (AB clip) | **−17.6 LUFS / −5.0 dBFS** |
+
+**Low-end retune.** The low-end pass kept every state within ±0.35 dB of the first Tomcat voice and
+moved the energy down. Centroid and share of energy below 200 Hz, first voice → retuned:
+
+| State | Centroid | < 200 Hz | > 1 kHz |
+| --- | --- | --- | --- |
+| Military power | 1255 → 337 Hz | 35 → 53 % | 31 → 5 % |
+| AB zone 1 | 806 → 301 Hz | 50 → 52 % | 18 → 4 % |
+| AB zone 3 | 652 → 292 Hz | 50 → 51 % | 15 → 4 % |
+| AB zone 5 | 543 → 245 Hz | 54 → 57 % | 14 → 3 % |
+
+The low-end gains are in `TC_LOW` (`tomcatVoice.js`).
 
 * Cruise is matched to the previous voice (±0.5 dB rule).
 * For reference, Night Pursuit's cruise is **−25.0 LUFS** on the same chain and profile, so the
   calibrated Tomcat sits about 6 dB under it, as the previous aerospace voice did. Setting
   `tcLevel` to **1.0** (+6 dB) puts Tomcat's cruise at about −24.9 LUFS, in line with Night Pursuit.
-* At zone 5 the limiters do almost nothing: lowering `tcLevel` by 12 dB lowers the output by
-  11.9 dB, which is about 0.1 dB of gain reduction.
+* At zone 5 the limiters barely act: lowering `tcLevel` by 12 dB lowers the output by
+  11.8 dB, which is about 0.3 dB of gain reduction.
 * The engine-level limiter ceiling (`limiterCeiling` 0.95) is untouched.
-* The output passes an 18 Hz high-pass, all shaper curves are odd-symmetric, and the transients
-  are ramped. Tests assert that the mean is below 0.1 % FS at cruise, mil and zone 5.
+* The output passes two cascaded 20 Hz high-passes (DC and subsonic safety, 24 dB/oct). All shaper
+  curves are odd-symmetric, and the transients are ramped. Tests assert that the mean is below
+  0.1 % FS at cruise, mil and zone 5, that the zone-5 peak stays under −3 dBFS, and that the zone-5
+  centroid is below 400 Hz with more than 45 % of the energy below 200 Hz.
 
 Preview `public/snippets/aerospace-f14.wav` (7 s, rendered with `node scripts/render-snippets.mjs
 aerospace-f14`) runs from settled idle to full throttle, spool-up and zones 1–5. It is level-matched
 to the previous preview's integrated loudness (−19.8 LUFS target) with a −6.5 dBFS peak cap. The peak
-cap wins, so it lands at −20.1 LUFS.
+cap wins, so it lands at −20.7 LUFS, because the low end has a higher crest factor.
 
 ## A/B renders
 
@@ -176,7 +197,7 @@ Run `node scripts/tomcat-render.mjs ab <outDir> <baseRoot>`, where `baseRoot` is
 older code (for example `git archive e2ace06`). It renders `01-idle`, `02-starter-spoolup`,
 `03-turbine-whine`, `04-thrust`, `05-afterburner-kickin`, `06-mechanical` (mechanical layer soloed in
 the "after" file), and `07-full-runup` (start, idle, taxi, AB takeoff run, cruise, throttle back,
-shutdown). Each pair is level-matched on cruise. It writes `levels.json`, plus MP3 copies when ffmpeg
+shutdown). Each pair is level-matched on cruise. Optional trailing arguments pick clips and file labels, for example `04,05,07 prev,retune`. It writes `levels.json`, plus MP3 copies when ffmpeg
 is available.
 
 Offline note: node-web-audio-api mis-renders the specific automation sequence that `stop()` runs right
