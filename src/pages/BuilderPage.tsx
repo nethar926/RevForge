@@ -502,7 +502,7 @@ export function BuilderPage({ audio, onSave, userPatches, onDeleteUserPatch }: P
   if (!audio.running || !params) {
     return (
       <div className="page builder-page">
-        <h1 className="page-title">Pro Builder</h1>
+        <h1 className="page-title">Sound Builder</h1>
         <p className="page-blurb">
           Start the engine on Drive first (unlocks audio), then come back to build node graphs and tweak knobs.
         </p>
@@ -513,7 +513,7 @@ export function BuilderPage({ audio, onSave, userPatches, onDeleteUserPatch }: P
   return (
     <div className="page builder-page">
       <header className="page-head">
-        <h1>Pro Builder</h1>
+        <h1>Sound Builder</h1>
         <p className="page-sub">Node graph · EngineParams · preview · save / export / import</p>
       </header>
 

@@ -7,6 +7,7 @@ const links = [
   { to: '/engines', label: 'Garage' },
   { to: '/customize', label: 'Interface Options' },
   { to: '/builder', label: 'Pro Builder' },
+  { to: '/sound-builder', label: 'Sound Builder' },
   { to: '/diag', label: 'Diagnostics' },
 ] as const;
 
