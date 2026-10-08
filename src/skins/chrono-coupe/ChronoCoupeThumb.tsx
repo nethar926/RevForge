@@ -5,15 +5,16 @@ export function ChronoCoupeThumb() {
   return (
     <svg viewBox="0 0 120 78" style={{ width: '100%', height: '100%' }} aria-hidden="true">
       <rect width="120" height="78" rx="6" fill="#0f0f11" />
-      <rect x="6" y="7" width="66" height="14" rx="2" fill="#2a2b2e" />
-      <rect x="6" y="24" width="66" height="14" rx="2" fill="#2a2b2e" />
-      <rect x="6" y="41" width="66" height="14" rx="2" fill="#2a2b2e" />
-      <text x="10" y="18" fill="#ff3b2f" fontSize="9" fontFamily="ui-monospace,monospace">JUL 04 1976</text>
-      <text x="10" y="35" fill="#3dff6e" fontSize="9" fontFamily="ui-monospace,monospace">OCT 02 2026</text>
-      <text x="10" y="52" fill="#ffb21e" fontSize="9" fontFamily="ui-monospace,monospace">SEP 20 2026</text>
-      <text x="97" y="34" textAnchor="middle" fill="#ff3b2f" fontSize="22" fontFamily="ui-monospace,monospace">67</text>
-      <rect x="78" y="40" width="38" height="4" rx="2" fill="#2a1a10" />
-      <rect x="78" y="40" width="29" height="4" rx="2" fill="#ffb21e" />
+      {/* Date windows: 11-unit text (>=11px in the picker card), slightly tightened so 11 chars fit. */}
+      <rect x="3" y="3" width="80" height="16" rx="2" fill="#2a2b2e" />
+      <rect x="3" y="21" width="80" height="16" rx="2" fill="#2a2b2e" />
+      <rect x="3" y="39" width="80" height="16" rx="2" fill="#2a2b2e" />
+      <text x="6" y="15" fill="#ff3b2f" fontSize="11" letterSpacing="-0.3" fontFamily="ui-monospace,monospace">JUL 04 1976</text>
+      <text x="6" y="33" fill="#3dff6e" fontSize="11" letterSpacing="-0.3" fontFamily="ui-monospace,monospace">OCT 02 2026</text>
+      <text x="6" y="51" fill="#ffb21e" fontSize="11" letterSpacing="-0.3" fontFamily="ui-monospace,monospace">SEP 20 2026</text>
+      <text x="101" y="33" textAnchor="middle" fill="#ff3b2f" fontSize="22" fontFamily="ui-monospace,monospace">67</text>
+      <rect x="87" y="40" width="29" height="4" rx="2" fill="#2a1a10" />
+      <rect x="87" y="40" width="22" height="4" rx="2" fill="#ffb21e" />
       <g className="cc-thumb-glow">
         <path d="M14 61 L24 68 L34 61 M24 68 L24 75" stroke="#ffd36b" strokeWidth="2.4" fill="none" strokeLinecap="round" />
       </g>
