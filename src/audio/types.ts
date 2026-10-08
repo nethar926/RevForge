@@ -1,5 +1,6 @@
 import type { RevForgeVoiceConfig } from '../forge/voiceTypes';
 import type { STELLAR_HELM_PACK } from './stellarHelmPack';
+import type { ChronoCoupeId } from './chronoCoupePack';
 export type EngineId = string;
 
 export type TopologyId =
@@ -15,6 +16,7 @@ export type TopologyId =
   | 'aerospace-f14'
   | 'night-pursuit'
   | typeof STELLAR_HELM_PACK.id
+  | ChronoCoupeId
   | 'custom';
 
 /** Pack / builder categories. Old kinds map 1:1 (ice, ev-whine, scifi); aerospace is new. */
@@ -384,6 +386,10 @@ export interface EngineSynth {
   scannerTick?(edge: ScannerEdge): void;
   /** Night Pursuit: PURSUIT seasoning 0..1 (PURSUIT 1 · POWER 0.5 · AUTO/NORM 0). */
   setPursuitBoost?(amount: number): void;
+  /** Chrono Coupe: 0..1 charge level (speed ÷ jump threshold). Safe no-op on other packs / stopped. */
+  setChargeLevel?(level: number): void;
+  /** Chrono Coupe: one-shot discharge (rate-limited). Safe no-op on other packs / stopped. */
+  triggerDischarge?(): void;
 }
 
 export interface ParamMeta {

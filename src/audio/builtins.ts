@@ -8,6 +8,7 @@ import {
   STELLAR_HELM_PARAM_META,
   stellarHelmBuiltinPatch,
 } from './stellarHelmPack';
+import { CHRONO_COUPE, CHRONO_COUPE_DEFAULTS, chronoCoupeBuiltinPatch } from './chronoCoupePack';
 
 export const V8_DEFAULTS: EngineParams = {
   // Audio Physics ICE v1 + ice-pack-firing-schedules-v1 (crossPlane)
@@ -430,6 +431,8 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
   nightPursuitBuiltinPatch(),
   // Stellar Helm (experimental): dedicated starship drive hum voice — see stellarHelmPack.ts
   stellarHelmBuiltinPatch(),
+  // Chrono Coupe (experimental): odd-fire 90° V6 + charge mode — see chronoCoupePack.ts
+  chronoCoupeBuiltinPatch(),
   ...REVFORGE_PATCHES,
 ];
 
@@ -458,6 +461,8 @@ export function defaultsForTopology(topology: string): EngineParams {
       return { ...NIGHT_PURSUIT_DEFAULTS };
     case STELLAR_HELM_PACK.id:
       return { ...STELLAR_HELM_DEFAULTS };
+    case CHRONO_COUPE.id:
+      return { ...CHRONO_COUPE_DEFAULTS };
     case 'v8-rumble':
     default:
       return { ...V8_DEFAULTS };
@@ -507,7 +512,21 @@ export const NIGHT_PURSUIT_PARAM_META: ParamMeta[] = [
   { id: 'scannerTick', label: 'Scanner Tick', min: 0, max: 1, step: 0.01, group: 'pursuit' },
 ];
 
+/** Chrono Coupe extras (appended by paramMetaForKind('ice', CHRONO_COUPE.id)). */
+export const CHRONO_COUPE_PARAM_META: ParamMeta[] = [
+  { id: 'camLope', label: 'Idle Hunt', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'bankSplit', label: 'Bank Split', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'overrunBurble', label: 'Overrun Pops', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'injectionHiss', label: 'Injection Hiss', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'shellResonance', label: 'Shell Ring', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'wheeze', label: 'Intake Wheeze', min: 0, max: 1, step: 0.01, group: 'chronoCoupe' },
+  { id: 'chargeIntensity', label: 'Charge Intensity', min: 0, max: 1, step: 0.01, group: 'charge' },
+];
+
 export function paramMetaForKind(kind: EnginePatch['kind'], topology?: string): ParamMeta[] {
+  if (kind === 'ice' && topology === CHRONO_COUPE.id) {
+    return [...paramMetaForKind('ice'), ...CHRONO_COUPE_PARAM_META];
+  }
   if (kind === 'ice' && topology === 'night-pursuit') {
     return [...paramMetaForKind('ice'), ...NIGHT_PURSUIT_PARAM_META];
   }
