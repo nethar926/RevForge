@@ -1,5 +1,5 @@
-import CARRIER_JET from './carrier-jet.identity';
-import { mediaCommand, type VehicleMediaAction } from '../forge/mediaActions';
+import CARRIER_JET from './carrier-jet.identity.ts';
+import { mediaCommand, type VehicleMediaAction } from '../forge/mediaActions.ts';
 
 /**
  * Per-pack gearbox (Wilson, Oct 8 2026): Carrier Jet is a jet — no gears. One place decides it,
