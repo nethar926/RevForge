@@ -1,7 +1,7 @@
 import type { EngineKind, EnginePatch, EngineParams, ParamMeta } from './types';
 import { REVFORGE_PATCHES } from '../forge/catalog';
 import { PACK_ENGINE_MIGRATIONS } from '../packs/migrations';
-import { NIGHT_PURSUIT_DEFAULTS, nightPursuitBuiltinPatch } from './nightPursuitPack';
+import { NIGHT_PURSUIT_DEFAULTS, NIGHT_PURSUIT_PACK_ID, nightPursuitBuiltinPatch } from './nightPursuitPack';
 import { CHRONO_COUPE, CHRONO_COUPE_DEFAULTS, chronoCoupeBuiltinPatch } from './chronoCoupePack';
 import {
   STELLAR_HELM_DEFAULTS,
@@ -484,17 +484,22 @@ export function defaultsForKind(kind: EngineKind): EngineParams {
 }
 
 /** Default builtin id when switching builder category tabs */
+/**
+ * EngineForge category template per kind: the visible catalogue engine for that tab
+ * (ICE → Night Pursuit, EV → Stellar Helm, which is kind 'ev-whine'). Aerospace / sci-fi
+ * keep their stock templates while those tabs stay hidden pending reworks.
+ */
 export function defaultPatchIdForKind(kind: EngineKind): string {
   switch (kind) {
     case 'ev-whine':
-      return 'ev-whine';
+      return STELLAR_HELM_PACK.id;
     case 'aerospace':
       return 'aerospace-f14';
     case 'scifi':
       return 'ion-twin';
     case 'ice':
     default:
-      return 'v8-rumble';
+      return NIGHT_PURSUIT_PACK_ID;
   }
 }
 
