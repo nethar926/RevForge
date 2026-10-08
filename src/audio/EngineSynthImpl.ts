@@ -63,7 +63,7 @@ import {
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
 import { storageKey } from '../lib/storageKey';
 import pulseWorkletUrl from './worklets/pulse-engine-processor.js?url';
-import { isTomcatPatch } from './tomcatPack';
+import { isGearlessPatch, isTomcatPatch, tomcatHeadroomGain } from './tomcatPack';
 import {
   TC_SHUTOFF_SECONDS,
   TomcatVoice,
@@ -236,6 +236,8 @@ interface GraphHandles {
   helmVoice?: StellarHelmVoice;
   /** Tomcat twin-turbofan voice (replaces the legacy aerospace graph for the aerospace-f14 builtin) */
   tcVoice?: TomcatVoice;
+  /** Tomcat limiter headroom pad between the voice and the engine master. */
+  tcPad?: GainNode;
 }
 
 const workletContexts = new WeakSet<BaseAudioContext>();
@@ -461,6 +463,8 @@ export class EngineSynthImpl implements EngineSynth {
       shifting: d.shifting,
       overrun: d.overrun,
     };
+    // Gearless packs (pack flag): the car sim's gear rpm sawtooth is dropped at the door.
+    if (isGearlessPatch(this.patchMeta)) this.driving = { ...this.driving, rpm: undefined, rpmNorm: undefined };
     this.applyDriving(false);
   }
 
@@ -596,6 +600,8 @@ export class EngineSynthImpl implements EngineSynth {
   triggerUiCue(cue: 'upshift' | 'starter' | 'shutdown' | 'shutoff' | string): void {
     if (this.disposed) return;
     const c = String(cue || '').toLowerCase();
+    // Gearless packs (pack flag) have no gearbox: shift cues from a car sim are dropped.
+    if ((c === 'upshift' || c === 'downshift') && isGearlessPatch(this.patchMeta)) return;
     if (c === 'starter' || c === 'ignition') {
       if (!this.started) return;
       this.playStarter();
@@ -1045,7 +1051,11 @@ export class EngineSynthImpl implements EngineSynth {
       this.buildEv(g);
     } else if (kind === 'aerospace' && isTomcatPatch(this.patchMeta)) {
       // Tomcat: dedicated twin-turbofan voice (shares the engine's runtime noise buffers)
-      g.tcVoice = new TomcatVoice(ctx, master, { whiteBuf: this.whiteBuf, pinkBuf: this.pinkBuf });
+      // limiter headroom pad (the wrapper output restores it; see TOMCAT_PACK.headroomDb)
+      g.tcPad = ctx.createGain();
+      g.tcPad.gain.value = tomcatHeadroomGain(this.patchMeta);
+      g.tcPad.connect(master);
+      g.tcVoice = new TomcatVoice(ctx, g.tcPad, { whiteBuf: this.whiteBuf, pinkBuf: this.pinkBuf });
       // Switched to this pack while running → settle straight at idle (voice level glides in)
       if (this.started) tomcatSetRunning(this.tcState);
     } else if (kind === 'aerospace') {
@@ -2114,6 +2124,7 @@ export class EngineSynthImpl implements EngineSynth {
     }
     try {
       g.tcVoice?.dispose();
+      g.tcPad?.disconnect();
     } catch {
       /* ignore */
     }
