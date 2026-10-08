@@ -18,7 +18,12 @@ import { CarrierJetHud, CARRIER_JET_VARIANTS } from '../skins/carrier-jet';
 <CarrierJetHud {...packHudProps} abZone={zone} driveWindow={dw} compact={dw || undefined} />
 ```
 
-- PackHudProps (speed, unit, rpm, gear, throttle, load, motion, redlineRpm, running, demo, …). Only speed, rpm and gear are required.
+- PackHudProps (speed, unit, rpm, throttle, load, motion, redlineRpm, running, demo, …). Only speed and rpm are required.
+  There is no gear readout in any look or layout (`gear` is accepted and ignored; no shift indicator or animation).
+  The old gear slot holds a MACH readout (`M 0.85`, number from speed via `mphToMach`: 0..75 mph → M 0..1.00,
+  75..120 mph → M 1.00..2.30, clamped) over a small sound-barrier tape with a fixed M 1.0 barrier mark. The vapor cone
+  and SUPERSONIC tag follow `abZone > 0` (Audio's zone), not road speed. Screen readers get `Mach 0.85` (+ `, supersonic`).
+  Static art, no animation.
 - `variant?: 'carrier-jet' | 'tomcat' | 'swing-wing'` with `onVariantChange?(v)`. Without a handler the skin persists
   the choice itself under `storageKey('revforge.pack.carrier-jet.variant')`, which becomes `rf.preview.carrier-jet.…` on the preview build.
   It uses the same pattern as Stellar Helm's frame toggle.
@@ -26,12 +31,14 @@ import { CarrierJetHud, CARRIER_JET_VARIANTS } from '../skins/carrier-jet';
 - `compact?: boolean | 'auto'`. `true` sets `data-compact` and reflows the board; `'auto'` does so when the container is under 980×500
   (a 1280×800 screen mounts at about 1248×518 and keeps the full layout). An explicit `false` wins (no ancestor flag turns compact
   on), but the board still lays itself out to fit: any container under 980×500 gets the reflowed arrangement (`data-layout="reflow"`).
-- `abZone?: number` (0..5). It is used as given, in the same render. Without it the zone comes from load, then throttle.
+- `abZone?: number` (0..5) from Audio's getAfterburnerZone / onAfterburnerZoneChange drives the AB lights, the AB readout and the status
+  pill, as given, in the same render. The skin has no AB thresholds of its own (Audio decides when the burner engages, e.g. by speed);
+  without a zone the AB display reads AB OFF.
 - `parked?`, `heading?`, `accel?` are optional extras. Parked defaults to speed < 0.5 mph held for 2 s.
 
 ### Compact = the full board, reflowed (Wilson's rule)
 There is no separate compact design. `CockpitCompact` / `GlassCompact` / `DeckCompact` render every block of the full board
-for that look (header label, F-14 chip, GPS + status pills, the Look tabs, speed, gear, RPM + bar, wing sweep digits, planform,
+for that look (header label, F-14 chip, GPS + status pills, the Look tabs, speed, RPM + bar, wing sweep digits, planform,
 tape + mode windows, pitch ladder, heading, AoA + indexer, accel ball, engine strips and AB ladder) and only rearrange them:
 dense SVG instruments get their own cells, the grid follows the container (container units, numeral cells are size containers).
 Text stays >= 11px after the SVG viewBox shrink (`--cj-sv` floor), the Look tabs stay >= 44px, no `transform: scale()`.

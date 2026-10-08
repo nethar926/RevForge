@@ -20,6 +20,10 @@ import {
   variantLabel,
   type CarrierJetVariant,
   type SweepMode,
+  MACH_MAX,
+  machLabel,
+  machText,
+  mphToMach,
 } from './model';
 import { PALETTES, type CjPalette } from './palettes';
 import { Approach, AoaTape, DeckMarks, Engines, HeadingTape, Indexer, Ladder, Planform, Rose, Svg, SweepTape } from './parts';
@@ -29,13 +33,14 @@ import './carrier-jet.css';
 
 /**
  * Carrier Jet HUD props: the PackHudProps ThemeStage hands every pack HUD, plus the
- * Carrier Jet extras. Only speed / rpm / gear are required, so a mount can spread
- * PackHudProps straight in.
+ * Carrier Jet extras. Only speed / rpm are required, so a mount can spread PackHudProps
+ * straight in. There is no gear readout (gear is accepted and ignored).
  */
 export interface CarrierJetHudProps extends Partial<Omit<PackHudProps, 'compact' | 'driveWindow'>> {
   speed: number;
   rpm: number;
-  gear: number;
+  /** Accepted from PackHudProps and ignored: the skin shows no gear. */
+  gear?: number;
   /** Drive-window layout (Tesla in Drive). An ancestor `[data-drive-window="true"]` also turns it on. */
   driveWindow?: boolean;
   /** true = reflowed board; 'auto' = the skin decides from its size; false = never flagged compact (a small container still gets the board laid out to fit). Dev/test: `?hudCompact=1|auto|0`. */
@@ -43,9 +48,9 @@ export interface CarrierJetHudProps extends Partial<Omit<PackHudProps, 'compact'
   /** Controlled look. Without `onVariantChange` the skin persists the choice itself (storageKey). */
   variant?: CarrierJetVariant;
   onVariantChange?: (variant: CarrierJetVariant) => void;
-  /** Audio Synth's current afterburner zone 0..5 (read-only getter). Else derived from load, then throttle. */
+  /** Audio's current afterburner zone 0..5 (getAfterburnerZone / onAfterburnerZoneChange). Drives every AB readout; undefined → AB OFF. */
   abZone?: number;
-  /** Host override for parked (e.g. shift state P). Default: speed < 0.5 mph held 2 s. */
+  /** Host override for parked (e.g. the car is in P). Default: speed < 0.5 mph held 2 s. */
   parked?: boolean;
   /** GPS course in degrees (secondary heading cues). Undefined → "---". */
   heading?: number;
@@ -97,7 +102,8 @@ interface View {
   unit: 'mph' | 'kph';
   rpm: number;
   rpmN: number;
-  gear: number;
+  /** Display Mach (number from speed, mphToMach). */
+  mach: number;
   load: number;
   ab: number;
   parked: boolean;
@@ -133,13 +139,47 @@ function SpeedBlock({ v, row = false }: { v: View; row?: boolean }) {
     </div>
   );
 }
-function GearBlock({ v }: { v: View }) {
-  const g = v.gear > 0 ? String(v.gear) : 'N';
+/**
+ * MACH readout in the old gear slot: `M 0.85` (number from speed) over a small sound-barrier tape with a
+ * fixed M 1.0 barrier mark. The vapor cone and SUPERSONIC tag follow the afterburner zone (abZone > 0),
+ * not road speed, so they move with the sound. Static art, no animation.
+ */
+function MachTape({ v }: { v: View }) {
+  const P = v.P;
+  const sup = v.ab > 0;
+  const x = (q: number) => 6 + (Math.max(0, Math.min(MACH_MAX, q)) / MACH_MAX) * 88;
+  const px = x(v.mach);
+  const b = x(1);
   return (
-    <div className="cj-gear" data-cj-el="gear">
-      <span className="cj-lab" aria-hidden="true">GEAR</span>
-      <b className="cj-k-num" aria-hidden="true">{g}</b>
-      <span className="cj-sr">{`Gear ${g === 'N' ? 'neutral' : g}`}</span>
+    <svg className="cj-mach-tape" data-cj-el="mach-tape" viewBox="0 0 100 24" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+      <rect x={b} y={14.5} width={x(MACH_MAX) - b} height={3} fill={P.hatch} />
+      <line x1={6} y1={16} x2={94} y2={16} stroke={P.edge} strokeWidth={1.5} />
+      {[0, 0.5, 1.5, 2].map((q) => (
+        <line key={q} x1={x(q)} y1={11.5} x2={x(q)} y2={16} stroke={P.tick} strokeWidth={1.2} />
+      ))}
+      <line data-cj-el="mach-barrier" x1={b} y1={3} x2={b} y2={22} stroke={P.caret} strokeWidth={2.4} />
+      {sup ? (
+        <path
+          data-cj-el="vapor-cone"
+          d={`M${px + 3} 11 C${px - 3} 4 ${px - 9} 2.5 ${px - 16} 2.5 L${px - 16} 19.5 C${px - 9} 19.5 ${px - 3} 18 ${px + 3} 11 Z`}
+          fill={P.ref}
+          fillOpacity={0.28}
+          stroke={P.ref}
+          strokeWidth={1.2}
+        />
+      ) : null}
+      <path d={`M${px} 15 L${px - 4.5} 6.5 L${px + 4.5} 6.5 Z`} fill={P.pointer} stroke={P.boxBg} strokeWidth={0.8} />
+    </svg>
+  );
+}
+function MachBlock({ v }: { v: View }) {
+  const sup = v.ab > 0;
+  return (
+    <div className="cj-mach" data-cj-el="mach" data-supersonic={sup ? 'true' : 'false'} role="img" aria-label={machLabel(v.mach, sup)}>
+      <span className="cj-lab" aria-hidden="true">MACH</span>
+      <b className="cj-k-num cj-mach-num" aria-hidden="true">{machText(v.mach)}</b>
+      <MachTape v={v} />
+      <span className="cj-mach-tag" data-cj-el="supersonic" data-on={sup ? 'true' : 'false'} aria-hidden="true">SUPERSONIC</span>
     </div>
   );
 }
@@ -192,7 +232,7 @@ function Cockpit({ v }: { v: View }) {
         <span data-cj-el="panel-label" className="cj-plab" aria-hidden="true">FLIGHT</span>
         <div className="cj-crt cj-scan cj-a-speed"><SpeedBlock v={v} row /></div>
         <div className="cj-a-gr">
-          <div className="cj-crt cj-scan"><GearBlock v={v} /></div>
+          <div className="cj-crt cj-scan"><MachBlock v={v} /></div>
           <div className="cj-crt cj-scan"><RpmBlock v={v} /></div>
         </div>
         <Sec className="cj-crt">
@@ -236,7 +276,7 @@ function Glass({ v }: { v: View }) {
       <div className="cj-b-left">
         <div className="cj-hudbox cj-b-speed"><SpeedBlock v={v} /></div>
         <div className="cj-b-gr">
-          <GearBlock v={v} />
+          <MachBlock v={v} />
           <RpmBlock v={v} />
         </div>
       </div>
@@ -277,12 +317,12 @@ function Deck({ v }: { v: View }) {
       <div className="cj-card cj-c-left">
         <div className="cj-c-speed"><SpeedBlock v={v} /></div>
         <div className="cj-c-gr">
-          <GearBlock v={v} />
+          <MachBlock v={v} />
           <RpmBlock v={v} />
         </div>
         <Sec>
-          <Svg w={278} h={210}>
-            <Engines x={0} y={0} w={278} h={210} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} />
+          <Svg w={278} h={220}>
+            <Engines x={0} y={10} w={278} h={210} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} />
           </Svg>
         </Sec>
       </div>
@@ -321,7 +361,7 @@ function CockpitCompact({ v }: { v: View }) {
         <span data-cj-el="panel-label" className="cj-plab" aria-hidden="true">FLIGHT</span>
         <div className="cj-crt cj-scan cj-a-speed"><SpeedBlock v={v} /></div>
         <div className="cj-a-gr">
-          <div className="cj-crt cj-scan"><GearBlock v={v} /></div>
+          <div className="cj-crt cj-scan"><MachBlock v={v} /></div>
           <div className="cj-crt cj-scan"><RpmBlock v={v} /></div>
         </div>
         <Sec className="cj-crt cj-a-eng">
@@ -368,7 +408,7 @@ function GlassCompact({ v }: { v: View }) {
       <div className="cj-b-left">
         <div className="cj-hudbox cj-b-speed"><SpeedBlock v={v} /></div>
         <div className="cj-b-gr">
-          <GearBlock v={v} />
+          <MachBlock v={v} />
           <RpmBlock v={v} />
         </div>
       </div>
@@ -408,7 +448,7 @@ function DeckCompact({ v }: { v: View }) {
       <div className="cj-card cj-c-left">
         <div className="cj-c-speed"><SpeedBlock v={v} /></div>
         <div className="cj-c-gr">
-          <GearBlock v={v} />
+          <MachBlock v={v} />
           <RpmBlock v={v} />
         </div>
         <Sec className="cj-c-eng">
@@ -501,7 +541,7 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
   const cmd = scheduledSweep(mph, parked);
   const mode: SweepMode = parked ? 'OVER' : 'AUTO';
   const load = clamp01(p.load ?? p.throttle);
-  const ab = resolveAbZone(p.abZone, p.load, p.throttle);
+  const ab = resolveAbZone(p.abZone);
 
   // Accel (mph/s) for the decorative accel ball when the host gives none.
   const accRef = useRef({ mph, t: 0, a: 0 });
@@ -609,7 +649,7 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
     unit,
     rpm,
     rpmN: Math.max(0, Math.min(1, rpm / (redline / 0.86))),
-    gear: p.gear,
+    mach: mphToMach(mph),
     load,
     ab,
     parked,
