@@ -79,6 +79,12 @@ export const CHRONO_COUPE_DEFAULTS: EngineParams = {
   injectionHiss: 0.5,
   shellResonance: 0.45,
   wheeze: 0.55,
+  // Rear V6 voice (worklets/chrono-v6-processor.js): rasp, idle lump, loudness trim
+  v6Rasp: 0.55,
+  v6Lump: 0.6,
+  v6Level: 1,
+  // The V6 plays its own startup / shutdown (no generic lifecycle sweep on top)
+  lifecycleSounds: 0,
   // Charge mode
   chargeIntensity: 0.75,
   chargeLevel: 0,

@@ -126,13 +126,17 @@ export function scenarios(idleRpm) {
 }
 
 // ── engines ──
+const CC_ID = 'chrono-coupe';
 async function engines() {
   const cc = await import('./chrono-coupe-render.mjs');
   const np = await import('./night-pursuit-render.mjs');
   const gen = await import('./ice-generic-render.mjs');
   const list = [
     { id: 'night-pursuit', idle: 660, render: (p, d, o) => np.renderNightPursuit(p, d, o) },
+    // Pulse family-5 voice (the V6 worklet's fallback) via its dedicated renderer
     { id: 'chrono-coupe', idle: 860, render: (p, d, o) => cc.renderChronoCoupe(p, d, o) },
+    // Rear V6 voice: the SHIPPED engine graph (createEngineSynth, own worklet), running at once
+    { id: 'chrono-v6', idle: 860, render: async (p, d, o) => (await import('./live-render.mjs')).renderLive(CC_ID, p, d, { ...o, params: { v6KeyWait: 0 } }) },
   ];
   for (const topo of ['v8-rumble', 'i4-zip', 'i6-silk', 'rotary-hum']) {
     const prm = gen.genericIceParams(topo);

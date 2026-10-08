@@ -40,16 +40,20 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const seedOf = (s) => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const seedOf = (s) => { if (typeof s === "number") return s >>> 0; let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 
 /**
  * profile(t) → DrivingInput. opts.master: insert the HIG master bus (already at unity).
+ * opts.params: patch param overrides. opts.cues: [{ t, run(engine) }] called at t (e.g.
+ * playStarter / playShutoff / stop). opts.noStart: do not call start() at t = 0 (a cue does).
+ * opts.onEngine(engine): called once after creation (diagnostics).
  * Returns the stereo AudioBuffer.
  */
 export async function renderLive(id, profile, dur, opts = {}) {
   const SR = opts.sampleRate ?? 44100;
-  const patch = audio.getBuiltin(id);
-  if (!patch) throw new Error(`no builtin ${id}`);
+  const builtin = audio.getBuiltin(id);
+  if (!builtin) throw new Error(`no builtin ${id}`);
+  const patch = opts.params ? { ...builtin, params: { ...builtin.params, ...opts.params } } : builtin;
   const prevRandom = Math.random;
   const prevNow = performance.now.bind(performance);
   Math.random = mulberry32(seedOf(opts.seed ?? id));
@@ -62,7 +66,9 @@ export async function renderLive(id, profile, dur, opts = {}) {
     // Pulse worklet runs in its own realm: load a seeded copy of the shipped processor.
     const worklet = ctx.audioWorklet;
     const addModule = worklet.addModule.bind(worklet);
-    worklet.addModule = () => addModule(seededWorkletModule(WORKLET, opts.seed ?? id));
+    // The Chrono V6 worklet seeds itself (processorOptions.seed from the seeded main thread).
+    worklet.addModule = (url) =>
+      String(url).includes('chrono-v6-processor') ? addModule(url) : addModule(seededWorkletModule(WORKLET, opts.seed ?? id));
     const eng = audio.createEngineSynth(ctx, patch);
     let bus = null;
     if (opts.master) {
@@ -71,12 +77,29 @@ export async function renderLive(id, profile, dur, opts = {}) {
       eng.output.disconnect();
       eng.output.connect(bus.input);
     }
-    await eng.start();
+    opts.onEngine?.(eng);
+    if (!opts.noStart) await eng.start();
     delete ctx.state;
+    for (const cue of opts.cues ?? []) {
+      const q = 128 / SR;
+      ctx.suspend(Math.round(Math.max(1 / 60, Math.round(cue.t * 60) / 60 + 0.5 / 60) / q) * q).then(async () => {
+        tNow = cue.t;
+        Object.defineProperty(ctx, 'state', { get: () => 'running', configurable: true });
+        try {
+          await cue.run(eng);
+        } finally {
+          delete ctx.state;
+          ctx.resume();
+        }
+      }, (e) => { missed.push([cue.t, e.message]); });
+    }
     const dt = 1 / 60;
     const missed = [];
-    for (let t = dt; t < dur - 0.02; t += dt) {
-      const at = t;
+    // Frame times from an integer index (no accumulated float drift → no two suspends in one
+    // render quantum), each snapped to a render-quantum boundary.
+    const q = 128 / SR;
+    for (let k = 1; k * dt < dur - 0.02; k++) {
+      const at = Math.round((k * dt) / q) * q;
       ctx.suspend(at).then(() => {
         tNow = at;
         eng.setDriving(profile(at));

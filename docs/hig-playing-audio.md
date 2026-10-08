@@ -174,18 +174,18 @@ Optional: show a stop state with `audio.previewingId === id` and call `audio.sto
 ### Preview trims (generated; LUFS integrated, live = shipped engine at cruise, 2–6 s)
 | pack | live cruise LUFS | preview LUFS | preview peak dBFS | applied trim dB |
 |---|---|---|---|---|
-| aerospace-f14 | -29.21 | -19.72 | -7.53 | -9.49 |
-| chrono-coupe | -19.73 | -19.67 | -7.34 | -0.06 |
+| aerospace-f14 | -29.22 | -19.72 | -7.53 | -9.49 |
+| chrono-coupe | -20.15 | -22.10 | -11.42 | +1.96 |
 | ev-dual-motor | -19.65 | -21.66 | -10.90 | +2.01 |
 | ev-inverter-climb | -16.80 | -28.18 | -14.88 | +11.38 |
 | ev-regen-howl | -16.08 | -25.23 | -14.71 | +9.16 |
 | ev-whine | -18.50 | -25.34 | -13.96 | +6.84 |
-| i4-zip | -30.26 | -23.52 | -9.81 | -6.74 |
-| i6-silk | -29.47 | -20.52 | -7.37 | -8.96 |
-| night-pursuit | -19.70 | -15.30 | -2.14 | -4.40 |
-| rotary-hum | -22.03 | -17.86 | -6.59 | -4.16 |
+| i4-zip | -30.20 | -23.52 | -9.81 | -6.69 |
+| i6-silk | -29.39 | -20.52 | -7.37 | -8.87 |
+| night-pursuit | -19.82 | -15.30 | -2.14 | -4.52 |
+| rotary-hum | -22.06 | -17.86 | -6.59 | -4.19 |
 | stellar-helm | -21.10 | -22.15 | -10.63 | +1.05 |
-| v8-rumble | -25.73 | -20.69 | -9.74 | -5.04 |
+| v8-rumble | -25.81 | -20.69 | -9.74 | -5.11 |
 
 No trim needed the peak cap on this base. Twin Ion (`ion-twin`) deliberately has **no** trim entry
 (`NO_TRIM` in the generator): it plays at file level until its rework lands. Re-run `node scripts/gen-preview-trims.mjs` after changing a preview WAV or a pack's live level.

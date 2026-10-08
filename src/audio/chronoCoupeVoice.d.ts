@@ -82,6 +82,10 @@ export class ChronoCoupeBus {
   readonly white: AudioBuffer;
   readonly pink: AudioBuffer;
   chargeSmooth: number;
+  /** Rear V6 voice feeds the chain (open tone, thinner shelf). */
+  v6: boolean;
+  /** 0..1 combustion gate for the breath layers. */
+  breathGate: number;
   setCharge(level: number): void;
   update(params: Partial<EngineParams>, drive: ChronoCoupeDrive, thr: number, tc?: number): void;
   updateCharge(params: Partial<EngineParams>, t?: number, tc?: number): void;

@@ -63,6 +63,12 @@ import {
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
 import { createOverrunBurstState, gatedCrackle, stepOverrunBurst } from './overrunBurst';
 import pulseWorkletUrl from './worklets/pulse-engine-processor.js?url';
+import {
+  ChronoV6Voice,
+  V6_TAKEOVER_THROTTLE,
+  chronoV6Targets,
+  ensureChronoV6Module,
+} from './chronoV6Voice';
 
 type Kind = EnginePatch['kind'];
 
@@ -221,11 +227,18 @@ interface GraphHandles {
   npBus?: NightPursuitBus;
   /** Chrono Coupe post chain + charge bus (engine → ccBus.input → master) */
   ccBus?: ChronoCoupeBus;
+  /** Chrono Coupe rear-mounted odd-fire V6 voice (own worklet); pulse family 5 is the fallback */
+  v6?: ChronoV6Voice;
   /** Stellar Helm drive hum voice (replaces the EV whine graph for that topology) */
   helmVoice?: StellarHelmVoice;
 }
 
 const workletContexts = new WeakSet<BaseAudioContext>();
+
+/** Chrono V6 worklet module URL (Vite emits it as an asset; node resolves the source file). */
+function chronoV6WorkletUrl(): string {
+  return new URL('./worklets/chrono-v6-processor.js', import.meta.url).href;
+}
 
 export class EngineSynthImpl implements EngineSynth {
   readonly context: AudioContext;
@@ -282,6 +295,10 @@ export class EngineSynthImpl implements EngineSynth {
   private upshiftSfxEnabled = false;
   /** Keep output audible through a Frontend-cued shutoff tail (ctx time). */
   private shutoffUntil = 0;
+  /** Packs whose shutdown is played by the engine voice: hold the output until it ends. */
+  private ownShutdownUntil = 0;
+  /** Chrono V6 worklet failed to load in this context → pulse family 5 (previous voice). */
+  private v6Failed = false;
   /** Debounce duplicate starter cues (ctx time). */
   private lastStarterAt = -1;
   /** Drive Dynamics idle RPM band (localStorage or setIdleBand). */
@@ -369,6 +386,13 @@ export class EngineSynthImpl implements EngineSynth {
 
     smooth(this.output.gain, 1, 0.08, this.context);
     this.started = true;
+    this.ownShutdownUntil = 0;
+    if (this.g.v6) {
+      // Chrono V6: silent until the key (playStarter) cranks it; runs on its own if no key comes
+      this.g.v6.armIgnition(this.context.currentTime, Number(this.params.v6KeyWait ?? 0.4));
+      this.applyDriving(true);
+      return;
+    }
     if (this.g.helmVoice) {
       // Stellar Helm: the hum itself powers up (no combustion chuff on a starship drive)
       this.g.helmVoice.powerUp(1.6, undefined, 0);
@@ -383,7 +407,21 @@ export class EngineSynthImpl implements EngineSynth {
     this.started = false;
     const now = this.context.currentTime;
     const hold = Math.max(0, this.shutoffUntil - now);
-    if (hold > 0.05) {
+    const own = Math.max(0, this.ownShutdownUntil - now);
+    if (own > 0.05) {
+      // The engine voice itself plays the shutdown (run-down, rock, settle): keep the output
+      // open until it has finished, then a short fade.
+      try {
+        const og = this.output.gain;
+        const cur = Math.max(og.value, 0.001);
+        og.cancelScheduledValues(now);
+        og.setValueAtTime(cur, now);
+        og.setValueAtTime(cur, now + own); // explicit hold (offline renderers need it)
+        og.setTargetAtTime(0, now + own, 0.05);
+      } catch {
+        smooth(this.output.gain, 0, 0.12, this.context);
+      }
+    } else if (hold > 0.05) {
       // Let Frontend-cued shutoff tail finish, then fade — no hard gate.
       try {
         this.output.gain.cancelScheduledValues(now);
@@ -589,6 +627,12 @@ export class EngineSynthImpl implements EngineSynth {
     const now = this.context.currentTime;
     if (this.lastStarterAt >= 0 && now - this.lastStarterAt < 0.45) return;
     this.lastStarterAt = now;
+    if (this.g.v6) {
+      // Chrono V6: the engine voice cranks, catches, flares and settles (own starter)
+      this.ownShutdownUntil = 0;
+      this.g.v6.startup(this.ccIdleTarget(), now);
+      return;
+    }
     const helm = this.g.helmVoice;
     // Stellar Helm: a starter after a power-down cue brings the hum back up under the sweep
     if (helm && helm.powerTarget < 0.5) helm.powerUp(1.6);
@@ -613,6 +657,23 @@ export class EngineSynthImpl implements EngineSynth {
     if (this.disposed) return;
     if (this.context.state === 'closed') return;
     const kind = this.patchMeta.kind;
+    if (this.g.v6) {
+      // Chrono V6: fuel cut → run-down with the odd-fire lope → rock → settle → faint ticks
+      const at = this.context.currentTime;
+      const v6dur = this.g.v6.shutdown(this.ccIdleTarget(), at);
+      this.ownShutdownUntil = Math.max(this.ownShutdownUntil, at + v6dur);
+      this.shutoffUntil = Math.max(this.shutoffUntil, at + v6dur);
+      try {
+        const og = this.output.gain;
+        const cur = Math.max(og.value, 0.001);
+        og.cancelScheduledValues(at);
+        og.setValueAtTime(cur, at);
+        if (cur < 0.999) og.linearRampToValueAtTime(1, at + 0.02);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     const dur = shutoffDuration(kind, this.patchMeta.topology);
     const now = this.context.currentTime;
     this.shutoffUntil = Math.max(this.shutoffUntil, now + dur);
@@ -889,10 +950,37 @@ export class EngineSynthImpl implements EngineSynth {
 
   private async ensurePulseWorklet(): Promise<boolean> {
     if (this.disposed || this.patchMeta.kind !== 'ice') return false;
-    if (this.g.iceMode === 'worklet' && this.g.pulseNode) return true;
+    if (this.g.iceMode === 'worklet' && (this.g.pulseNode || this.g.v6)) return true;
     if (this.workletPromise) return this.workletPromise;
 
     this.workletPromise = (async () => {
+      if (isChronoCoupeTopology(this.patchMeta.topology) && !this.v6Failed && this.g.ccBus) {
+        try {
+          await ensureChronoV6Module(this.context, chronoV6WorkletUrl());
+          if (this.disposed || !this.g.ccBus || this.g.v6) return !!this.g.v6;
+          const v6 = ChronoV6Voice.create(this.context, this.g.ccBus.input, Math.floor(Math.random() * 0xffffffff));
+          if (this.g.iceBus) {
+            // Not yet audible before start() (output at 0): cut the oscillator stand-in at once
+            if (this.started) smooth(this.g.iceBus.gain, 0, 0.05, this.context);
+            else {
+              this.g.iceBus.gain.cancelScheduledValues(this.context.currentTime);
+              this.g.iceBus.gain.setValueAtTime(0, this.context.currentTime);
+            }
+          }
+          this.g.v6 = v6;
+          this.g.ccBus.v6 = true;
+          this.g.iceMode = 'worklet';
+          this.workletError = undefined;
+          if (this.started) v6.takeOver(this.context.currentTime, 0.08);
+          this.applyAllParams();
+          this.applyDriving(true);
+          return true;
+        } catch (err) {
+          // Fall back to the pulse worklet's odd-fire family (previous Chrono Coupe voice)
+          console.warn('[DriveSynth] Chrono V6 worklet unavailable, using pulse family 5', err);
+          this.v6Failed = true;
+        }
+      }
       try {
         if (!workletContexts.has(this.context)) {
           const url = pulseWorkletUrl.startsWith('http')
@@ -2051,6 +2139,11 @@ export class EngineSynthImpl implements EngineSynth {
       /* ignore */
     }
     try {
+      g.v6?.dispose();
+    } catch {
+      /* ignore */
+    }
+    try {
       g.helmVoice?.dispose();
     } catch {
       /* ignore */
@@ -2431,6 +2524,37 @@ export class EngineSynthImpl implements EngineSynth {
     }
   }
 
+  /** Chrono V6 idle target (drive model idle; the worklet adds its own lumpy hunt). */
+  private ccIdleTarget(): number {
+    return ccIdleRpm(this.params);
+  }
+
+  /**
+   * Chrono V6 live path. Startup / shutdown plans own the crank while they play; a throttle
+   * press (or no key after start()) hands over to the live targets with a ~300 ms glide.
+   */
+  private applyChronoV6Driving(v6: ChronoV6Voice, d: DrivingInput, thr: number, load: number, tc: number): void {
+    const now = this.context.currentTime;
+    const cd = this.ccDrive!;
+    const t = chronoV6Targets(this.params, cd, thr, load);
+    v6.live = t;
+    if (this.started) {
+      const cue = v6.cueType;
+      if ((cue || v6.awaitSince >= 0) && d.throttle > V6_TAKEOVER_THROTTLE) {
+        v6.takeOver(now);
+        if (cue === 'shutdown') this.ownShutdownUntil = 0;
+      } else v6.checkIgnitionWait(now);
+    }
+    v6.setLive(t, tc, now);
+    if (this.g.ccBus) this.g.ccBus.breathGate = v6.combustion(now);
+    this.iceCrackle = 0;
+    if (d.speed < 0.04 && d.throttle < 0.12) this.driveMood = 'idle';
+    else if (d.speed < 0.04) this.driveMood = 'lope';
+    else if (d.throttle > 0.7) this.driveMood = 'pull';
+    else this.driveMood = 'cruise';
+    this.prevThrottle = d.throttle;
+  }
+
   private applyIceDriving(rpmNorm: number, d: DrivingInput, tc: number): void {
     const p = this.params;
     const g = this.g;
@@ -2459,6 +2583,11 @@ export class EngineSynthImpl implements EngineSynth {
     const thr = this.throttleLag;
     const thrRaw = d.throttle;
     const loadL = this.loadLag;
+
+    if (g.v6 && this.ccDrive) {
+      this.applyChronoV6Driving(g.v6, d, thr, loadL, tc);
+      return;
+    }
 
     if (g.iceMode === 'worklet' && g.pulseNode) {
       // Hysteresis on throttle/load; bridge owns manifold/exhaust lags + firingMask.

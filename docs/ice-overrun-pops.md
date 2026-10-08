@@ -56,5 +56,6 @@ overrun/crackle forced to 0 score 0 everywhere (largest clean ratio 2.34).
 | engine | steady3k | coastLow | idle | liftoff |
 |---|---|---|---|---|
 | night-pursuit before → after | 8 → **0** | 5 → **0** | 0 → **0** | 7 → **3** (3.05 / 3.23 / 3.68 s, 2.4k → 1.6k rpm) |
-| chrono-coupe | 0 → 0 | 0 → 0 | 0 → 0 | 0 → 0 (its 0.32 burble is below the detector) |
+| chrono-coupe (pulse family 5, now the V6 fallback) | 0 → 0 | 0 → 0 | 0 → 0 | 0 → 0 (its 0.32 burble is below the detector) |
+| chrono-v6 (rear V6 voice, shipped graph via live-render) | **0** | **0** | **0** | **3** (sparse afterfire on the lift-off burst) |
 | v8-rumble / i4-zip / i6-silk / rotary-hum | 0 → 0 | 0 → 0 | 0 → 0 | 0 → 0 |
