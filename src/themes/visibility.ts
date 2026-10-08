@@ -50,7 +50,7 @@ const VISIBLE = new Set(VISIBLE_THEME_IDS);
  * Revs, the Engines page, the Experience Builder sound picker, EngineForge's layer source
  * picker, deep links and saved picks only surface these built-in engines, all selectable
  * with no Experimental opt-in: each catalogue pack's dedicated engine (identity
- * engine.preferred). 'chrono-coupe' and 'stellar-helm' are listed by id so they show as
+ * engine.preferred). The Chrono Coupe and Stellar Helm engines are listed by id so they show as
  * soon as Audio registers them. Every other built-in engine is hidden, not deleted.
  * User-built synths (drivesynth.patches.v1 / user-* ids) are never hidden or migrated.
  */
