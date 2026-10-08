@@ -1,3 +1,4 @@
+import { TOMCAT_DEFAULTS, TOMCAT_PACK, TOMCAT_PARAM_META } from './tomcatPack';
 import type { EngineKind, EnginePatch, EngineParams, ParamMeta } from './types';
 import { REVFORGE_PATCHES } from '../forge/catalog';
 import { PACK_ENGINE_MIGRATIONS } from '../packs/migrations';
@@ -393,15 +394,16 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
   },
   {
     version: 0,
-    id: 'aerospace-f14',
-    name: 'Carrier Jet',
+    id: TOMCAT_PACK.id,
+    name: TOMCAT_PACK.name,
     kind: 'aerospace',
     topology: 'aerospace-f14',
-    params: { ...F14_DEFAULTS } as Record<string, number | string>,
+    // Tomcat voice (tomcatPack.ts / tomcatVoice.js): legacy F14 sliders kept as macro scalers
+    params: { ...F14_DEFAULTS, ...TOMCAT_DEFAULTS } as Record<string, number | string>,
     meta: {
       blurb:
-        'Organic Harrier-class jet: spool/compressor noise + buried whine, dense core roar, wet AB morph, airframe buffet. Spool inertia lags throttle — no laser scream. Original synthesis — no samples.',
-      tags: ['aerospace', 'jet', 'twin-spool', 'organic', 'free'],
+        'Twin afterburning turbofans: starter whine → light-off → idle, N1/N2 spool inertia, blade-pass whine, fan buzz-saw, hot core roar and a 5-zone afterburner that lights in sequence. Original synthesis — no samples.',
+      tags: ['aerospace', 'jet', 'twin-spool', 'afterburner', 'free'],
       author: 'DriveSynth',
     },
   },
@@ -537,6 +539,9 @@ export function paramMetaForKind(kind: EnginePatch['kind'], topology?: string): 
   }
   if (topology === STELLAR_HELM_PACK.id) {
     return STELLAR_HELM_PARAM_META.map((m) => ({ ...m }));
+  }
+  if (kind === 'aerospace' && topology === TOMCAT_PACK.id) {
+    return [...paramMetaForKind('aerospace'), ...TOMCAT_PARAM_META.map((m) => ({ ...m }))];
   }
   const master: ParamMeta[] = [
     { id: 'masterGain', label: 'Master', min: 0, max: 1, step: 0.01 },
