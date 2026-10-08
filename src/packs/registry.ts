@@ -2,7 +2,9 @@ import { NightPursuitMount } from './mounts/NightPursuitMount';
 import { isExperimentalPackEnabled } from './experimental';
 import { NIGHT_PURSUIT_ID, PACK_ENGINE_MIGRATIONS, PACK_THEME_MIGRATIONS } from './migrations';
 import type { ThemePack } from './types';
-import { isThemeListed } from '../themes/visibility';
+import { BUILTIN_PATCHES, getBuiltin } from '../audio/builtins';
+import type { EnginePatch } from '../audio/types';
+import { FALLBACK_ENGINE_ID, isEngineListed, isThemeListed, resolveListedEngineId } from '../themes/visibility';
 
 /**
  * Glob-registered packs: each `src/packs/<id>.pack.ts` default-exports a ThemePack.
@@ -56,10 +58,35 @@ export function isThemeIdVisible(themeId: string): boolean {
   return !pack || isPackVisible(pack);
 }
 
-/** Engine list filter (Garage / Engines page): pack engines follow the opt-in. */
+/**
+ * Engine list filter (Revs / Engines page / sound pickers) for built-in engines: only the
+ * visible engine allowlist (visibility.ts VISIBLE_ENGINE_IDS), no Experimental opt-in.
+ * User-built synths are not built-ins and are never filtered.
+ */
 export function isEngineIdVisible(engineId: string): boolean {
-  const pack = packForEngineId(engineId);
-  return !pack || isPackVisible(pack);
+  return isEngineListed(engineId);
+}
+
+const isBuiltinEngine = (id: string) => !!getBuiltin(id);
+
+/** Saved / deep-linked engine id → visible id (hidden built-ins → Night Pursuit's engine). */
+export const resolveVisibleEngineId = (id: string): string => resolveListedEngineId(id, isBuiltinEngine);
+
+/**
+ * Patch about to be loaded (saved skin+sound combination, deep link) → visible patch.
+ * A hidden built-in, or a combination snapshot that is an untouched copy of a hidden built-in
+ * (same name + params), becomes Night Pursuit's engine (combination keeps its own id).
+ * Anything edited by the user (custom synths, tuned copies) is left alone.
+ */
+export function resolveVisibleEnginePatch(patch: EnginePatch): EnginePatch {
+  const np = getBuiltin(FALLBACK_ENGINE_ID);
+  if (!np || isEngineListed(patch.id)) return patch;
+  if (getBuiltin(patch.id)) return structuredClone(np);
+  const twin = BUILTIN_PATCHES.find((b) => b.name === patch.name && !isEngineListed(b.id));
+  if (twin && patch.id.startsWith('user-combination-') && JSON.stringify(twin.params) === JSON.stringify(patch.params)) {
+    return { ...structuredClone(np), id: patch.id };
+  }
+  return patch;
 }
 
 export const listExperimentalPacks = () => THEME_PACKS.filter((p) => p.experimental);

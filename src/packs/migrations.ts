@@ -8,7 +8,7 @@
  */
 import { storageKey } from '../lib/storageKey';
 import STELLAR_HELM from './stellar-helm.identity';
-import { FALLBACK_THEME_ID, isThemeListed } from '../themes/visibility';
+import { FALLBACK_THEME_ID, isThemeListed, resolveListedEngineId } from '../themes/visibility';
 
 export const NIGHT_PURSUIT_ID = 'night-pursuit' as const;
 
@@ -201,7 +201,7 @@ function enableExperimental(packId: string) {
  * retired theme (SELECT_ON_MIGRATE), else ''. The caller completes the selection
  * like the picker would (linked engine) via applyPackDeepLink.
  */
-export function runPackPrefMigrations(): string {
+export function runPackPrefMigrations(isBuiltinEngine: (id: string) => boolean = () => false): string {
   let select = '';
   runThemeRenameMigrations();
   try {
@@ -225,6 +225,15 @@ export function runPackPrefMigrations(): string {
         prefs.selectedEngineId = PACK_ENGINE_MIGRATIONS[id];
         localStorage.setItem(storageKey(UI_PREFS_KEY), JSON.stringify(prefs));
         if (EXPERIMENTAL_TARGETS.has(PACK_ENGINE_MIGRATIONS[id])) enableExperimental(PACK_ENGINE_MIGRATIONS[id]);
+      }
+      // Engine allowlist (Oct 8 2026): a saved hidden built-in engine → Night Pursuit's engine.
+      // isBuiltinEngine comes from main.tsx (audio registry) so this module stays import-cycle free;
+      // user synths and not-yet-registered ids are left as they are.
+      const cur = typeof prefs.selectedEngineId === 'string' ? prefs.selectedEngineId : '';
+      const listed = resolveListedEngineId(cur, isBuiltinEngine);
+      if (listed !== cur) {
+        prefs.selectedEngineId = listed;
+        localStorage.setItem(storageKey(UI_PREFS_KEY), JSON.stringify(prefs));
       }
     }
   } catch {

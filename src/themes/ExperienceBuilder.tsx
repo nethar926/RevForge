@@ -3,6 +3,7 @@ import {editableEngine} from '../forge/engineDraft';
 import {useEffect,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {BUILTIN_PATCHES} from '../audio';
+import {isEngineIdVisible} from '../packs/registry';
 import type {EnginePatch} from '../audio';
 import type {useAudioEngine} from '../hooks/useAudioEngine';
 import type {useThemes} from './useThemes';
@@ -23,7 +24,7 @@ export function ExperienceBuilder({themes,audio,userPatches,onSelect,onLoadCombi
  useEffect(()=>{if(audio.running)audio.setDriving({speed:preview*.8,throttle:preview,load:preview,rpm:config.idleRpm+preview*(config.redline-config.idleRpm),rpmNorm:preview});},[audio,preview,config.idleRpm,config.redline]);
  const stop=audio.stop;
  useEffect(()=>{const hide=()=>{if(document.visibilityState==='hidden')stop();};document.addEventListener('visibilitychange',hide);return()=>{document.removeEventListener('visibilitychange',hide);stop();};},[stop]);
- const options=[...BUILTIN_PATCHES,...userPatches];if(!options.some(p=>p.id===patch.id))options.push(patch);
+ const options=[...BUILTIN_PATCHES.filter(p=>isEngineIdVisible(p.id)),...userPatches];if(!options.some(p=>p.id===patch.id))options.push(patch);
  const skin=themeForId(themes.skinId);
  return <div className="forge"><main className="theme-builder"><header className="theme-builder-header"><div><span className="forge-eyebrow">REVFORGE / EXPERIENCE BUILDER</span><h1>Your look. Your sound.</h1><p>{LISTED_THEMES.length} dynamic skins. Every sound can pair with every skin.</p></div><Link className="forge-text-button" to="/drive">Return to drive ↗</Link></header>
  <div className="theme-builder-layout"><div className="theme-builder-preview"><ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[themes.skinId]} widgets={themes.widgets} colors={themes.colors[themes.skinId]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={skin} state={state} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit="mph" demo motion running/>
