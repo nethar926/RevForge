@@ -1,6 +1,6 @@
 import {useState, type CSSProperties, type ReactNode} from 'react';
-import {FAMILIES,THEMES as ALL_THEMES,themeForId,type ThemeFamily,type ThemeLayout} from './catalog';
-import {isThemeIdVisible,listExperimentalPacks,packForThemeId} from '../packs/registry';
+import {FAMILIES,LISTED_THEMES,isThemeListed,themeForId,type ThemeFamily,type ThemeLayout} from './catalog';
+import {listExperimentalPacks,packForThemeId} from '../packs/registry';
 import {isExperimentalPackEnabled,setExperimentalPackEnabled} from '../packs/experimental';
 import '../packs/packs.css';
 
@@ -206,12 +206,15 @@ function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | '
 
 export function ThemePicker({selected,onSelect,mode='all'}:{selected:string;onSelect:(id:string)=>void;mode?:'all'|'atmosphere'|'cluster'}) {
   // Experimental theme packs stay hidden until opted in (Experimental group only).
-  const experimentalPacks=listExperimentalPacks();
+  // Catalogue trim (Oct 8): only allowlisted packs are named here, so the opt-in can never re-expose a hidden skin.
+  const experimentalPacks=listExperimentalPacks().filter(p=>isThemeListed(p.themeId));
   const [experimentalOn,setExperimentalOn]=useState(()=>experimentalPacks.some(p=>isExperimentalPackEnabled(p.id)));
-  const THEMES=ALL_THEMES.filter(t=>isThemeIdVisible(t.id)||t.id===selected);
+  // Visible catalogue = the allowlist only (catalog VISIBLE_THEME_IDS). Allowlisted packs show without the
+  // Experimental opt-in (it now only gates their engines in Revs); hidden themes never show, even when selected.
+  const THEMES=LISTED_THEMES;
   const toggleExperimental=(on:boolean)=>{for(const p of experimentalPacks)setExperimentalPackEnabled(p.id,on);setExperimentalOn(on);if(on&&families.includes('Full Screen')){setFamily('Full Screen');setGroup('Experimental');}else if(!on&&group==='Experimental')setGroup('All');};
-  const families=FAMILIES.filter(f=>mode==='all'||(mode==='atmosphere'?f==='RoadView':f!=='RoadView'));
-  const [family,setFamily]=useState<ThemeFamily>(()=>families.includes(themeForId(selected).family)?themeForId(selected).family:families[0]);
+  const families=FAMILIES.filter(f=>(mode==='all'||(mode==='atmosphere'?f==='RoadView':f!=='RoadView'))&&THEMES.some(t=>t.family===f));
+  const [family,setFamily]=useState<ThemeFamily>(()=>families.includes(themeForId(selected).family)?themeForId(selected).family:families[0]??'Full Screen');
   const [group,setGroup]=useState('All');
   const groups=[...new Set(THEMES.filter(t=>t.family===family).map(t=>t.group))];
   return <div className="theme-picker">

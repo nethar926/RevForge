@@ -2,6 +2,7 @@ import { NightPursuitMount } from './mounts/NightPursuitMount';
 import { isExperimentalPackEnabled } from './experimental';
 import { NIGHT_PURSUIT_ID, PACK_ENGINE_MIGRATIONS, PACK_THEME_MIGRATIONS } from './migrations';
 import type { ThemePack } from './types';
+import { isThemeListed } from '../themes/visibility';
 
 /**
  * Glob-registered packs: each `src/packs/<id>.pack.ts` default-exports a ThemePack.
@@ -49,6 +50,8 @@ export function isPackVisible(pack: ThemePack): boolean {
 
 /** Theme picker filter: non-pack themes always visible; pack themes follow the opt-in. */
 export function isThemeIdVisible(themeId: string): boolean {
+  // Catalogue trim (Oct 8 2026): hidden themes stay hidden whatever the Experimental opt-in says.
+  if (!isThemeListed(themeId)) return false;
   const pack = packForThemeId(themeId);
   return !pack || isPackVisible(pack);
 }

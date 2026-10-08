@@ -10,7 +10,7 @@ import ts from 'typescript';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = mkdtempSync(join(tmpdir(), 'rf-mig-'));
-for (const rel of ['packs/migrations', 'packs/stellar-helm.identity', 'lib/storageKey']) {
+for (const rel of ['packs/migrations', 'packs/stellar-helm.identity', 'packs/chrono-coupe.identity', 'themes/visibility', 'lib/storageKey']) {
   const src = readFileSync(join(root, 'src', `${rel}.ts`), 'utf8');
   let js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
   js = js.replace(/from '(\.\.?\/[^']+)'/g, "from '$1.mjs'");
@@ -53,14 +53,18 @@ for (const id of RETIRED) {
   });
 }
 
-test('idempotent; unrelated themes untouched; Night Pursuit legacy unchanged (no select)', () => {
+test('idempotent; visible themes untouched; hidden road theme → Night Pursuit; Night Pursuit legacy unchanged (no select)', () => {
   store.clear();
   localStorage.setItem(THEME, 'stellar-helm');
   assert.equal(m.runPackPrefMigrations(), '');
   assert.equal(localStorage.getItem(THEME), 'stellar-helm');
+  localStorage.setItem(THEME, 'chrono-coupe');
+  assert.equal(m.runPackPrefMigrations(), '');
+  assert.equal(localStorage.getItem(THEME), 'chrono-coupe');
+  // Catalogue trim (Oct 8 2026): road-road-66 is hidden → Night Pursuit (was: left untouched).
   localStorage.setItem(THEME, 'road-road-66');
   assert.equal(m.runPackPrefMigrations(), '');
-  assert.equal(localStorage.getItem(THEME), 'road-road-66');
+  assert.equal(localStorage.getItem(THEME), 'night-pursuit');
   localStorage.setItem(THEME, rev('redir-thgin'));
   assert.equal(m.runPackPrefMigrations(), '');
   assert.equal(localStorage.getItem(THEME), 'night-pursuit');
@@ -75,6 +79,7 @@ test('saved combinations on retired saffron themes move to stellar-helm', () => 
   ]));
   m.runPackPrefMigrations();
   const combos = JSON.parse(localStorage.getItem('drivesynth.combinations.v1'));
-  assert.deepEqual(combos.map((c) => c.skinId), ['stellar-helm', 'stellar-helm', 'road-road-66']);
+  // Catalogue trim (Oct 8 2026): the hidden road theme combination now loads Night Pursuit.
+  assert.deepEqual(combos.map((c) => c.skinId), ['stellar-helm', 'stellar-helm', 'night-pursuit']);
   assert.deepEqual(JSON.parse(localStorage.getItem(EXP)), ['stellar-helm']);
 });
