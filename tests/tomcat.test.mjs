@@ -180,10 +180,13 @@ test('engine API: getAfterburnerZone() + onAfterburnerZoneChange(cb) report sequ
   let unsub;
   let hadApi = false;
   const S = (mph) => mph / 120;
-  const profile = (t) => (t < 8 ? { speed: S(80), throttle: 0.8, load: 0.8 } : t < 10 ? { speed: S(90), throttle: 1, load: 1 } : { speed: S(90), throttle: 0.8, load: 0.8 });
-  await renderLive(profile, 12, {
+  const profile = (t) => (t < 5 ? { speed: S(80), throttle: 0.8, load: 0.8 } : t < 7 ? { speed: S(90), throttle: 1, load: 1 } : { speed: S(90), throttle: 0.8, load: 0.8 });
+  // Brisk spool (tcSpoolTime 0) keeps the render short; staging delays do not depend on it.
+  await renderLive(profile, 8.5, {
     patchId: 'aerospace-f14',
     seed: 'tomcat-test-zones',
+    params: { tcSpoolTime: 0 },
+    fps: 30,
     onFrame: (engine, t) => {
       if (!unsub) {
         hadApi = typeof engine.getAfterburnerZone === 'function' && typeof engine.onAfterburnerZoneChange === 'function';
@@ -191,7 +194,7 @@ test('engine API: getAfterburnerZone() + onAfterburnerZoneChange(cb) report sequ
       }
       const z = engine.getAfterburnerZone();
       if (polled.at(-1)?.z !== z) polled.push({ t, z });
-      if (t > 11.5 && unsub) {
+      if (t > 8.2 && unsub) {
         unsub();
         unsub = () => {};
       }
@@ -202,19 +205,19 @@ test('engine API: getAfterburnerZone() + onAfterburnerZoneChange(cb) report sequ
   assert.deepEqual(polled.map((p) => p.z), [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0]);
   const t1 = polled[1].t;
   const t5 = polled[5].t;
-  assert.ok(t1 >= 8 && t1 < 8.5, `zone 1 at ${t1}`);
+  assert.ok(t1 >= 5 && t1 < 5.5, `zone 1 at ${t1}`);
   assert.ok(t5 - t1 > 0.5 && t5 - t1 < 0.9, `zones 1→5 over ${(t5 - t1).toFixed(2)} s`);
   for (const p of polled) assert.ok(Number.isInteger(p.z) && p.z >= 0 && p.z <= 5);
 });
 
 test('no DC offset, safe peaks, AB louder than cruise, cruise near its calibrated level', async () => {
   const S = (mph) => mph / 120;
-  const profile = (t) => (t < 9 ? { speed: S(45), throttle: 0.22, load: 0.22 } : t < 13 ? { speed: S(80), throttle: 0.8, load: 0.8 } : { speed: S(100), throttle: 1, load: 1 });
-  const buf = await renderLive(profile, 18, { patchId: 'aerospace-f14', seed: 'tomcat-test-dc' });
+  const profile = (t) => (t < 8 ? { speed: S(45), throttle: 0.22, load: 0.22 } : t < 11.5 ? { speed: S(80), throttle: 0.8, load: 0.8 } : { speed: S(100), throttle: 1, load: 1 });
+  const buf = await renderLive(profile, 15, { patchId: 'aerospace-f14', seed: 'tomcat-test-dc', fps: 30 });
   const { integratedLufs, samplePeakDb } = await import(pathToFileURL(join(root, 'scripts/loudness.mjs')).href);
-  const cruise = channelsOf(buf, 4, 9);
-  const ab = channelsOf(buf, 15, 18);
-  for (const seg of [cruise, ab, channelsOf(buf, 0, 18)]) {
+  const cruise = channelsOf(buf, 4, 8);
+  const ab = channelsOf(buf, 13, 15);
+  for (const seg of [cruise, ab, channelsOf(buf, 0, 15)]) {
     for (const ch of seg) {
       let sum = 0;
       let sq = 0;
@@ -236,15 +239,16 @@ test('no DC offset, safe peaks, AB louder than cruise, cruise near its calibrate
 });
 
 test('gesture-only start: setDriving before start() is silent; start() runs the start sequence', async () => {
-  const buf = await renderLive(() => ({ speed: 0.3, throttle: 0.6, load: 0.6 }), 6, {
+  const buf = await renderLive(() => ({ speed: 0.3, throttle: 0.6, load: 0.6 }), 5, {
     patchId: 'aerospace-f14',
     seed: 'tomcat-test-gesture',
+    fps: 30,
     startAt: 2,
     driveBeforeStart: true,
   });
   const peak = (a, b) => Math.max(...channelsOf(buf, a, b).map((ch) => ch.reduce((m, v) => Math.max(m, Math.abs(v)), 0)));
   assert.ok(peak(0, 1.98) < 1e-5, `silent before the gesture (${peak(0, 1.98)})`);
-  assert.ok(peak(3, 6) > 1e-3, 'audible after start()');
+  assert.ok(peak(3, 5) > 1e-3, 'audible after start()');
   // source contract: constructing the engine never starts/resumes audio by itself
   const impl = read('src/audio/EngineSynthImpl.ts');
   const ctor = impl.slice(impl.indexOf('constructor('), impl.indexOf('constructor(') + 4000);
