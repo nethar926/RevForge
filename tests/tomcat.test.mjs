@@ -235,7 +235,20 @@ test('no DC offset, safe peaks, AB louder than cruise, cruise near its calibrate
   const la = integratedLufs(ab, buf.sampleRate);
   assert.ok(lc > -33 && lc < -29, `cruise ${lc.toFixed(1)} LUFS (calibrated ≈ -30.9)`);
   assert.ok(la > lc + 6, `afterburner ${la.toFixed(1)} vs cruise ${lc.toFixed(1)}`);
-  assert.ok(samplePeakDb(ab) < -1.5, `AB peak ${samplePeakDb(ab).toFixed(1)} dBFS`);
+  assert.ok(samplePeakDb(ab) < -3, `AB peak ${samplePeakDb(ab).toFixed(1)} dBFS`);
+  // low end leads at full afterburner: dark centroid, most energy below 200 Hz
+  const { powerSpectrum } = await import(pathToFileURL(join(root, 'scripts/spectrum.mjs')).href);
+  const { ps, df } = powerSpectrum(ab, buf.sampleRate);
+  let tot = 0;
+  let cen = 0;
+  let lo = 0;
+  for (let k = 1; k < ps.length; k++) {
+    tot += ps[k];
+    cen += ps[k] * k * df;
+    if (k * df < 200) lo += ps[k];
+  }
+  assert.ok(cen / tot < 400, `AB centroid ${Math.round(cen / tot)} Hz`);
+  assert.ok(lo / tot > 0.45, `AB energy below 200 Hz ${(100 * lo / tot).toFixed(0)} %`);
 });
 
 test('gesture-only start: setDriving before start() is silent; start() runs the start sequence', async () => {
