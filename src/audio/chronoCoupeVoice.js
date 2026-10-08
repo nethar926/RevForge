@@ -5,6 +5,8 @@
 // Base sound = pulse-engine-processor family 5 (odd-fire 90° V6: 150°/90° alternating) with
 // light camLope / bankSplit / overrun opt-ins. This module shapes it and adds the charge bus.
 
+import { createOverrunBurstState, gatedCrackle, stepOverrunBurst } from './overrunBurst.js';
+
 const clip = (x, a = 0, b = 1) => Math.max(a, Math.min(b, Number.isFinite(x) ? x : a));
 const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const lag = (cur, target, dt, tc) => cur + (target - cur) * (1 - Math.exp(-Math.max(0, dt) / Math.max(1e-3, tc)));
@@ -38,6 +40,7 @@ export function createChronoCoupeDriveState(idleRpm = 860) {
     thrSlow: 0,
     prevThr: 0,
     overrun: 0,
+    burst: createOverrunBurstState(),
     breath: 0,
     modelled: false,
   };
@@ -106,17 +109,11 @@ export function stepChronoCoupeDrive(state, input, dt, params = {}) {
   }
   const rpmNorm = clip((s.rpm - idle) / Math.max(1, red - idle));
 
-  // Lift-off → gentle overrun pops (continuous envelope, never a hard gate)
+  // Overrun pops: ONLY a genuine lift-off from high rpm opens a bounded burst that decays as the
+  // revs fall (overrunBurst.js). No coasting floor / Frontend `overrun` flag trigger.
   s.thrSlow = lag(s.thrSlow, thr, h, 0.35);
-  const rpmGate = clip((s.rpm - 1500) / 1000);
-  if (thr < 0.14 && s.thrSlow - thr > 0.1 && s.rpm > 1800) {
-    s.overrun = Math.max(s.overrun, clip((s.thrSlow - thr) * 1.8) * rpmGate);
-  }
-  if (input?.overrun && s.rpm > 1600) s.overrun = Math.max(s.overrun, 0.7 * rpmGate);
-  const coastFloor = thr < 0.06 && speed > 0.08 ? 0.16 * rpmGate : 0;
-  const ovrTarget = thr > 0.2 ? 0 : coastFloor;
-  s.overrun = lag(s.overrun, ovrTarget, h, thr > 0.2 ? 0.06 : s.overrun > ovrTarget ? 1.1 : 0.35);
-  s.overrun = Math.min(s.overrun, rpmGate);
+  if (!s.burst) s.burst = createOverrunBurstState();
+  s.overrun = stepOverrunBurst(s.burst, { throttle: thr, rpm: s.rpm }, h, { idleRpm: idle, redlineRpm: red });
   s.prevThr = thr;
 
   // Breath = intake airflow feel (wheeze + injection hiss), throttle-led, load adds a little
@@ -155,6 +152,8 @@ export function chronoCoupeWorkletTargets(params, drive, thr, base = {}) {
     mufflerMix: clip(muff0 * (1.05 - thr * 0.35)),
     exhaustFeedback: clip(num(base.exhaustFeedback, num(p.exhaustFeedback, 0.74)), 0.1, 0.95),
     collectorDelayMs: clip(num(p.collectorDelayMs, 1.4), 0.5, 3),
+    // Worklet crackle only while a lift-off burst is open (never at cruise / coast / idle)
+    crackle: gatedCrackle(num(p.crackle, 0.3), drive.overrun),
   };
 }
 

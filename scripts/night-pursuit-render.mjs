@@ -23,6 +23,7 @@ if (!Promise.withResolvers) {
   };
 }
 const { OfflineAudioContext, AudioWorkletNode } = await import('node-web-audio-api');
+const seeded = await import('./seeded-random.mjs');
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKLET = join(ROOT, 'src/audio/worklets/pulse-engine-processor.js');
@@ -58,7 +59,9 @@ export async function renderNightPursuit(profile, dur, opts = {}) {
   const params = { ...NIGHT_PURSUIT_DEFAULTS, ...(opts.params ?? {}) };
   const generic = !!opts.generic;
   const ctx = new OfflineAudioContext(2, Math.ceil(SR * dur), SR);
-  await ctx.audioWorklet.addModule(WORKLET);
+  // opts.seed → deterministic main-thread + worklet randomness (QA / previews)
+  if (opts.seed != null) seeded.seedMathRandom(opts.seed);
+  await ctx.audioWorklet.addModule(opts.seed != null ? seeded.seededWorkletModule(WORKLET, opts.seed) : WORKLET);
   const node = new AudioWorkletNode(ctx, 'pulse-engine-processor', {
     numberOfInputs: 0,
     numberOfOutputs: 1,
@@ -159,6 +162,7 @@ export async function renderNightPursuit(profile, dur, opts = {}) {
       set('overrun', tgt.overrun, t);
       set('overrunBurble', tgt.overrunBurble, t);
       set('dcGuard', tgt.dcGuard, t);
+      set('crackle', tgt.crackle, t); // gated to lift-off bursts (overrunBurst.js)
       // bus.update uses currentTime; offline we schedule at t by temporarily faking it
       scheduleBus(bus, params, dv, thr, t);
     }
@@ -175,6 +179,7 @@ export async function renderNightPursuit(profile, dur, opts = {}) {
     });
   }
   const buf = await ctx.startRendering();
+  if (opts.seed != null) seeded.restoreMathRandom();
   return buf;
 }
 
