@@ -82,8 +82,13 @@
 /* gear rings */
 .sh-ring { grid-area: ring; position: relative; display: flex; flex-direction: column; }
 .sh-cap { font: 600 22px var(--sh-display); letter-spacing: 3px; }
-.sh-cap-r { position: absolute; right: 16px; top: 12px; font: 400 14px var(--sh-display); letter-spacing: 1.5px; color: var(--sh-muted); }
-.sh-ring-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 6px; }
+.sh-ring-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 6px; }
+.sh-ring-dial { flex: 1 1 0; min-width: 0; align-self: stretch; display: flex; align-items: center; justify-content: center; }
+/* WARP FACTOR (mph ÷ 10) beside the rings; the MPH · RPM readout sits under it */
+.sh-warp { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding-right: 8px; }
+.sh-warp-label { font: 400 14px var(--sh-display); letter-spacing: 2px; color: var(--sh-warp-label, var(--sh-muted)); }
+.sh-warp-num { font: 600 76px / 0.95 var(--sh-display); color: var(--sh-warp, var(--sh-text)); font-variant-numeric: tabular-nums; }
+.sh-cap-r { font: 400 14px var(--sh-display); letter-spacing: 1.5px; color: var(--sh-warp-sub, var(--sh-muted)); white-space: nowrap; }
 .sh-rings { width: 100%; height: 100%; }
 .sh-ticks line { stroke: var(--sh-tick); stroke-width: 1.4; }
 .sh-ring-outer .sh-ring-track { fill: none; stroke: var(--sh-ring-outer-track); }
@@ -107,10 +112,17 @@
 .sh-segs i.on.zone { background: repeating-linear-gradient(135deg, var(--sh-red) 0 6px, #ffb3a8 6px 9px); }
 .sh-redline-mark { position: absolute; top: -21px; padding-left: 5px; border-left: 2px solid var(--sh-red); font: 600 13px/18px var(--sh-display); letter-spacing: 1.5px; color: var(--sh-red-text); }
 .sh-nums { display: flex; justify-content: space-between; margin-top: 4px; font: 400 15px var(--sh-display); color: var(--sh-muted); }
-.sh-bus-head { margin-top: 10px; }
-.sh-bus { display: flex; gap: 4px; height: 14px; margin-top: 6px; }
-.sh-bus i { flex: 1; background: var(--sh-bus-off); border-radius: var(--sh-seg-radius, 0); }
-.sh-bus i.on { background: var(--sh-bus-on); }
+/* LIGHT SPEED meter (mph ÷ jump speed) in the old AUDIO BUS slot. 100% = steady plate; no animation. */
+.sh-ls { margin-top: 10px; }
+.sh-ls-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; font: 400 17px / 22px var(--sh-display); letter-spacing: 3px; color: var(--sh-power-head); white-space: nowrap; }
+.sh-ls-jump { font-size: 15px; letter-spacing: 2px; color: var(--sh-ls-jump, var(--sh-muted)); }
+.sh-ls-plate { padding: 0 10px; font-size: 15px; font-weight: 600; letter-spacing: 2px; background: var(--sh-ls-plate-bg); color: var(--sh-ls-plate-fg); }
+.sh-ls-track { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.sh-ls-segs { flex: 1; min-width: 0; display: flex; gap: 4px; height: 14px; }
+.sh-ls-segs i { flex: 1; background: var(--sh-bus-off); border-radius: var(--sh-seg-radius, 0); }
+.sh-ls-segs i.on { background: var(--sh-ls-on); }
+.sh-ls-cap { flex: none; padding: 0 6px; border: 1px solid var(--sh-ls-on); font: normal 600 13px / 16px var(--sh-display); letter-spacing: 1px; color: var(--sh-ls-on); }
+.sh-ls[data-at-light] .sh-ls-cap { background: var(--sh-ls-plate-bg); border-color: var(--sh-ls-plate-bg); color: var(--sh-ls-plate-fg); }
 
 /* bottom bar */
 .sh-bar { grid-area: bar; display: flex; gap: 8px; }
@@ -196,8 +208,7 @@
   row-gap: calc(6 * var(--u, 1px));
   padding: calc(8 * var(--u, 1px)) calc(10 * var(--u, 1px));
 }
-.sh.sh-compact[data-frame] .sh-hdr, .sh.sh-compact[data-frame] .shf-topbar, .sh-compact .sh-data, .sh-compact .sh-log,
-.sh-compact .sh-bus-head, .sh-compact .sh-bus { display: none; }
+.sh.sh-compact[data-frame] .sh-hdr, .sh.sh-compact[data-frame] .shf-topbar, .sh-compact .sh-data, .sh-compact .sh-log { display: none; }
 .rf-pack-box .sh.sh-compact .sh-tabs button { font-size: calc(15 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); min-height: calc(44 * var(--u, 1px)); }
 .sh-compact .sh-rpm-row, .sh-compact .sh-mph-row { gap: calc(8 * var(--u, 1px)); }
 .sh-compact .sh-rpm { font-size: min(calc(48 * var(--u, 1px)), 22cqh); }
@@ -209,14 +220,26 @@
 .sh-compact .sh-thr-val { min-width: calc(34 * var(--u, 1px)); }
 .sh-compact .sh-thr-track { height: calc(14 * var(--u, 1px)); }
 .sh-compact .sh-cap { font-size: calc(14 * var(--u, 1px)); letter-spacing: calc(2 * var(--u, 1px)); }
-.sh-compact .sh-cap-r { right: calc(10 * var(--u, 1px)); top: calc(8 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
-.sh-compact .sh-ring-wrap { padding: calc(2 * var(--u, 1px)); }
-.sh-compact .sh-gear-num-c { font-size: 64px; }
-.sh-compact .sh-gear-label-c { font-size: 21px; letter-spacing: 2px; }
+.sh-compact .sh-ring-wrap { gap: calc(6 * var(--u, 1px)); padding: calc(2 * var(--u, 1px)); }
+.sh-compact .sh-warp { max-width: 46%; gap: calc(1 * var(--u, 1px)); padding-right: calc(4 * var(--u, 1px)); }
+.sh-compact .sh-warp-label { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.sh-compact .sh-warp-num { font-size: calc(40 * var(--u, 1px)); }
+.sh-compact .sh-cap-r { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); white-space: normal; }
+.sh-compact .sh-gear-num-c { font-size: min(84px, max(64px, calc(11.5px / var(--sh-rings-scale, 1)))); }
+/* rings share the panel with WARP FACTOR: GEAR tracks the rendered ring (≥11px on screen, capped at the core chord) */
+.sh-compact .sh-gear-label-c { font-size: min(31px, max(21px, calc(11.25px / var(--sh-rings-scale, 1)))); letter-spacing: 1px; }
 .sh-compact .sh-power-head { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(2 * var(--u, 1px)); }
 .sh-compact .sh-segs { gap: calc(3 * var(--u, 1px)); height: calc(20 * var(--u, 1px)); margin-top: calc(16 * var(--u, 1px)); }
 .sh-compact .sh-redline-mark { top: calc(-16 * var(--u, 1px)); padding-left: calc(4 * var(--u, 1px)); border-left-width: calc(2 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); line-height: calc(14 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
 .sh-compact .sh-nums { margin-top: calc(2 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); }
+/* LIGHT SPEED: one row (head · segments · LS); wraps onto two rows when the strip gets too narrow */
+.sh-compact .sh-ls { display: flex; flex-wrap: wrap; align-items: center; column-gap: calc(8 * var(--u, 1px)); row-gap: calc(3 * var(--u, 1px)); margin-top: calc(5 * var(--u, 1px)); }
+.sh-compact .sh-ls-head { flex: none; gap: calc(8 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); line-height: calc(16 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.sh-compact .sh-ls-jump, .sh-compact .sh-ls-plate { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.sh-compact .sh-ls-plate { padding: 0 calc(6 * var(--u, 1px)); }
+.sh-compact .sh-ls-track { flex: 1 1 calc(120 * var(--u, 1px)); gap: calc(4 * var(--u, 1px)); margin-top: 0; }
+.sh-compact .sh-ls-segs { gap: calc(2 * var(--u, 1px)); height: calc(10 * var(--u, 1px)); }
+.sh-compact .sh-ls-cap { padding: 0 calc(4 * var(--u, 1px)); border-width: calc(1 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); line-height: calc(14 * var(--u, 1px)); }
 .sh-compact .sh-bar { gap: calc(6 * var(--u, 1px)); }
 .rf-pack-box .sh.sh-compact .sh-bar button { min-width: calc(44 * var(--u, 1px)); font-size: calc(14 * var(--u, 1px)); letter-spacing: calc(1.5 * var(--u, 1px)); }
 .rf-pack-box .sh.sh-compact .sh-bar .sh-shutdown { width: auto; flex: 1.2; }
@@ -240,11 +263,9 @@
 .sh.sh-compact[data-frame='classic'] .sh-rule { margin-right: 0; }
 .sh.sh-compact[data-frame='classic'] .sh-ring { border-radius: 0 0 calc(24 * var(--u, 1px)) calc(24 * var(--u, 1px)); }
 .sh.sh-compact[data-frame='classic'] .sh-cap { padding: calc(8 * var(--u, 1px)) calc(8 * var(--u, 1px)) calc(2 * var(--u, 1px)); }
-.sh.sh-compact[data-frame='classic'] .sh-cap-r { top: calc(10 * var(--u, 1px)); }
 .sh.sh-compact[data-frame='classic'] .sh-bar { margin-left: calc(14 * var(--u, 1px)); gap: calc(5 * var(--u, 1px)); }
 .rf-pack-box .sh.sh-compact[data-frame='classic'] .sh-bar .sh-shutdown { border-radius: 0 calc(24 * var(--u, 1px)) calc(24 * var(--u, 1px)) 0; }
-/* compact × helm frame (panel children are position:relative there; pin the ring readout) */
-.sh.sh-compact[data-frame='helm'] .sh-ring > .sh-cap-r { position: absolute; top: calc(8 * var(--u, 1px)); right: calc(10 * var(--u, 1px)); }
+/* compact × helm frame */
 .sh.sh-compact[data-frame='helm'] .sh-panel { padding: calc(6 * var(--u, 1px)) calc(8 * var(--u, 1px)); }
 .sh.sh-compact[data-frame='helm'] .sh-tabs { padding: calc(3 * var(--u, 1px)); }
 .rf-pack-box .sh.sh-compact[data-frame='helm'] .sh-tabs button { padding: 0 calc(8 * var(--u, 1px)); }
@@ -256,6 +277,20 @@
 .sh-compact[data-sh-tight] .sh-tabs, .sh-compact[data-sh-tight] .shf-elbow, .sh-compact[data-sh-tight] .sh-power-head { display: none; }
 .sh.sh-compact[data-sh-tight][data-frame='classic'] .sh-bar { margin-left: 0; }
 .sh-compact[data-sh-tight] .sh-mph { font-size: min(calc(120 * var(--u, 1px)), 34cqh); }
-.sh-compact[data-sh-tight] .sh-rpm { font-size: min(calc(48 * var(--u, 1px)), 19cqh); }
+.sh-compact[data-sh-tight] .sh-rpm { font-size: max(calc(12 * var(--u, 1px)), min(calc(48 * var(--u, 1px)), 19cqh)); }
 /* small ring: caption grows so it still renders ≥11px (fits the core chord at this baseline) */
 .sh-compact[data-sh-tight] .sh-gear-label-c { font-size: 31px; letter-spacing: 1px; }
+/* Tight: WARP FACTOR takes the full panel height on the right (caption + rings stack on the left) */
+.sh-compact[data-sh-tight] .sh-ring { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); }
+.sh-compact[data-sh-tight] .sh-ring-wrap { display: contents; }
+.sh-compact[data-sh-tight] .sh-ring-dial, .sh-compact[data-sh-tight] .sh-warp { position: relative; z-index: 1; }
+.sh-compact[data-sh-tight] .sh-cap { grid-area: 1 / 1 / 2 / 2; }
+.sh-compact[data-sh-tight] .sh-ring-dial { grid-area: 2 / 1 / 3 / 2; min-height: 0; padding: calc(2 * var(--u, 1px)); }
+.sh-compact[data-sh-tight] .sh-warp { grid-area: 1 / 2 / 3 / 3; align-self: center; max-width: none; padding: calc(2 * var(--u, 1px)) calc(8 * var(--u, 1px)) calc(2 * var(--u, 1px)) calc(4 * var(--u, 1px)); }
+.sh-compact[data-sh-tight] .sh-warp { gap: 0; }
+.sh-compact[data-sh-tight] .sh-warp-num { font-size: calc(28 * var(--u, 1px)); }
+.sh-compact[data-sh-tight] .sh-warp-label, .sh-compact[data-sh-tight] .sh-cap-r { line-height: calc(13 * var(--u, 1px)); }
+.sh-compact[data-sh-tight] .sh-cap-r { max-width: calc(72 * var(--u, 1px)); }
+/* Tight: the LIGHT SPEED row is paid for by a shorter POWER strip, so the RPM / MPH block keeps its height */
+.sh-compact[data-sh-tight] .sh-segs { height: calc(12 * var(--u, 1px)); }
+.sh-compact[data-sh-tight] .sh-ls { margin-top: calc(3 * var(--u, 1px)); }

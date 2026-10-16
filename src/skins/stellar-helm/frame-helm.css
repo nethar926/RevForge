@@ -33,6 +33,12 @@
   --sh-red-text: #ff8a80;
   --sh-bus-off: #141d33;
   --sh-bus-on: #7c9cff;
+  --sh-ls-on: #5ce1ff;
+  --sh-ls-plate-bg: #5ce1ff;
+  --sh-ls-plate-fg: #04121a;
+  --sh-warp: #5ce1ff;
+  --sh-warp-label: #b49cff;
+  --sh-warp-sub: #9fb0cc;
   --sh-seg-radius: 2px;
   --sh-focus: #5ce1ff;
   --sh-c: 14px;

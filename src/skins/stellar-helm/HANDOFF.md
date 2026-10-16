@@ -1,0 +1,3 @@
+Light speed (skin/stellar-helm-lightspeed): ring panel shows WARP FACTOR = mph ÷ 10 (one decimal, cap 9.9) beside the rings, role="img" "Warp 6.2"; the AUDIO BUS strip is now a LIGHT SPEED % meter (mph ÷ `lightSpeedMph`, default 70 placeholder, clamped 0–100) with role="meter" and a steady ◆ LIGHT SPEED plate at 100%.
+Math lives in lightSpeed.ts (tests/stellar-helm-lightspeed.test.mjs); both readouts stay in compact and tight layouts, in Classic and Neo; nothing animates, so Reduce Motion needs no special case.
+Open: phones (844×390, 390×844) still get the shared 1280-wide scaled box (no data-rf-layout on main), so GEAR, MPH/THR spacing and SHUTDOWN miss the floors there, as before this change; gate shots and table: /workspace/drivesynth-skins/stellar-helm/lightspeed/.
