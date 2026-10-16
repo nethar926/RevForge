@@ -1,7 +1,8 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import './carrier-jet.css';
 import './switches.css';
-import { switchView, type CjSwitchItem } from './switches';
+import { cjSwitchVariantFor, portraitOrder, switchView, type CjSwitchItem, type CjSwitchVariant } from './switches';
+import { useRfLayoutAttr } from './useRfLayoutAttr';
 
 export interface CarrierJetSwitchPanelProps {
   /** One row of bat-handle switches, left to right. Put the `kind: 'more'` item last. */
@@ -10,6 +11,12 @@ export interface CarrierJetSwitchPanelProps {
   overflow?: CjSwitchItem[];
   /** Every tap calls this with the item id; the host flips its own state. */
   onSelect: (id: string) => void;
+  /**
+   * 'full' = concept-sheet art · 'compact' = narrow stacked cells (every legend visible, >= 11px, >= 44px) ·
+   * 'portrait' = compact + the portrait row order (CJ_SWITCH_ITEMS_PORTRAIT). Default 'auto': read the nearest
+   * `data-rf-layout` ancestor (portrait → 'portrait', phone-landscape → 'compact', board / window / none → 'full').
+   */
+  variant?: CjSwitchVariant | 'auto';
 }
 
 /** Bat-handle toggle art (original). Lever up = on / current page / tray open. */
@@ -67,16 +74,22 @@ const Screws = () => (
  * Carrier Jet switch panel, option A: one row of metal bat-handle toggles on a gray screwed panel with
  * stencil labels, plus a MORE switch that opens a tray. Presentational: draws `items` / `overflow` as given
  * and reports taps through `onSelect(id)`. Page = aria-current, toggle = role="switch", more = aria-expanded.
+ * Compact / portrait are the same panel reflowed: same switches, labels, lamps, levers, legends and hints.
  */
-export function CarrierJetSwitchPanel({ items, overflow = [], onSelect }: CarrierJetSwitchPanelProps) {
+export function CarrierJetSwitchPanel({ items, overflow = [], onSelect, variant = 'auto' }: CarrierJetSwitchPanelProps) {
   const trayId = `cjs-tray-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const ref = useRef<HTMLDivElement>(null);
+  const rf = useRfLayoutAttr(ref, variant === 'auto');
+  const v: CjSwitchVariant = variant === 'auto' ? cjSwitchVariantFor(rf) : variant;
+  const row = v === 'portrait' ? portraitOrder(items) : items;
   const trayOpen = items.some((i) => i.kind === 'more' && i.on) && overflow.length > 0;
+  // 'full' adds no attribute, so the wired Tesla / desktop DOM is unchanged.
   return (
-    <div className="cjs" role="group" aria-label="Switch panel">
+    <div ref={ref} className="cjs" role="group" aria-label="Switch panel" data-cjs-variant={v === 'full' ? undefined : v}>
       <Screws />
       <div className="cjs-title" aria-hidden="true">NAV</div>
       <ul className="cjs-row">
-        {items.map((it) => (
+        {row.map((it) => (
           <Switch key={it.id} item={it} overflowCount={overflow.length} trayId={trayId} onSelect={onSelect} />
         ))}
       </ul>

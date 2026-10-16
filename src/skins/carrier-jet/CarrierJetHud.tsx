@@ -56,6 +56,15 @@ export interface CarrierJetHudProps extends Partial<Omit<PackHudProps, 'compact'
   heading?: number;
   /** Longitudinal accel in mph/s (accel ball). Undefined → derived from speed changes. */
   accel?: number;
+  /**
+   * Host control drawn inside the FLIGHT block (the left block of each look) in phone portrait only
+   * (data-rf-layout="portrait"): meant for <CarrierJetAfterburnerGuard />, which turns compact there. The FLIGHT
+   * block gains one row and the board body gives that row back, so VDI / HSD / WING SWEEP keep their share.
+   * Every other layout ignores it (Tesla / desktop keep the host's placement under the FLIGHT column, pixel-identical;
+   * phone-landscape's 16:9 board has no height to spare in FLIGHT without pushing its SVG text under 11px),
+   * so a host may pass it unconditionally and keep its own placement outside portrait.
+   */
+  flightSlot?: ReactNode;
 }
 
 const clamp01 = (v: number | undefined) => Math.max(0, Math.min(1, typeof v === 'number' && Number.isFinite(v) ? v : 0));
@@ -117,6 +126,8 @@ interface View {
   heading?: number;
   pitch: number;
   demo: boolean;
+  /** flightSlot content, phone portrait only (else undefined). */
+  slot?: ReactNode;
 }
 
 // ------------------------------------------------------------------ shared HTML blocks
@@ -219,6 +230,9 @@ function SweepMeter({ v, className, children }: { v: View; className: string; ch
     </div>
   );
 }
+/** FLIGHT-block slot (phones): a named inline-size container so the compact guard can stack to its width. */
+const FlightSlot = ({ v }: { v: View }) => (v.slot ? <div className="cj-abslot" data-cj-el="flight-slot">{v.slot}</div> : null);
+
 const Sec = ({ className = '', children }: { className?: string; children: ReactNode }) => (
   <div className={`cj-sec ${className}`} aria-hidden="true">
     {children}
@@ -375,6 +389,7 @@ function CockpitCompact({ v }: { v: View }) {
             <Engines x={v.phone ? 31 : 20} y={10} w={238} h={218} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} />
           </Svg>
         </Sec>
+        <FlightSlot v={v} />
       </div>
       <Sec className="cj-panel cj-a-mid">
         <span className="cj-plab" data-cj-el="panel-label">VDI</span>
@@ -413,6 +428,7 @@ function GlassCompact({ v }: { v: View }) {
           <MachBlock v={v} />
           <RpmBlock v={v} />
         </div>
+        <FlightSlot v={v} />
       </div>
       <Sec className="cj-b-aoa">
         <Svg w={74} h={440} align="xMidYMid">
@@ -458,6 +474,7 @@ function DeckCompact({ v }: { v: View }) {
             <Engines x={11} y={8} w={278} h={210} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} />
           </Svg>
         </Sec>
+        <FlightSlot v={v} />
       </div>
       <SweepMeter v={v} className="cj-deck">
         <Svg w={360} h={v.phone ? 250 : 290} className="cj-c-plan">
@@ -673,6 +690,7 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
     heading: p.heading,
     pitch: Math.max(-12, Math.min(12, 1.5 + accel * 2.25)),
     demo: !!p.demo,
+    slot: rfPhone === 'portrait' && p.flightSlot ? p.flightSlot : undefined,
   };
   const label = variantLabel(variant);
   const status = statusText(parked, ab);
@@ -691,6 +709,7 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
       data-parked={parked ? 'true' : 'false'}
       data-ab={ab}
       data-motion={snap ? 'snap' : 'rate'}
+      data-flight-slot={v.slot ? 'true' : undefined}
     >
       <div className="cj-in">
         <header className="cj-hdr">

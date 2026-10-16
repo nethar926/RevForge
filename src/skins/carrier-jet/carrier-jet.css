@@ -357,6 +357,27 @@
 [data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-deck .cj-c-tape { grid-column: 1; grid-row: 2; align-self: end; }
 [data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-deck .cj-c-plan { grid-column: 2; grid-row: 1 / 3; height: 100%; }
 
+/* ---------------- FLIGHT-block slot (flightSlot: the host's afterburner guard), phone portrait only. The slot is one more
+   row of the left block of each look; the body gives that block the row's height back so the other blocks keep their
+   share. Strip guard (cap · well · plate, 60px) where the block is >= 340px wide (A, C), else cap + plate over the
+   well (88px, B). */
+.cj .cj-abslot { container: cj-abslot / inline-size; position: relative; min-width: 0; grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-c-left > .cj-abslot { grid-row: 3; }
+/* A portrait: FLIGHT spans a 60px lead row (+ the 6px gap) and its 37fr share */
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'][data-variant='carrier-jet'] .cj-body { grid-template-rows: 60px minmax(0, 37fr) minmax(0, 25fr) minmax(0, 38fr); }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-a-left { grid-row: 1 / 3; grid-template-rows: minmax(0, 44fr) minmax(0, 56fr) auto; }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-a-left > .cj-abslot { grid-row: 3; }
+/* B portrait: the top row (FLIGHT left + sweep) gains the slot's row */
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'][data-variant='tomcat'] .cj-body { grid-template-rows: minmax(0, 44fr) 88px minmax(0, 56fr); }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-b-left { grid-row: 1 / 3; grid-template-rows: minmax(0, 58fr) minmax(0, 42fr) auto; }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-b-sweep { grid-row: 1 / 3; }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-b-aoa { grid-row: 3; }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-b-mid { grid-row: 3; }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-b-acc { grid-row: 3; }
+/* C portrait */
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'][data-variant='swing-wing'] .cj-body { grid-template-rows: 60px minmax(0, 28fr) minmax(0, 40fr) minmax(0, 32fr); }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-c-left { grid-row: 1 / 3; grid-template-rows: minmax(0, 55fr) minmax(0, 45fr) auto; }
+
 /* Reduce Transparency: solid fills only (no scanlines, glows, dot texture or shadows). */
 @media (prefers-reduced-transparency: reduce) {
   .cj .cj-crt, .cj .cj-crt.cj-scan { background: #061309; box-shadow: 0 0 0 2px #535c62; }

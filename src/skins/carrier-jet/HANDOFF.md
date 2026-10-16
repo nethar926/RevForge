@@ -1,3 +1,22 @@
 `<CarrierJetSwitchPanel items={CjSwitchItem[]} overflow?={CjSwitchItem[]} onSelect={(id) => …} />`: item = `{ id, label, kind: 'page'|'toggle'|'more', on?, state?: 'off'|'on'|'denied' }` (page on = current page / aria-current, toggle = role="switch", more on = tray open / aria-expanded; `state` wins over `on`, 'denied' = amber "Compass denied, tap to retry", still tappable). Defaults: `CJ_SWITCH_ITEMS`, `CJ_SWITCH_OVERFLOW`.
 `<CarrierJetAfterburnerGuard armed guardOpen onArm={…} onGuardToggle={…} />`: guard = `<button aria-expanded>` "Afterburner guard, closed|open"; ARM = role="switch" aria-checked "Afterburner armed", inert + tabIndex -1 while closed; Escape on ARM calls onGuardToggle. Both components store nothing; the host flips every value.
 Import from `src/skins/carrier-jet` (index.ts); styles in switches.css; dev preview at `/src/skins/carrier-jet/preview/switches.html`; a11y contract in `tests/carrier-jet-switches.test.ts`.
+
+## Compact / portrait (skin/carrier-jet-switches-compact)
+Same parts, reflowed; nothing hidden (screws, NAV stencil, label, lamp, lever, legend HERE/GO ▲ · ON/OFF · OPEN/n INSIDE · DENIED + TAP TO RETRY; guard cap, stripes, window, ARM + SAFE/ON, plate). Text ≥ 11px, cells ≥ 44×44 CSS px, no scale().
+- `<CarrierJetSwitchPanel variant?: 'full'|'compact'|'portrait'|'auto' />` (default 'auto'). auto reads the nearest `data-rf-layout` ancestor (CjNavRow's `<nav data-rf-layout>` already has it): board/window/none → 'full' (no attribute, DOM and pixels unchanged), phone-landscape → 'compact', portrait → 'portrait'. compact = 44px stacked cells (label / lever + lamp / legend), panel ≈ 48px tall; denied cells put the lever beside label / DENIED / TAP TO RETRY. portrait = compact + row order `CJ_PORTRAIT_ORDER` (DRIVE GARAGE MUTE COMPASS, others, MORE last; DOM = tab order).
+- `CJ_SWITCH_ITEMS_PORTRAIT` / `CJ_SWITCH_OVERFLOW_PORTRAIT`, `portraitOrder(items)`, `portraitSplit(items, overflow)`, `cjSwitchVariantFor(layout)`, `cjGuardVariantFor(layout)`, types `CjSwitchVariant`, `CjGuardVariant`.
+- `<CarrierJetAfterburnerGuard variant?: 'full'|'compact'|'auto' />` (default 'auto': compact on phones or inside the HUD slot). compact = strip AFTERBURNER · guard well 144×48 (tab 46 + ARM 96) · plate, 60px tall; in a slot under 340px wide the cap and plate share a top row over the well (88px).
+- `<CarrierJetHud flightSlot?: ReactNode />`: drawn as the last row of the FLIGHT (left) block of each look in phone **portrait only**; the body gives that row back so VDI/HSD/WING SWEEP keep their share. Ignored on board/window (Tesla stays pixel-identical) and phone-landscape (the 16:9 board has no height to spare in FLIGHT without pushing its SVG text under 11px; the guard stays in the host strip there).
+- Compact rules carry `:not(#cj-v)` (one ID level) so the class-level glue in packs/mounts/carrier-jet-controls.css cannot half-apply on phones; on Tesla that glue still sizes the full variant exactly as before.
+
+### Frontend (Scott): mount change to use the FLIGHT slot (not made here; outside the skin)
+`src/packs/mounts/CarrierJetMount.tsx`: build the guard once, hand it to the HUD, and keep the host strip off portrait:
+```tsx
+const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} />;
+<CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} flightSlot={guard} />
+{layout !== 'portrait' && <div className="cjm-ab">{guard}</div>}
+```
+`src/packs/mounts/carrier-jet-controls.css`: drop portrait from the 68px yield, i.e. `.cjm[data-rf-layout='portrait'] > .cjm-fill, .cjm[data-rf-layout='phone-landscape'] > .cjm-fill { bottom: 68px; }` → `.cjm[data-rf-layout='phone-landscape'] > .cjm-fill { bottom: 68px; }` (portrait board gets its 68px back: 498 → 566px at 390×844).
+Optional, no skin change needed: the `display: none` rules for `.cjs-legend/.cjs-hint`, `.cjs-screw/.cjs-title` and `.cjg-cap` in carrier-jet-controls.css only bite on Tesla/desktop now (phones override them). Tesla still hides legends there (Scott's glue, kept because 1280/773 must stay 0px vs 604eb49); showing them means passing `variant="compact"` from CjNavRow on board/window, which changes those pixels and is not gated yet, so it needs Wilson's OK first.
+Gate: /workspace/drivesynth-skins/carrier-jet/switches/compact/gate-table.txt.
