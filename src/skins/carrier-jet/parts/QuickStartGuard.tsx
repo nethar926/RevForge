@@ -48,7 +48,7 @@ export function QuickStartGuard({ guardOpen, onGuardToggle, onStart, running, id
               <rect x={(KW - annW) / 2} y={KH / 2 - 17} width={annW} height={34} rx={2} fill={running ? '#88f2a7' : '#1c2123'} />
               {running ? <rect x={(KW - annW) / 2} y={KH / 2 - 17} width={annW} height={12} rx={2} fill="rgba(255,255,255,.22)" /> : null}
               {disabled ? <Lock x={(KW - annW) / 2 + 4} y={KH / 2 - 6} color="#aab4ba" /> : null}
-              <text x={KW / 2 + (disabled ? 6 : 0)} y={KH / 2 + 4.5} textAnchor="middle" fontSize={13} fontWeight={700} letterSpacing=".06em" fontFamily="'B612', system-ui, sans-serif" fill={running ? '#03100a' : '#c9cfd3'} data-text-floor={13}>{running ? 'RUNNING' : 'START'}</text>
+              <text x={KW / 2 + (disabled ? 6 : 0)} y={KH / 2 + 4.5} textAnchor="middle" fontSize={13} fontWeight={700} letterSpacing=".06em" fontFamily="'B612', system-ui, sans-serif" fill={running ? '#03100a' : '#ccd2d6'} data-text-floor={13}>{running ? 'RUNNING' : 'START'}</text>
             </svg>
             {keyDesc ? <Sr id={keyDesc}>{disabledReason}</Sr> : null}
           </button>

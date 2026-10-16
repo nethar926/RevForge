@@ -19,9 +19,9 @@ export const ENG = {
   white: '#f3f1e8',
   /**
    * unlit grey engraving (backlight off). Also the disabled / locked legend: the normal text, no glow.
-   * 4.60:1 on the lightest gunmetal stop #51585d, 5.19:1 on the plate base #4a5055, 11.2:1 on the guard tab #17191a.
+   * 4.74:1 on the lightest gunmetal stop #51585d, 5.19:1 on the plate base #4a5055, 11.2:1 on the guard tab #17191a.
    */
-  grey: '#c9cfd3',
+  grey: '#ccd2d6',
   /** lit green */
   green: '#8dffad',
   /** lit amber */
@@ -171,7 +171,7 @@ export function Dzus({ p, x, y, rot = 0 }: { p: string; x: number; y: number; ro
 export const Screw = Dzus;
 
 /** Padlock glyph, 10×12 at (x, y). */
-export function Lock({ x, y, color = '#c9cfd3' }: { x: number; y: number; color?: string }) {
+export function Lock({ x, y, color = '#ccd2d6' }: { x: number; y: number; color?: string }) {
   return (
     <g transform={`translate(${x} ${y})`} aria-hidden="true">
       <path d="M2.5 5V3.5a2.5 2.5 0 0 1 5 0V5" fill="none" stroke={color} strokeWidth={1.6} />

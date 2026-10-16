@@ -54,7 +54,7 @@ export const PullHandle = forwardRef<HTMLButtonElement, CjPullHandleProps>(funct
         <rect x={cx - 6} y={SLOT_TOP + 4} width={12} height={SLOT_H - 8} rx={6} fill="#1a1d1f" />
         <path d={`M${cx - 4.5} ${SLOT_TOP + SLOT_H - 8} V${SLOT_TOP + 9}`} stroke="rgba(0,0,0,.8)" strokeWidth={2} strokeLinecap="round" />
         {/* detent tick (20) and fire line (40), measured from the handle's rest position */}
-        <rect x={W - 16} y={SLOT_TOP + 8 + PULL_TRAVEL / 2} width={6} height={1.5} fill="#c9cfd3" />
+        <rect x={W - 16} y={SLOT_TOP + 8 + PULL_TRAVEL / 2} width={6} height={1.5} fill="#ccd2d6" />
         <rect x={W - 16} y={SLOT_TOP + 8 + PULL_TRAVEL} width={10} height={2} fill="#ffb54a" />
         <Eng x={cx} y={H - 6} tone={v.tone === 'amber' ? 'amber' : 'white'} glow={v.tone === 'amber'} ls={0.04}>{v.legend}</Eng>
       </svg>
