@@ -1,4 +1,4 @@
-import type { JetAlertLevel, JetCalloutId, JetCalloutMode, JetCalloutModes, JetCalloutResult } from './types';
+import type { JetAbUnarmedCall, JetAlertLevel, JetCalloutId, JetCalloutMode, JetCalloutModes, JetCalloutResult } from './types';
 
 export const JET_CALLOUTS: Readonly<Record<JetCalloutId, { level: 'caution' | 'warning' | 'mechanical' | 'none'; text?: string }>>;
 export const JET_ALERT_LEVELS: readonly JetAlertLevel[];
@@ -19,6 +19,9 @@ export class FlightCallouts {
   setCautionVoice(on: boolean): void;
   /** Speed callouts (overspeedCaution / overspeedWarning); default off. */
   setHighSpeed(on: boolean): void;
+  /** AB UNARMED call; default 'silent'. */
+  setAbUnarmedCall(mode: JetAbUnarmedCall): JetAbUnarmedCall;
+  readonly abUnarmedCall: JetAbUnarmedCall;
   readonly highSpeed: boolean;
   readonly cautionVoice: boolean;
   callout(id: JetCalloutId | string): JetCalloutResult;

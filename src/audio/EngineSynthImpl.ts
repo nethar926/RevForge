@@ -45,6 +45,7 @@ import type {
   JetSystemEntry,
   JetVariant,
   AudioSpeedConfig,
+  JetAbUnarmedCall,
   JetAlertLevel,
   JetCalloutId,
   JetCalloutMode,
@@ -2649,6 +2650,14 @@ export class EngineSynthImpl implements EngineSynth {
 
   getHighSpeedCallouts(): boolean {
     return this.callouts.highSpeed;
+  }
+
+  setAbUnarmedCall(mode: JetAbUnarmedCall): void {
+    this.callouts.setAbUnarmedCall(mode);
+  }
+
+  getAbUnarmedCall(): JetAbUnarmedCall {
+    return this.callouts.abUnarmedCall;
   }
 
   playAlertTone(level: JetAlertLevel): boolean {

@@ -58,6 +58,8 @@ export class CharacterEngine implements EngineSynth {
  getCautionVoice():boolean{return this.base.getCautionVoice?.()??false;}
  setHighSpeedCallouts(on:boolean):void{this.base.setHighSpeedCallouts?.(on);}
  getHighSpeedCallouts():boolean{return this.base.getHighSpeedCallouts?.()??false;}
+ setAbUnarmedCall(mode:'voice'|'tone'|'silent'):void{this.base.setAbUnarmedCall?.(mode);}
+ getAbUnarmedCall():'voice'|'tone'|'silent'{return this.base.getAbUnarmedCall?.()??'silent';}
  playAlertTone(level:JetAlertLevel):boolean{return this.disposed?false:(this.base.playAlertTone?.(level)??false);}
  getAudioSpeedConfig():AudioSpeedConfig{return this.base.getAudioSpeedConfig?.()??{abEngageMph:80,abDisengageMph:77};}
  setAudioSpeedConfig(partial:Partial<AudioSpeedConfig>):AudioSpeedConfig{return this.base.setAudioSpeedConfig?.(partial)??this.getAudioSpeedConfig();}

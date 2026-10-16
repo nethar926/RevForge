@@ -65,6 +65,7 @@ export class FlightCallouts {
     this.modes = { warning: 'voice', caution: 'tone' };
     this.cautionVoice = false;
     this.highSpeed = false;
+    this.abUnarmedCall = 'silent'; // v2 NOTES #91: VOICE / TONE / SILENT, default SILENT
     this.last = new Map();
     this.active = null; // { level, until, kind: 'voice' | 'tone', handle }
   }
@@ -93,6 +94,12 @@ export class FlightCallouts {
     this.highSpeed = !!on;
   }
 
+  /** AB UNARMED call: 'voice' | 'tone' | 'silent' (default). Overrides the caution mode, except callout mode 'off' mutes it too. */
+  setAbUnarmedCall(mode) {
+    if (mode === 'voice' || mode === 'tone' || mode === 'silent') this.abUnarmedCall = mode;
+    return this.abUnarmedCall;
+  }
+
   setCautionVoice(on) {
     this.cautionVoice = !!on;
     if (this.modes.caution !== 'off') this.modes.caution = this.cautionVoice ? 'voice' : 'tone';
@@ -117,8 +124,8 @@ export class FlightCallouts {
   }
 
   /** Play a level as voice (phrase) or tone; returns 'voice' | 'tone' | 'suppressed'. */
-  play(level, text, now) {
-    const mode = this.modes[level] ?? 'off';
+  play(level, text, now, force) {
+    const mode = force ?? this.modes[level] ?? 'off';
     if (mode === 'off' || !this.deps.canPlay()) return 'suppressed';
     if (!this.admit(level, now)) return 'suppressed';
     if (mode === 'voice' && text) {
@@ -144,13 +151,14 @@ export class FlightCallouts {
     const c = JET_CALLOUTS[id];
     if (!c || c.level === 'none') return 'suppressed';
     if (!this.highSpeed && JET_HIGH_SPEED_IDS.includes(id)) return 'suppressed';
+    if (id === 'abUnarmed' && this.abUnarmedCall === 'silent') return 'suppressed';
     const now = this.deps.now();
     const cool = c.level === 'mechanical' ? JET_CALLOUT_COOLDOWN.mechanical : JET_CALLOUT_COOLDOWN.alert;
     const prev = this.last.get(id);
     if (prev !== undefined && now - prev < cool) return 'suppressed';
     let r;
     if (c.level === 'mechanical') r = this.deps.canPlay() && this.deps.mechanical(id) ? 'mechanical' : 'suppressed';
-    else r = this.play(c.level, c.text, now);
+    else r = this.play(c.level, c.text, now, id === 'abUnarmed' && this.modes[c.level] !== 'off' ? this.abUnarmedCall : undefined);
     if (r !== 'suppressed') this.last.set(id, now);
     return r;
   }

@@ -96,6 +96,8 @@ export const JET_CUES = [
   // landing gear lever (full procedural retract / extend sequence, default lock timing)
   'gearUp',
   'gearDown',
+  // RADAR switch on: quiet display warm-up hum (no sweep ping)
+  'radarOn',
 ];
 /** Switch foley played by setJetSystem by default (override per call or pass foley: false). */
 export const JET_DEFAULT_FOLEY = {
@@ -298,6 +300,7 @@ export const JET_COLD_LEVEL = {
   foley: 0.55,
   chime: 0.035,
   warning: 0.032,
+  radarHum: 0.006,
   pump: 0.006,
   pumpAir: 0.012,
   avHum: 0.0028,
@@ -875,6 +878,9 @@ export class JetColdStartVoice {
       case 'gearDown':
         this.gearStart(name === 'gearUp' ? 'up' : 'down', t, { level: s });
         return true;
+      case 'radarOn':
+        this.radarOn(t, s);
+        return true;
       case 'chime':
         this.chime(t, opts.down ? -1 : 1, s);
         return true;
@@ -884,6 +890,18 @@ export class JetColdStartVoice {
       default:
         return false;
     }
+  }
+
+  /**
+   * RADAR on: a quiet display warm-up hum (~1.6 s). Mains-style 120 Hz body with a soft 240 Hz
+   * harmonic and a faint high-voltage 460 Hz whisper; slow swell, short hold, gentle fade.
+   * No sweep ping, no lock tone.
+   */
+  radarOn(t, s = 1) {
+    const L = JET_COLD_LEVEL.radarHum * s;
+    this.tone(t, { hz: 120, peak: L, a: 0.45, hold: 0.55, r: 0.6, lp: 700 });
+    this.tone(t + 0.05, { hz: 240, peak: L * 0.45, a: 0.4, hold: 0.5, r: 0.55, lp: 900 });
+    this.tone(t + 0.15, { hz: 460, type: 'triangle', peak: L * 0.18, a: 0.5, hold: 0.3, r: 0.5, lp: 1400 });
   }
 
   /**

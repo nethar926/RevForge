@@ -438,6 +438,9 @@ export interface EngineSynth {
   /** Speed callouts (overspeedCaution / overspeedWarning). Default off — mirror Frontend's highSpeedCallouts. */
   setHighSpeedCallouts?(on: boolean): void;
   getHighSpeedCallouts?(): boolean;
+  /** AB UNARMED call: 'voice' | 'tone' | 'silent'. Default 'silent' (v2 NOTES #91). */
+  setAbUnarmedCall?(mode: JetAbUnarmedCall): void;
+  getAbUnarmedCall?(): JetAbUnarmedCall;
   getCautionVoice?(): boolean;
   /** Original alert tone; 'note' is a silent no-op (returns false). */
   playAlertTone?(level: JetAlertLevel): boolean;
@@ -530,6 +533,8 @@ export type JetCue =
   /** landing gear lever: full retract / extend sequence */
   | 'gearUp'
   | 'gearDown'
+  /** RADAR switch on: quiet warm-up hum, no sweep ping */
+  | 'radarOn'
   | 'abGuardOpen'
   | 'abGuardClose'
   | 'chime'
@@ -580,6 +585,7 @@ export interface JetFlightInfo {
   launch?: boolean;
 }
 /** 'touchAndGo' / 'goAround' / 'launch' are accepted as a harmless no-op (touch-and-go / go-around / launch have no callout). */
+export type JetAbUnarmedCall = 'voice' | 'tone' | 'silent';
 export type JetCalloutId = 'abUnarmed' | 'overspeedCaution' | 'overspeedWarning' | 'gpsFail' | 'gearUp' | 'gearDown' | 'touchAndGo' | 'goAround' | 'launch';
 export type JetCalloutMode = 'voice' | 'tone' | 'off';
 export interface JetCalloutModes {

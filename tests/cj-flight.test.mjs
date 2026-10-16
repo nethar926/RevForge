@@ -142,6 +142,8 @@ test('callouts: default modes (warning voice, caution tone), phrases, volume / p
     assert.equal(tones.at(-1).level, 'caution');
     clock.t += 5;
     a.setCautionVoice(true);
+    assert.equal(a.callout('abUnarmed'), 'suppressed', 'AB UNARMED call defaults to silent');
+    a.setAbUnarmedCall('voice');
     assert.equal(a.callout('abUnarmed'), 'voice');
     assert.equal(log.spoken.at(-1).text, 'Afterburner unarmed');
     clock.t += 5;
@@ -198,6 +200,7 @@ test('callouts: never stacked — a warning cancels a playing caution; others wa
   try {
     const { a, clock, tones } = arbiter();
     a.setHighSpeed(true);
+    a.setAbUnarmedCall('voice');
     assert.equal(a.callout('overspeedCaution'), 'tone');
     const caution = tones.at(-1);
     clock.t += 0.2;
