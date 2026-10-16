@@ -151,6 +151,8 @@ export function createTomcatDriveState(phase = 'off') {
     thrCmd: 0,
     abDemand: 0,
     abEngaged: false,
+    /** Frontend arm switch; default true so never calling setAfterburnerArmed is byte-identical. */
+    abArmed: true,
     abZone: 0,
     abTimer: 0,
     abLevel: 0,
@@ -224,6 +226,20 @@ export function tomcatAbEngaged(speed, engaged) {
   return engaged ? v >= TC_AB_DISENGAGE_SPEED - eps : v >= TC_AB_ENGAGE_SPEED - eps;
 }
 
+/**
+ * Arm / disarm the afterburner (Frontend switch). Default armed. Same-value calls are no-ops
+ * (returns false). Disarm clears the speed-engage latch so a re-arm in the 72–75 mph band stays
+ * out until speed reaches 75 again; the lit zone destages through the normal release path while
+ * callers that gate on abArmed see zone 0 immediately.
+ */
+export function tomcatSetAfterburnerArmed(state, armed) {
+  const v = !!armed;
+  if (state.abArmed === v) return false;
+  state.abArmed = v;
+  if (!v) state.abEngaged = false;
+  return true;
+}
+
 /** Zone (0..5) the demand asks for, with per-zone hysteresis and the spool gate (staging only;
  * the speed engage and the zone-1 minimum are applied in stepTomcatDrive). */
 export function tomcatZoneTarget(demand, zone, spool) {
@@ -284,7 +300,8 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
   state.phaseTime += step;
   const speedIn = clip(num(d.speed, 0));
   state.speed = lag(state.speed, speedIn, step, 0.8);
-  state.abEngaged = tomcatAbEngaged(speedIn, state.abEngaged);
+  // armed gate: while disarmed the engage latch stays clear (re-arm in 72–75 mph needs a fresh ≥75)
+  state.abEngaged = state.abArmed ? tomcatAbEngaged(speedIn, state.abEngaged) : false;
 
   const x = clip(state.thrCmd / TC_MIL_THROTTLE);
   const sCmd = clip(Math.pow(x, 0.75) + state.speed * 0.03);
@@ -437,8 +454,10 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
     speed: state.speed,
     thr: state.thrCmd,
     demand: state.abDemand,
-    abEngaged: state.abEngaged,
-    abZone: state.abZone,
+    abArmed: state.abArmed,
+    abEngaged: state.abArmed && state.abEngaged,
+    // report 0 while disarmed (HUD / getter); internal state.abZone still destages for the audio fade
+    abZone: state.abArmed ? state.abZone : 0,
     abTarget: zt,
     abLevel: state.abLevel,
     rate: state.rate,

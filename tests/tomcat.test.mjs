@@ -30,6 +30,7 @@ const {
   TC_AB_ENGAGE_SPEED,
   TC_AB_DISENGAGE_SPEED,
   tomcatAbEngaged,
+  tomcatSetAfterburnerArmed,
 } = voice;
 /** Normalised setDriving speed (1.0 ≙ 120 mph, mphToSpeed default). */
 const mph = (m) => m / 120;
@@ -521,6 +522,215 @@ test('no gears (live chain): gear rpm, shift flags + upshift cues leave Tomcat u
   for (const b of builtins.BUILTIN_PATCHES) assert.equal(pack.isGearlessPatch(b), b.id === 'aerospace-f14', b.id);
   const input = { speed: 0.5, throttle: 0.4, load: 0.4, rpm: 3000, rpmNorm: 0.4, shifting: true, overrun: false };
   assert.deepEqual(pack.gearlessDrivingInput(input), { speed: 0.5, throttle: 0.4, load: 0.4, overrun: false });
+});
+
+test('AB armed flag: default armed, disarm/re-arm, hysteresis band, same-value no-op', () => {
+  const s = settled({ speed: mph(80), throttle: 1, load: 1 });
+  assert.equal(s.abArmed, true, 'default armed');
+  const up = runDrive(s, () => ({ speed: mph(80), throttle: 1, load: 1 }), 2);
+  assert.equal(up.at(-1).abZone, 5);
+  // same-value no-op
+  assert.equal(tomcatSetAfterburnerArmed(s, true), false);
+  assert.equal(s.abZone, 5);
+  // disarm → reported zone 0 immediately; engage latch cleared
+  assert.equal(tomcatSetAfterburnerArmed(s, false), true);
+  assert.equal(s.abArmed, false);
+  assert.equal(s.abEngaged, false);
+  const snap = stepTomcatDrive(s, { speed: mph(80), throttle: 1, load: 1 }, 1 / 60);
+  assert.equal(snap.abZone, 0);
+  assert.equal(snap.abArmed, false);
+  assert.equal(snap.abEngaged, false);
+  // audio level still releasing (internal destage) — not a hard mute
+  assert.ok(s.abLevel > 0.05, `release in progress (abLevel ${s.abLevel})`);
+  // finish the release
+  runDrive(s, () => ({ speed: mph(80), throttle: 1, load: 1 }), 2);
+  assert.ok(s.abLevel < 0.02);
+  assert.equal(tomcatSetAfterburnerArmed(s, false), false, 'same-value disarm is no-op');
+  // re-arm at 80 → engages as usual
+  assert.equal(tomcatSetAfterburnerArmed(s, true), true);
+  const re80 = runDrive(s, () => ({ speed: mph(80), throttle: 1, load: 1 }), 2);
+  assert.equal(re80.at(-1).abZone, 5);
+  // disarm, hold 73 mph, re-arm → stays 0 until 75 (no flicker in the hysteresis band)
+  tomcatSetAfterburnerArmed(s, false);
+  runDrive(s, () => ({ speed: mph(73), throttle: 1, load: 1 }), 2);
+  tomcatSetAfterburnerArmed(s, true);
+  const at73 = runDrive(s, () => ({ speed: mph(73), throttle: 1, load: 1 }), 2);
+  assert.ok(at73.every((f) => f.abZone === 0 && !f.abEngaged), 're-arm at 73 stays out');
+  const at75 = runDrive(s, () => ({ speed: mph(75), throttle: 1, load: 1 }), 2);
+  assert.ok(at75[0].abEngaged);
+  assert.equal(at75.at(-1).abZone, 5);
+});
+
+test('AB armed: engine API zone 0 + one callback on disarm; smooth release ≤ normal disengage', async () => {
+  const S = (m) => m / 120;
+  const maxStep = (chs) => {
+    let m = 0;
+    for (const ch of chs) {
+      for (let i = 1; i < ch.length; i++) m = Math.max(m, Math.abs(ch[i] - ch[i - 1]));
+    }
+    return m;
+  };
+  // Normal below-72 disengage release window (zone 5 → 0)
+  const seenSpeed = [];
+  const bufSpeed = await renderLive(
+    (t) => (t < 6 ? { speed: S(80), throttle: 1, load: 1 } : { speed: S(71.9), throttle: 1, load: 1 }),
+    9,
+    {
+      patchId: 'aerospace-f14',
+      seed: 'tomcat-ab-arm-speed',
+      params: { tcSpoolTime: 0 },
+      fps: 30,
+      onFrame: (engine, t) => {
+        if (t === 0) engine.onAfterburnerZoneChange((z) => seenSpeed.push(z));
+      },
+    },
+  );
+  assert.deepEqual(seenSpeed.slice(0, 5), [1, 2, 3, 4, 5]);
+  assert.ok(seenSpeed.includes(0));
+  const speedRelease = channelsOf(bufSpeed, 6, 8.5);
+  const speedStep = maxStep(speedRelease);
+
+  // Disarm at ~6 s while still at 80 mph
+  const seenArm = [];
+  let disarmed = false;
+  let armedPoll = null;
+  const bufArm = await renderLive(
+    (t) => ({ speed: S(80), throttle: 1, load: 1 }),
+    9,
+    {
+      patchId: 'aerospace-f14',
+      seed: 'tomcat-ab-arm-disarm',
+      params: { tcSpoolTime: 0 },
+      fps: 30,
+      onFrame: (engine, t) => {
+        if (t === 0) {
+          assert.equal(engine.getAfterburnerArmed(), true, 'default armed');
+          engine.onAfterburnerZoneChange((z) => seenArm.push(z));
+        }
+        if (!disarmed && t >= 6 && engine.getAfterburnerZone() === 5) {
+          disarmed = true;
+          const before = seenArm.length;
+          engine.setAfterburnerArmed(false);
+          assert.equal(engine.getAfterburnerArmed(), false);
+          assert.equal(engine.getAfterburnerZone(), 0, 'zone 0 immediately');
+          // exactly one new callback (→ 0); same-value no-op adds nothing
+          engine.setAfterburnerArmed(false);
+          assert.equal(seenArm.length, before + 1);
+          assert.equal(seenArm.at(-1), 0);
+        }
+        if (t > 8) armedPoll = engine.getAfterburnerArmed();
+      },
+    },
+  );
+  assert.ok(disarmed, 'reached zone 5 and disarmed');
+  assert.equal(armedPoll, false);
+  // staging then a single 0 — no destage chatter 5→4→…→0
+  const zeroAt = seenArm.indexOf(0);
+  assert.ok(zeroAt >= 5, `callback trail ${seenArm}`);
+  assert.deepEqual(seenArm.slice(0, zeroAt), [1, 2, 3, 4, 5]);
+  assert.equal(seenArm.filter((z) => z === 0).length, 1, 'exactly one zone-0 callback');
+  const armRelease = channelsOf(bufArm, 6, 8.5);
+  const armStep = maxStep(armRelease);
+  assert.ok(armStep <= speedStep * 1.05 + 1e-6, `disarm max step ${armStep} vs speed disengage ${speedStep}`);
+  // re-arm at 80 mid-render (fresh run): engages again
+  const seenRe = [];
+  let reArmed = false;
+  await renderLive((t) => ({ speed: S(80), throttle: 1, load: 1 }), 10, {
+    patchId: 'aerospace-f14',
+    seed: 'tomcat-ab-arm-rearm',
+    params: { tcSpoolTime: 0 },
+    fps: 30,
+    onFrame: (engine, t) => {
+      if (t === 0) engine.onAfterburnerZoneChange((z) => seenRe.push(z));
+      if (!reArmed && t >= 5.5 && engine.getAfterburnerZone() === 5) {
+        engine.setAfterburnerArmed(false);
+        reArmed = 'wait';
+      } else if (reArmed === 'wait' && t >= 7.5) {
+        engine.setAfterburnerArmed(true);
+        reArmed = true;
+      }
+    },
+  });
+  assert.equal(reArmed, true);
+  assert.ok(seenRe.filter((z) => z === 0).length >= 1);
+  assert.ok(seenRe.at(-1) === 5, `re-arm restages to 5, got ${seenRe.at(-1)}`);
+});
+
+test('AB armed: re-arm at 73 mph stays zone 0 until 75; NP / Chrono unchanged', async () => {
+  const S = (m) => m / 120;
+  const seen = [];
+  let now = 0;
+  let phase = 'spool';
+  let zoneAt73 = null;
+  await renderLive(
+    (t) => {
+      if (phase === 'band' || phase === 'armed73') return { speed: S(73), throttle: 1, load: 1 };
+      if (phase === 'go75') return { speed: S(75), throttle: 1, load: 1 };
+      return { speed: S(80), throttle: 1, load: 1 };
+    },
+    12,
+    {
+      patchId: 'aerospace-f14',
+      seed: 'tomcat-ab-arm-73',
+      params: { tcSpoolTime: 0 },
+      fps: 30,
+      onFrame: (engine, t) => {
+        now = t;
+        if (t === 0) engine.onAfterburnerZoneChange((z) => seen.push({ z, t: now }));
+        if (phase === 'spool' && t >= 5 && engine.getAfterburnerZone() === 5) {
+          engine.setAfterburnerArmed(false);
+          phase = 'band';
+        } else if (phase === 'band' && t >= 7) {
+          engine.setAfterburnerArmed(true);
+          phase = 'armed73';
+        } else if (phase === 'armed73' && t >= 8.5 && t < 9) {
+          zoneAt73 = engine.getAfterburnerZone();
+        } else if (phase === 'armed73' && t >= 9) {
+          assert.equal(zoneAt73, 0, 'still 0 at 73 after re-arm');
+          phase = 'go75';
+        }
+      },
+    },
+  );
+  assert.equal(phase, 'go75');
+  assert.equal(zoneAt73, 0);
+  // no zone lights between re-arm and the 75 mph step
+  const mid = seen.filter((x) => x.t >= 7 && x.t < 9);
+  assert.ok(mid.every((x) => x.z === 0), `no flicker at 73: ${JSON.stringify(mid)}`);
+  assert.ok(seen.some((x) => x.t >= 9 && x.z >= 1), 'engages once speed hits 75');
+
+  // Non-Tomcat packs: methods are harmless no-ops; gear models unchanged (byte-identical path).
+  for (const id of ['night-pursuit', 'chrono-coupe']) {
+    const seenZ = [];
+    const bufA = await renderLive((t) => ({ speed: Math.min(1, t / 8), throttle: 0.8, load: 0.8 }), 3, {
+      patchId: id,
+      seed: `ab-arm-${id}-a`,
+      fps: 30,
+      onFrame: (engine, t) => {
+        if (t === 0) {
+          assert.equal(typeof engine.setAfterburnerArmed, 'function');
+          assert.equal(engine.getAfterburnerArmed(), true);
+          assert.equal(engine.getAfterburnerZone(), 0);
+          engine.onAfterburnerZoneChange((z) => seenZ.push(z));
+          engine.setAfterburnerArmed(false);
+          engine.setAfterburnerArmed(true);
+        }
+      },
+    });
+    const bufB = await renderLive((t) => ({ speed: Math.min(1, t / 8), throttle: 0.8, load: 0.8 }), 3, {
+      patchId: id,
+      seed: `ab-arm-${id}-a`,
+      fps: 30,
+    });
+    assert.equal(seenZ.length, 0, `${id}: no AB zone callbacks`);
+    let max = 0;
+    for (let c = 0; c < 2; c++) {
+      const x = bufA.getChannelData(c);
+      const y = bufB.getChannelData(c);
+      for (let i = 0; i < x.length; i++) max = Math.max(max, Math.abs(x[i] - y[i]));
+    }
+    assert.ok(max < 1e-7, `${id} output moved when arm API touched (max |Δ| ${max})`);
+  }
 });
 
 test('other packs still shift: Night Pursuit / Chrono Coupe gear models step through their gears', async () => {

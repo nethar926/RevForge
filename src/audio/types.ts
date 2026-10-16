@@ -386,6 +386,10 @@ export interface EngineSynth {
   getAfterburnerZone?(): number;
   /** Tomcat: subscribe to afterburner zone changes; returns an unsubscribe function. */
   onAfterburnerZoneChange?(cb: (zone: number) => void): () => void;
+  /** Tomcat: arm / disarm the afterburner (Frontend switch). Default armed; no-op on other packs. */
+  setAfterburnerArmed?(armed: boolean): void;
+  /** Tomcat: whether the afterburner is armed (default true). true on other packs. */
+  getAfterburnerArmed?(): boolean;
   /** Optional cabin low-pass hint (Hz) for the CharacterEngine wrapper; undefined = default mapping. */
   getAcousticCutoffHint?(): number | undefined;
   /** Night Pursuit: soft original electronic tick at a scanner sweep edge (level = params.scannerTick). */
