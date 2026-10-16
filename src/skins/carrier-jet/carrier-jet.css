@@ -134,8 +134,18 @@
 .cj[data-variant='carrier-jet'] .cj-spd-num { text-shadow: 0 0 14px rgb(126 247 161 / 0.55); }
 .cj[data-variant='carrier-jet'] .cj-k-num, .cj[data-variant='carrier-jet'] .cj-sw-num { text-shadow: 0 0 10px rgb(126 247 161 / 0.5); }
 .cj-panel { position: relative; display: grid; gap: calc(12 * var(--k)); padding: calc(22 * var(--k)) calc(12 * var(--k)) calc(12 * var(--k)); border: 1px solid #4a5257; border-radius: 6px; background: linear-gradient(#30363a, #272c2f); box-shadow: inset 0 1px 0 #4d565b, inset 0 -2px 0 #1a1d1f; }
-.cj-panel::before, .cj-panel::after { content: ''; position: absolute; top: 6px; left: 6px; width: 7px; height: 7px; border-radius: 50%; background: #596268; box-shadow: inset 0 0 0 1.5px #3a4146; }
-.cj-panel::after { left: auto; right: 6px; }
+/* panel fasteners: Dzus quarter-turn studs (matte dome, one straight slot near level, thin recessed well; top-left key light) */
+.cj-panel::before, .cj-panel::after {
+  content: ''; position: absolute; top: 6px; left: 6px; width: 7px; height: 7px; border-radius: 50%;
+  --cj-dzus-slot: linear-gradient(173deg, transparent 0 41%, #1c2023 41% 59%, transparent 59%) center / 4.2px 4.2px no-repeat;
+  background:
+    var(--cj-dzus-slot),
+    radial-gradient(circle at 36% 32%, rgba(214, 220, 223, 0.45) 0, transparent 48%) center / 5px 5px no-repeat,
+    radial-gradient(circle closest-side, #858c90 0 55%, #61686c 88%, #454b4f 97%, transparent 100%) center / 5px 5px no-repeat,
+    #1f2326;
+  box-shadow: inset 0.7px 0.7px 0.6px rgba(0, 0, 0, 0.65), inset -0.5px -0.5px 0 rgba(243, 246, 247, 0.12);
+}
+.cj-panel::after { left: auto; right: 6px; --cj-dzus-slot: linear-gradient(189deg, transparent 0 41%, #1c2023 41% 59%, transparent 59%) center / 4.2px 4.2px no-repeat; }
 .cj-plab { position: absolute; left: calc(18 * var(--k)); top: 3px; padding: 2px 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; color: #dfe5e1; background: #2c3236; }
 .cj-plab-2 { position: static; justify-self: start; margin: 0 0 0 calc(6 * var(--k)); }
 .cj-crt { position: relative; overflow: hidden; border: 3px solid #111416; border-radius: 10px; background: radial-gradient(ellipse at 50% 40%, #08190e, #041009 70%); box-shadow: 0 0 0 2px #535c62, inset 0 0 24px rgb(0 0 0 / 0.8); }
