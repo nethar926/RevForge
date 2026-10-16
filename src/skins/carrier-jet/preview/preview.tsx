@@ -12,6 +12,7 @@
  *   cjBox=WxH                         pin the skin's container to W×H CSS px (top-left), e.g. 757x347 = drive window box
  *   cjRf=board|window|portrait|phone-landscape   data-rf-layout on the mount wrapper (Frontend's layout picker)
  *   cjSafe=T,R,B,L                    simulated safe-area insets (px) applied as wrapper padding
+ *   stale=1                           headingStale on (dimmed heading + NEEDS MOTION caption); heading=none → undefined
  * Mounted inside a `.theme-stage` that mirrors ThemeStage's data-drive-window attribute.
  * window.__cjSet({...props}) re-renders synchronously (flushSync), used by the abZone sync check.
  */
@@ -97,7 +98,8 @@ function Preview() {
     load: num('load') ?? (demoKey === 'sweep' ? (sweepHigh ? 0.9 : 0.2) : base.load),
     throttle: num('throttle') ?? base.throttle,
     abZone: num('ab') ?? (demoKey === 'sweep' ? (sweepHigh ? 4 : 0) : base.abZone),
-    heading: num('heading') ?? (demoKey === 'parked' ? 268 : demoKey === 'high' ? 52 : 47),
+    heading: q.get('heading') === 'none' ? undefined : num('heading') ?? (demoKey === 'parked' ? 268 : demoKey === 'high' ? 52 : 47),
+    headingStale: q.get('stale') === '1' || undefined,
     accel: num('accel') ?? (demoKey === 'high' ? 2 : 0),
     redlineRpm: 6000,
     running: true,

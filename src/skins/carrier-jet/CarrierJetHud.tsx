@@ -54,6 +54,12 @@ export interface CarrierJetHudProps extends Partial<Omit<PackHudProps, 'compact'
   parked?: boolean;
   /** GPS course in degrees (secondary heading cues). Undefined → "---". */
   heading?: number;
+  /**
+   * The heading is not live: the mount sets true when it holds the last heading or restored it from storage with no
+   * live GPS / compass heading. Draws the heading digits and scale dimmed (static, no flashing) plus a small
+   * "NEEDS MOTION" caption by the heading readout. false / undefined renders exactly as before.
+   */
+  headingStale?: boolean;
   /** Longitudinal accel in mph/s (accel ball). Undefined → derived from speed changes. */
   accel?: number;
   /**
@@ -124,6 +130,8 @@ interface View {
   aoa: number;
   accel: number;
   heading?: number;
+  /** headingStale prop (dims the heading cues, adds the NEEDS MOTION caption). */
+  headingStale: boolean;
   pitch: number;
   demo: boolean;
   /** flightSlot content, phone portrait only (else undefined). */
@@ -233,6 +241,18 @@ function SweepMeter({ v, className, children }: { v: View; className: string; ch
 /** FLIGHT-block slot (phones): a named inline-size container so the compact guard can stack to its width. */
 const FlightSlot = ({ v }: { v: View }) => (v.slot ? <div className="cj-abslot" data-cj-el="flight-slot">{v.slot}</div> : null);
 
+/**
+ * "NEEDS MOTION" caption for a stale heading (rendered only when headingStale): an HTML chip in the palette's dim
+ * text on the box ground, >= 11px with no viewBox shrink. Placed by CSS (.cj-hstale) beside the heading readout of
+ * each look without moving any other cell. Static: no animation.
+ */
+const StaleCap = ({ v }: { v: View }) =>
+  v.headingStale ? (
+    <span className="cj-hstale" data-cj-el="heading-stale" style={{ color: v.P.winText, background: v.P.boxBg, borderColor: v.P.winEdge }}>
+      NEEDS MOTION
+    </span>
+  ) : null;
+
 const Sec = ({ className = '', children }: { className?: string; children: ReactNode }) => (
   <div className={`cj-sec ${className}`} aria-hidden="true">
     {children}
@@ -262,8 +282,8 @@ function Cockpit({ v }: { v: View }) {
       <Sec className="cj-panel cj-a-mid">
         <span data-cj-el="panel-label" className="cj-plab">VDI</span>
         <div className="cj-crt cj-scan"><Svg w={390} h={278}><g className="cj-glow-sym"><Ladder x={0} y={0} w={390} h={278} P={P} pitch={v.pitch} /></g></Svg></div>
-        <span data-cj-el="panel-label" className="cj-plab cj-plab-2">HSD</span>
-        <div className="cj-crt cj-scan"><Svg w={390} h={300}><Rose x={0} y={4} w={390} h={296} P={P} heading={v.heading} /></Svg></div>
+        <span data-cj-el="panel-label" className="cj-plab cj-plab-2">HSD<StaleCap v={v} /></span>
+        <div className="cj-crt cj-scan"><Svg w={390} h={300}><Rose x={0} y={4} w={390} h={296} P={P} heading={v.heading} stale={v.headingStale} /></Svg></div>
       </Sec>
       <div className="cj-panel cj-a-right">
         <span data-cj-el="panel-label" className="cj-plab" aria-hidden="true">WING SWEEP</span>
@@ -303,9 +323,10 @@ function Glass({ v }: { v: View }) {
         </Svg>
       </Sec>
       <Sec className="cj-b-mid">
-        <Svg w={450} h={56}><HeadingTape x={0} y={6} w={450} P={P} heading={v.heading} /></Svg>
+        <Svg w={450} h={56}><HeadingTape x={0} y={6} w={450} P={P} heading={v.heading} stale={v.headingStale} /></Svg>
         <Svg w={450} h={420}><g className="cj-glow-sym"><Ladder x={0} y={0} w={450} h={420} P={P} pitch={v.pitch} /></g></Svg>
         <Svg w={450} h={96}><Engines x={0} y={2} w={450} h={92} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} horizontal /></Svg>
+        <StaleCap v={v} />
       </Sec>
       <Sec className="cj-b-acc">
         <Svg w={90} h={300}>
@@ -352,7 +373,7 @@ function Deck({ v }: { v: View }) {
       </SweepMeter>
       <Sec className="cj-card cj-c-right">
         <Svg w={294} h={220}><Ladder x={0} y={0} w={294} h={220} P={P} pitch={v.pitch} /></Svg>
-        <Svg w={294} h={56}><HeadingTape x={0} y={6} w={294} P={P} heading={v.heading} span={50} /></Svg>
+        <Svg w={294} h={56}><HeadingTape x={0} y={6} w={294} P={P} heading={v.heading} span={50} stale={v.headingStale} /></Svg>
         <div className="cj-c-rb">
           <Svg w={150} h={340}><Approach x={0} y={6} w={150} h={330} P={P} cell={accelCell(v.accel)} active={!v.parked} label={accelWord(v.accel, v.parked)} /></Svg>
           <Svg w={140} h={340}>
@@ -360,6 +381,7 @@ function Deck({ v }: { v: View }) {
             <Indexer x={86} y={64} P={P} state={indexerState(v.aoa, !v.parked)} />
           </Svg>
         </div>
+        <StaleCap v={v} />
       </Sec>
     </div>
   );
@@ -394,8 +416,8 @@ function CockpitCompact({ v }: { v: View }) {
       <Sec className="cj-panel cj-a-mid">
         <span className="cj-plab" data-cj-el="panel-label">VDI</span>
         <div className="cj-crt cj-scan"><Svg w={390} h={250}><g className="cj-glow-sym"><Ladder x={0} y={0} w={390} h={250} P={P} pitch={v.pitch} /></g></Svg></div>
-        <span className="cj-plab cj-plab-2" data-cj-el="panel-label">HSD</span>
-        <div className="cj-crt cj-scan"><Svg w={390} h={v.phone ? 262 : 250}><Rose x={0} y={v.phone ? 16 : 4} w={390} h={246} P={P} heading={v.heading} /></Svg></div>
+        <span className="cj-plab cj-plab-2" data-cj-el="panel-label">HSD<StaleCap v={v} /></span>
+        <div className="cj-crt cj-scan"><Svg w={390} h={v.phone ? 262 : 250}><Rose x={0} y={v.phone ? 16 : 4} w={390} h={246} P={P} heading={v.heading} stale={v.headingStale} /></Svg></div>
       </Sec>
       <div className="cj-panel cj-a-right">
         <span data-cj-el="panel-label" className="cj-plab" aria-hidden="true">WING SWEEP</span>
@@ -437,9 +459,10 @@ function GlassCompact({ v }: { v: View }) {
         </Svg>
       </Sec>
       <Sec className="cj-b-mid">
-        <Svg w={450} h={56}><HeadingTape x={0} y={6} w={450} P={P} heading={v.heading} /></Svg>
+        <Svg w={450} h={56}><HeadingTape x={0} y={6} w={450} P={P} heading={v.heading} stale={v.headingStale} /></Svg>
         <Svg w={450} h={330}><g className="cj-glow-sym"><Ladder x={0} y={0} w={450} h={330} P={P} pitch={v.pitch} /></g></Svg>
         <Svg w={450} h={96}><Engines x={0} y={2} w={450} h={92} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} horizontal /></Svg>
+        <StaleCap v={v} />
       </Sec>
       <Sec className="cj-b-acc">
         <Svg w={90} h={300}>
@@ -489,7 +512,8 @@ function DeckCompact({ v }: { v: View }) {
       <Sec className="cj-card cj-c-right">
         <div className="cj-c-lh">
           <Svg w={220} h={200} className="cj-c-lad"><Ladder x={0} y={0} w={220} h={200} P={P} pitch={v.pitch} /></Svg>
-          <Svg w={220} h={56}><HeadingTape x={0} y={6} w={220} P={P} heading={v.heading} span={40} /></Svg>
+          <StaleCap v={v} />
+          <Svg w={220} h={56}><HeadingTape x={0} y={6} w={220} P={P} heading={v.heading} span={40} stale={v.headingStale} /></Svg>
         </div>
         <Svg w={150} h={340}><Approach x={0} y={6} w={150} h={330} P={P} cell={accelCell(v.accel)} active={!v.parked} label={accelWord(v.accel, v.parked)} /></Svg>
         <Svg w={v.phone ? 96 : 84} h={420}>
@@ -688,6 +712,7 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
     aoa: aoaUnits(load),
     accel,
     heading: p.heading,
+    headingStale: p.headingStale === true,
     pitch: Math.max(-12, Math.min(12, 1.5 + accel * 2.25)),
     demo: !!p.demo,
     slot: rfPhone === 'portrait' && p.flightSlot ? p.flightSlot : undefined,

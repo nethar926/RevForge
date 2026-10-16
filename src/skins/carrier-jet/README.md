@@ -35,6 +35,7 @@ import { CarrierJetHud, CARRIER_JET_VARIANTS } from '../skins/carrier-jet';
   pill, as given, in the same render. The skin has no AB thresholds of its own (Audio decides when the burner engages, e.g. by speed);
   without a zone the AB display reads AB OFF.
 - `parked?`, `heading?`, `accel?` are optional extras. Parked defaults to speed < 0.5 mph held for 2 s.
+- `headingStale` (mount sets true when heading is held or restored from storage with no live GPS/compass heading).
 
 ### Compact = the full board, reflowed (Wilson's rule)
 There is no separate compact design. `CockpitCompact` / `GlassCompact` / `DeckCompact` render every block of the full board
