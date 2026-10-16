@@ -61,6 +61,7 @@ function Switch({ item, overflowCount, trayId, onSelect }: { item: CjSwitchItem;
   );
 }
 
+/** Panel corner fasteners: Dzus quarter-turn studs (CSS art in switches.css .cjs-screw), decorative. */
 const Screws = () => (
   <>
     <i className="cjs-screw" data-pos="tl" aria-hidden="true" />

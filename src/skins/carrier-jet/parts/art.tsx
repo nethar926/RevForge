@@ -73,8 +73,8 @@ export function Defs({ p }: { p: string }) {
       <radialGradient id={`${p}hg`}><stop offset=".45" stopColor="rgba(126,247,161,.55)" /><stop offset="1" stopColor="rgba(126,247,161,0)" /></radialGradient>
       <radialGradient id={`${p}ha`}><stop offset=".45" stopColor="rgba(255,181,74,.5)" /><stop offset="1" stopColor="rgba(255,181,74,0)" /></radialGradient>
       <radialGradient id={`${p}hr`}><stop offset=".45" stopColor="rgba(255,90,70,.5)" /><stop offset="1" stopColor="rgba(255,90,70,0)" /></radialGradient>
-      {/* screw head */}
-      <radialGradient id={`${p}s`} cx="35%" cy="30%" r="75%"><stop offset="0" stopColor="#e6e9eb" /><stop offset=".55" stopColor="#8d9499" /><stop offset="1" stopColor="#4a5054" /></radialGradient>
+      {/* Dzus stud head (matte dome) */}
+      <radialGradient id={`${p}s`} cx="36%" cy="32%" r="72%"><stop offset="0" stopColor="#bcc2c5" /><stop offset=".5" stopColor="#8f969a" /><stop offset="1" stopColor="#5b6165" /></radialGradient>
       {/* soft cast shadow (static) */}
       <filter id={`${p}b`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.1" /></filter>
     </defs>
@@ -136,19 +136,33 @@ export function Lens({ p, cx, cy, r = 6.5, tone, litClass }: { p: string; cx: nu
   );
 }
 
-/** Phillips screw, 11 units, slot rotation, small down-right shadow. */
-export function Screw({ p, x, y, rot = 20 }: { p: string; x: number; y: number; rot?: number }) {
+/**
+ * Dzus quarter-turn fastener, 11 units at (x, y): thin recessed well, flush matte dome, one straight slot with a
+ * raised wing tab at each end. One top-left key light, no gloss. `rot` is the slot angle; locked Dzus sit near level,
+ * so keep it within about ±15°. Decorative: aria-hidden.
+ */
+export function Dzus({ p, x, y, rot = 0 }: { p: string; x: number; y: number; rot?: number }) {
   return (
-    <g transform={`translate(${x} ${y})`}>
-      <circle cx={6} cy={6.3} r={5} fill="rgba(0,0,0,.45)" />
-      <circle cx={5.5} cy={5.5} r={5} fill={`url(#${p}s)`} stroke="#2a2e31" strokeWidth={0.6} />
-      <g transform={`rotate(${rot} 5.5 5.5)`} stroke="#2b3033" strokeWidth={1.3} strokeLinecap="round">
-        <line x1={5.5} y1={2.6} x2={5.5} y2={8.4} />
-        <line x1={2.6} y1={5.5} x2={8.4} y2={5.5} />
+    <g transform={`translate(${x} ${y})`} aria-hidden="true" data-fastener="dzus">
+      {/* well: dark floor, shadowed top-left wall, lit bottom-right lip */}
+      <circle cx={5.5} cy={5.5} r={5.5} fill="#2c3134" />
+      <path d="M1.6 7.4 A4.6 4.6 0 0 1 7.4 1.6" fill="none" stroke="rgba(0,0,0,.6)" strokeWidth={0.9} />
+      <path d="M9.4 3.6 A4.6 4.6 0 0 1 3.6 9.4" fill="none" stroke="rgba(243,246,247,.16)" strokeWidth={0.6} />
+      {/* head + tiny cast shadow down-right */}
+      <circle cx={5.8} cy={6} r={4.2} fill="rgba(0,0,0,.45)" />
+      <circle cx={5.5} cy={5.5} r={4.2} fill={`url(#${p}s)`} />
+      <g transform={`rotate(${rot} 5.5 5.5)`}>
+        <rect x={1.5} y={4.45} width={8} height={2.1} rx={1} fill="#9ba2a6" stroke="rgba(0,0,0,.5)" strokeWidth={0.35} />
+        <rect x={1.9} y={4.6} width={7.2} height={0.6} rx={0.3} fill="rgba(214,220,223,.55)" />
+        <rect x={3.3} y={4.9} width={4.4} height={1.2} fill="#1d2124" />
+        <rect x={3.3} y={4.9} width={4.4} height={0.48} fill="rgba(0,0,0,.6)" />
+        <rect x={3.3} y={5.76} width={4.4} height={0.34} fill="rgba(243,246,247,.18)" />
       </g>
     </g>
   );
 }
+/** Alias kept for existing imports: the panel fastener is now a Dzus stud (same 11-unit box). */
+export const Screw = Dzus;
 
 /** Padlock glyph, 10×12 at (x, y). */
 export function Lock({ x, y, color = '#c9cfd3' }: { x: number; y: number; color?: string }) {

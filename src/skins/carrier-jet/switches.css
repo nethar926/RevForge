@@ -7,13 +7,24 @@
 .cjs, .cjg { box-sizing: border-box; font-family: 'B612', 'Barlow Semi Condensed', system-ui, sans-serif; font-weight: 700; line-height: 1; color: #fff; -webkit-font-smoothing: antialiased; }
 .cjs *, .cjs *::before, .cjs *::after, .cjg *, .cjg *::before, .cjg *::after { box-sizing: border-box; }
 
-/* ---------------- screws (shared) */
-.cjs-screw { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #d9dde0, #6a7075); border: 1px solid #2a2d30; }
-.cjs-screw::after { content: ''; position: absolute; left: 2px; right: 2px; top: 5px; height: 2px; background: #33373a; transform: rotate(35deg); }
-.cjs-screw[data-pos='tl'] { left: 6px; top: 6px; }
-.cjs-screw[data-pos='tr'] { right: 6px; top: 6px; }
-.cjs-screw[data-pos='bl'] { left: 6px; bottom: 6px; }
-.cjs-screw[data-pos='br'] { right: 6px; bottom: 6px; }
+/* ---------------- fasteners (shared): Dzus quarter-turn studs
+   Flush matte dome in a thin recessed well, one straight slot with a raised wing tab at each end. One top-left key
+   light (lit top-left, shade bottom-right), no gloss. The slot sits within ±15° of level (locked), varied per corner. */
+.cjs-screw { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #2c3134; border: 1px solid #262a2d; box-shadow: inset 0.9px 0.9px 0.8px rgba(0, 0, 0, 0.6), inset -0.6px -0.6px 0 rgba(243, 246, 247, 0.16), 0.5px 0.5px 0 rgba(243, 246, 247, 0.1); }
+.cjs-screw::before { content: ''; position: absolute; inset: 1.3px; border-radius: 50%; background: radial-gradient(circle at 36% 32%, #bcc2c5 0%, #959ca0 42%, #6f767a 78%, #5b6165 100%); box-shadow: 0.5px 0.7px 0.6px rgba(0, 0, 0, 0.5), inset 0.5px 0.5px 0 rgba(243, 246, 247, 0.2), inset -0.5px -0.5px 0 rgba(0, 0, 0, 0.22); }
+.cjs-screw::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 2.6px; border-radius: 1.2px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0 40%, transparent 40% 72%, rgba(243, 246, 247, 0.18) 72%) center / 5.4px 1.4px no-repeat,
+    linear-gradient(#1d2124, #1d2124) center / 5.4px 1.4px no-repeat,
+    linear-gradient(180deg, #ccd2d4 0%, #9ba2a6 45%, #6b7276 100%);
+  box-shadow: 0 0 0 0.4px rgba(0, 0, 0, 0.5), 0.4px 0.6px 0.4px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%) rotate(var(--cjs-dzus-rot, 0deg));
+}
+.cjs-screw[data-pos='tl'] { left: 6px; top: 6px; --cjs-dzus-rot: -7deg; }
+.cjs-screw[data-pos='tr'] { right: 6px; top: 6px; --cjs-dzus-rot: 9deg; }
+.cjs-screw[data-pos='bl'] { left: 6px; bottom: 6px; --cjs-dzus-rot: 4deg; }
+.cjs-screw[data-pos='br'] { right: 6px; bottom: 6px; --cjs-dzus-rot: -12deg; }
 
 /* ---------------- switch panel */
 .cjs { position: relative; display: inline-block; max-width: 100%; padding: 30px 18px 20px; border: 2px solid #2c3033; border-radius: 6px; background: linear-gradient(180deg, #555c62, #43494e); box-shadow: inset 0 1px 0 #767d83; }
@@ -94,7 +105,9 @@
 .cjs[data-cjs-variant]:not(#cj-v) { display: inline-block; max-width: 100%; padding: 1px 5px 1px 12px; border-width: 1px; border-radius: 4px; }
 .cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw { display: block; width: 5px; height: 5px; border-width: 0.5px; }
 /* screws sit in the 12px left gutter (with the NAV stencil) and a 5px right gutter, clear of every cell */
-.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw::after { left: 1px; right: 1px; top: 2px; height: 1px; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw { box-shadow: inset 0.4px 0.4px 0.3px rgba(0, 0, 0, 0.6); }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw::before { inset: 0.5px; box-shadow: none; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw::after { width: 3px; height: 0.7px; border-radius: 0; background: #22272a; box-shadow: none; }
 .cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw[data-pos='tl'] { left: 3px; top: 2px; }
 .cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw[data-pos='bl'] { left: 3px; top: auto; bottom: 2px; }
 .cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw[data-pos='tr'] { right: 0; top: 2px; }

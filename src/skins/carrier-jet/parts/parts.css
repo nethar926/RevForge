@@ -123,13 +123,23 @@ button.cjp[aria-disabled='true'], .cjp button[aria-disabled='true'] { cursor: no
 @keyframes cjp-shelf-up { from { transform: translateY(100%); } to { transform: none; } }
 .cjp-shelf-hinge { position: absolute; left: 40px; right: 40px; top: 0; height: 6px; border-radius: 0 0 3px 3px; background: linear-gradient(180deg, #eef1f2 0%, #a3aaae 35%, #5b6266 75%, #2f3437 100%); box-shadow: 1px 2px 2px rgba(0, 0, 0, 0.55); }
 .cjp-shelf-hinge::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 10px, rgba(0, 0, 0, 0.45) 10px 11px); }
-.cjp-screw { position: absolute; width: 11px; height: 11px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e6e9eb, #8d9499 55%, #4a5054); box-shadow: 0 0 0 0.6px #2a2e31, 0.5px 0.8px 0 0.6px rgba(0, 0, 0, 0.45); }
-.cjp-screw::before, .cjp-screw::after { content: ''; position: absolute; left: 2.6px; right: 2.6px; top: 4.85px; height: 1.3px; border-radius: 1px; background: #2b3033; transform: rotate(20deg); }
-.cjp-screw::after { transform: rotate(110deg); }
-.cjp-screw[data-pos='tl'] { left: 6px; top: 10px; }
-.cjp-screw[data-pos='tr'] { right: 6px; top: 10px; }
-.cjp-screw[data-pos='bl'] { left: 6px; bottom: 6px; }
-.cjp-screw[data-pos='br'] { right: 6px; bottom: 6px; }
+.cjp-screw { position: absolute; width: 11px; height: 11px; border-radius: 50%; background: #2c3134; box-shadow: inset 0.8px 0.8px 0.7px rgba(0, 0, 0, 0.6), inset -0.5px -0.5px 0 rgba(243, 246, 247, 0.16), -0.4px -0.4px 0 rgba(0, 0, 0, 0.22), 0.4px 0.4px 0 rgba(243, 246, 247, 0.1); }
+/* Dzus quarter-turn stud: flush matte dome in a thin recessed well, one straight slot with a raised wing tab at each end.
+   One top-left key light; the slot sits within ±15° of level (locked), varied per corner via --cjp-dzus-rot. */
+.cjp-screw::before { content: ''; position: absolute; inset: 1.3px; border-radius: 50%; background: radial-gradient(circle at 36% 32%, #bcc2c5 0%, #959ca0 42%, #6f767a 78%, #5b6165 100%); box-shadow: 0.4px 0.6px 0.5px rgba(0, 0, 0, 0.5), inset 0.4px 0.4px 0 rgba(243, 246, 247, 0.2), inset -0.4px -0.4px 0 rgba(0, 0, 0, 0.22); }
+.cjp-screw::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 2.1px; border-radius: 1px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0 40%, transparent 40% 72%, rgba(243, 246, 247, 0.18) 72%) center / 4.4px 1.2px no-repeat,
+    linear-gradient(#1d2124, #1d2124) center / 4.4px 1.2px no-repeat,
+    linear-gradient(180deg, #ccd2d4 0%, #9ba2a6 45%, #6b7276 100%);
+  box-shadow: 0 0 0 0.35px rgba(0, 0, 0, 0.5), 0.3px 0.5px 0.35px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%) rotate(var(--cjp-dzus-rot, 0deg));
+}
+.cjp-screw[data-pos='tl'] { left: 6px; top: 10px; --cjp-dzus-rot: -7deg; }
+.cjp-screw[data-pos='tr'] { right: 6px; top: 10px; --cjp-dzus-rot: 9deg; }
+.cjp-screw[data-pos='bl'] { left: 6px; bottom: 6px; --cjp-dzus-rot: 4deg; }
+.cjp-screw[data-pos='br'] { right: 6px; bottom: 6px; --cjp-dzus-rot: -12deg; }
 .cjp-shelf-head { position: absolute; left: 24px; right: 24px; top: 9px; display: flex; align-items: center; gap: 12px; min-width: 0; white-space: nowrap; }
 .cjp-shelf-title { font-size: 12px; letter-spacing: 0.2em; }
 .cjp-anns { display: flex; gap: 8px; margin-left: 4px; overflow: hidden; }
