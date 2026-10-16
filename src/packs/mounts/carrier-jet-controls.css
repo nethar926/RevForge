@@ -1,9 +1,11 @@
 /*
  * Carrier Jet controls host layout (framework glue; Visual Skins owns the art and the compact sizing in
- * skins/carrier-jet/switches.css). Only slot sizing and placement live here: the row fills the ☰ / Tuner
- * slot right-aligned, the MORE tray drops down from it, and the afterburner guard strip sits under the
- * board's FLIGHT column (Tesla / desktop), at the bottom of the board's box (phone-landscape), or below the
- * dock with a short page scroll (portrait). Nothing is hidden, shrunk or scaled here.
+ * skins/carrier-jet/switches.css). Only slot sizing and placement live here. After IGNITION the switch row and
+ * the afterburner guard form ONE bottom control bank (.cjm-bank: guard left, row right; CarrierJetMount):
+ * Tesla (board / window) = inside the drive dock between Hold to rev and Shutdown, board box unchanged;
+ * phone-landscape = the board's 68px bottom strip; portrait = below the dock with a short
+ * page scroll. Before IGNITION the row stays in the ☰ / Tuner slot. Nothing is hidden or scaled here; on Tesla
+ * the bank grows the compact cells (bigger labels for sunlight).
  */
 
 /* ---------------- switch row in the ☰ / Tuner slot */
@@ -22,8 +24,9 @@
 /* ---------------- afterburner guard strip placement (the guard itself is the skin's compact variant, 60px) */
 .cjm > .cjm-ab { position: absolute; z-index: 3; left: 0; top: calc(100% + 8px); }
 .cjm[data-rf-layout='phone-landscape'] > .cjm-fill { bottom: 68px; }
-.cjm[data-rf-layout='phone-landscape'] > .cjm-ab { top: auto; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 2px); width: max-content; margin: 0 auto; }
-/* GPS (no demo throttle) on board/window: the box runs down to the dock, so it yields a 68px strip to the guard. */
+.cjm[data-rf-layout='phone-landscape'] > .cjm-ab { top: auto; left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); bottom: calc(env(safe-area-inset-bottom, 0px) + 2px); }
+/* GPS (no demo throttle) on board/window: the box runs down to the dock, so it yields a 68px strip to the guard
+   (kept while the guard is docked, so the board box is unchanged; the strip is then plain background). */
 .rev-viewport:not(:has(.rev-throttle)) .cjm:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-fill { bottom: 68px; }
 .rev-viewport:not(:has(.rev-throttle)) .cjm:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-ab { top: auto; bottom: 4px; }
 
@@ -40,3 +43,54 @@
 .rev-viewport > .cjm-below .cjg,
 .rev-viewport > .cjm-below .cjg-guard,
 .rev-viewport > .cjm-below .cjg-arm { scroll-margin: 16px 0 calc(max(10px, env(safe-area-inset-bottom, 0px)) + 20px); }
+
+/* Portrait bank below the dock: the row directly above the guard (no room above the dock on the first screen). */
+.rev-viewport > .cjm-below > .cjm-bank { flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.rev-viewport > .cjm-below .cjm-bank-nav { order: -1; flex: none; align-self: stretch; }
+.rev-viewport > .cjm-below .cjnav { justify-content: center; }
+.rev-viewport > .cjm-below .cjs-sw { scroll-margin: 16px 0 calc(max(10px, env(safe-area-inset-bottom, 0px)) + 88px); }
+
+/* With the row gone from the top bar, the title keeps the row's 48px (useDriveWindow measures the top bar's
+   children), so drive-window / portrait boards stay exactly where they were. Not phone-landscape (title hidden). */
+.rev-viewport:has(.cjm-bank[data-cjm-bank]):not(:has(.cjm[data-rf-layout='phone-landscape'])) > .rev-topbar > div { min-height: 48px; }
+/* Phone-landscape: the right rail's top-bar row keeps the row's 48px too, so the demo throttle stays where it was. */
+.rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']):has(.cjm-bank[data-cjm-bank]) > .rev-topbar { min-height: 48px; }
+
+/* ---------------- bottom control bank (all placements): guard slot + nav slot, one easily swapped panel */
+.cjm-bank { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cjm-bank > .cjm-bank-ab { flex: none; display: flex; }
+.cjm-bank > .cjm-bank-nav { flex: 1 1 0; min-width: 0; display: flex; }
+.cjm-bank > .cjm-bank-nav:empty { display: contents; }
+.cjm-bank-nav > .cjnav { justify-content: flex-start; }
+/* From the bottom, MORE opens UPWARD (still right-aligned to the panel) and its host stacks above the throttle / top bar. */
+.cjnav[data-cjnav-place='bank'] .cjs > .cjs-tray { top: auto; bottom: calc(100% + 6px); }
+/* Drive window: the row is a left-anchored tier (narrowed clear of the throttle), so the tray opens from its left
+   edge and grows right, staying on screen. Portrait: centred on the full-width row (translate only, no scale). */
+.rev-dock > .cjm-bank[data-rf-layout='window'] .cjnav[data-cjnav-place='bank'] .cjs > .cjs-tray { left: 0; right: auto; }
+.cjm-below .cjnav[data-cjnav-place='bank'] .cjs > .cjs-tray { left: 50%; right: auto; transform: translateX(-50%); }
+.rev-dock:has(.cjnav [data-sw-id='more'][aria-expanded='true']),
+.rev-viewport > .cjm-below:has(.cjnav [data-sw-id='more'][aria-expanded='true']) { z-index: 13; }
+.cjm > .cjm-ab:has(.cjnav [data-sw-id='more'][aria-expanded='true']) { z-index: 5; }
+
+/* ---------------- Tesla (board 1280×800, drive window ~773×601): bank docked in .rev-dock
+   [Hold to rev] [guard | switch row] ≥ 24px [Shutdown]. The dock keeps its 48px line (useDriveWindow measures the
+   dock's children, so the board box stays exactly where it was); the 60px panel overhangs it by 6px each way, so its
+   bottom sits 12px above the viewport edge. The space the guard used to take under the board is left empty. */
+.rev-viewport > .rev-dock:has(> .cjm-bank) { overflow: visible; }
+.rev-dock > .cjm-bank { order: 1; flex: 1 1 0; position: relative; height: 48px; margin-right: 24px; } /* + the dock gap: ≥ 34px clear of Shutdown */
+.rev-dock:has(> .cjm-bank) > .rev-stop { order: 2; }
+/* Drive window: too narrow for one line, so the row sits on a tier just above the guard, kept clear of the demo
+   throttle card (--cjm-nav-w, measured by CarrierJetMount). */
+.rev-dock > .cjm-bank[data-rf-layout='window'] > .cjm-bank-nav { position: absolute; left: 0; bottom: calc(100% + 12px); width: var(--cjm-nav-w, 100%); max-width: 100%; }
+/* Bigger switch cells in the Tesla bank (sunlight): 56px cells, 14px labels + legends at 1280, 13px in the drive window. */
+.rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) { padding: 1px 6px 1px 14px; }
+.rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) > .cjs-row { gap: 3px; }
+.rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-sw { height: 56px; min-height: 56px; min-width: 56px; padding: 3px 6px; }
+.rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-label,
+.rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-legend { font-size: 14px; line-height: 14px; letter-spacing: 0.02em; }
+.rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-bat { width: 15px; height: 20px; }
+.rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-lamp { top: 24px; left: calc(50% + 11px); width: 8px; height: 8px; }
+.rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) > .cjs-title { font-size: 12px; line-height: 12px; }
+.rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) > .cjs-tray > .cjs-tray-h { font-size: 13px; line-height: 13px; }
+.rev-dock > .cjm-bank[data-rf-layout='window'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-label,
+.rev-dock > .cjm-bank[data-rf-layout='window'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-legend { font-size: 13px; line-height: 13px; letter-spacing: 0; }

@@ -116,7 +116,7 @@ test('wiring: CJ row replaces Tuner (after IGNITION) and ☰ (AppShell) only for
   assert.match(mount, /<CarrierJetAfterburnerGuard armed=\{armed\} guardOpen=\{guardOpen\}/);
   assert.match(readFileSync(new URL('../src/forge/ForgePage.tsx', import.meta.url), 'utf8'), /<button className="tuner-back" data-testid="cj-tune" onClick=\{\(\)=>setPanel\("tuner"\)\}>← TUNE<\/button>/, 'stable cj-tune hook opens the Tuner');
   assert.doesNotMatch(mount, /flightSlot=/, 'no FLIGHT slot: the skin FLIGHT block stays as at 9a3773a (mount-only portrait fallback)');
-  assert.match(mount, /\{below \? createPortal\(<div className="cjm-below">\{guard\}<\/div>, below\) : layout !== 'portrait' && <div className="cjm-ab">\{guard\}<\/div>\}/, 'portrait: guard portaled below the dock; elsewhere the host strip');
+  assert.match(mount, /\{bankHost \? createPortal\(layout === 'portrait' \? <div className="cjm-below">\{bank\}<\/div> : bank, bankHost\) : layout !== 'portrait' && <div className="cjm-ab">\{bank\}<\/div>\}/, 'bank: Tesla → dock, portrait → below the dock, phone-landscape → the host strip');
   assert.match(mount, /const guardVariant = layout === 'phone-landscape' \? 'auto' : 'compact';/, 'Tesla + portrait guard = compact (phone-landscape auto = compact)');
   const nav = readFileSync(new URL('../src/packs/mounts/CjNavRow.tsx', import.meta.url), 'utf8');
   assert.match(nav, /variant=\{layout === 'board' \|\| layout === 'window' \? 'compact' : 'auto'\}/, 'Tesla row = compact');
@@ -136,7 +136,7 @@ test('portrait Option A: guard below the dock, viewport scrolls by the strip, fo
   const css = readFileSync(new URL('../src/packs/mounts/carrier-jet-controls.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
   // portal target = the drive viewport, portrait only
-  assert.match(mount, /setBelow\(layout === 'portrait' \? \(ref\.current\?\.closest<HTMLElement>\('\.rev-viewport'\) \?\? null\) : null\)/);
+  assert.match(mount, /const bankHost = tesla \? vp\.dock : layout === 'portrait' \? vp\.viewport : null;/);
   const scroller = css.match(/\.rev-viewport:has\(\.cjm\[data-rf-layout='portrait'\]\):has\(> \.cjm-below\) \{([^}]*)\}/);
   assert.ok(scroller, 'portrait-only scroll container rule');
   assert.match(scroller[1], /overflow-y: auto/);
@@ -148,6 +148,40 @@ test('portrait Option A: guard below the dock, viewport scrolls by the strip, fo
   const below = css.match(/\.rev-viewport > \.cjm-below \{([^}]*)\}/);
   assert.ok(below && /position: relative/.test(below[1]) && /env\(safe-area-inset-bottom/.test(below[1]), 'strip in flow with a safe-area bottom margin');
   // scroll-margin on the strip and both focusable controls
-  for (const sel of ['.cjg', '.cjg-guard', '.cjg-arm']) assert.ok(css.includes(`.rev-viewport > .cjm-below ${sel}`), `scroll-margin covers ${sel}`);
+  for (const sel of ['.cjg', '.cjg-guard', '.cjg-arm', '.cjs-sw']) assert.ok(css.includes(`.rev-viewport > .cjm-below ${sel}`), `scroll-margin covers ${sel}`);
   assert.match(css, /\.cjg-arm \{ scroll-margin: 16px 0 calc\(max\(10px, env\(safe-area-inset-bottom, 0px\)\) \+ 20px\); \}/);
+});
+
+test('bottom bank: guard left + row right in one panel; row portals into it once the dock exists', () => {
+  const mount = src('packs/mounts/CarrierJetMount.tsx');
+  const nav = src('packs/mounts/CjNavRow.tsx');
+  const css = src('packs/mounts/carrier-jet-controls.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  // one swappable panel: guard slot first, nav slot second
+  assert.match(mount, /<div ref=\{bankRef\} className="cjm-bank" data-rf-layout=\{layout\}[^>]*>\s*<div className="cjm-bank-ab">\{guard\}<\/div>\s*<div className="cjm-bank-nav" ref=\{setNavSlot\} \/>/);
+  // the slot is published only while the drive dock exists (after IGNITION), withdrawn on cleanup
+  assert.match(mount, /if \(!docked \|\| !navSlot\) return;\s*setCjNavSlot\(navSlot\);\s*return \(\) => setCjNavSlot\(null, navSlot\);/);
+  assert.match(mount, /querySelector<HTMLElement>\(':scope > \.rev-dock'\)/);
+  assert.match(nav, /return slot \? createPortal\(nav, slot\) : nav;/);
+  assert.match(nav, /data-cjnav-place=\{place\}/);
+  assert.match(nav, /\}, \[slot\]\);/, 'fit observer re-attaches after the row moves');
+  // Tesla dock order: … Hold to rev · bank · ≥ 24px · Shutdown. The bank keeps the dock's 48px line (board box unchanged).
+  assert.match(css, /\.rev-dock > \.cjm-bank \{ order: 1; flex: 1 1 0; position: relative; height: 48px; margin-right: 24px; \}/);
+  assert.match(css, /\.rev-dock:has\(> \.cjm-bank\) > \.rev-stop \{ order: 2; \}/);
+  assert.match(css, /\.rev-viewport > \.rev-dock:has\(> \.cjm-bank\) \{ overflow: visible; \}/, 'dock does not clip the tray');
+  assert.match(css, /\.cjm-bank\[data-rf-layout='window'\] > \.cjm-bank-nav \{ position: absolute; left: 0; bottom: calc\(100% \+ 12px\); width: var\(--cjm-nav-w, 100%\);/);
+  assert.match(mount, /t\.getBoundingClientRect\(\)\.left - 8 - bankEl\.getBoundingClientRect\(\)\.left/, 'window row tier clears the throttle card');
+  assert.match(css, /> \.rev-topbar > div \{ min-height: 48px; \}/, 'top bar keeps its 48px line without the row');
+  // MORE opens upward from the bank and stacks above everything
+  assert.match(css, /\.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ top: auto; bottom: calc\(100% \+ 6px\); \}/);
+  assert.match(css, /\.cjm-bank\[data-rf-layout='window'\] \.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ left: 0; right: auto; \}/, 'window tray opens from the tier\'s left edge (stays on screen)');
+  assert.match(css, /\.cjm-below \.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ left: 50%; right: auto; transform: translateX\(-50%\); \}/, 'portrait tray centred, translate only');
+  assert.match(css, /:has\(\.cjm\[data-rf-layout='phone-landscape'\]\):has\(\.cjm-bank\[data-cjm-bank\]\) > \.rev-topbar \{ min-height: 48px; \}/, 'landscape rail keeps the row line so the throttle does not move');
+  assert.match(css, /\.rev-dock:has\(\.cjnav \[data-sw-id='more'\]\[aria-expanded='true'\]\)/);
+  // bigger Tesla cells (56px, 14px), no scale anywhere
+  assert.match(css, /\.cjs-sw \{ height: 56px; min-height: 56px; min-width: 56px;/);
+  assert.match(css, /\.cjs-legend \{ font-size: 14px; line-height: 14px;/);
+  assert.doesNotMatch(css, /scale\(/);
+  // phones: portrait row directly above the guard (below the dock); landscape row in the board's strip
+  assert.match(css, /\.rev-viewport > \.cjm-below \.cjm-bank-nav \{ order: -1;/);
+  assert.match(css, /\.cjm\[data-rf-layout='phone-landscape'\] > \.cjm-ab \{ top: auto; left: env\(safe-area-inset-left, 0px\); right: env\(safe-area-inset-right, 0px\);/);
 });
