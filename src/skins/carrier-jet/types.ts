@@ -60,7 +60,7 @@ export interface CjToggleProps {
   /** Backlight: lit lamp + glowing legend (green when on, amber when momentary). Off = smoked lamp, plain legend. */
   lit: boolean;
   /**
-   * Locked out. Still drawn at full size (dimmed lever, lock + LOCKED legend), still focusable, announced as
+   * Locked out. Still drawn at full size (dimmed lever, lock + its normal legend unlit), still focusable, announced as
    * dimmed (`aria-disabled`). `onToggle` is not called.
    */
   disabled?: boolean;
@@ -73,7 +73,7 @@ export interface CjToggleProps {
    * The host decides whether to accept it.
    */
   onToggle: (id: string, next: CjToggleState) => void;
-  /** Throw legend under the lever. Default: OFF / ON / HOLD (LOCKED when disabled). E.g. 'AUTO', 'RUN', 'CRANK'. */
+  /** Throw legend under the lever. Default: OFF / ON / HOLD (same text, unlit, when disabled). E.g. 'AUTO', 'RUN', 'CRANK'. */
   legend?: string;
   /** Amber step number at the top right (e.g. 1, '2·3'). The shelf fills it from `order` for required entries. */
   step?: number | string;

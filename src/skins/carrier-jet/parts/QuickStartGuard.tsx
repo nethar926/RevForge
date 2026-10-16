@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Eng, Lock, Sr, useSvgPrefix } from './art';
+import { Eng, Lock, Sr, UNLIT_CLASS, useSvgPrefix } from './art';
 import { GuardedCover } from './GuardedCover';
 import { GUARD_BAND, QUICK_START_MIN, QUICK_START_MIN_NARROW } from './tokens';
 import type { CjQuickStartGuardProps } from '../types';
@@ -10,21 +10,21 @@ const PLATE_H = 14;
 
 /**
  * QUICK START on a gunmetal plate: engraved title, red/yellow striped spring guard over the START push-light,
- * status plate under it (1 TAP · LIFT / PRESS START / RUNNING / LOCKED). Host owns the guard and the sequence.
+ * status plate under it (1 TAP · LIFT / PRESS START / RUNNING; disabled = the same legend unlit, no glow). Host owns the guard and the sequence.
  */
 export function QuickStartGuard({ guardOpen, onGuardToggle, onStart, running, id = 'quickStart', guardId = 'quickStartGuard', startPressHandlers, disabled, disabledReason, size = 'wide' }: CjQuickStartGuardProps) {
   const p = useSvgPrefix('q');
   const M = size === 'narrow' ? QUICK_START_MIN_NARROW : QUICK_START_MIN;
   const W = M.w, H = M.h;
   const KW = W - 12, KH = H - TITLE_H - PLATE_H - GUARD_BAND;
-  const plate = disabled ? 'LOCKED' : running ? 'RUNNING' : guardOpen ? 'PRESS START' : '1 TAP · LIFT';
+  const plate = running ? 'RUNNING' : guardOpen ? 'PRESS START' : '1 TAP · LIFT';
   const keyDesc = disabled && disabledReason ? `${p}d` : undefined;
   const annW = Math.min(KW - 8, 76);
   return (
     <div className="cjp cjp-qs cjp-metal" data-open={guardOpen} data-running={running} data-disabled={disabled || undefined} style={{ aspectRatio: `${W} / ${H}`, minWidth: W } as CSSProperties}>
       <svg viewBox={`0 0 ${W} ${H}`} className="cjp-svg" aria-hidden="true" focusable="false">
         <Eng x={W / 2} y={11.5} tone={disabled ? 'grey' : 'white'} ls={size === 'narrow' ? 0.02 : 0.1}>QUICK START</Eng>
-        <Eng x={W / 2} y={H - 3.5} tone={running ? 'green' : 'grey'} glow={running} ls={0.02}>{plate}</Eng>
+        <Eng x={W / 2} y={H - 3.5} tone={running && !disabled ? 'green' : 'grey'} glow={running && !disabled} ls={0.02} className={disabled ? UNLIT_CLASS : undefined}>{plate}</Eng>
       </svg>
       <div className="cjp-qs-guard" style={{ left: `${(6 / W) * 100}%`, width: `${(KW / W) * 100}%`, top: `${(TITLE_H / H) * 100}%` }}>
         <GuardedCover id={guardId} name="" ariaLabel={`Quick start guard, ${guardOpen ? 'open' : 'closed'}`} guardOpen={guardOpen} onGuardToggle={onGuardToggle} disabled={disabled} disabledReason={disabledReason} childWidth={KW} childHeight={KH}>

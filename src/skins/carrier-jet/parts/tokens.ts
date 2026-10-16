@@ -65,9 +65,11 @@ export function nextToggle(state: CjToggleState): CjToggleState {
   return state === 'off' ? 'on' : 'off';
 }
 
-/** Default throw legend. */
-export function toggleLegend(state: CjToggleState, disabled?: boolean): string {
-  if (disabled) return 'LOCKED';
+/**
+ * Default throw legend. The same text when disabled: a locked control shows its normal legend unlit (no glow),
+ * the reason lives in the accessible description.
+ */
+export function toggleLegend(state: CjToggleState): string {
   return state === 'on' ? 'ON' : state === 'momentary' ? 'HOLD' : 'OFF';
 }
 

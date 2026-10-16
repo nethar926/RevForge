@@ -129,7 +129,8 @@ test('BatToggle: role=switch, aria-checked, lever, lamp and legends per state', 
   assert.match(dis, /aria-disabled="true"/);
   const desc = tag(dis, /aria-describedby="([^"]+)"/).split('"')[1];
   assert.ok(desc && dis.includes(`id="${desc}" class="cjp-sr">Battery first<`), 'disabledReason is the description');
-  assert.match(dis, />LOCKED</);
+  assert.doesNotMatch(dis, /LOCKED/, 'no LOCKED word: the normal legend, unlit');
+  assert.match(dis, /<g class="cjp-unlit" data-eng="grey">[\s\S]*?>OFF</);
   assert.match(dis, /viewBox="0 0 60 96"/, 'disabled still draws the full 60×96 cell');
   assert.doesNotMatch(dis, / disabled=""/, 'focusable: aria-disabled, not disabled');
   assert.equal(nextToggle('off'), 'on');
@@ -152,7 +153,8 @@ test('GuardedCover: closed = child inert under the lid; open = child live, cover
   assert.match(open, /aria-expanded="true" aria-label="L ENG guard, open"/);
   const locked = render(mod.GuardedCover, { id: 'engR', name: 'R ENG', guardOpen: false, onGuardToggle: noop, disabled: true, disabledReason: 'Left first', children: child });
   assert.match(locked, /aria-disabled="true"/);
-  assert.match(locked, />LOCKED</);
+  assert.doesNotMatch(locked, /LOCKED/);
+  assert.match(locked, /<g class="cjp-unlit" data-eng="grey">[\s\S]*?>LIFT ▲</);
   assert.match(render(mod.GuardedCover, { id: 'x', name: 'X', guardOpen: false, onGuardToggle: noop, stripe: 'yellow-black', children: child }), /data-stripe="yellow-black"/);
   assert.equal(mod.GuardedToggle, mod.GuardedCover);
 });
@@ -277,7 +279,8 @@ test('QuickStartGuard: guarded START push-light, plate legend per state', async 
   assert.match(running, /aria-label="Quick start, running" aria-pressed="true"/);
   assert.match(running, />RUNNING</);
   const locked = render(mod.QuickStartGuard, { ...p, guardOpen: false, running: false, disabled: true, disabledReason: 'Park to cold start' });
-  assert.match(locked, />LOCKED</);
+  assert.doesNotMatch(locked, /LOCKED/);
+  assert.match(locked, /<g class="cjp-unlit" data-eng="grey">[\s\S]*?>1 TAP · LIFT</);
   assert.match(locked, /aria-disabled="true"/);
 });
 

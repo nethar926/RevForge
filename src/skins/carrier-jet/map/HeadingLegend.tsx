@@ -12,10 +12,12 @@ export type CjHeadingLegendProps = {
   lead?: HeadingRef;
   /** Heading held (below ~3 mph, `headingStale`): dims both values to 0.45. */
   stale?: boolean;
+  /** Accessible name for the legend root. Given → `aria-label` (with `role="group"` so the name is exposed). Omitted → no label (default). */
+  ariaLabel?: string;
 };
 
 /** Compass-cell heading legend: lead value large (18px), the other small (11px floor; HTML, no viewBox scaling). */
-export function CjHeadingLegend({ trueHdg, magHdg, lead = 'M', stale = false }: CjHeadingLegendProps) {
+export function CjHeadingLegend({ trueHdg, magHdg, lead = 'M', stale = false, ariaLabel }: CjHeadingLegendProps) {
   const [primary, secondary] = headingLegendLines(trueHdg, magHdg, lead);
   return (
     <div
@@ -23,6 +25,8 @@ export function CjHeadingLegend({ trueHdg, magHdg, lead = 'M', stale = false }: 
       data-cj-el="heading-legend"
       data-lead={lead}
       data-stale={stale || undefined}
+      role={ariaLabel ? 'group' : undefined}
+      aria-label={ariaLabel || undefined}
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, fontWeight: 700, lineHeight: 1.15, opacity: stale ? CJ_HEADING_STALE_OPACITY : 1 }}
     >
       <span style={{ fontSize: 18, color: PRIMARY }}>{primary}</span>

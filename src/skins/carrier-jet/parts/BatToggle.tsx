@@ -1,4 +1,4 @@
-import { Bat, Defs, Eng, Lens, Lock, Sr, useSvgPrefix } from './art';
+import { Bat, Defs, Eng, Lens, Lock, Sr, UNLIT_CLASS, useSvgPrefix } from './art';
 import { labelLines, nextToggle, toggleLamp, toggleLegend, TOGGLE_MIN } from './tokens';
 import type { CjToggleProps } from '../types';
 import './parts.css';
@@ -6,14 +6,15 @@ import './parts.css';
 /**
  * Bat-handle toggle on the panel: engraved label, hex nut + knurled ring, ~25° lever, lamp lens, throw legend.
  * Fixed viewBox 60×96 scaled to the container width (min `TOGGLE_MIN`). The whole cell is one
- * `<button role="switch">`. Disabled = full size, dimmed, `aria-disabled` + description; taps are ignored.
+ * `<button role="switch">`. Disabled = full size, dimmed lever, lock + the normal legend unlit (no glow),
+ * `aria-disabled` + description; taps are ignored.
  */
 export function BatToggle({ id, label, state, lit, disabled, disabledReason, ariaLabel, onToggle, legend, step, cue, pressHandlers }: CjToggleProps) {
   const p = useSvgPrefix('t');
   const W = TOGGLE_MIN.w, H = TOGGLE_MIN.h;
   const lines = labelLines(label);
   const lamp = toggleLamp(state, lit, disabled);
-  const leg = legend && !disabled ? legend.toUpperCase() : toggleLegend(state, disabled);
+  const leg = legend ? legend.toUpperCase() : toggleLegend(state);
   const legTone = disabled ? 'grey' : lamp === 'green' ? 'green' : lamp === 'amber' ? 'amber' : state === 'off' ? 'grey' : 'white';
   const descId = disabled && disabledReason ? `${p}d` : undefined;
   const ly = lines.length > 1 ? [11, 23] : [16];
@@ -46,7 +47,7 @@ export function BatToggle({ id, label, state, lit, disabled, disabledReason, ari
         {disabled ? (
           <>
             <Lock x={2} y={78} />
-            <Eng x={14} y={88} anchor="start" tone="grey" ls={0} fit={44}>{leg}</Eng>
+            <Eng x={14} y={88} anchor="start" tone="grey" ls={0} fit={44} className={UNLIT_CLASS}>{leg}</Eng>
           </>
         ) : (
           <Eng x={W / 2} y={88} tone={legTone} glow={lamp !== 'off'} fit={W - 4}>{leg}</Eng>

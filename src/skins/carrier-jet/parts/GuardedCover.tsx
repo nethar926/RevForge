@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Eng, Lock, Sr, useSvgPrefix } from './art';
+import { Eng, Lock, Sr, UNLIT_CLASS, useSvgPrefix } from './art';
 import { GUARD_BAND, TOGGLE_MIN } from './tokens';
 import type { CjGuardedCoverProps } from '../types';
 import './parts.css';
@@ -27,7 +27,7 @@ export function GuardedCover({ id, guardOpen, onGuardToggle, children, name, ari
     '--vbw': W, '--vbh': H, '--band': B, '--hinge-y': HINGE_Y, '--hinge-h': HINGE_H, '--lid-top': lidTop, '--lid-h': lidH,
     '--stripe': `${period.toFixed(2)}%`, aspectRatio: `${W} / ${H}`, minWidth: W,
   } as CSSProperties;
-  const tab = disabled ? 'LOCKED' : 'LIFT ▲';
+  const tab = 'LIFT ▲';
   const tabW = Math.min(W - 10, disabled ? 58 : 48);
   const tabY = lidH / 2;
   return (
@@ -41,7 +41,7 @@ export function GuardedCover({ id, guardOpen, onGuardToggle, children, name, ari
         <svg viewBox={`0 0 ${W - 4} ${lidH}`} className="cjp-svg" focusable="false">
           <rect x={(W - 4 - tabW) / 2} y={tabY - 9} width={tabW} height={18} rx={2} fill="#17191a" />
           {disabled ? <Lock x={(W - 4 - tabW) / 2 + 3} y={tabY - 6} /> : null}
-          <Eng x={(W - 4) / 2 + (disabled ? 6 : 0)} y={tabY + 4} tone={disabled ? 'grey' : 'white'} ls={0.02} fit={tabW - (disabled ? 16 : 4)}>{tab}</Eng>
+          <Eng x={(W - 4) / 2 + (disabled ? 6 : 0)} y={tabY + 4} tone={disabled ? 'grey' : 'white'} ls={0.02} fit={tabW - (disabled ? 16 : 4)} className={disabled ? UNLIT_CLASS : undefined}>{tab}</Eng>
         </svg>
       </span>
       <span className="cjp-hinge" aria-hidden="true" />

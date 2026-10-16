@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Bat, Defs, Eng, Lens, Lock, Sr, useSvgPrefix } from './art';
+import { Bat, Defs, Eng, Lens, Lock, Sr, UNLIT_CLASS, useSvgPrefix } from './art';
 import { BatToggle } from './BatToggle';
 import { GND_AIR_MIN, nextToggle, TOGGLE_MIN } from './tokens';
 import type { CjGndAirBlockProps } from '../types';
@@ -59,7 +59,7 @@ export function GndAirBlock({ aircart, crossbleed, side, onToggle, disabledReaso
             {xbLocked ? (
               <>
                 <Lock x={10} y={78} />
-                <Eng x={23} y={88} anchor="start" tone="grey" ls={0}>LOCKED</Eng>
+                <Eng x={23} y={88} anchor="start" tone="grey" ls={0} className={UNLIT_CLASS}>{crossbleed ? 'OPEN' : 'OFF'}</Eng>
               </>
             ) : (
               <Eng x={XB_W / 2} y={88} tone={crossbleed ? 'green' : 'grey'} glow={crossbleed}>{crossbleed ? 'OPEN' : 'OFF'}</Eng>

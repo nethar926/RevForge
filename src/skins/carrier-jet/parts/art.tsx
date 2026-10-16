@@ -10,11 +10,17 @@ export function useSvgPrefix(tag: string): string {
   return `cjp${tag}${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
 }
 
+/** Class on a legend drawn with its backlight off because the control is disabled (tests hook on it). */
+export const UNLIT_CLASS = 'cjp-unlit';
+
 /** Engraved legend tones (fill colours; checked >= 4.5:1 on the panel in measure.json). */
 export const ENG = {
   /** backlit off-white */
   white: '#f3f1e8',
-  /** unlit grey engraving */
+  /**
+   * unlit grey engraving (backlight off). Also the disabled / locked legend: the normal text, no glow.
+   * 4.60:1 on the lightest gunmetal stop #51585d, 5.19:1 on the plate base #4a5055, 11.2:1 on the guard tab #17191a.
+   */
   grey: '#c9cfd3',
   /** lit green */
   green: '#8dffad',

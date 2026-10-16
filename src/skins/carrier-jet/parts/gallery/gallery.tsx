@@ -66,7 +66,7 @@ function Gallery() {
           <Item cap="CLOSED" w={GUARDED_TOGGLE_MIN.w}><GuardedCover id="engL" name="L ENG" guardOpen={false} onGuardToggle={noop}><BatToggle id="engL" label="L ENG" ariaLabel="L engine start" state="off" lit={false} onToggle={noop} /></GuardedCover></Item>
           <Item cap="OPEN" w={GUARDED_TOGGLE_MIN.w}><GuardedCover id="engL" name="L ENG" guardOpen onGuardToggle={noop}><BatToggle id="engL" label="L ENG" ariaLabel="L engine start" state="off" lit={false} onToggle={noop} cue="next" legend="TAP" /></GuardedCover></Item>
           <Item cap="OPEN · RUN" w={GUARDED_TOGGLE_MIN.w}><GuardedCover id="engL" name="L ENG" guardOpen onGuardToggle={noop}><BatToggle id="engL" label="L ENG" ariaLabel="L engine start" state="on" lit legend="RUN" onToggle={noop} /></GuardedCover></Item>
-          <Item cap="LOCKED" w={GUARDED_TOGGLE_MIN.w}><GuardedCover id="engR" name="R ENG" guardOpen={false} onGuardToggle={noop} disabled disabledReason="Start the left engine first"><BatToggle id="engR" label="R ENG" ariaLabel="R engine start" state="off" lit={false} disabled onToggle={noop} /></GuardedCover></Item>
+          <Item cap="DISABLED" w={GUARDED_TOGGLE_MIN.w}><GuardedCover id="engR" name="R ENG" guardOpen={false} onGuardToggle={noop} disabled disabledReason="Start the left engine first"><BatToggle id="engR" label="R ENG" ariaLabel="R engine start" state="off" lit={false} disabled onToggle={noop} /></GuardedCover></Item>
           <Item cap="YELLOW/BLACK" w={GUARDED_TOGGLE_MIN.w}><GuardedCover id="x" name="CANOPY" stripe="yellow-black" guardOpen={false} onGuardToggle={noop}><BatToggle id="canopy" label="CANOPY" ariaLabel="Canopy" state="off" lit={false} onToggle={noop} /></GuardedCover></Item>
         </Panel>
       </Sec>
@@ -77,7 +77,7 @@ function Gallery() {
           <Item cap="ARMED" w={APU_BLOCK_MIN.w}><ApuBlock arm start={false} ready="off" onArmToggle={noop} onStartToggle={noop} step="2·3" /></Item>
           <Item cap="SPOOLING" w={APU_BLOCK_MIN.w}><ApuBlock arm start ready="spooling" onArmToggle={noop} onStartToggle={noop} step="2·3" /></Item>
           <Item cap="READY" w={APU_BLOCK_MIN.w}><ApuBlock arm start ready="ready" onArmToggle={noop} onStartToggle={noop} step="2·3" /></Item>
-          <Item cap="LOCKED" w={APU_BLOCK_MIN.w}><ApuBlock arm={false} start={false} ready="off" onArmToggle={noop} onStartToggle={noop} disabled disabledReason="Battery first" step="2·3" /></Item>
+          <Item cap="DISABLED" w={APU_BLOCK_MIN.w}><ApuBlock arm={false} start={false} ready="off" onArmToggle={noop} onStartToggle={noop} disabled disabledReason="Battery first" step="2·3" /></Item>
         </Panel>
       </Sec>
 
@@ -86,7 +86,7 @@ function Gallery() {
           <Item cap="OFF" w={GND_AIR_MIN.w}><GndAirBlock aircart={false} crossbleed={false} side={null} onToggle={noop} /></Item>
           <Item cap="CART → R" w={GND_AIR_MIN.w}><GndAirBlock aircart crossbleed={false} side="R" onToggle={noop} steps={{ aircart: 2 }} /></Item>
           <Item cap="X-BLEED → L" w={GND_AIR_MIN.w}><GndAirBlock aircart={false} crossbleed side="L" onToggle={noop} /></Item>
-          <Item cap="LOCKED" w={GND_AIR_MIN.w}><GndAirBlock aircart={false} crossbleed={false} side={null} onToggle={noop} disabledReasons={{ aircart: 'Battery first', crossbleed: 'Right engine first' }} /></Item>
+          <Item cap="DISABLED" w={GND_AIR_MIN.w}><GndAirBlock aircart={false} crossbleed={false} side={null} onToggle={noop} disabledReasons={{ aircart: 'Battery first', crossbleed: 'Right engine first' }} /></Item>
         </Panel>
       </Sec>
 
@@ -104,7 +104,7 @@ function Gallery() {
         <Item cap="CLOSED" w={QUICK_START_MIN.w}><QuickStartGuard guardOpen={false} running={false} onGuardToggle={noop} onStart={noop} /></Item>
         <Item cap="OPEN" w={QUICK_START_MIN.w}><QuickStartGuard guardOpen running={false} onGuardToggle={noop} onStart={noop} /></Item>
         <Item cap="RUNNING" w={QUICK_START_MIN.w}><QuickStartGuard guardOpen running onGuardToggle={noop} onStart={noop} /></Item>
-        <Item cap="LOCKED (MOVING)" w={QUICK_START_MIN.w}><QuickStartGuard guardOpen={false} running={false} onGuardToggle={noop} onStart={noop} disabled disabledReason="Park to cold start" /></Item>
+        <Item cap="DISABLED (MOVING)" w={QUICK_START_MIN.w}><QuickStartGuard guardOpen={false} running={false} onGuardToggle={noop} onStart={noop} disabled disabledReason="Park to cold start" /></Item>
         <Item cap="773 CLOSED" w={QUICK_START_MIN_NARROW.w}><QuickStartGuard guardOpen={false} running={false} onGuardToggle={noop} onStart={noop} size="narrow" /></Item>
         <Item cap="773 OPEN" w={QUICK_START_MIN_NARROW.w}><QuickStartGuard guardOpen running={false} onGuardToggle={noop} onStart={noop} size="narrow" /></Item>
       </Sec>
