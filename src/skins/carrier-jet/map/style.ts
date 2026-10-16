@@ -41,7 +41,7 @@ export const CJ_MAP_MAX_STREET_LABELS = 2;
 
 /** OpenMapTiles `transportation.class` → line width (px) and colour. Bottom to top. */
 export const CJ_ROAD_CLASSES = [
-  { id: 'road_minor', classes: ['minor', 'residential', 'service'], width: 0.8, color: DIM, minzoom: 13 },
+  { id: 'road_minor', classes: ['minor', 'residential', 'service'], width: 0.8, color: DIM, minzoom: 12 },
   { id: 'road_tertiary', classes: ['tertiary'], width: 1.1, color: MID },
   { id: 'road_secondary', classes: ['secondary'], width: 1.6, color: MID },
   { id: 'road_primary', classes: ['trunk', 'primary'], width: 2.2, color: HI },
