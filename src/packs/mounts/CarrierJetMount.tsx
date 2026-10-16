@@ -75,6 +75,9 @@ const subSysReduced = (f: () => void) => {
   return () => m.removeEventListener?.('change', f);
 };
 
+/** MOCK (mock/cj-map-first): map-first DRIVE flag, URL query only (e.g. /?cjMapFirst=1#/drive). */
+const MOCK_MAP_FIRST = typeof location !== 'undefined' && new URLSearchParams(location.search).get('cjMapFirst') === '1';
+
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
   const abZoneAudio = useSyncExternalStore(subscribePackAbZone, readPackAbZone, () => undefined);
@@ -179,6 +182,8 @@ export function CarrierJetMount(props: PackHudProps) {
   // CJ v3 cold start: one Park for the shelf and CONFIG's Park-only tiles (≤ 0.5 mph for 1.5 s; leaves above 2).
   const speedMph = props.unit === 'kph' ? props.speed / 1.609344 : props.speed;
   const park = useCjPark(speedMph);
+  // MOCK (mock/cj-map-first, not shipped): ?cjMapFirst=1 → map-first DRIVE grid (carrier-jet-v2.css); Park keeps Board 2.
+  const mapFirst = v2 && tesla && !park && MOCK_MAP_FIRST;
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const sysReduced = useSyncExternalStore(subSysReduced, readSysReduced, () => false);
   const reduced = reducedMotion(prefs, sysReduced || !props.motion);
@@ -246,6 +251,7 @@ export function CarrierJetMount(props: PackHudProps) {
       data-box={driveWindow ? 'drive' : undefined}
       data-rf-layout={layout}
       data-cjm-v2={v2 || undefined}
+      data-cj-mapfirst={mapFirst ? 'drive' : undefined}
       style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}
     >
       {/* CJ v3: GPS-only heading (~1 Hz in the car) eased on the shortest arc between fixes; Reduce Motion snaps. */}

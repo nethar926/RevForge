@@ -7,7 +7,7 @@ import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompass } from '../heading';
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
-import { board2Cells, keyCount, keyXs, KEY_H, KEY_W, TOP_CELLS, type Box, type CellId } from '../carrier-jet/geometry';
+import { board2Cells, board2CellsMapFirst, keyCount, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
 import { applyMapKey, getMapView, radarCue, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
 import { getCjPrefs, reducedMotion, setCjPrefs, subscribeCjPrefs, type CjPrefs } from '../carrier-jet/cjPrefs';
 import { closeCjConfig, getCjConfig, registerCjConfigHost, setCjConfig, subscribeCjConfig } from '../carrier-jet/configStore';
@@ -42,6 +42,8 @@ interface Geo {
   board: Box;
   /** Gap between a cell's bottom and its key strip. */
   gap: number;
+  /** MOCK (mock/cj-map-first): the host is in the map-first DRIVE grid (.cjm[data-cj-mapfirst='drive']). */
+  mapFirst?: boolean;
 }
 const rel = (r: DOMRect, o: DOMRect): Box => ({ left: r.left - o.left, top: r.top - o.top, width: r.width, height: r.height });
 
@@ -65,19 +67,21 @@ function useGeo(selfRef: RefObject<HTMLElement | null>, layout: RfLayout): Geo |
       const board = rel(root.getBoundingClientRect(), o);
       let cells: Cells | null = null;
       let gap = 4;
+      let mapFirst = false;
       if (board2) {
         const speed = q('.cj-a-speed'), mach = q('.cj-a-gr > :first-child'), rpm = q('.cj-a-gr > :last-child');
         const mids = root.querySelectorAll<HTMLElement>(':scope .cj-a-mid > div.cj-crt');
         const vdi = mids[0]?.getBoundingClientRect(), compass = mids[1]?.getBoundingClientRect();
         const sweep = q('.cj-a-sweep'), eng = q('.cj-a-eng');
         if (speed && mach && rpm && vdi && compass && sweep && eng) {
-          cells = board2Cells({ speed: rel(speed, o), rpm: rel(rpm, o), mach: rel(mach, o), vdi: rel(vdi, o), sweep: rel(sweep, o), eng: rel(eng, o), compass: rel(compass, o) });
+          mapFirst = host.dataset.cjMapfirst === 'drive';
+          cells = (mapFirst ? board2CellsMapFirst : board2Cells)({ speed: rel(speed, o), rpm: rel(rpm, o), mach: rel(mach, o), vdi: rel(vdi, o), sweep: rel(sweep, o), eng: rel(eng, o), compass: rel(compass, o) });
           const body = root.querySelector<HTMLElement>('.cj-body');
           gap = body ? parseFloat(getComputedStyle(body).rowGap) || 4 : 4;
         }
       }
       setGeo((p) => {
-        const n = { board2: !!cells, cells, board, gap };
+        const n = { board2: !!cells, cells, board, gap, mapFirst };
         return p && JSON.stringify(p) === JSON.stringify(n) ? p : n;
       });
     };
@@ -91,7 +95,7 @@ function useGeo(selfRef: RefObject<HTMLElement | null>, layout: RfLayout): Geo |
     const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(sched);
     ro?.observe(host);
     const mo = typeof MutationObserver === 'undefined' ? null : new MutationObserver(sched);
-    mo?.observe(host, { subtree: true, attributes: true, attributeFilter: ['data-variant', 'data-layout', 'class'], childList: true });
+    mo?.observe(host, { subtree: true, attributes: true, attributeFilter: ['data-variant', 'data-layout', 'class', 'data-cj-mapfirst'], childList: true });
     window.addEventListener('resize', sched);
     return () => {
       ro?.disconnect();
@@ -406,7 +410,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
         </div>
       )}
       {edge &&
-        KEY_CELLS.filter((c) => !(layout === 'window' && (TOP_CELLS.includes(c) && c !== 'speed' || c === 'eng'))).map((cell) => {
+        KEY_CELLS.filter((c) => !(layout === 'window' && ((geo.mapFirst ? TOP_CELLS_MAP_FIRST : TOP_CELLS).includes(c) && c !== 'speed' || c === 'eng'))).map((cell) => {
           // drive window: SPEED's keys sit in the ENG strip (no top key row; see carrier-jet-v2.css)
           const b = layout === 'window' && cell === 'speed' ? cells.eng : cells[cell];
           const n = keyCount(b.width);

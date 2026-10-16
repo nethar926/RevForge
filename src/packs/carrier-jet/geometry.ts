@@ -27,6 +27,31 @@ export function board2Cells(r: {
   };
 }
 
+/**
+ * MOCK (mock/cj-map-first, not shipped): map-first DRIVE. Host CSS (carrier-jet-v2.css, .cjm[data-cj-mapfirst='drive'])
+ * moves the skin's VDI into the second row (column 3, beside a narrower AOA/ENG in columns 1-2); MAP then spans the
+ * centre column over both rows (VDI's old cell + its own, including the top key row it no longer needs). ACCEL keeps
+ * its column 3 top cell (now directly above VDI, so it is measured from VDI's column).
+ */
+export function board2CellsMapFirst(r: {
+  speed: Box; rpm: Box; mach: Box; vdi: Box; sweep: Box; eng: Box; compass: Box;
+}): Record<CellId, Box> {
+  const cg = Math.max(0, r.mach.left - (r.speed.left + r.speed.width));
+  const mapLeft = r.vdi.left + r.vdi.width + cg, mapRight = r.sweep.left - cg;
+  return {
+    speed: { left: r.speed.left, top: r.speed.top, width: r.speed.width, height: r.rpm.top + r.rpm.height - r.speed.top },
+    mach: r.mach,
+    accel: { left: r.vdi.left, top: r.mach.top, width: r.vdi.width, height: r.mach.height },
+    vdi: r.vdi,
+    sweep: r.sweep,
+    eng: r.eng,
+    map: { left: mapLeft, top: r.mach.top, width: Math.max(0, mapRight - mapLeft), height: r.compass.top + r.compass.height - r.mach.top },
+    compass: r.compass,
+  };
+}
+/** MOCK map-first: the cells whose key strip sits under the top row (VDI is a bottom-row cell there). */
+export const TOP_CELLS_MAP_FIRST: readonly CellId[] = ['speed', 'mach', 'accel', 'sweep'];
+
 /** Meghan's BezelKey frame: 52×66 (18px legend slot + 44×44 cap). */
 export const KEY_W = 52;
 export const KEY_H = 66;
