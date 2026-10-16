@@ -187,14 +187,6 @@ export function CustomizePage({ prefs, update, reset }: Props) {
           />
           <span>Show keep-tab-open tip</span>
         </label>
-        <label className="toggle-row mt">
-          <input
-            type="checkbox"
-            checked={prefs.showIgnitionOnLaunch}
-            onChange={(e) => update({ showIgnitionOnLaunch: e.target.checked })}
-          />
-          <span>Ignition screen on launch</span>
-        </label>
         <label className="toggle-row mt tesla-touch">
           <input
             type="checkbox"
@@ -216,6 +208,15 @@ export function CustomizePage({ prefs, update, reset }: Props) {
           Optional short mechanical bark on MANUAL paddle up (off by default). Frontend:{' '}
           <code>eng.triggerUiCue(&apos;upshift&apos;)</code>.
         </p>
+        <label className="toggle-row mt tesla-touch">
+          <input
+            type="checkbox"
+            checked={prefs.showIgnitionOnLaunch}
+            onChange={(e) => update({ showIgnitionOnLaunch: e.target.checked })}
+          />
+          <span>Ignition screen on launch</span>
+        </label>
+        <p className="help-text dim">Show the IGNITION screen when RevForge opens (off by default: straight to Drive).</p>
         <h2 className="section-title mt">Ion Twin SPEED script</h2>
         <p className="help-text dim">
           Aurebesh is the Ion Twin default. Latin or dual-ghost keeps glanceability under cabin motion.

@@ -13,7 +13,8 @@ export const launchIgnited = (showIgnitionOnLaunch: boolean): boolean => !showIg
 
 const EVENTS = ['pointerdown', 'keydown'] as const;
 /**
- * One-time capture-phase pointerdown / keydown on `root` → `unlock()`. Listeners go once an unlock succeeds (resolves
+ * One-time capture-phase pointerdown / keydown on `root` (ForgePage passes `document`, so a key with nothing focused,
+ * which targets <body>, still counts) → `unlock()`. Listeners go once an unlock succeeds (resolves
  * truthy); a failed or refused unlock keeps listening for the next gesture. Returns a disposer.
  */
 export function installFirstGestureUnlock(root: EventTarget, unlock: () => Promise<boolean> | boolean): () => void {

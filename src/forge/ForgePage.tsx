@@ -136,7 +136,7 @@ export function ForgePage({
   // IGNITION splash only when the pref asks for it (default off → Drive straight away; app/ignitionGate.ts)
   const [ignited,setIgnited]=useState(()=>launchIgnited(prefs.showIgnitionOnLaunch));
   // splash off: the first tap / key anywhere unlocks audio (the CTA's resume, no engine start); then the listener goes
-  useEffect(()=>{if(prefs.showIgnitionOnLaunch)return;return installFirstGestureUnlock(document.getElementById("root")??document,audio.unlock);},[prefs.showIgnitionOnLaunch,audio.unlock]);
+  useEffect(()=>{if(prefs.showIgnitionOnLaunch)return;return installFirstGestureUnlock(document,audio.unlock);},[prefs.showIgnitionOnLaunch,audio.unlock]);
   const [scale,setScale]=useState(()=>{try{return Math.max(.65,Math.min(1.35,Number(localStorage.getItem(storageKey("revforge.hudScale"))??1)));}catch{return 1;}});
   const opacity = prefs.hudOpacity;
   useEffect(()=>{try{localStorage.setItem(storageKey("revforge.hudScale"),String(scale));}catch{/* session only */}},[scale]);
