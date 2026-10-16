@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { speedFromFix, type Fix } from "./gpsSpeed";
 import { kphToMph } from "../audio";
 import { publishGpsFix } from "./gpsFixes";
+import { startGeolocation } from "./geoStart";
 
 /** Wall-clock gap after last successful watch callback before marking stale. */
 const STALE_MS = 10000;
@@ -39,7 +40,7 @@ export function useGeolocation(enabled: boolean) {
     timestamp: null,
     deviceTimestamp: null,
   });
-  const watchId = useRef<number | null>(null);
+  const session = useRef<{ cancel: () => void } | null>(null);
   const generation = useRef(0);
   const previous = useRef<Fix | null>(null);
   /** Wall clock of the last watchPosition success callback. */
@@ -48,9 +49,8 @@ export function useGeolocation(enabled: boolean) {
     generation.current++;
     previous.current = null;
     lastCallbackAt.current = null;
-    if (watchId.current !== null && navigator.geolocation)
-      navigator.geolocation.clearWatch(watchId.current);
-    watchId.current = null;
+    session.current?.cancel();
+    session.current = null;
   }, []);
   const start = useCallback(() => {
     stop();
@@ -135,26 +135,9 @@ export function useGeolocation(enabled: boolean) {
         errorMessage: err.message,
       }));
     };
-    // Tesla browser: a watchPosition opened without a prior getCurrentPosition can be denied
-    // silently. Ask once first, then open the continuous watch from its callback (success, or any
-    // error except a denial — a timeout still falls through to the watch, as before).
-    let watching = false;
-    const openWatch = () => {
-      if (watching || request !== generation.current) return;
-      watching = true;
-      watchId.current = geo.watchPosition(onFix, onError, options);
-    };
-    geo.getCurrentPosition(
-      (pos) => {
-        onFix(pos);
-        openWatch();
-      },
-      (err) => {
-        onError(err);
-        if (err.code !== err.PERMISSION_DENIED) openWatch();
-      },
-      options,
-    );
+    // Pre-ask with getCurrentPosition (Tesla silent-deny), then always open exactly one watch
+    // (after success, any error, a throw, or GCP_FALLBACK_MS without a callback) — geoStart.ts.
+    session.current = startGeolocation(geo, onFix, onError, options);
   }, [stop]);
   useEffect(() => {
     if (enabled) start();

@@ -150,10 +150,9 @@ test('wiring: CJ mount passes heading; useGeolocation calls getCurrentPosition b
   assert.match(mount, /<CarrierJetHud[^>]*heading=\{heading\}/);
   assert.match(mount, /aria-label="Allow compass/);
   const geo = readFileSync(new URL('../src/hooks/useGeolocation.ts', import.meta.url), 'utf8');
-  const gcp = geo.indexOf('geo.getCurrentPosition('), wp = geo.indexOf('geo.watchPosition(');
-  assert.ok(gcp > 0 && wp > 0, 'both calls present');
+  assert.match(geo, /startGeolocation\(geo, onFix, onError, options\)/, 'start sequence lives in geoStart.ts (tests/geo-start.test.ts)');
+  assert.doesNotMatch(geo, /watchPosition\(|getCurrentPosition\(/, 'no direct geolocation calls besides geoStart');
   assert.match(geo, /publishGpsFix\(/);
-  assert.equal((geo.match(/watchPosition\(/g) || []).length, 1, 'one watch');
   const heading = readFileSync(new URL('../src/packs/heading.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(heading, /watchPosition|getCurrentPosition/, 'heading never opens its own geolocation watch');
 });
