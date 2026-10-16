@@ -125,6 +125,16 @@ export const TC_AB_LEGACY_MPH: Readonly<{ abEngageMph: number; abDisengageMph: n
 export function tomcatSetAbSpeeds(state: TomcatDriveState, engageMph?: number, disengageMph?: number): { abEngageMph: number; abDisengageMph: number };
 /** Frontend launch flag (AB engaged at any speed while armed). Returns true on a change. */
 export function tomcatSetAfterburnerLaunch(state: TomcatDriveState, launch: boolean): boolean;
+export const TC_LAUNCH_ON_MPHS: number;
+export const TC_LAUNCH_OFF_MPHS: number;
+export const TC_LAUNCH_HOLD_S: number;
+export const TC_LAUNCH_DROP_S: number;
+export const TC_LAUNCH_WINDOW_S: number;
+export interface LaunchDetector { t: number; hist: [number, number][]; on: boolean; holdFrom: number; dropFrom: number; accel: number; }
+export function createLaunchDetector(): LaunchDetector;
+export function resetLaunchDetector(det: LaunchDetector): void;
+/** GPS-speed carrier-launch detector step; returns whether a launch is active. */
+export function stepLaunchDetector(det: LaunchDetector, speedNorm: number, nowS: number): boolean;
 export const TC_FLIGHT_PHASES: readonly ('TAXI' | 'TAKEOFF_ROLL' | 'AIRBORNE' | 'APPROACH' | 'ROLLOUT' | 'TOUCH_AND_GO')[];
 export const TC_PHASE_SHAPE: Readonly<{ taxiMax: number; cruiseBase: number; cruiseSpan: number; approachMax: number; rolloutMax: number }>;
 export function tomcatPhaseInput(phase: string | null | undefined, input: Partial<DrivingInput>): { input: Partial<DrivingInput>; fast: boolean };
