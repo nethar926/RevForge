@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>RevForge sensor test</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;padding:16px;background:#000;color:#f2f2f2;font:18px/1.45 -apple-system,system-ui,sans-serif;max-width:1100px;margin:0 auto}
+h1{font-size:24px;margin:0 0 8px;color:#fff}
+h2{font-size:22px;margin:0 0 8px;color:#fff;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+p,li{margin:4px 0}
+ol{padding-left:24px;margin:8px 0}
+section{border:2px solid #555;border-radius:10px;padding:12px 14px;margin:14px 0;background:#111}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+button{min-height:48px;min-width:44px;padding:10px 18px;font:600 19px -apple-system,system-ui,sans-serif;color:#000;background:#ffd23f;border:2px solid #fff;border-radius:10px;cursor:pointer}
+button.alt{background:#fff}
+button:focus-visible{outline:4px solid #4fc3ff;outline-offset:2px}
+table{border-collapse:collapse;width:100%}
+td{padding:4px 6px;border-bottom:1px solid #333;vertical-align:top;font-variant-numeric:tabular-nums}
+td:first-child{color:#bbb;width:44%}
+.st{font-size:17px;font-weight:700;padding:2px 10px;border-radius:6px;border:2px solid}
+.s-working{color:#000;background:#5cff8a;border-color:#5cff8a}
+.s-waiting{color:#ffd23f;border-color:#ffd23f}
+.s-denied,.s-error{color:#fff;background:#c00;border-color:#f66}
+.s-unsupported{color:#ddd;border-color:#888;background:#333}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:700px){.cols{grid-template-columns:1fr}}
+.note{color:#ccc}
+#summary{border:4px solid #ffd23f;background:#000;padding:16px}
+#summary h2{font-size:30px}
+#sumtab td{font-size:24px;padding:7px 6px;border-bottom:2px solid #444}
+#sumtab td:first-child{color:#ffd23f;width:36%;font-weight:700}
+#sumtab .y{color:#5cff8a;font-weight:700}
+#sumtab .n{color:#ff7070;font-weight:700}
+textarea{width:100%;min-height:200px;font:14px ui-monospace,monospace;background:#000;color:#fff;border:2px solid #888}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:16px;word-break:break-all}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<h1>RevForge sensor test - nothing leaves this device.</h1>
+<ol>
+<li>Tap <b>Start GPS</b> and allow location.</li>
+<li>Tap <b>Allow motion &amp; compass</b> (allow if asked).</li>
+<li>Wait 30 s, then photograph the summary card.</li>
+</ol>
+<p class="note">Heading and speed are blank while parked; that's expected.</p>
+<div class="btns">
+<button id="bGps" type="button">Start GPS</button>
+<button id="bMot" type="button">Allow motion &amp; compass</button>
+<button id="bJump" type="button" class="alt">Jump to summary</button>
+</div>
+
+<section><h2>1. GPS <span id="stGps" class="st"></span></h2>
+<table id="tGps"></table></section>
+
+<section><h2>2. Compass / orientation</h2>
+<div class="cols">
+<div><h2>Before tap <span id="stOB" class="st"></span></h2><table id="tOB"></table></div>
+<div><h2>After tap <span id="stOA" class="st"></span></h2><table id="tOA"></table></div>
+</div></section>
+
+<section><h2>3. Motion <span id="stMot" class="st"></span></h2>
+<table id="tMot"></table></section>
+
+<section><h2>4. Generic Sensor API</h2>
+<table id="tGen"></table></section>
+
+<section><h2>5. Environment</h2>
+<table id="tEnv"></table></section>
+
+<section id="summary" tabindex="-1"><h2>Summary <span id="sumAge" class="note" style="font-size:20px"></span></h2>
+<table id="sumtab"></table>
+<div class="btns"><button id="bCopy" type="button">Copy report</button><span id="copyMsg" class="note" role="status"></span></div>
+<textarea id="ta" hidden readonly aria-label="Report JSON"></textarea>
+</section>
+
+<script>
+(function(){
+'use strict';
+var T0=performance.now();
+function now(){return performance.now();}
+function $(id){return document.getElementById(id);}
+function isNum(v){return typeof v==='number'&&isFinite(v);}
+function f(v,d){return isNum(v)?v.toFixed(d):'—';}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':'&gt;';});}
+function rows(id,list){var h='';for(var i=0;i<list.length;i++)h+='<tr><td>'+esc(list[i][0])+'</td><td>'+esc(list[i][1])+'</td></tr>';$(id).innerHTML=h;}
+function setSt(id,s){var e=$(id);var c=s.split(/[ :(]/)[0];e.className='st s-'+c;e.textContent=s;}
+// rate tracker: events/s over last 10 s
+function Rate(){this.t=[];}
+Rate.prototype.add=function(t){this.t.push(t);this.prune(t);};
+Rate.prototype.prune=function(t){while(this.t.length&&t-this.t[0]>10000)this.t.shift();};
+Rate.prototype.get=function(){var t=now();this.prune(t);if(!this.t.length)return 0;var span=Math.min(10000,Math.max(1000,t-this.t[0]));return this.t.length/(span/1000);};
+function avgRate(k){return k.n>1&&k.t2>k.t1?(k.n-1)/((k.t2-k.t1)/1000):0;}
+function median(a){if(!a.length)return null;var s=a.slice().sort(function(x,y){return x-y;});var m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+
+/* ---------- GPS ---------- */
+var G={status:navigator.geolocation?'not started':'unsupported',started:false,first:null,watchId:null,
+ fixes:[],n:0,last:null,rate:new Rate(),gaps:[],lastGap:null,lastArr:null,
+ nulls:{altitude:0,altitudeAccuracy:0,heading:0,speed:0,speedAccuracy:0},
+ anchor:null,bearing:null,bearingDist:null,derivedAnchor:null,derivedSucc:null,
+ errors:[],lastErr:null,firstFixMs:null};
+function hav(a,b){var R=6371000,r=Math.PI/180;var dl=(b.lat-a.lat)*r,dn=(b.lon-a.lon)*r;var x=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)*Math.sin(dn/2);return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function brg(a,b){var r=Math.PI/180;var y=Math.sin((b.lon-a.lon)*r)*Math.cos(b.lat*r);var x=Math.cos(a.lat*r)*Math.sin(b.lat*r)-Math.sin(a.lat*r)*Math.cos(b.lat*r)*Math.cos((b.lon-a.lon)*r);return (Math.atan2(y,x)/r+360)%360;}
+function onPos(src){return function(p){
+ var t=now(),c=p.coords;
+ var fx={src:src,arr:Math.round(t-T0),ts:p.timestamp,lat:c.latitude,lon:c.longitude,acc:c.accuracy,alt:c.altitude,altAcc:c.altitudeAccuracy,hdg:c.heading,spd:c.speed,spdAcc:(c.speedAccuracy===undefined?undefined:c.speedAccuracy)};
+ G.n++;G.status='working';G.rate.add(t);
+ if(G.firstFixMs===null&&G.first!==null)G.firstFixMs=Math.round(t-G.first);
+ if(G.lastArr!==null){G.lastGap=t-G.lastArr;G.gaps.push(G.lastGap);if(G.gaps.length>1000)G.gaps.shift();}
+ G.lastArr=t;
+ if(!isNum(fx.alt))G.nulls.altitude++;
+ if(!isNum(fx.altAcc))G.nulls.altitudeAccuracy++;
+ if(!isNum(fx.hdg))G.nulls.heading++;
+ if(!isNum(fx.spd))G.nulls.speed++;
+ if(!isNum(fx.spdAcc))G.nulls.speedAccuracy++;
+ var prev=G.last;
+ if(prev){var dt=(fx.ts-prev.ts)/1000;if(!(dt>0))dt=(fx.arr-prev.arr)/1000;if(dt>0)G.derivedSucc=hav(prev,fx)/dt;}
+ if(!G.anchor)G.anchor=fx;else{var d=hav(G.anchor,fx);if(d>5){G.bearing=brg(G.anchor,fx);G.bearingDist=d;var dt2=(fx.ts-G.anchor.ts)/1000;if(!(dt2>0))dt2=(fx.arr-G.anchor.arr)/1000;G.derivedAnchor=dt2>0?d/dt2:null;G.anchor=fx;}}
+ G.last=fx;G.fixes.push(fx);if(G.fixes.length>40)G.fixes.shift();
+};}
+function onErr(src){return function(e){
+ var names={1:'PERMISSION_DENIED',2:'POSITION_UNAVAILABLE',3:'TIMEOUT'};
+ var r={src:src,code:e.code,name:names[e.code]||'?',msg:e.message,at:Math.round(now()-T0)};
+ G.lastErr=r;G.errors.push(r);if(G.errors.length>20)G.errors.shift();
+ if(e.code===1)G.status='denied';else if(G.status!=='working')G.status='error: '+r.name;
+};}
+function startWatch(){
+ if(G.watchId!==null)return;
+ try{G.watchId=navigator.geolocation.watchPosition(onPos('watch'),onErr('watch'),{enableHighAccuracy:true,maximumAge:0});}
+ catch(e){G.status='error: '+e.name;}
+}
+$('bGps').addEventListener('click',function(){
+ if(!navigator.geolocation){G.status='unsupported';return;}
+ if(G.started)return;
+ G.started=true;G.first=now();G.status='waiting';this.textContent='GPS started';
+ var done=false;
+ function next(){if(done)return;done=true;startWatch();}
+ try{
+  navigator.geolocation.getCurrentPosition(function(p){onPos('getCurrent')(p);next();},function(e){onErr('getCurrent')(e);next();},{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+ }catch(e){G.status='error: '+e.name;next();}
+ setTimeout(next,16000); // in case getCurrentPosition never calls back
+});
+
+/* ---------- Orientation ---------- */
+function OB(){function K(){return {n:0,data:0,rate:new Rate(),last:null,t1:null,t2:null};}return {abs:K(),rel:K(),compass:0};}
+var O={tapped:false,tapAt:null,perm:{orientation:null,motion:null},before:OB(),after:OB()};
+function onOri(kind){return function(e){
+ var b=O.tapped?O.after:O.before,k=b[kind];
+ var t=now();k.n++;k.rate.add(t);if(k.t1===null)k.t1=t;k.t2=t;
+ var has=isNum(e.alpha)||isNum(e.beta)||isNum(e.gamma);
+ if(has)k.data++;
+ var ch=e.webkitCompassHeading;
+ if(isNum(ch))b.compass++;
+ k.last={alpha:e.alpha,beta:e.beta,gamma:e.gamma,absolute:e.absolute,webkitCompassHeading:(ch===undefined?undefined:ch),webkitCompassAccuracy:e.webkitCompassAccuracy};
+};}
+var hasDOE=typeof window.DeviceOrientationEvent!=='undefined';
+var hasAbsEv='ondeviceorientationabsolute' in window;
+window.addEventListener('deviceorientationabsolute',onOri('abs'),{passive:true});
+window.addEventListener('deviceorientation',onOri('rel'),{passive:true});
+
+/* ---------- Motion ---------- */
+var M={n:0,nBefore:0,data:0,rot:0,rate:new Rate(),last:null,t1:null,t2:null};
+var hasDME=typeof window.DeviceMotionEvent!=='undefined';
+function v3(o){return o?{x:o.x,y:o.y,z:o.z}:null;}
+window.addEventListener('devicemotion',function(e){
+ var t=now();M.n++;if(!O.tapped)M.nBefore++;M.rate.add(t);if(M.t1===null)M.t1=t;M.t2=t;
+ var a=e.acceleration,g=e.accelerationIncludingGravity,r=e.rotationRate;
+ if((a&&isNum(a.x))||(g&&isNum(g.x)))M.data++;
+ if(r&&(isNum(r.alpha)||isNum(r.beta)||isNum(r.gamma)))M.rot++;
+ M.last={acceleration:v3(a),accelerationIncludingGravity:v3(g),rotationRate:r?{alpha:r.alpha,beta:r.beta,gamma:r.gamma}:null,interval:e.interval};
+},{passive:true});
+
+$('bMot').addEventListener('click',function(){
+ var btn=this;
+ function mark(){if(!O.tapped){O.tapped=true;O.tapAt=Math.round(now()-T0);}btn.textContent='Motion & compass: tapped';}
+ var ps=[];
+ function ask(C,key){
+  if(C&&typeof C.requestPermission==='function'){
+   try{ps.push(Promise.resolve(C.requestPermission()).then(function(r){O.perm[key]=r;},function(e){O.perm[key]='error: '+(e&&e.name);}));}
+   catch(e){O.perm[key]='error: '+e.name;}
+  }else O.perm[key]='no requestPermission (not needed)';
+ }
+ ask(window.DeviceOrientationEvent,'orientation');
+ ask(window.DeviceMotionEvent,'motion');
+ mark(); // everything from now on counts as "after tap"
+});
+
+/* ---------- Generic Sensor API ---------- */
+var GS={};
+['AbsoluteOrientationSensor','Gyroscope','Accelerometer','Magnetometer'].forEach(function(name){
+ var s={supported:typeof window[name]==='function',status:'unsupported',error:null,readings:0,last:null};
+ GS[name]=s;
+ if(!s.supported)return;
+ s.status='waiting';
+ try{
+  var o=new window[name]({frequency:10});
+  o.addEventListener('error',function(e){s.error=(e.error&&e.error.name)||'Error';s.status=s.error==='NotAllowedError'?'denied':'error: '+s.error;});
+  o.addEventListener('reading',function(){s.readings++;s.status='working';
+   if(o.quaternion)s.last={quaternion:Array.prototype.map.call(o.quaternion,function(q){return +q.toFixed(4);})};
+   else s.last={x:o.x,y:o.y,z:o.z};});
+  o.start();s.obj=o;
+ }catch(e){s.error=e.name;s.status=e.name==='SecurityError'||e.name==='NotAllowedError'?'denied':'error: '+e.name;}
+});
+
+/* ---------- Environment ---------- */
+var E={perm:{}};
+function mq(q){try{return matchMedia(q).matches;}catch(e){return null;}}
+function env(){
+ return {userAgent:navigator.userAgent,isSecureContext:window.isSecureContext,
+  viewport:innerWidth+'x'+innerHeight,screen:screen.width+'x'+screen.height,devicePixelRatio:window.devicePixelRatio,
+  pointerCoarse:mq('(pointer: coarse)'),pointerFine:mq('(pointer: fine)'),anyPointerCoarse:mq('(any-pointer: coarse)'),
+  reducedMotion:mq('(prefers-reduced-motion: reduce)'),permissions:E.perm,
+  DeviceOrientationEvent:hasDOE,ondeviceorientationabsolute:hasAbsEv,DeviceMotionEvent:hasDME,
+  orientationRequestPermission:!!(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function'),
+  motionRequestPermission:!!(window.DeviceMotionEvent&&typeof DeviceMotionEvent.requestPermission==='function')};
+}
+if(navigator.permissions&&navigator.permissions.query){
+ ['geolocation','accelerometer','gyroscope','magnetometer'].forEach(function(n){
+  try{navigator.permissions.query({name:n}).then(function(p){E.perm[n]=p.state;p.onchange=function(){E.perm[n]=p.state;};},function(e){E.perm[n]='query error: '+(e&&e.name);});}
+  catch(e){E.perm[n]='query error: '+e.name;}
+ });
+}else E.perm.geolocation='Permissions API unavailable';
+
+/* ---------- Status / verdicts ---------- */
+function pct(n,d){return d?Math.round(100*n/d)+'%':'—';}
+function gpsStatus(){
+ if(G.status==='working'&&G.lastArr!==null){var age=(now()-G.lastArr)/1000;if(age>5)return 'working (last fix '+age.toFixed(0)+' s ago)';}
+ return G.status==='not started'?'waiting':G.status;
+}
+function oriStatus(b,isAfter){
+ if(!hasDOE&&!hasAbsEv)return 'unsupported';
+ if(isAfter&&!O.tapped)return 'waiting';
+ if(b.abs.data||b.rel.data)return 'working';
+ if(isAfter&&(/denied/.test(O.perm.orientation||'')))return 'denied';
+ if(b.abs.n||b.rel.n)return 'waiting';
+ return 'waiting';
+}
+function oriVerdict(b,isAfter){
+ if(!hasDOE&&!hasAbsEv)return ['NO - unsupported',0];
+ if(isAfter&&!O.tapped)return ['not tapped yet',0];
+ var parts=[];
+ if(b.abs.data)parts.push('absolute '+b.abs.n+' ev ~'+avgRate(b.abs).toFixed(0)+'/s');
+ if(b.rel.data)parts.push('relative '+b.rel.n+' ev ~'+avgRate(b.rel).toFixed(0)+'/s'+(b.rel.last&&b.rel.last.absolute?' (abs=true)':''));
+ if(b.compass)parts.push('webkitCompassHeading');
+ if(parts.length)return ['YES - '+parts.join(', '),1];
+ if(isAfter&&/denied/.test(O.perm.orientation||''))return ['NO - permission denied',0];
+ if(b.abs.n||b.rel.n)return ['NO - '+(b.abs.n+b.rel.n)+' events, all null',0];
+ return ['NO - no events',0];
+}
+function fieldVerdict(key,label){
+ if(!G.n)return [gpsStatus()==='waiting'?'no fixes yet':'NO - '+gpsStatus(),0];
+ var ok=G.n-G.nulls[key];
+ if(ok)return ['YES - in '+ok+'/'+G.n+' fixes ('+pct(ok,G.n)+')',1];
+ return ['NO - null in all '+G.n+' fixes',0];
+}
+function motionVerdict(){
+ var gy=0;for(var k in GS)if(GS[k].readings&&(k==='Gyroscope'||k==='AbsoluteOrientationSensor'))gy=1;
+ if(M.rot)return ['YES - rotationRate, '+M.n+' ev ~'+avgRate(M).toFixed(0)+'/s'+(gy?' + Generic Sensor':''),1];
+ if(M.data)return ['PARTIAL - accel only, no rotationRate, '+M.n+' ev ~'+avgRate(M).toFixed(0)+'/s',1];
+ if(gy)return ['YES - Generic Sensor only',1];
+ if(!hasDME)return ['NO - unsupported',0];
+ if(M.n)return ['NO - '+M.n+' events, all null',0];
+ return ['NO - no events',0];
+}
+function gapStats(){var g=G.gaps;if(!g.length)return null;return {min:Math.min.apply(null,g),median:median(g),max:Math.max.apply(null,g),count:g.length};}
+function verdicts(){
+ var gs=gapStats(),L=G.last;
+ return {
+  gpsStatus:gpsStatus(),
+  gpsSpeed:fieldVerdict('speed'),gpsHeading:fieldVerdict('heading'),gpsAltitude:fieldVerdict('altitude'),
+  compassBeforeTap:oriVerdict(O.before,false),compassAfterTap:oriVerdict(O.after,true),
+  gyroMotion:motionVerdict(),
+  updatesPerSec:+G.rate.get().toFixed(2),medianGapMs:gs?Math.round(gs.median):null,
+  speedAccuracy:!G.n?'no fixes yet':(G.n-G.nulls.speedAccuracy)?('present, latest '+(L&&isNum(L.spdAcc)?L.spdAcc.toFixed(2)+' m/s':'null')):(L&&L.spdAcc===undefined?'not in API':'null in all fixes'),
+  nullPct:{altitude:pct(G.nulls.altitude,G.n),altitudeAccuracy:pct(G.nulls.altitudeAccuracy,G.n),heading:pct(G.nulls.heading,G.n),speed:pct(G.nulls.speed,G.n)}
+ };
+}
+
+/* ---------- Render ---------- */
+function oriRows(b){
+ var r=[];
+ [['abs','deviceorientationabsolute'],['rel','deviceorientation']].forEach(function(p){
+  var k=b[p[0]],l=k.last;
+  r.push([p[1]+' events',k.n+' ('+k.data+' with data), now '+k.rate.get().toFixed(1)+'/s, avg '+avgRate(k).toFixed(1)+'/s']);
+  r.push(['  alpha / beta / gamma',l?f(l.alpha,1)+' / '+f(l.beta,1)+' / '+f(l.gamma,1):'—']);
+  r.push(['  absolute flag',l?String(l.absolute):'—']);
+  r.push(['  webkitCompassHeading',l&&l.webkitCompassHeading!==undefined?f(l.webkitCompassHeading,1)+(isNum(l.webkitCompassAccuracy)?' (±'+l.webkitCompassAccuracy.toFixed(0)+'°)':''):'not present']);
+ });
+ return r;
+}
+function mv(o,d){return o?f(o.x,d)+', '+f(o.y,d)+', '+f(o.z,d):'—';}
+function render(){
+ var L=G.last,gs=gapStats(),n=G.n;
+ setSt('stGps',gpsStatus());
+ rows('tGps',[
+  ['Fixes received',n+(G.firstFixMs!==null?' (first after '+G.firstFixMs+' ms)':'')],
+  ['Lat / lon',L?f(L.lat,5)+', '+f(L.lon,5):'—'],
+  ['Accuracy',L?f(L.acc,1)+' m':'—'],
+  ['Speed (coords.speed)',L&&isNum(L.spd)?L.spd.toFixed(2)+' m/s = '+(L.spd*2.23694).toFixed(1)+' mph':'—'],
+  ['Speed accuracy',L?(L.spdAcc===undefined?'not in API':f(L.spdAcc,2)+' m/s'):'—'],
+  ['Derived speed (successive fixes)',isNum(G.derivedSucc)?G.derivedSucc.toFixed(2)+' m/s = '+(G.derivedSucc*2.23694).toFixed(1)+' mph':'—'],
+  ['Derived speed (>5 m moves)',isNum(G.derivedAnchor)?G.derivedAnchor.toFixed(2)+' m/s = '+(G.derivedAnchor*2.23694).toFixed(1)+' mph':'—'],
+  ['Heading (coords.heading)',L&&isNum(L.hdg)?L.hdg.toFixed(1)+'°':'—'],
+  ['Computed bearing (>5 m)',isNum(G.bearing)?G.bearing.toFixed(1)+'° over '+G.bearingDist.toFixed(1)+' m':'— (not moved 5 m)'],
+  ['Altitude',L&&isNum(L.alt)?L.alt.toFixed(1)+' m = '+(L.alt*3.28084).toFixed(0)+' ft':'—'],
+  ['Altitude accuracy',L&&isNum(L.altAcc)?L.altAcc.toFixed(1)+' m = '+(L.altAcc*3.28084).toFixed(0)+' ft':'—'],
+  ['Updates / s (last 10 s)',G.rate.get().toFixed(2)],
+  ['Last gap',isNum(G.lastGap)?Math.round(G.lastGap)+' ms':'—'],
+  ['Gap min / median / max',gs?Math.round(gs.min)+' / '+Math.round(gs.median)+' / '+Math.round(gs.max)+' ms ('+gs.count+' gaps)':'—'],
+  ['Null altitude',G.nulls.altitude+' ('+pct(G.nulls.altitude,n)+')'],
+  ['Null altitudeAccuracy',G.nulls.altitudeAccuracy+' ('+pct(G.nulls.altitudeAccuracy,n)+')'],
+  ['Null heading',G.nulls.heading+' ('+pct(G.nulls.heading,n)+')'],
+  ['Null speed',G.nulls.speed+' ('+pct(G.nulls.speed,n)+')'],
+  ['Last error',G.lastErr?G.lastErr.src+': '+G.lastErr.name+' '+(G.lastErr.msg||''):'none']
+ ]);
+ setSt('stOB',oriStatus(O.before,false));setSt('stOA',oriStatus(O.after,true));
+ rows('tOB',oriRows(O.before));
+ var ra=oriRows(O.after);ra.unshift(['Permission (orientation / motion)',O.tapped?(O.perm.orientation||'pending')+' / '+(O.perm.motion||'pending'):'not tapped']);rows('tOA',ra);
+ var ml=M.last;
+ setSt('stMot',!hasDME?'unsupported':/denied/.test(O.perm.motion||'')?'denied':(M.data||M.rot)?'working':'waiting');
+ rows('tMot',[
+  ['Events',M.n+' ('+M.nBefore+' before tap), now '+M.rate.get().toFixed(1)+'/s, avg '+avgRate(M).toFixed(1)+'/s'],
+  ['acceleration x,y,z',ml?mv(ml.acceleration,2):'—'],
+  ['accelerationIncludingGravity',ml?mv(ml.accelerationIncludingGravity,2):'—'],
+  ['rotationRate α,β,γ',ml&&ml.rotationRate?f(ml.rotationRate.alpha,1)+', '+f(ml.rotationRate.beta,1)+', '+f(ml.rotationRate.gamma,1):'—'],
+  ['interval',ml&&isNum(ml.interval)?ml.interval+' ms':'—']
+ ]);
+ var gr=[];for(var k in GS){var s=GS[k];gr.push([k,(s.supported?'supported':'unsupported')+' - '+s.status+(s.error?' ('+s.error+')':'')+(s.readings?', '+s.readings+' readings':'')]);}
+ rows('tGen',gr);
+ var e=env(),er=[];for(var x in e)er.push([x,typeof e[x]==='object'?JSON.stringify(e[x]):String(e[x])]);
+ rows('tEnv',er);
+ $('tEnv').rows[0].cells[1].className='mono';
+ // summary
+ var v=verdicts();
+ function vr(label,p){return '<tr><td>'+esc(label)+'</td><td class="'+(p[1]?'y':'n')+'">'+esc(p[0])+'</td></tr>';}
+ function pr(label,t){return '<tr><td>'+esc(label)+'</td><td>'+esc(t)+'</td></tr>';}
+ $('sumtab').innerHTML=pr('GPS',v.gpsStatus+', '+n+' fixes')+
+  vr('GPS speed',v.gpsSpeed)+vr('GPS heading',v.gpsHeading)+vr('GPS altitude',v.gpsAltitude)+
+  vr('Compass before tap',v.compassBeforeTap)+vr('Compass after tap',v.compassAfterTap)+vr('Gyro / motion',v.gyroMotion)+
+  pr('GPS updates/s',v.updatesPerSec.toFixed(2)+' / median gap '+(v.medianGapMs===null?'—':v.medianGapMs+' ms'))+
+  pr('Speed accuracy',v.speedAccuracy)+
+  pr('Null %','alt '+v.nullPct.altitude+', altAcc '+v.nullPct.altitudeAccuracy+', hdg '+v.nullPct.heading+', spd '+v.nullPct.speed);
+ $('sumAge').textContent='at '+((now()-T0)/1000).toFixed(0)+' s';
+}
+setInterval(render,500);render();
+
+/* ---------- Report / copy ---------- */
+function report(){
+ var cl=function(b){return {abs:{events:b.abs.n,withData:b.abs.data,ratePerSec:+b.abs.rate.get().toFixed(2),avgRatePerSec:+avgRate(b.abs).toFixed(2),last:b.abs.last},rel:{events:b.rel.n,withData:b.rel.data,ratePerSec:+b.rel.rate.get().toFixed(2),avgRatePerSec:+avgRate(b.rel).toFixed(2),last:b.rel.last},compassHeadingEvents:b.compass};};
+ var gs={};for(var k in GS){var s=GS[k];gs[k]={supported:s.supported,status:s.status,error:s.error,readings:s.readings,last:s.last};}
+ return {tool:'RevForge sensor test v1',secondsSinceLoad:+((now()-T0)/1000).toFixed(1),time:new Date().toISOString(),
+  summary:verdicts(),
+  gps:{status:gpsStatus(),fixes:G.n,firstFixMs:G.firstFixMs,updatesPerSec:+G.rate.get().toFixed(2),lastGapMs:isNum(G.lastGap)?Math.round(G.lastGap):null,gaps:gapStats(),nulls:G.nulls,
+   computedBearing:G.bearing,bearingDistM:G.bearingDist,derivedSpeedSuccessive:G.derivedSucc,derivedSpeedAnchor:G.derivedAnchor,watchStarted:G.watchId!==null,errors:G.errors,recentFixes:G.fixes},
+  orientation:{tapped:O.tapped,tapAtMs:O.tapAt,permission:O.perm,beforeTap:cl(O.before),afterTap:cl(O.after)},
+  motion:{events:M.n,eventsBeforeTap:M.nBefore,withData:M.data,withRotation:M.rot,ratePerSec:+M.rate.get().toFixed(2),last:M.last},
+  genericSensor:gs,environment:env()};
+}
+window.__sensorReport=report;
+$('bCopy').addEventListener('click',function(){
+ var txt=JSON.stringify(report(),null,1),ta=$('ta'),msg=$('copyMsg');
+ function fallback(){ta.hidden=false;ta.value=txt;ta.focus();ta.select();var ok=false;try{ok=document.execCommand('copy');}catch(e){}msg.textContent=ok?'Copied (fallback). Text also shown below.':'Select the text below and copy it.';}
+ if(navigator.clipboard&&navigator.clipboard.writeText){
+  navigator.clipboard.writeText(txt).then(function(){msg.textContent='Copied '+txt.length+' chars.';ta.hidden=false;ta.value=txt;},fallback);
+ }else fallback();
+});
+$('bJump').addEventListener('click',function(){var s=$('summary');s.scrollIntoView({block:'start',behavior:mq('(prefers-reduced-motion: reduce)')?'auto':'smooth'});s.focus({preventScroll:true});});
+})();
+</script>
+</body>
+</html>
