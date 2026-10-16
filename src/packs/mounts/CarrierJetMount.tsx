@@ -45,8 +45,8 @@ import './carrier-jet-controls.css';
  * driver) + the CJ switch row (CjNavRow portals itself into the bank's nav slot via setCjNavSlot) once the
  * drive dock exists (after IGNITION; before it the row stays in the top bar as before). Placement:
  *  - board / window (Tesla): portaled into .rev-dock between Hold to rev and Shutdown (≥ 24px clear of
- *    Shutdown); the board box is unchanged. Drive window: the row sits on a tier above the guard, clear
- *    of the demo throttle card.
+ *    Shutdown); the board reflows into ALL the space between the top bar and the bank (no scale()).
+ *    Drive window: the row sits on a tier above the guard, clear of the demo throttle card.
  *  - portrait (Option A scroll): portaled to the end of .rev-viewport, below the dock: row, then guard.
  *  - phone-landscape: the 68px strip at the bottom of the board's box: guard, then row.
  * The bank is a plain slot pair (.cjm-bank-ab / .cjm-bank-nav) so new bottom-panel art can replace it.
@@ -106,8 +106,12 @@ export function CarrierJetMount(props: PackHudProps) {
     if (!bankEl || !viewport || layout !== 'window' || !docked) return;
     const fit = () => {
       const t = viewport.querySelector<HTMLElement>(':scope > .rev-throttle');
-      if (!t) return bankEl.style.removeProperty('--cjm-nav-w');
-      const w = Math.floor(t.getBoundingClientRect().left - 8 - bankEl.getBoundingClientRect().left);
+      const nav = bankEl.querySelector<HTMLElement>(':scope > .cjm-bank-nav');
+      const tr = t?.getBoundingClientRect();
+      const nr = nav?.getBoundingClientRect();
+      // only when the card shares the row tier's height band
+      if (!tr || !nr || tr.bottom <= nr.top || tr.top >= nr.bottom) return bankEl.style.removeProperty('--cjm-nav-w');
+      const w = Math.floor(tr.left - 8 - bankEl.getBoundingClientRect().left);
       bankEl.style.setProperty('--cjm-nav-w', `${Math.max(0, w)}px`);
     };
     fit();

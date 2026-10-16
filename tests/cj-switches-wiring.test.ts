@@ -169,7 +169,7 @@ test('bottom bank: guard left + row right in one panel; row portals into it once
   assert.match(css, /\.rev-dock:has\(> \.cjm-bank\) > \.rev-stop \{ order: 2; \}/);
   assert.match(css, /\.rev-viewport > \.rev-dock:has\(> \.cjm-bank\) \{ overflow: visible; \}/, 'dock does not clip the tray');
   assert.match(css, /\.cjm-bank\[data-rf-layout='window'\] > \.cjm-bank-nav \{ position: absolute; left: 0; bottom: calc\(100% \+ 12px\); width: var\(--cjm-nav-w, 100%\);/);
-  assert.match(mount, /t\.getBoundingClientRect\(\)\.left - 8 - bankEl\.getBoundingClientRect\(\)\.left/, 'window row tier clears the throttle card');
+  assert.match(mount, /tr\.left - 8 - bankEl\.getBoundingClientRect\(\)\.left/, 'window row tier clears the throttle card');
   assert.match(css, /> \.rev-topbar > div \{ min-height: 48px; \}/, 'top bar keeps its 48px line without the row');
   // MORE opens upward from the bank and stacks above everything
   assert.match(css, /\.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ top: auto; bottom: calc\(100% \+ 6px\); \}/);
@@ -184,4 +184,16 @@ test('bottom bank: guard left + row right in one panel; row portals into it once
   // phones: portrait row directly above the guard (below the dock); landscape row in the board's strip
   assert.match(css, /\.rev-viewport > \.cjm-below \.cjm-bank-nav \{ order: -1;/);
   assert.match(css, /\.cjm\[data-rf-layout='phone-landscape'\] > \.cjm-ab \{ top: auto; left: env\(safe-area-inset-left, 0px\); right: env\(safe-area-inset-right, 0px\);/);
+});
+
+test('Tesla reflow (separate commit): board fills top bar → bank, no scale(); throttle in the old NAV slot; GPS 68px yield only before docking', () => {
+  const css = src('packs/mounts/carrier-jet-controls.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const mount = src('packs/mounts/CarrierJetMount.tsx');
+  assert.match(css, /padding: 76px 16px calc\(18px \+ 3px \+ 48px \+ 6px \+ 8px\) !important;/);
+  assert.match(css, /padding: 76px 8px calc\(18px \+ 3px \+ 48px \+ 12px \+ 60px \+ 8px\) !important;/);
+  assert.match(css, /\.cjm:is\(\[data-rf-layout='board'\], \[data-rf-layout='window'\]\) \{\s*flex: 1 1 auto; align-self: stretch; width: 100%; height: 100%; margin: 0;/);
+  assert.match(css, /> \.rev-throttle \{\s*top: 20px; bottom: auto; right: 24px;/);
+  assert.match(css, /\.rev-viewport:not\(:has\(\.rev-throttle\)\):not\(:has\(> \.rev-dock > \.cjm-bank\)\) \.cjm:is\(\[data-rf-layout='board'\], \[data-rf-layout='window'\]\) > \.cjm-fill \{ bottom: 68px; \}/);
+  assert.match(mount, /if \(!tr \|\| !nr \|\| tr\.bottom <= nr\.top \|\| tr\.top >= nr\.bottom\)/, 'row tier only narrows when the throttle shares its band');
+  assert.doesNotMatch(css, /scale\(/);
 });
