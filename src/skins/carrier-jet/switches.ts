@@ -97,3 +97,57 @@ export function guardView(armed: boolean, guardOpen: boolean): CjGuardView {
     status: armed ? 'Afterburner armed' : 'Afterburner safe',
   };
 }
+
+// ------------------------------------------------------------------ compact / phone variants (same elements, reflowed)
+
+/**
+ * Panel variant. 'full' = the concept-sheet art (what Tesla / desktop mount today, host-sized). 'compact' = narrow
+ * stacked cells (label · lamp + lever · legend), every legend visible, text >= 11px, cell >= 44x44, about 51px tall.
+ * 'portrait' = compact cells + the portrait row order (CJ_SWITCH_ITEMS_PORTRAIT). Nothing is hidden in any variant.
+ */
+export type CjSwitchVariant = 'full' | 'compact' | 'portrait';
+/** Guard variant. 'compact' = one strip (cap · guard well · plate), 60px tall; inside a narrow slot it stacks. */
+export type CjGuardVariant = 'full' | 'compact';
+/** Frontend's layout picker values (src/packs/layout.ts RfLayout), as the skin reads them from `data-rf-layout`. */
+export type CjRfLayout = 'board' | 'window' | 'portrait' | 'phone-landscape';
+
+/** 'auto' resolution: Tesla / desktop keep 'full' (pixel-identical to the wired build); phones get compact cells. */
+export function cjSwitchVariantFor(layout: string | null | undefined): CjSwitchVariant {
+  return layout === 'portrait' ? 'portrait' : layout === 'phone-landscape' ? 'compact' : 'full';
+}
+export function cjGuardVariantFor(layout: string | null | undefined): CjGuardVariant {
+  return layout === 'portrait' || layout === 'phone-landscape' ? 'compact' : 'full';
+}
+
+/** Phone portrait row (tray closed): DRIVE · GARAGE · MUTE · COMPASS · MORE; everything else lives in MORE. */
+export const CJ_SWITCH_ITEMS_PORTRAIT: CjSwitchItem[] = [
+  { id: 'drive', label: 'Drive', kind: 'page', on: true },
+  { id: 'garage', label: 'Garage', kind: 'page' },
+  { id: 'mute', label: 'Mute', kind: 'toggle', on: false },
+  { id: 'compass', label: 'Compass', kind: 'toggle', state: 'off' },
+  { id: 'more', label: 'More', kind: 'more', on: false },
+];
+/** Phone portrait MORE tray: the row pages that did not make the portrait row, then the usual tray pages. */
+export const CJ_SWITCH_OVERFLOW_PORTRAIT: CjSwitchItem[] = [
+  { id: 'visuals', label: 'Visuals', kind: 'page' },
+  { id: 'options', label: 'Options', kind: 'page' },
+  { id: 'sound-builder', label: 'Sound Builder', kind: 'page' },
+  ...CJ_SWITCH_OVERFLOW,
+];
+/** Row order the 'portrait' variant draws (ids not listed keep their host order, after these; MORE always last). */
+export const CJ_PORTRAIT_ORDER: readonly string[] = CJ_SWITCH_ITEMS_PORTRAIT.map((i) => i.id);
+
+/** Stable reorder for the 'portrait' variant. Same items, nothing added or dropped; `kind: 'more'` goes last. */
+export function portraitOrder(items: CjSwitchItem[]): CjSwitchItem[] {
+  const rank = (i: CjSwitchItem) => (i.kind === 'more' ? 1e6 : CJ_PORTRAIT_ORDER.indexOf(i.id) === -1 ? 1e3 : CJ_PORTRAIT_ORDER.indexOf(i.id));
+  return items.map((it, n) => ({ it, n })).sort((a, b) => rank(a.it) - rank(b.it) || a.n - b.n).map((x) => x.it);
+}
+
+/**
+ * Split a host's full switch set into the portrait row + tray: the CJ_SWITCH_ITEMS_PORTRAIT ids that are present
+ * stay on the row (in that order), every other row item moves to the front of the tray. Nothing is dropped.
+ */
+export function portraitSplit(items: CjSwitchItem[], overflow: CjSwitchItem[] = []): { items: CjSwitchItem[]; overflow: CjSwitchItem[] } {
+  const keep = (i: CjSwitchItem) => i.kind === 'more' || CJ_PORTRAIT_ORDER.includes(i.id);
+  return { items: portraitOrder(items.filter(keep)), overflow: [...items.filter((i) => !keep(i)), ...overflow] };
+}

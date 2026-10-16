@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { CJ_SWITCH_ITEMS, CJ_SWITCH_OVERFLOW, guardView, switchView, type CjSwitchItem } from '../src/skins/carrier-jet/switches.ts';
+import {
+  CJ_PORTRAIT_ORDER, CJ_SWITCH_ITEMS, CJ_SWITCH_ITEMS_PORTRAIT, CJ_SWITCH_OVERFLOW, CJ_SWITCH_OVERFLOW_PORTRAIT,
+  cjGuardVariantFor, cjSwitchVariantFor, guardView, portraitOrder, portraitSplit, switchView, type CjSwitchItem,
+} from '../src/skins/carrier-jet/switches.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SKIN = join(root, 'src/skins/carrier-jet');
@@ -121,4 +124,90 @@ test('switch CSS: 44px targets, >= 11px text, flip is transform/opacity only and
   for (const m of css.matchAll(/transition:\s*([^;]+);/g)) for (const part of m[1].split(',')) assert.match(part.trim(), /^(none|(transform|opacity) \d+ms\b.*)$/, part);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.cjg-lid, \.cjg-strip \{ transition: none; \}/);
   assert.doesNotMatch(css, /animation|@keyframes/);
+});
+
+// ------------------------------------------------------------------ compact / portrait variants
+
+test('variants: auto = full on Tesla / desktop, compact cells on phones, portrait order in portrait', () => {
+  for (const l of ['board', 'window', null, undefined, 'something-else']) {
+    assert.equal(cjSwitchVariantFor(l), 'full', String(l));
+    assert.equal(cjGuardVariantFor(l), 'full', String(l));
+  }
+  assert.equal(cjSwitchVariantFor('portrait'), 'portrait');
+  assert.equal(cjSwitchVariantFor('phone-landscape'), 'compact');
+  assert.equal(cjGuardVariantFor('portrait'), 'compact');
+  assert.equal(cjGuardVariantFor('phone-landscape'), 'compact');
+});
+
+test('portrait items: DRIVE GARAGE MUTE COMPASS MORE on the row, everything else in MORE, nothing dropped', () => {
+  assert.deepEqual(CJ_SWITCH_ITEMS_PORTRAIT.map((i) => i.id), ['drive', 'garage', 'mute', 'compass', 'more']);
+  assert.deepEqual(CJ_PORTRAIT_ORDER, ['drive', 'garage', 'mute', 'compass', 'more']);
+  const full = new Set([...CJ_SWITCH_ITEMS, ...CJ_SWITCH_OVERFLOW].map((i) => i.id));
+  const port = [...CJ_SWITCH_ITEMS_PORTRAIT, ...CJ_SWITCH_OVERFLOW_PORTRAIT].map((i) => i.id);
+  assert.equal(port.length, full.size, 'no duplicates');
+  assert.deepEqual(new Set(port), full, 'same switch set as the full panel');
+  for (const i of [...CJ_SWITCH_ITEMS_PORTRAIT, ...CJ_SWITCH_OVERFLOW_PORTRAIT]) {
+    const f = [...CJ_SWITCH_ITEMS, ...CJ_SWITCH_OVERFLOW].find((x) => x.id === i.id)!;
+    assert.equal(i.label, f.label);
+    assert.equal(i.kind, f.kind);
+  }
+  // split of the full default set reproduces the portrait constants
+  const sp = portraitSplit(CJ_SWITCH_ITEMS, CJ_SWITCH_OVERFLOW);
+  assert.deepEqual(sp.items.map((i) => i.id), CJ_SWITCH_ITEMS_PORTRAIT.map((i) => i.id));
+  assert.deepEqual(sp.overflow.map((i) => i.id), CJ_SWITCH_OVERFLOW_PORTRAIT.map((i) => i.id));
+  // stable reorder of a host row (CjNavRow order: ... compass, mute, more); unknown ids keep their order before MORE
+  const row = ['drive', 'garage', 'visuals', 'compass', 'mute', 'more'].map((id) => ({ id, label: id, kind: id === 'more' ? 'more' : 'page' }) as CjSwitchItem);
+  assert.deepEqual(portraitOrder(row).map((i) => i.id), ['drive', 'garage', 'mute', 'compass', 'visuals', 'more']);
+  assert.deepEqual(portraitOrder([]), []);
+});
+
+test('rendered variants: full adds no attribute (Tesla DOM unchanged); compact/portrait keep every part', async () => {
+  const { mod, render } = await load();
+  const items = CJ_SWITCH_ITEMS.map((i) => (i.id === 'compass' ? { ...i, state: 'denied' as const } : i));
+  const auto = render(mod.CarrierJetSwitchPanel, { items, overflow: CJ_SWITCH_OVERFLOW, onSelect: noop });
+  const full = render(mod.CarrierJetSwitchPanel, { items, overflow: CJ_SWITCH_OVERFLOW, onSelect: noop, variant: 'full' });
+  assert.doesNotMatch(auto, /data-cjs-variant/, 'auto with no data-rf-layout ancestor = full, no attribute');
+  assert.equal(full.replace(/cjs-tray-[^"]+/g, ''), auto.replace(/cjs-tray-[^"]+/g, ''));
+  const count = (h: string, cls: string) => (h.match(new RegExp(`class="${cls}"`, 'g')) ?? []).length;
+  for (const variant of ['compact', 'portrait'] as const) {
+    const h = render(mod.CarrierJetSwitchPanel, { items, overflow: CJ_SWITCH_OVERFLOW, onSelect: noop, variant });
+    assert.match(h, new RegExp(`class="cjs"[^>]*data-cjs-variant="${variant}"`));
+    for (const cls of ['cjs-screw', 'cjs-title', 'cjs-label', 'cjs-lamp', 'cjs-bat', 'cjs-legend', 'cjs-hint']) assert.equal(count(h, cls), count(full, cls), `${variant}: ${cls} count`);
+    assert.match(h, />DENIED</);
+    assert.match(h, />TAP TO RETRY</);
+  }
+  const p = render(mod.CarrierJetSwitchPanel, { items, overflow: CJ_SWITCH_OVERFLOW, onSelect: noop, variant: 'portrait' });
+  const order = [...p.matchAll(/data-sw-id="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(order, ['drive', 'garage', 'mute', 'compass', 'visuals', 'options', 'sound-builder', 'more'], 'portrait DOM (= tab) order');
+  const g = render(mod.CarrierJetAfterburnerGuard, { armed: true, guardOpen: false, onArm: noop, onGuardToggle: noop });
+  assert.doesNotMatch(g, /data-cjg-variant/);
+  const gc = render(mod.CarrierJetAfterburnerGuard, { armed: false, guardOpen: true, onArm: noop, onGuardToggle: noop, variant: 'compact' });
+  assert.match(gc, /class="cjg"[^>]*data-cjg-variant="compact"/);
+  for (const t of ['>AFTERBURNER<', '>ARM<', '>SAFE<', '>AB SAFE<', '>GUARD ▲<', '>GUARD ▼<']) assert.ok(gc.includes(t), t);
+  assert.match(armTag(gc), /tabindex="0"/);
+});
+
+test('compact CSS: >= 11px text, >= 44px cells, no scale(), nothing hidden', () => {
+  const css = readFileSync(join(SKIN, 'switches.css'), 'utf8');
+  const compact = css.slice(css.indexOf('Compact / portrait panel and compact guard'));
+  assert.ok(compact.length > 1000);
+  assert.doesNotMatch(compact, /display:\s*none|visibility:\s*hidden|opacity:\s*0[;\s]/, 'compact rules hide nothing');
+  assert.doesNotMatch(compact, /scale\(|zoom:/);
+  for (const m of compact.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)) assert.ok(Number(m[1]) >= 11, `font ${m[1]}px`);
+  assert.match(compact, /\.cjs\[data-cjs-variant\]:not\(#cj-v\) \.cjs-sw \{[^}]*min-width: 44px; min-height: 44px; height: 44px;/);
+  assert.match(compact, /\.cjg\[data-cjg-variant='compact'\]:not\(#cj-v\) \.cjg-well \{[^}]*height: 48px/);
+  assert.match(compact, /\.cjg\[data-cjg-variant='compact'\]\[data-open='true'\]:not\(#cj-v\) \.cjg-guard \{ width: 46px; \}/);
+  const hud = readFileSync(join(SKIN, 'carrier-jet.css'), 'utf8');
+  const slot = hud.slice(hud.indexOf('FLIGHT-block slot'), hud.indexOf('Reduce Transparency'));
+  for (const line of slot.split('\n').filter((l) => l.includes('{') && !l.startsWith('.cj .cj-abslot'))) assert.match(line, /^\[data-rf-layout="portrait"\]/, `slot rule scoped to portrait: ${line.slice(0, 60)}`);
+});
+
+test('HUD flightSlot: portrait only (Tesla / desktop / landscape never draw it)', () => {
+  const src = readFileSync(join(SKIN, 'CarrierJetHud.tsx'), 'utf8');
+  assert.match(src, /slot: rfPhone === 'portrait' && p\.flightSlot \? p\.flightSlot : undefined/);
+  assert.equal((src.match(/<FlightSlot v=\{v\} \/>/g) ?? []).length, 3, 'one slot per look (compact boards)');
+  for (const fn of ['function Cockpit(', 'function Glass(', 'function Deck(']) {
+    const body = src.slice(src.indexOf(fn), src.indexOf('\n}\n', src.indexOf(fn)));
+    assert.doesNotMatch(body, /FlightSlot/, `${fn} full board has no slot`);
+  }
 });

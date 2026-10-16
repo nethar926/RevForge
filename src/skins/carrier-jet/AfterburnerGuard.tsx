@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import './carrier-jet.css';
 import './switches.css';
-import { guardView } from './switches';
+import { cjGuardVariantFor, guardView, type CjGuardVariant } from './switches';
+import { useRfLayoutAttr } from './useRfLayoutAttr';
 
 export interface CarrierJetAfterburnerGuardProps {
   /** ARM key lit (true) or dim with the SAFE legend (false). */
@@ -12,6 +13,12 @@ export interface CarrierJetAfterburnerGuardProps {
   guardOpen: boolean;
   /** Called when the guard is tapped (open ⇄ closed). Escape on ARM also calls it to close. */
   onGuardToggle: () => void;
+  /**
+   * 'full' = concept-sheet art · 'compact' = one strip (AFTERBURNER cap · guard well · plate, 60px tall); inside
+   * CarrierJetHud's `flightSlot` it stacks to the slot width. Default 'auto': compact in the phone layouts
+   * (nearest `data-rf-layout` = portrait | phone-landscape) or inside the HUD slot, else full.
+   */
+  variant?: CjGuardVariant | 'auto';
 }
 
 /**
@@ -19,8 +26,15 @@ export interface CarrierJetAfterburnerGuardProps {
  * shows through while closed. Tapping the guard flips it open (transform/opacity only, off under Reduce Motion).
  * Stores nothing: `armed` and `guardOpen` come from the host. Taps only, no drag.
  */
-export function CarrierJetAfterburnerGuard({ armed, onArm, guardOpen, onGuardToggle }: CarrierJetAfterburnerGuardProps) {
+export function CarrierJetAfterburnerGuard({ armed, onArm, guardOpen, onGuardToggle, variant = 'auto' }: CarrierJetAfterburnerGuardProps) {
   const v = guardView(armed, guardOpen);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const rf = useRfLayoutAttr(rootRef, variant === 'auto');
+  const [inSlot, setInSlot] = useState(false);
+  useLayoutEffect(() => {
+    if (variant === 'auto') setInSlot(!!rootRef.current?.closest('.cj-abslot'));
+  }, [variant]);
+  const look: CjGuardVariant = variant === 'auto' ? (inSlot ? 'compact' : cjGuardVariantFor(rf)) : variant;
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const armId = `cjg-arm-${uid}`;
   const statusId = `cjg-st-${uid}`;
@@ -48,7 +62,7 @@ export function CarrierJetAfterburnerGuard({ armed, onArm, guardOpen, onGuardTog
   };
 
   return (
-    <div className="cjg" data-open={guardOpen} data-armed={armed}>
+    <div ref={rootRef} className="cjg" data-open={guardOpen} data-armed={armed} data-cjg-variant={look === 'full' ? undefined : look}>
       <div className="cjg-cap" aria-hidden="true">AFTERBURNER</div>
       <div className="cjg-well">
         <div className="cjg-arm-slot" id={armId} inert={v.arm.inert}>

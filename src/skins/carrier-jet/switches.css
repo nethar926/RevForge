@@ -80,3 +80,82 @@
 @media (prefers-reduced-motion: reduce) {
   .cjg-lid, .cjg-strip { transition: none; }
 }
+
+/* ======================================================================================================
+ * Compact / portrait panel and compact guard: the SAME parts reflowed (screws, NAV title, label, lamp, lever,
+ * legend, hint; AFTERBURNER cap, striped guard, smoked window, ARM key + legend, plate). Nothing is hidden.
+ * Text >= 11px, every target >= 44x44 CSS px, no transform scale. Keyed on data-cjs-variant / data-cjg-variant,
+ * which the components set from the `variant` prop or, by default, from the nearest data-rf-layout ancestor
+ * (phones only; Tesla / desktop stay 'full' and render exactly as before).
+ * `:not(#cj-v)` lifts these rules one ID level so a host's class-level sizing glue cannot half-apply on top.
+ * ====================================================================================================== */
+
+/* ---------------- panel: compact / portrait */
+.cjs[data-cjs-variant]:not(#cj-v) { display: inline-block; max-width: 100%; padding: 1px 5px 1px 12px; border-width: 1px; border-radius: 4px; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw { display: block; width: 5px; height: 5px; border-width: 0.5px; }
+/* screws sit in the 12px left gutter (with the NAV stencil) and a 5px right gutter, clear of every cell */
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw::after { left: 1px; right: 1px; top: 2px; height: 1px; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw[data-pos='tl'] { left: 3px; top: 2px; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw[data-pos='bl'] { left: 3px; top: auto; bottom: 2px; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw[data-pos='tr'] { right: 0; top: 2px; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-screw[data-pos='br'] { right: 0; top: auto; bottom: 2px; }
+/* NAV stencil runs up the left gutter (writing-mode, not a transform) */
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-title {
+  display: block; position: absolute; left: 0; top: 50%; margin-top: -13px; width: 11px; height: 26px;
+  writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; line-height: 11px; letter-spacing: 0.06em; text-align: center;
+}
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-row { flex-wrap: nowrap; gap: 1px; }
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-sw {
+  flex-direction: column; align-items: center; justify-content: space-between; gap: 0;
+  width: auto; min-width: 44px; min-height: 44px; height: 44px; padding: 1px 0; border-width: 1px; border-radius: 3px;
+}
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-label { display: block; height: auto; max-width: none; font-size: 11px; line-height: 11px; letter-spacing: 0; white-space: nowrap; text-align: center; }
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-bat { width: 12px; height: 16px; }
+/* the jewel sits beside the lever, clear of the label and legend */
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-lamp { display: block; top: 18px; right: auto; left: calc(50% + 8px); width: 7px; height: 7px; border-width: 1px; }
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-legend { display: block; font-size: 11px; line-height: 11px; letter-spacing: 0; padding: 0; }
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-sw[data-up='true'] .cjs-legend { padding: 1px 3px; }
+/* denied: lever beside a three-line stack (label / DENIED / TAP TO RETRY), still 44px tall */
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-sw[data-denied] {
+  display: grid; grid-template-columns: auto auto; grid-template-rows: 11px 13px 13px; column-gap: 3px; row-gap: 1px; align-content: center; justify-items: start;
+  padding: 1px 3px; border-width: 1.5px;
+}
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-sw[data-denied] .cjs-bat { grid-column: 1; grid-row: 1 / 4; align-self: center; }
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-sw[data-denied] .cjs-label { grid-column: 2; grid-row: 1; }
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-sw[data-denied] .cjs-legend { grid-column: 2; grid-row: 2; padding: 1px 3px; }
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-sw[data-denied] .cjs-hint { display: block; grid-column: 2; grid-row: 3; padding: 1px 3px; font-size: 11px; line-height: 11px; white-space: nowrap; }
+.cjs[data-cjs-variant]:not(#cj-v) .cjs-sw[data-denied] .cjs-lamp { top: 3px; left: 3px; }
+/* MORE tray: same cells; the host positions the tray box, the skin keeps its header and wraps the cells */
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-tray { margin-top: 4px; padding-top: 4px; border-top-width: 1px; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-tray > .cjs-tray-h { display: block; margin: 0 0 4px 2px; font-size: 11px; line-height: 11px; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-tray > .cjs-row { flex-wrap: wrap; gap: 4px; }
+.cjs[data-cjs-variant]:not(#cj-v) > .cjs-tray .cjs-sw { padding-inline: 4px; }
+
+/* ---------------- guard: compact strip (cap · guard well · plate), 60px tall */
+.cjg[data-cjg-variant='compact']:not(#cj-v) { flex-direction: row; align-items: center; width: auto; gap: 6px; padding: 4px 6px; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) > .cjg-cap { display: block; font-size: 11px; line-height: 11px; letter-spacing: 0.04em; white-space: nowrap; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-well { flex: none; width: 144px; height: 48px; perspective: 300px; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-arm-slot { left: 48px; top: 0; width: 96px; height: 48px; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-arm { flex-direction: row; gap: 8px; width: 96px; height: 48px; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-arm-t { font-size: 16px; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-arm-s { padding: 1px 4px; font-size: 12px; letter-spacing: 0.08em; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-guard { left: 0; right: auto; top: 0; width: 144px; height: 48px; }
+.cjg[data-cjg-variant='compact'][data-open='true']:not(#cj-v) .cjg-guard { width: 46px; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-lid, .cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-strip { height: 48px; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-frame { -webkit-mask-size: 100% 100%, 92px 38px; mask-size: 100% 100%, 92px 38px; -webkit-mask-position: 0 0, 48px 5px; mask-position: 0 0, 48px 5px; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-win { left: 48px; right: 4px; top: 5px; height: 38px; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-tab { left: 2px; top: 5px; width: 42px; margin-left: 0; padding: 3px 0; font-size: 11px; line-height: 13px; letter-spacing: 0.02em; white-space: normal; }
+.cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-plate { flex: none; width: 88px; height: 34px; font-size: 12px; letter-spacing: 0.08em; }
+/* inside CarrierJetHud's flightSlot: fill the slot; narrower than the strip → cap and plate share the top row */
+.cj-abslot .cjg[data-cjg-variant='compact']:not(#cj-v) { display: flex; width: 100%; justify-content: center; }
+@container cj-abslot (max-width: 339px) {
+  .cj-abslot .cjg[data-cjg-variant='compact']:not(#cj-v) { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto 48px; gap: 4px 6px; align-items: center; padding: 4px; }
+  .cj-abslot .cjg[data-cjg-variant='compact']:not(#cj-v) > .cjg-cap { grid-column: 1; grid-row: 1; justify-self: start; }
+  .cj-abslot .cjg[data-cjg-variant='compact']:not(#cj-v) > .cjg-plate { grid-column: 2; grid-row: 1; width: auto; height: 22px; padding: 0 5px; font-size: 11px; letter-spacing: 0.04em; }
+  .cj-abslot .cjg[data-cjg-variant='compact']:not(#cj-v) > .cjg-well { grid-column: 1 / 3; grid-row: 2; justify-self: stretch; width: auto; }
+  .cj-abslot .cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-arm-slot { left: 48px; right: 0; width: auto; }
+  .cj-abslot .cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-arm { width: 100%; }
+  .cj-abslot .cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-guard { right: 0; width: auto; }
+  .cj-abslot .cjg[data-cjg-variant='compact'][data-open='true']:not(#cj-v) .cjg-guard { right: auto; width: 46px; }
+  .cj-abslot .cjg[data-cjg-variant='compact']:not(#cj-v) .cjg-frame { -webkit-mask-size: 100% 100%, calc(100% - 52px) 38px; mask-size: 100% 100%, calc(100% - 52px) 38px; }
+}
