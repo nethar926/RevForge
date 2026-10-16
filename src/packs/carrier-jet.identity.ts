@@ -10,13 +10,13 @@ const CARRIER_JET: PackIdentity = {
   id: 'carrier-jet',
   displayName: 'Carrier Jet',
   previewSlug: 'carrier-jet',
-  tagline: 'Swing-wing jet HUD · three looks · linked jet engine',
+  tagline: 'Carrier jet HUD · three looks · linked jet engine',
   engine: { preferred: 'aerospace-f14', fallback: 'aerospace-f14', kind: 'aerospace' },
   theme: {
     accent: '#ffc35a',
     secondary: '#4592e0',
     description:
-      'Experimental pack: a swing-wing jet HUD in three looks (MATRIX, VECTOR, HOLO) — speed, gear and RPM with a live wing-sweep schedule and afterburner zones, paired with the Carrier Jet engine.',
+      'Experimental pack: a carrier jet HUD in three looks (MATRIX, VECTOR, HOLO) — speed, gear and RPM with a live wing-sweep schedule and afterburner zones, paired with the Carrier Jet engine.',
     feature: 'Wing sweep · linked jet',
   },
 };
