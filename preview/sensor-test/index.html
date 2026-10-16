@@ -273,6 +273,7 @@ function verdicts(){
  var gs=gapStats(),L=G.last;
  return {
   gpsStatus:gpsStatus(),
+  latLon:L?[L.lat,L.lon]:null,accuracyM:L?L.acc:null,
   gpsSpeed:fieldVerdict('speed'),gpsHeading:fieldVerdict('heading'),gpsAltitude:fieldVerdict('altitude'),
   compassBeforeTap:oriVerdict(O.before,false),compassAfterTap:oriVerdict(O.after,true),
   gyroMotion:motionVerdict(),
@@ -341,6 +342,7 @@ function render(){
  function vr(label,p){return '<tr><td>'+esc(label)+'</td><td class="'+(p[1]?'y':'n')+'">'+esc(p[0])+'</td></tr>';}
  function pr(label,t){return '<tr><td>'+esc(label)+'</td><td>'+esc(t)+'</td></tr>';}
  $('sumtab').innerHTML=pr('GPS',v.gpsStatus+', '+n+' fixes')+
+  pr('Lat / lon',L?f(L.lat,5)+', '+f(L.lon,5)+' (±'+f(L.acc,0)+' m)':'—')+
   vr('GPS speed',v.gpsSpeed)+vr('GPS heading',v.gpsHeading)+vr('GPS altitude',v.gpsAltitude)+
   vr('Compass before tap',v.compassBeforeTap)+vr('Compass after tap',v.compassAfterTap)+vr('Gyro / motion',v.gyroMotion)+
   pr('GPS updates/s',v.updatesPerSec.toFixed(2)+' / median gap '+(v.medianGapMs===null?'—':v.medianGapMs+' ms'))+
