@@ -3,7 +3,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   COMPASS_FRESH_MS,
+  HEADING_LIVE_MS,
+  HEADING_SAVE_MS,
   HeadingFusion,
+  HeadingSaver,
+  LAST_HEADING_KEY,
+  headingView,
+  readSavedHeading,
   angleDiff,
   distanceM,
   headingFromAlpha,
@@ -155,4 +161,81 @@ test('wiring: CJ mount passes heading; useGeolocation calls getCurrentPosition b
   assert.match(geo, /publishGpsFix\(/);
   const heading = readFileSync(new URL('../src/packs/heading.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(heading, /watchPosition|getCurrentPosition/, 'heading never opens its own geolocation watch');
+});
+
+const memKV = () => { const m = new Map<string, string>(); return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) }; };
+
+test('parked heading: saved value restored as stale; none → --- (undefined) still stale; junk ignored', () => {
+  const kv = memKV();
+  assert.equal(readSavedHeading(kv), null);
+  assert.deepEqual(headingView(false, undefined, null), { heading: undefined, stale: true }, 'no saved heading: --- and the NEEDS MOTION chip');
+  kv.m.set(LAST_HEADING_KEY, JSON.stringify({ deg: 372, at: 1000 }));
+  const saved = readSavedHeading(kv);
+  assert.deepEqual(saved, { deg: 12, at: 1000 });
+  assert.deepEqual(headingView(false, undefined, saved), { heading: 12, stale: true }, 'restored on load, marked stale');
+  kv.m.set(LAST_HEADING_KEY, '{"deg":"x"}');
+  assert.equal(readSavedHeading(kv), null);
+  kv.m.set(LAST_HEADING_KEY, 'not json');
+  assert.equal(readSavedHeading(kv), null);
+});
+
+test('live GPS heading overrides the stale one; stopping makes it stale again after HEADING_LIVE_MS (held value)', () => {
+  const saved = { deg: 200, at: 0 };
+  const f = new HeadingFusion();
+  let t = 1_000_000;
+  assert.equal(f.live(t), false);
+  for (let i = 0; i < 6; i++) f.onGps(fix(40 + i * 1e-4, -74, (t += 1000), 90, 12));
+  assert.equal(f.live(t), true);
+  const v = headingView(f.live(t), f.value(t), saved);
+  assert.equal(v.stale, false);
+  near(v.heading!, 90, 0.5, 'live beats the saved 200°');
+  // stopped: no new GPS heading → still live just before the window ends, stale after, value held (not the saved one)
+  f.onGps(fix(40.0006, -74, t + 1000, null, 0));
+  assert.equal(f.live(t + HEADING_LIVE_MS - 1), true);
+  const late = headingView(f.live(t + HEADING_LIVE_MS + 1), f.value(t + HEADING_LIVE_MS + 1), saved);
+  assert.equal(late.stale, true);
+  near(late.heading!, 90, 0.5);
+  // a fresh compass reading is live too (iPhone path unchanged)
+  const c = new HeadingFusion();
+  c.onCompass(45, 5000);
+  assert.equal(c.live(5000 + COMPASS_FRESH_MS - 1), true);
+  assert.equal(c.live(5000 + COMPASS_FRESH_MS), false);
+});
+
+test('persistence throttle: ≤ 1 write per HEADING_SAVE_MS, newest pending value wins, forced flush on pagehide', () => {
+  const kv = memKV();
+  const s = new HeadingSaver(kv, HEADING_SAVE_MS);
+  assert.equal(s.offer(10, 1000), true, 'first live value written at once');
+  assert.deepEqual(JSON.parse(kv.m.get(LAST_HEADING_KEY)!), { deg: 10, at: 1000 });
+  for (let t = 1250; t < 1000 + HEADING_SAVE_MS; t += 250) assert.equal(s.offer(10 + (t - 1000) / 250, t), false);
+  assert.equal(s.writes, 1, 'nothing written inside the window');
+  assert.equal(s.dueIn(3000), 1000 + HEADING_SAVE_MS - 3000);
+  assert.equal(s.flush(1000 + HEADING_SAVE_MS - 1), false);
+  assert.equal(s.flush(1000 + HEADING_SAVE_MS), true);
+  assert.equal(s.writes, 2);
+  assert.equal(JSON.parse(kv.m.get(LAST_HEADING_KEY)!).deg, 29, 'the newest pending value');
+  assert.equal(s.dueIn(7000), null, 'nothing pending');
+  s.offer(300, 6500);
+  assert.equal(s.writes, 2);
+  assert.equal(s.flush(6501, true), true, 'pagehide / unmount writes the pending value');
+  assert.deepEqual(readSavedHeading(kv), { deg: 300, at: 6500 });
+  // 10 minutes of 4 Hz live updates → ≤ 121 writes
+  const s2 = new HeadingSaver(memKV(), HEADING_SAVE_MS);
+  for (let t = 0; t <= 600_000; t += 250) { s2.offer(t % 360, t); s2.flush(t); }
+  assert.ok(s2.writes <= 121, `writes ${s2.writes}`);
+});
+
+test('wiring: mount passes headingStale (chip shown while stale, hidden once live); no host hint overlay', () => {
+  const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
+  assert.match(mount, /const \{ heading, stale: headingStale \} = useHeading\(layout\);/);
+  assert.match(mount, /<CarrierJetHud [^>]*heading=\{heading\} headingStale=\{headingStale\} \/>/);
+  assert.doesNotMatch(mount.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ''), /NEEDS MOTION|hdg-hint/, 'the skin owns the chip (b0f4a8d); no second chip from the host');
+  const heading = readFileSync(new URL('../src/packs/heading.ts', import.meta.url), 'utf8');
+  assert.match(heading, /setStale\(view\.stale\);/);
+  assert.match(heading, /storageKey\(LAST_HEADING_KEY\)/);
+  assert.match(heading, /addEventListener\('pagehide', save\)/);
+  // the skin chip renders only when the prop is true (b0f4a8d)
+  const hud = readFileSync(new URL('../src/skins/carrier-jet/CarrierJetHud.tsx', import.meta.url), 'utf8');
+  assert.match(hud, /v\.headingStale \? \(\s*<span className="cj-hstale"/);
+  assert.match(hud, /headingStale: p\.headingStale === true,/);
 });

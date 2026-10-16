@@ -15,6 +15,10 @@ import type { RfLayout } from './layout.ts';
  *     > MIN_BEARING_SPEED_MS.
  * Once any value exists it is HELD (stopped, no new fix, compass gone stale) — never back to undefined.
  * Light circular smoothing (359 → 0 wrap safe). React state is throttled (HEADING_EMIT_MS, ≥ 1°).
+ * Parked heading (Wilson, Oct 16): Tesla has no compass and GPS gives no heading at 0 mph, so the last
+ * LIVE heading and its time are saved (localStorage, ≤ 1 write / HEADING_SAVE_MS) and restored on load.
+ * `stale` = no live source (no fresh compass, no new GPS heading within HEADING_LIVE_MS): the shown
+ * value is held / restored, and the HUD marks it (CarrierJetHud headingStale → NEEDS MOTION).
  */
 
 export const COMPASS_FRESH_MS = 1000;
@@ -30,6 +34,11 @@ export const GPS_SMOOTHING = 0.6;
 export const COMPASS_SMOOTHING = 0.25;
 export const HEADING_EMIT_MS = 250;
 export const HEADING_EMIT_MIN_DEG = 1;
+/** A GPS heading older than this (ms, by fix time) is no longer live. */
+export const HEADING_LIVE_MS = 5000;
+/** Saved last heading: at most one localStorage write per this many ms. */
+export const HEADING_SAVE_MS = 5000;
+export const LAST_HEADING_KEY = 'revforge.heading.last';
 
 const RAD = Math.PI / 180;
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -81,6 +90,7 @@ export class HeadingFusion {
   private compassAt: number | null = null;
   private anchor: GpsFix | null = null;
   private last: number | undefined;
+  private gpsAt: number | null = null;
 
   /** A GPS fix. Returns true when it changed the GPS heading. */
   onGps(fix: GpsFix): boolean {
@@ -107,6 +117,7 @@ export class HeadingFusion {
     }
     if (raw === undefined) return false; // stopped / no new value: hold
     this.gps = smoothAngle(this.gps, raw, GPS_SMOOTHING);
+    this.gpsAt = fix.timestamp;
     return true;
   }
 
@@ -119,6 +130,11 @@ export class HeadingFusion {
 
   compassFresh(now: number): boolean {
     return this.compassAt !== null && now - this.compassAt < COMPASS_FRESH_MS && this.compass !== undefined;
+  }
+
+  /** A live heading source exists at `now`: fresh compass, or a GPS heading from a fix < HEADING_LIVE_MS old. */
+  live(now: number): boolean {
+    return this.compassFresh(now) || (this.gpsAt !== null && now - this.gpsAt < HEADING_LIVE_MS && now >= this.gpsAt - HEADING_LIVE_MS);
   }
 
   /** Which source value(now) uses. */
@@ -146,6 +162,85 @@ export function shouldEmit(shown: number | undefined, next: number | undefined):
   if (next === undefined) return false;
   if (shown === undefined || Math.abs(angleDiff(next, shown)) >= HEADING_EMIT_MIN_DEG) return true;
   return Math.round(normDeg(next)) % 360 !== Math.round(normDeg(shown)) % 360;
+}
+
+// ------------------------------------------------------------------ parked heading: last live value, persisted
+
+export interface SavedHeading {
+  /** Degrees from north, [0, 360). */
+  deg: number;
+  /** When it was taken (ms since epoch). */
+  at: number;
+}
+interface KV {
+  getItem(k: string): string | null;
+  setItem(k: string, v: string): void;
+}
+const localKV = (): KV | null => {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+};
+
+/** Saved last live heading, or null (none / unreadable / junk). */
+export function readSavedHeading(kv: KV | null = localKV()): SavedHeading | null {
+  try {
+    const raw = kv?.getItem(storageKey(LAST_HEADING_KEY));
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<SavedHeading>;
+    return finite(v?.deg) && finite(v?.at) ? { deg: normDeg(v.deg), at: v.at } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Throttled writer (pure apart from the KV): offer() every live update; it writes at once when the last write is
+ * ≥ `every` ms old, else keeps the newest value pending; flush(now) writes a due pending value (the hook calls it
+ * from a timer at dueIn(), and unconditionally on pagehide / unmount with force).
+ */
+export class HeadingSaver {
+  private lastWrite = -Infinity;
+  private pending: SavedHeading | null = null;
+  writes = 0;
+  private readonly kv: KV | null;
+  private readonly every: number;
+  constructor(kv: KV | null = localKV(), every = HEADING_SAVE_MS) {
+    this.kv = kv;
+    this.every = every;
+  }
+  offer(deg: number, at: number): boolean {
+    if (!finite(deg) || !finite(at)) return false;
+    this.pending = { deg: normDeg(deg), at };
+    return this.flush(at);
+  }
+  /** ms until the pending value may be written (0 = now), or null when nothing is pending. */
+  dueIn(now: number): number | null {
+    return this.pending ? Math.max(0, this.lastWrite + this.every - now) : null;
+  }
+  flush(now: number, force = false): boolean {
+    if (!this.pending || (!force && now - this.lastWrite < this.every)) return false;
+    try {
+      this.kv?.setItem(storageKey(LAST_HEADING_KEY), JSON.stringify(this.pending));
+    } catch {
+      /* quota / private mode: session only */
+    }
+    this.writes++;
+    this.lastWrite = now;
+    this.pending = null;
+    return true;
+  }
+}
+
+/**
+ * What the HUD shows (pure): a live heading wins; otherwise the held value, else the saved one (stale);
+ * none at all → undefined ('---'), still stale.
+ */
+export function headingView(live: boolean, value: number | undefined, saved: SavedHeading | null): { heading: number | undefined; stale: boolean } {
+  if (live && value !== undefined) return { heading: value, stale: false };
+  return { heading: value ?? saved?.deg, stale: true };
 }
 
 // ------------------------------------------------------------------ device compass permission (iOS)
@@ -283,26 +378,54 @@ function screenAngle(): number {
  * the device compass is only touched in the phone layouts (iOS once the COMPASS switch granted it,
  * Android when absolute-orientation events really carry alpha).
  */
-export function useHeading(layout: RfLayout): { heading: number | undefined } {
+export function useHeading(layout: RfLayout): { heading: number | undefined; stale: boolean } {
   const fusion = useRef<HeadingFusion | null>(null);
   if (!fusion.current) fusion.current = new HeadingFusion();
-  const [heading, setHeading] = useState<number | undefined>(undefined);
-  const shown = useRef<number | undefined>(undefined);
+  const saved = useRef<SavedHeading | null | undefined>(undefined);
+  if (saved.current === undefined) saved.current = readSavedHeading();
+  const saver = useRef<HeadingSaver | null>(null);
+  if (!saver.current) saver.current = new HeadingSaver();
+  const [heading, setHeading] = useState<number | undefined>(() => saved.current?.deg);
+  const [stale, setStale] = useState(true);
+  const shown = useRef<number | undefined>(saved.current?.deg);
   const lastEmit = useRef(0);
   const timer = useRef<number | null>(null);
   const staleTimer = useRef<number | null>(null);
+  const liveTimer = useRef<number | null>(null);
+  const saveTimer = useRef<number | null>(null);
 
   const flush = useCallback(() => {
     timer.current = null;
     const now = Date.now();
-    const v = fusion.current!.value(now);
-    if (shouldEmit(shown.current, v)) {
-      const r = normDeg(Math.round(v * 10) / 10);
+    const f = fusion.current!;
+    const live = f.live(now);
+    const view = headingView(live, f.value(now), saved.current ?? null);
+    if (shouldEmit(shown.current, view.heading)) {
+      const r = normDeg(Math.round(view.heading * 10) / 10);
       shown.current = r;
       lastEmit.current = now;
       setHeading(r);
     }
+    setStale(view.stale);
+    if (live && view.heading !== undefined) {
+      // Persist the live value (throttled), and re-check liveness once it would expire.
+      const s = saver.current!;
+      s.offer(view.heading, now);
+      const due = s.dueIn(now);
+      if (due !== null && saveTimer.current === null)
+        saveTimer.current = window.setTimeout(() => {
+          saveTimer.current = null;
+          saver.current!.flush(Date.now());
+        }, due);
+      if (liveTimer.current !== null) window.clearTimeout(liveTimer.current);
+      liveTimer.current = window.setTimeout(() => {
+        liveTimer.current = null;
+        flushRef.current();
+      }, HEADING_LIVE_MS + 50);
+    }
   }, []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
   /** Coalesce inputs: at most one React update per HEADING_EMIT_MS. */
   const schedule = useCallback(() => {
     if (timer.current !== null) return;
@@ -315,7 +438,7 @@ export function useHeading(layout: RfLayout): { heading: number | undefined } {
     const f = fusion.current!;
     const prior = latestGpsFix();
     if (prior) f.onGps(prior);
-    if (f.value(Date.now()) !== undefined) schedule();
+    schedule(); // first view: live, held or restored (stale)
     return subscribeGpsFixes((fix) => {
       if (f.onGps(fix)) schedule();
     });
@@ -364,13 +487,16 @@ export function useHeading(layout: RfLayout): { heading: number | undefined } {
     return () => window.removeEventListener('deviceorientation', on);
   }, [iosOn, onReading]);
 
-  useEffect(
-    () => () => {
-      if (timer.current !== null) window.clearTimeout(timer.current);
-      if (staleTimer.current !== null) window.clearTimeout(staleTimer.current);
-    },
-    [],
-  );
+  // Pending saved heading: written on pagehide and on unmount, so a quick park + close keeps the last value.
+  useEffect(() => {
+    const save = () => saver.current!.flush(Date.now(), true);
+    window.addEventListener('pagehide', save);
+    return () => {
+      window.removeEventListener('pagehide', save);
+      save();
+      for (const t of [timer, staleTimer, liveTimer, saveTimer]) if (t.current !== null) window.clearTimeout(t.current);
+    };
+  }, []);
 
-  return { heading };
+  return { heading, stale };
 }

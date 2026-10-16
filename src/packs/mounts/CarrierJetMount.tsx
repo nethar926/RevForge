@@ -35,7 +35,9 @@ import './carrier-jet-controls.css';
  * derives the zone from load, then throttle.
  * heading (packs/heading.ts): GPS course from the app's one geolocation watch (coords.heading, else
  * the two-fix bearing), or the phone compass while it reports fresh data; held once known, throttled
- * (≤ 4 Hz, ≥ 1°). iOS compass permission is the COMPASS switch in the CJ switch row (CjNavRow).
+ * (≤ 4 Hz, ≥ 1°). Parked (no live source): the last live heading, saved to localStorage (≤ 1 write / 5 s) and
+ * restored on load, goes to the HUD with headingStale (Visual Skins' dimmed heading + NEEDS MOTION chip); no saved
+ * value keeps '---' with the chip. iOS compass permission is the COMPASS switch in the CJ switch row (CjNavRow).
  * Afterburner guard (Visual Skins' CarrierJetAfterburnerGuard): guardOpen is UI state (closed on load);
  * ARM persists (packs/abArmed.ts) and goes to the engine as an 'ab-armed' pack engine command, the same
  * runtime bus the AB zone comes back on. Compact strip; placement below — carrier-jet-controls.css.
@@ -59,7 +61,8 @@ export function CarrierJetMount(props: PackHudProps) {
   // the skin's 'auto' size threshold swaps in the essential layout). Elsewhere an explicit host
   // request forces compact, otherwise the skin decides from its own size (full at 1280×800).
   const compact: boolean | 'auto' = fullBoard ? false : props.compact === true ? true : 'auto';
-  const { heading } = useHeading(layout);
+  // stale: no live GPS / compass heading; the HUD gets the held or saved value and dims it (NEEDS MOTION).
+  const { heading, stale: headingStale } = useHeading(layout);
   const armed = useSyncExternalStore(subscribeAbArmed, getAbArmed, getAbArmed);
   const [guardOpen, setGuardOpen] = useState(false);
   const onArm = () => {
@@ -136,7 +139,7 @@ export function CarrierJetMount(props: PackHudProps) {
       style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}
     >
       <div className="cjm-fill">
-        <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} />
+        <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} headingStale={headingStale} />
       </div>
       {bankHost ? createPortal(layout === 'portrait' ? <div className="cjm-below">{bank}</div> : bank, bankHost) : layout !== 'portrait' && <div className="cjm-ab">{bank}</div>}
     </div>
