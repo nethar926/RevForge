@@ -1,15 +1,16 @@
 # Carrier Jet skin (`src/skins/carrier-jet/`)
 
-One swing-wing HUD with three looks, chosen with a CARRIER JET / TOMCAT / SWING WING tab group.
-Each tab shows the same name as that look's header label:
+One swing-wing HUD with three looks, chosen with a MATRIX / VECTOR / HOLO tab group.
+Each tab shows the same name as that look's header label. The names live in `LOOK_LABELS` (model.ts), keyed by the
+unchanged variant ids; ids, classes, data attributes and the persisted value are not renamed:
 
 | variant id | tab = header label | concept board |
 |---|---|---|
-| `carrier-jet` | CARRIER JET | A · faithful cockpit (B612 + VT323, green CRTs) |
-| `tomcat` | TOMCAT | B · modern glass (Barlow Semi Condensed, HUD on black) |
-| `swing-wing` (**default**) | SWING WING | C · carrier-deck night (Oswald numerals + Barlow Semi Condensed labels) |
+| `carrier-jet` | MATRIX | A · faithful cockpit (B612 + VT323, green CRTs) |
+| `tomcat` | VECTOR | B · modern glass (Barlow Semi Condensed, HUD on black) |
+| `swing-wing` (**default**) | HOLO | C · carrier-deck night (Oswald numerals + Barlow Semi Condensed labels) |
 
-Every header also carries the small `F-14` chip. `src/skins/aerospace-f14/` is untouched.
+Every header also carries the small `HUD` chip (`CARRIER_JET_DESIGNATION`). `src/skins/aerospace-f14/` is untouched.
 
 ## API
 
@@ -39,12 +40,12 @@ import { CarrierJetHud, CARRIER_JET_VARIANTS } from '../skins/carrier-jet';
 
 ### Compact = the full board, reflowed (Wilson's rule)
 There is no separate compact design. `CockpitCompact` / `GlassCompact` / `DeckCompact` render every block of the full board
-for that look (header label, F-14 chip, GPS + status pills, the Look tabs, speed, RPM + bar, wing sweep digits, planform,
+for that look (header label, HUD chip, GPS + status pills, the Look tabs, speed, RPM + bar, wing sweep digits, planform,
 tape + mode windows, pitch ladder, heading, AoA + indexer, accel ball, engine strips and AB ladder) and only rearrange them:
 dense SVG instruments get their own cells, the grid follows the container (container units, numeral cells are size containers).
 Text stays >= 11px after the SVG viewBox shrink (`--cj-sv` floor), the Look tabs stay >= 44px, no `transform: scale()`.
 Every block carries `data-cj-el="…"`, so tests and gates compare compact against the full board element by element.
-The Look tabs (CARRIER JET / TOMCAT / SWING WING) render in every layout, including compact and the drive window.
+The Look tabs (MATRIX / VECTOR / HOLO) render in every layout, including compact and the drive window.
 ### Phone layouts (Frontend's layout picker)
 The picker puts `data-rf-layout="board|window|portrait|phone-landscape"` on the pack mount root. The HUD reads it from its
 ancestors; `portrait` and `phone-landscape` always use the reflowed board, and every phone CSS rule is scoped under

@@ -104,7 +104,7 @@ test('Mach: piecewise linear mph → Mach (0..75 → 0..1.00, 75..120 → 1.00..
 
 test('variants: ids, labels (tab = header), default swing-wing, storage key shape', () => {
   assert.deepEqual(CARRIER_JET_VARIANTS.map((v) => v.id), ['carrier-jet', 'tomcat', 'swing-wing']);
-  assert.deepEqual(CARRIER_JET_VARIANTS.map((v) => v.label), ['Carrier Jet', 'Tomcat', 'Swing Wing']);
+  assert.deepEqual(CARRIER_JET_VARIANTS.map((v) => v.label), ['MATRIX', 'VECTOR', 'HOLO']);
   assert.equal(CARRIER_JET_DEFAULT_VARIANT, 'swing-wing');
   assert.equal(CARRIER_JET_VARIANT_KEY, 'revforge.pack.carrier-jet.variant');
   const store = readFileSync(join(SKIN, 'variantStore.ts'), 'utf8');
@@ -162,7 +162,8 @@ test('rendered: each tab label equals its variant header label; radiogroup seman
     assert.equal((h.match(/aria-checked="true"/g) ?? []).length, 1);
     assert.match(h, /role="meter" aria-label="Speed"[^>]*aria-valuetext="45 miles per hour"/);
     assert.match(h, /role="meter" aria-label="Wing sweep"[^>]*aria-valuetext="Wing sweep 30 degrees, auto schedule"/);
-    assert.match(h, /F-14/);
+    assert.match(h, /data-cj-el="designation">HUD</);
+    assert.doesNotMatch(h, /F-?14/);
   }
 });
 

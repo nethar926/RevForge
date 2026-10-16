@@ -7,26 +7,33 @@
 export type CarrierJetVariant = 'carrier-jet' | 'tomcat' | 'swing-wing';
 
 /**
+ * Visible / spoken look names, keyed by the internal variant id (ids, classes, data attributes and
+ * the persisted value never change). The one place to rename a look: the header label, the LOOK
+ * key legend and the HUD's accessible name all read from here (Frontend can import it too).
+ * Each name is one real word, so screen readers say it as a word; CSS uppercases on screen anyway.
+ */
+export const LOOK_LABELS = { 'carrier-jet': 'MATRIX', tomcat: 'VECTOR', 'swing-wing': 'HOLO' } as const;
+
+/**
  * One label per variant: the header label AND the tab label (they must match, see tests).
- * Sentence case in the DOM so screen readers say words; CSS uppercases it on screen.
  * carrier-jet = concept A (faithful cockpit), tomcat = B (modern glass), swing-wing = C (carrier-deck night).
  */
 export const CARRIER_JET_VARIANTS: readonly { readonly id: CarrierJetVariant; readonly label: string; readonly concept: 'A' | 'B' | 'C' }[] = [
-  { id: 'carrier-jet', label: 'Carrier Jet', concept: 'A' },
-  { id: 'tomcat', label: 'Tomcat', concept: 'B' },
-  { id: 'swing-wing', label: 'Swing Wing', concept: 'C' },
+  { id: 'carrier-jet', label: LOOK_LABELS['carrier-jet'], concept: 'A' },
+  { id: 'tomcat', label: LOOK_LABELS.tomcat, concept: 'B' },
+  { id: 'swing-wing', label: LOOK_LABELS['swing-wing'], concept: 'C' },
 ];
 /** Fresh-profile default. */
 export const CARRIER_JET_DEFAULT_VARIANT: CarrierJetVariant = 'swing-wing';
-/** Small designation chip shown next to every header label. */
-export const CARRIER_JET_DESIGNATION = 'F-14';
+/** Small designation chip shown next to every header label (neutral legend, no airframe designation). */
+export const CARRIER_JET_DESIGNATION = 'HUD';
 /** Pack id used for the persisted variant key (matches Frontend's catalog id). */
 export const CARRIER_JET_ID = 'carrier-jet';
 /** Same shape as Stellar Helm's `revforge.pack.<id>.frame`; wrapped by storageKey() at runtime. */
 export const CARRIER_JET_VARIANT_KEY = `revforge.pack.${CARRIER_JET_ID}.variant`;
 
 export const isCarrierJetVariant = (v: unknown): v is CarrierJetVariant => v === 'carrier-jet' || v === 'tomcat' || v === 'swing-wing';
-export const variantLabel = (v: CarrierJetVariant): string => CARRIER_JET_VARIANTS.find((o) => o.id === v)?.label ?? '';
+export const variantLabel = (v: CarrierJetVariant): string => LOOK_LABELS[v] ?? '';
 
 // ---------------------------------------------------------------- wing sweep schedule
 /** Wings fully forward (deg) at and below SWEEP_KNEE_MPH. */
