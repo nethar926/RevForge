@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { FEATURES } from '../features';
+import { BUILTIN_PATCHES } from '../audio/builtins';
 import type { useAudioEngine } from '../hooks/useAudioEngine';
 import type { useGeolocation } from '../hooks/useGeolocation';
 
@@ -89,7 +91,8 @@ export function DiagPage({ audio, gps }: Props) {
     { label: 'sampleRate', value: snap.sampleRate },
     { label: 'baseLatency', value: snap.baseLatency },
     { label: 'Engine running', value: snap.engineRunning },
-    { label: 'Engine id', value: snap.engineId },
+    // CJ preview: internal ids (e.g. aerospace-f14) never shown; display name instead.
+    FEATURES.garage ? { label: 'Engine id', value: snap.engineId } : { label: 'Engine', value: BUILTIN_PATCHES.find((p) => p.id === snap.engineId)?.name ?? 'Custom engine' },
     { label: 'iceMode', value: snap.iceMode },
     { label: 'workletError', value: snap.workletError },
   ];

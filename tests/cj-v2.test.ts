@@ -41,7 +41,7 @@ test('hidden features: routes, deep links and panels redirect to Drive (CJ only)
     assert.equal(hiddenRoute(p, ROOT), false, p);
   }
   assert.equal(hiddenRoute('/diag', CJ), false);
-  for (const p of ['studio', 'dashlab', 'account']) {
+  for (const p of ['studio', 'dashlab', 'account', 'garage']) {
     assert.equal(hiddenPanel(p, CJ), true);
     assert.equal(hiddenPanel(p, ROOT), false);
   }
@@ -182,4 +182,15 @@ test('no header GPS pill where the GPS+RADAR plate is mounted; the plate aria-la
   assert.equal(plateAria(false, 'live', true), 'GPS live, radar on');
   assert.equal(plateAria(false, 'fail', false), 'GPS no fix, radar off');
   assert.equal(plateAria(false, 'acq', false), 'GPS acquiring, radar off');
+});
+
+test('CJ v2 gate fixes: garage only via CONFIG PACK, COLORS not via garage, no raw engine id in DIAG', () => {
+  const forge = readFileSync(new URL('../src/forge/ForgePage.tsx', import.meta.url), 'utf8');
+  assert.match(forge, /a\.panel==='garage'&&!FEATURES\.garage\)setPanelRaw\('garage'\)/);
+  assert.match(forge, /FEATURES\.garage\?'Revs':'Pack'/);
+  const table = readFileSync(new URL('../src/packs/configTable.ts', import.meta.url), 'utf8');
+  const colors = table.split('\n').find((l) => l.includes("id: 'colors'")) ?? '';
+  assert.ok(!colors.includes("panel: 'garage'"), colors);
+  const diag = readFileSync(new URL('../src/pages/DiagPage.tsx', import.meta.url), 'utf8');
+  assert.match(diag, /FEATURES\.garage \? \{ label: 'Engine id'/);
 });

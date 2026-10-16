@@ -36,7 +36,8 @@ export function hiddenRoute(pathname: string, f: Features = FEATURES): boolean {
   return (!f.soundBuilder && p.startsWith('/sound-builder')) || (!f.proBuilder && p.startsWith('/builder')) || (!f.garage && p.startsWith('/engines'));
 }
 
-/** Drive panels owned by a hidden feature (closed / never opened). */
+/** Drive panels owned by a hidden feature (closed / never opened from URLs or menus). With garage off, the
+ * engine list opens only as CONFIG › SND › PACK (see openPack in ForgePage), titled "Pack", without recolor. */
 export function hiddenPanel(panel: string | null | undefined, f: Features = FEATURES): boolean {
-  return (!f.lab && (panel === 'dashlab' || panel === 'studio')) || (!f.account && panel === 'account');
+  return (!f.lab && (panel === 'dashlab' || panel === 'studio')) || (!f.account && panel === 'account') || (!f.garage && panel === 'garage');
 }
