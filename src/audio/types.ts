@@ -527,6 +527,9 @@ export type JetSwitchFoley = 'toggle' | 'guardOpen' | 'guardClose' | 'hold' | 'p
 /** playJetCue cues: switch foley + afterburner guard cover + chime + warning tone. */
 export type JetCue =
   | JetSwitchFoley
+  /** landing gear lever: full retract / extend sequence */
+  | 'gearUp'
+  | 'gearDown'
   | 'abGuardOpen'
   | 'abGuardClose'
   | 'chime'

@@ -379,7 +379,8 @@ test('PULL emergency stop: warning first, then everything spools down to silence
 /* ───────────── foley / one-shots ───────────── */
 
 test('playJetCue: every cue is a short quiet transient; unknown cues are refused', async () => {
-  const cues = cold.JET_CUES;
+  // gearUp / gearDown are multi-second gear sequences, covered in cj-gear.test.mjs
+  const cues = cold.JET_CUES.filter((c) => c !== 'gearUp' && c !== 'gearDown');
   const SR = 44100;
   const gap = 1.5;
   const off = new nwa.OfflineAudioContext(2, Math.ceil(SR * gap * cues.length), SR);

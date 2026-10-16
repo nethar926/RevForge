@@ -22,6 +22,8 @@ const sstep = (x) => {
 };
 
 /** Switchable systems (Frontend switch ids). */
+import { GearSequence } from './jetGear.js';
+
 export const JET_SYSTEMS = [
   'batt',
   'seatbelt',
@@ -91,6 +93,9 @@ export const JET_CUES = [
   'pamphletLift',
   'pamphletOpen',
   'pamphletClose',
+  // landing gear lever (full procedural retract / extend sequence, default lock timing)
+  'gearUp',
+  'gearDown',
 ];
 /** Switch foley played by setJetSystem by default (override per call or pass foley: false). */
 export const JET_DEFAULT_FOLEY = {
@@ -123,8 +128,6 @@ export const JET_DEFAULT_FOLEY = {
 export const JET_ENGINE_PAN = 0.5;
 /** Air cart sits on the right side (it is plugged into the right engine's start duct). */
 export const JET_CART_PAN = 0.4;
-/** Gear actuator run time (s) up; down adds 0.25 s. */
-export const JET_GEAR_RUN = 2.6;
 /** Emergency stop: warning tone first, fuel cut after this many seconds. */
 export const JET_ESTOP_DELAY = 0.6;
 
@@ -303,6 +306,7 @@ export const JET_COLD_LEVEL = {
   ins: 0.0035,
   hydWhine: 0.0065,
   hydFlow: 0.02,
+  gear: 0.8,
 };
 
 export class JetColdStartVoice {
@@ -363,6 +367,9 @@ export class JetColdStartVoice {
     this.hp = filt('highpass', 30, 0.707, this.out);
     this.bus = gain(1, this.hp);
     this.foley = gain(L.foley, this.bus);
+    // landing gear sequences (jetGear.js) — own bus so the mix can sit them under the engine
+    this.gearBus = gain(L.gear, this.bus);
+    this.gearSeqs = new Set();
     this.whiteN = noise(this.white, 0.37);
     this.pinkN = noise(this.pink, 0.81);
     this.pinkN2 = noise(this.pink, 1.43);
@@ -864,30 +871,9 @@ export class JetColdStartVoice {
       case 'canopy':
         this.canopy(t, !opts.down, s);
         return true;
-      case 'gearMotor':
-        this.gearMotor(t, !opts.down, s);
-        return true;
-      case 'gearLockUp':
-        // uplock: firm latch thunk + short airframe knock
-        P(0, { hz: 64, toHz: 44, peak: 0.08, a: 0.002, d: 0.06 });
-        B(0, { hz: 480, q: 0.9, peak: 0.22, a: 0.0008, d: 0.018 });
-        B(0.012, { hz: 1350, q: 1.4, peak: 0.08, a: 0.0005, d: 0.005 });
-        return true;
-      case 'gearLockDown':
-        // down-and-locked: heavier thunk, overcentre clank, small strut rattle
-        P(0, { hz: 56, toHz: 38, peak: 0.1, a: 0.002, d: 0.08 });
-        B(0, { hz: 400, q: 0.8, peak: 0.26, a: 0.0008, d: 0.022 });
-        B(0.03, { hz: 1700, q: 1.6, peak: 0.1, a: 0.0005, d: 0.005 });
-        P(0.031, { hz: 2300, peak: 0.008, a: 0.0005, d: 0.09 });
-        B(0.11, { hz: 900, q: 1.5, peak: 0.05, a: 0.0005, d: 0.006 });
-        return true;
       case 'gearUp':
-        this.gearMotor(t, true, s);
-        this.cue('gearLockUp', { when: t - 0.005 + JET_GEAR_RUN, pan, level: s });
-        return true;
       case 'gearDown':
-        this.gearMotor(t, false, s);
-        this.cue('gearLockDown', { when: t - 0.005 + JET_GEAR_RUN + 0.25, pan, level: s });
+        this.gearStart(name === 'gearUp' ? 'up' : 'down', t, { level: s });
         return true;
       case 'chime':
         this.chime(t, opts.down ? -1 : 1, s);
@@ -965,45 +951,18 @@ export class JetColdStartVoice {
   }
 
   /**
-   * Gear actuators: hydraulic pump whine + actuator flow rush (≈ JET_GEAR_RUN s). Up: pitch rises as
-   * the load comes off; down: a lower, freer whine with a little more rush (gear free-falls).
+   * Start a landing-gear sequence at t (selector, doors, pump, travel); the default lock lands on
+   * its own unless the caller reports it earlier with seq.lock(t). Returns the GearSequence.
    */
-  gearMotor(t, up = true, s = 1) {
-    const ctx = this.ctx;
-    const run = JET_GEAR_RUN + (up ? 0 : 0.25);
-    try {
-      const o = ctx.createOscillator();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(up ? 330 : 300, t);
-      o.frequency.linearRampToValueAtTime(up ? 470 : 360, t + run);
-      const lp = ctx.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 1800;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.012 * s, t + 0.3);
-      g.gain.setValueAtTime(0.012 * s, t + run - 0.35);
-      g.gain.linearRampToValueAtTime(0, t + run);
-      o.connect(lp);
-      lp.connect(g);
-      g.connect(this.foley);
-      o.start(t);
-      o.stop(t + run + 0.02);
-      o.onended = () => {
-        for (const n of [o, lp, g]) {
-          try {
-            n.disconnect();
-          } catch {
-            /* ignore */
-          }
-        }
-      };
-    } catch {
-      /* ignore */
-    }
-    this.burst(t + 0.05, { hz: up ? 1500 : 1100, q: 0.7, peak: (up ? 0.05 : 0.07) * s, a: 0.4, d: run / 5, pink: true });
-    // doors: a light knock at the start
-    this.burst(t + 0.02, { hz: 700, q: 1.1, peak: 0.08 * s, a: 0.0008, d: 0.01 });
+  gearStart(dir, t = this.ctx.currentTime, opts = {}) {
+    const seq = new GearSequence(this, dir, t, opts);
+    this.gearSeqs.add(seq);
+    const done = seq.dispose.bind(seq);
+    seq.dispose = () => {
+      this.gearSeqs.delete(seq);
+      done();
+    };
+    return seq;
   }
 
   /**
@@ -1066,6 +1025,7 @@ export class JetColdStartVoice {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    for (const g of [...(this.gearSeqs ?? [])]) g.dispose();
     for (const s of this.sources) {
       try {
         s.stop();

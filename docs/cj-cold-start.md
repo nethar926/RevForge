@@ -36,6 +36,7 @@ forwarded by `CharacterEngine`. Types: `src/audio/types.ts` (`JetSystem`, `JetCu
 * afterburner guard: `'abGuardOpen'`, `'abGuardClose'` (bigger cover variants; not tied to `setAfterburnerArmed` — Frontend plays them on the cover)
 * cockpit display config menu: `'bezelPress'` (firm rubber/metal pushbutton), `'cursorStep'` (very short soft tick), `'selectConfirm'` (original low two-note acknowledge), `'pageChange'` (relay / display flip)
 * `'chime'` (the seat-belt chime), `'warning'` (the emergency tone)
+* gear lever: `'gearUp'`, `'gearDown'` (the full retract / extend; see [Landing gear](#landing-gear))
 
 ## Recommended sequences (`jetAutoStart`)
 
@@ -247,7 +248,7 @@ method is a safe no-op on the other packs.
 | Call | What it does |
 | --- | --- |
 | `setFlightPhase(phase, info?)` | Takes `'TAXI' \| 'TAKEOFF_ROLL' \| 'AIRBORNE' \| 'APPROACH' \| 'ROLLOUT'` as-is (`'TOUCH_AND_GO'` is also accepted as an optional extra). `null` turns the shaping off. Unknown strings are ignored. |
-| `info.gear` | `'down' \| 'up' \| 'transit'`. Only a change **into** `'up'` or `'down'` plays a sound: the gear motor followed by the uplock or down-lock thunk (about 2.6 s or 2.85 s). Nothing plays during `'transit'`, and nothing plays for the first report, which only sets the state. These are mechanical sounds, not alerts, so callout mode `'off'` leaves them on. |
+| `info.gear` | `'down' \| 'up' \| 'transit'`. A change **into** `'transit'` starts the full retract (from `'down'`) or extend (from `'up'`). The lock clunk lands when the `'up'` / `'down'` report arrives. A direct `'down'` ↔ `'up'` jump plays a compressed sequence. The first report only sets the state and plays nothing. These are mechanical sounds, not alerts, so callout mode `'off'` leaves them on. See [Landing gear](#landing-gear). |
 | `setAfterburnerLaunch(lit)` | Frontend's `afterburnerLit`. While it is true **and the burner is armed**, the afterburner is live at any speed and stages by demand as usual. When unarmed, nothing lights. |
 | `info.launch` | Frontend's hard-launch flag. It is kept separate from `afterburnerLit` and OR'd with it: a later `setFlightPhase(…, { launch: false })` never puts out a burner that `setAfterburnerLaunch(true)` lit. |
 | `setHighSpeedCallouts(on)` / `getHighSpeedCallouts()` | `overspeedCaution` / `overspeedWarning` callouts. **Off by default**, like Frontend's `highSpeedCallouts` setting; mirror that setting here. While off, those ids return `'suppressed'` and start no cooldown. |
@@ -265,7 +266,7 @@ method is a safe no-op on the other packs.
 | `overspeedCaution` | caution | "Speed caution" | tone, once high-speed callouts are on (off by default) |
 | `abUnarmed` | caution | "Afterburner unarmed" | tone |
 | `gpsFail` | caution | "GPS signal lost" | tone |
-| `gearUp` / `gearDown` | mechanical | — | gear motor + lock |
+| `gearUp` / `gearDown` | mechanical | — | the full gear sequence (shared with `info.gear`, never doubled) |
 | `touchAndGo` / `goAround` / `launch` | — | — | harmless no-ops (`'suppressed'`) |
 
 Touch-and-go, go-around and launch have **no** callout. GPS ACQ and AB LIVE are notes, so they are
@@ -309,6 +310,48 @@ is outside the audio layer, so it was left unchanged.
 heard. In the browser, the warning is spoken by default. The scripted call sequence is in
 `tests/cj-flight-render.mjs` (`FLIGHT_TIMELINE`); it follows the order of Frontend's
 `regimeToAudioCalls()`.
+
+## Landing gear
+
+`src/audio/jetGear.js` (`GearSequence`, `JET_GEAR`). It is fully procedural (oscillators, filters,
+runtime noise; no samples). There are three legs (nose, left main, right main), staggered 0 / 140 /
+260 ms and panned 0 / −0.3 / +0.3.
+
+**Retract** (`gearUp`), about 5.4 s on its own, or about 4.2 s with Frontend's 2 s transit:
+
+1. hydraulic selector clack, then the pump whine rising
+2. gear door actuators unlatching, doors thumping open
+3. strut swing: hydraulic flow hiss, structural creaks
+4. a solid UPLOCK clunk per leg
+5. doors closing with a firm thud (+0.45 s), then the pump spinning down
+
+**Extend** (`gearDown`), about 4.9 s on its own, or about 4.1 s with a 2 s transit:
+
+1. selector clack, uplock release clunks, doors open
+2. free-fall: air-load rumble, hydraulic damping hiss, creaks
+3. a heavy DOWNLOCK clunk per leg: deeper (118 → 62 Hz), with a short ring and a rattle, more final
+   than the uplock
+4. doors closing partway (+0.4 s), the pump settling
+
+**Timing**
+
+* The sequence starts on the change into `'transit'` (or on the `gearUp` / `gearDown` event, or on
+  `playJetCue('gearUp' | 'gearDown')`). Frontend sends the event and `'transit'` on the same tick,
+  so they share one sequence.
+* The lock clunk lands when `'up'` / `'down'` is reported:
+  * **Early report:** clamped to the minimum travel (1.6 s up / 1.2 s down), a catch-up.
+  * **No report:** the lock lands by itself at the default travel (3.2 s up / 2.8 s down).
+  * **Late report:** only a short tail is left, and there is never a second clunk.
+* A reversal mid-travel fades the old sequence out (80 ms) and starts the other way.
+* A lever pull in the direction already moving is ignored.
+* A direct up ↔ down jump with no transit plays a compressed version (45 % travel).
+
+**Mix:** the clunks sit in the 80–250 Hz low-mid, so you feel them. The loudest 400 ms of gear on its
+own stays below the quietest 400 ms of the engine alone at mid. The true peak is ≤ −1 dBTP, and the
+engine path is untouched. `tests/cj-gear.test.mjs` pins the timing, dedupe, stagger, panning,
+clicks, peak and level.
+
+Demo: `carrier-jet-gear.mp3` / `.mp4`, made with `tests/cj-gear-render.mjs`.
 
 ## Wind trim (all Tomcat sounds)
 

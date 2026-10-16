@@ -102,6 +102,7 @@ import {
   type TomcatDrive,
 } from './tomcatVoice';
 import { FlightCallouts } from './flightCallouts';
+import type { GearSequence } from './jetGear';
 import {
   JET_DEFAULT_FOLEY,
   JET_ESTOP_DELAY,
@@ -384,6 +385,7 @@ export class EngineSynthImpl implements EngineSynth {
   /** Tomcat flight phase (Frontend-detected), launch flag, AB speeds, callouts. */
   private flightPhase: JetFlightPhase | null = null;
   private flightGear: 'down' | 'transit' | 'up' | null = null;
+  private gearSeq: GearSequence | null = null;
   /** setAfterburnerLaunch(afterburnerLit) and setFlightPhase info.launch, kept apart (OR'd into the drive). */
   private abLaunch = false;
   private flightLaunch = false;
@@ -397,7 +399,7 @@ export class EngineSynthImpl implements EngineSynth {
       const h = jv.alertTone(level, this.context.currentTime + 0.005);
       return { seconds: h.seconds, cancel: () => jv.cancelAlert(h, this.context.currentTime) };
     },
-    mechanical: (id) => !!this.ensureJetVoice()?.cue(id === 'gearUp' ? 'gearUp' : 'gearDown'),
+    mechanical: (id) => this.gearLever(id === 'gearUp' ? 'up' : 'down'),
   });
   /** setJetSwitchSound (switch foley in setJetSystem); default on. */
   private jetSwitchSound = true;
@@ -2554,15 +2556,55 @@ export class EngineSynthImpl implements EngineSynth {
     const changed = phase !== this.flightPhase || (!!info && typeof info.launch === 'boolean' && info.launch !== this.flightLaunch);
     this.flightPhase = phase;
     if (info && typeof info.launch === 'boolean') this.flightLaunch = info.launch;
-    // gear: cue only on a transition INTO 'up' / 'down' (nothing while 'transit'; the first report sets state)
+    // gear (jetGear.js): the sequence starts on the move into 'transit'; the lock clunk lands when
+    // 'up' / 'down' is reported (or at the default travel time). A direct up ↔ down jump plays a
+    // compressed sequence. The first report only sets the state.
     const raw = info?.gear as string | undefined;
     const gear = raw === 'moving' ? 'transit' : raw === 'up' || raw === 'down' || raw === 'transit' ? raw : undefined;
-    if (gear && gear !== 'transit' && this.flightGear && gear !== this.flightGear) {
-      if (this.g.tcVoice && this.started) this.ensureJetVoice()?.cue(gear === 'up' ? 'gearUp' : 'gearDown');
-    }
+    const prev = this.flightGear;
+    if (gear && prev && gear !== prev && this.g.tcVoice && this.started) this.gearTransition(prev, gear);
     if (gear) this.flightGear = gear;
     // re-step only on a real change (Frontend may repeat the same phase every frame)
     if (changed) this.kickJet();
+  }
+
+  /**
+   * Gear lever (playFlightCallout gearUp / gearDown, playJetCue): a full sequence with the default
+   * lock. Shares the one live sequence with the setFlightPhase gear path, so Frontend firing the
+   * gear event and the 'transit' state on the same tick plays it once; a later 'up' / 'down' report
+   * locks it.
+   */
+  private gearLever(dir: 'up' | 'down'): boolean {
+    const jv = this.ensureJetVoice();
+    if (!jv) return false;
+    const now = this.context.currentTime;
+    const seq = this.gearSeq;
+    if (seq && !seq.locked && seq.dir === dir && now < seq.lockAt) return true; // already moving that way
+    if (seq && !seq.locked && now < seq.lockAt) seq.abort(now);
+    this.gearSeq = jv.gearStart(dir, now + 0.005);
+    return true;
+  }
+
+  private gearTransition(prev: 'down' | 'transit' | 'up', gear: 'down' | 'transit' | 'up'): void {
+    const jv = this.ensureJetVoice();
+    if (!jv) return;
+    const now = this.context.currentTime;
+    const seq = this.gearSeq;
+    if (gear === 'transit') {
+      const dir = prev === 'down' ? 'up' : 'down';
+      const moving = seq && !seq.locked && now < seq.lockAt;
+      if (moving && seq.dir === dir) return; // already moving that way (e.g. the gear event came first)
+      if (moving) seq.abort(now); // reversal mid-travel
+      this.gearSeq = jv.gearStart(dir, now + 0.005);
+      return;
+    }
+    // arrived at 'up' / 'down'
+    if (prev === 'transit' && seq && seq.dir === gear && seq.endT > now) {
+      seq.lock(now); // catch-up or (late) no-op: never a second clunk
+      return;
+    }
+    if (seq && !seq.locked) seq.abort(now);
+    this.gearSeq = jv.gearStart(gear, now + 0.005, { compressed: true });
   }
 
   getFlightPhase(): JetFlightPhase | null {
@@ -2938,6 +2980,7 @@ export class EngineSynthImpl implements EngineSynth {
     if (this.disposed) return false;
     const jv = this.ensureJetVoice();
     if (!jv) return false;
+    if (cue === 'gearUp' || cue === 'gearDown') return this.gearLever(cue === 'gearUp' ? 'up' : 'down');
     return jv.cue(cue, { pan: opts?.pan, level: opts?.level });
   }
 

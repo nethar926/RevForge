@@ -37,7 +37,6 @@ export const JET_DEFAULT_FOLEY: Readonly<Record<JetSystem, JetSwitchFoley>>;
 export const JET_ENGINE_PAN: number;
 export const JET_CART_PAN: number;
 export const JET_ESTOP_DELAY: number;
-export const JET_GEAR_RUN: number;
 export const JET_COLD_TRIM: number;
 export const JET_COLD_LEVEL: Readonly<Record<string, number>>;
 
@@ -56,5 +55,7 @@ export class JetColdStartVoice {
   /** Original caution / warning alert tone on its own gain (cancel with cancelAlert). */
   alertTone(level: 'caution' | 'warning', t: number, level2?: number): { gain: GainNode; seconds: number };
   cancelAlert(h: { gain: GainNode } | null | undefined, t: number): void;
+  /** Landing-gear sequence (retract 'up' / extend 'down') starting at t; lock it with seq.lock(t). */
+  gearStart(dir: 'up' | 'down', t?: number, opts?: { compressed?: boolean; level?: number }): import('./jetGear').GearSequence;
   dispose(): void;
 }

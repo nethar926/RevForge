@@ -296,7 +296,7 @@ test('live: phases shape the spool; touch-and-go re-spools faster than a takeoff
   assert.ok(samplePeakDb(channelsOf(c.buf)) <= -1);
 });
 
-test('live: speed config API, gear only on a transition into up/down, note silent, callouts tone without speech, off silent', async () => {
+test('live: speed config API, gear starts on transit (never on the first report), note silent, callouts tone without speech, off silent', async () => {
   // Measured on the jet voice bus alone (TF30 voice + wrapper output unplugged): silence is absolute,
   // so the check doesn't depend on two renders lining up frame for frame on a loaded box.
   const results = [];
@@ -344,8 +344,9 @@ test('live: speed config API, gear only on a transition into up/down, note silen
   const [, , , , note, cfg0, cfgLegacy, cfgKeep, hsOff, , w1, w2, c1, , off1, off2, modeOff, tng, ga, gearR] = results;
   assert.equal(hsOff, 'suppressed', 'high-speed callouts off by default');
   assert.equal(ga, 'suppressed', 'goAround: no callout');
-  assert.ok(db(0.3, 3.95) < -100, `nothing on the first gear report or during 'transit' (${db(0.3, 3.95).toFixed(1)} dB)`);
-  assert.ok(db(4, 7.2) > -70, `gearUp cue on the transition into 'up' (${db(4, 7.2).toFixed(1)} dB)`);
+  assert.ok(db(0.3, 0.995) < -100, `nothing on the first gear report (${db(0.3, 0.995).toFixed(1)} dB)`);
+  assert.ok(db(1, 1.3) > -80, `retract starts on the transition into 'transit' (${db(1, 1.3).toFixed(1)} dB)`);
+  assert.ok(db(4, 6) > -70, `uplock + doors after the 'up' report (${db(4, 6).toFixed(1)} dB)`);
   assert.equal(note, false);
   assert.ok(db(7.6, 9.9) < -100, `'note' is silent (${db(7.6, 9.9).toFixed(1)} dB)`);
   assert.deepEqual(cfg0, { abEngageMph: 80, abDisengageMph: 77 });
