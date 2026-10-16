@@ -75,6 +75,11 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
       if (cmd.type === 'charge') e.setChargeLevel?.(Math.max(0, Math.min(1, cmd.level)));
       else if (cmd.type === 'discharge' && e.getDiag().running) e.triggerDischarge?.();
       else if (cmd.type === 'ab-armed') e.setAfterburnerArmed?.(cmd.armed);
+      // CJ v2 hooks: optional methods, feature-detected (none on the base engine; Dan's audio adds them).
+      else if (cmd.type === 'jet-cue') (e as { playJetCue?: (c: string) => void }).playJetCue?.(cmd.cue);
+      else if (cmd.type === 'radar') (e as { setRadarOn?: (on: boolean) => void }).setRadarOn?.(cmd.on);
+      else if (cmd.type === 'jet-prefs') (e as { setJetPrefs?: (p: Record<string, string | boolean>) => void }).setJetPrefs?.(cmd.prefs);
+      else if (cmd.type === 'jet-start-mode') (e as { setJetStartMode?: (m: 'apu' | 'groundcart') => void }).setJetStartMode?.(cmd.mode);
     } catch {
       /* engine not ready */
     }

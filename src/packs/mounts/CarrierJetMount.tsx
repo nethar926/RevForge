@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { CarrierJetAfterburnerGuard, CarrierJetHud } from '../../skins/carrier-jet';
+import { CarrierJetAfterburnerGuard, CarrierJetHud, useCarrierJetVariant } from '../../skins/carrier-jet';
 import ID from '../carrier-jet.identity';
 import { readPackAbZone, sendPackEngineCommand, subscribePackAbZone } from '../runtime';
 import { getAbArmed, setAbArmed, subscribeAbArmed } from '../abArmed';
@@ -12,6 +12,14 @@ import { setCjNavSlot } from './CjNavRow';
 import './pack-fit.css';
 import './carrier-jet-mount.css';
 import './carrier-jet-controls.css';
+import './carrier-jet-v2.css';
+import { FEATURES } from '../../features';
+import { GpsRadarPlate } from '../../skins/carrier-jet/parts/index';
+import { getGpsStatus, subscribeGpsStatus } from '../../hooks/gpsFixes';
+import { cjGps, plateAria } from '../carrier-jet/plate';
+import { getMapView, setRadar, subscribeMapView } from '../carrier-jet/mapView';
+import { getCjPrefs } from '../carrier-jet/cjPrefs';
+import { CjV2Layer } from './CjV2Layer';
 
 /**
  * Framework adapter: ThemeStage telemetry → Visual Skins' Carrier Jet HUD.
@@ -50,6 +58,9 @@ import './carrier-jet-controls.css';
  *  - portrait (Option A scroll): portaled to the end of .rev-viewport, below the dock: row, then guard.
  *  - phone-landscape: the 68px strip at the bottom of the board's box: guard, then row.
  * The bank is a plain slot pair (.cjm-bank-ab / .cjm-bank-nav) so new bottom-panel art can replace it.
+ * CJ v2 (preview build only, FEATURES.cjV2 → data-cjm-v2; carrier-jet-v2.css): the AB guard is FAR LEFT at every size
+ * with Hold to rev to the right of the bank; Meghan's GPS+RADAR plate (option C) sits between the guard and the row;
+ * Board 2 re-grids the MATRIX look and CjV2Layer adds ACCEL (GPS), MAP / radar scope, edge keys and CONFIG.
  */
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
@@ -60,7 +71,11 @@ export function CarrierJetMount(props: PackHudProps) {
   // Drive window: always the full board (explicit false, so neither the host's compact request nor
   // the skin's 'auto' size threshold swaps in the essential layout). Elsewhere an explicit host
   // request forces compact, otherwise the skin decides from its own size (full at 1280×800).
-  const compact: boolean | 'auto' = fullBoard ? false : props.compact === true ? true : 'auto';
+  // CJ v2 Board 2 (MATRIX look, board / window): the skin's reflowed board (container-unit sizing), re-gridded by
+  // carrier-jet-v2.css; the full 1280 layout's fixed-size blocks do not fit the Board 2 cells.
+  const [look] = useCarrierJetVariant();
+  const board2 = FEATURES.cjV2 && look === 'carrier-jet' && (layout === 'board' || layout === 'window');
+  const compact: boolean | 'auto' = board2 ? true : fullBoard ? false : props.compact === true ? true : 'auto';
   // stale: no live GPS / compass heading; the HUD gets the held or saved value and dims it (NEEDS MOTION).
   const { heading, stale: headingStale } = useHeading(layout);
   const armed = useSyncExternalStore(subscribeAbArmed, getAbArmed, getAbArmed);
@@ -127,10 +142,23 @@ export function CarrierJetMount(props: PackHudProps) {
       bankEl.style.removeProperty('--cjm-nav-w');
     };
   }, [layout, docked, viewport]);
+  const v2 = FEATURES.cjV2;
+  const gpsStatus = useSyncExternalStore(subscribeGpsStatus, getGpsStatus, getGpsStatus);
+  const mapView = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
+  const onRadar = (on: boolean) => {
+    if (getCjPrefs().switchSound) sendPackEngineCommand(ID.id, { type: 'jet-cue', cue: 'toggle' });
+    setRadar(on);
+  };
+  const plate = v2 ? (
+    <div className="cjm-bank-plate" role="group" aria-label={plateAria(props.demo, cjGps(gpsStatus), mapView.radar)}>
+      <GpsRadarPlate gps={props.demo ? 'none' : cjGps(gpsStatus)} radarOn={mapView.radar} onRadarToggle={onRadar} size={layout === 'board' ? 'wide' : 'narrow'} />
+    </div>
+  ) : null;
   const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />;
   const bank = (
-    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-cjm-bank={docked ? 'docked' : undefined}>
+    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined}>
       <div className="cjm-bank-ab">{guard}</div>
+      {plate}
       <div className="cjm-bank-nav" ref={setNavSlot} />
     </div>
   );
@@ -141,11 +169,13 @@ export function CarrierJetMount(props: PackHudProps) {
       data-pack={ID.id}
       data-box={driveWindow ? 'drive' : undefined}
       data-rf-layout={layout}
+      data-cjm-v2={v2 || undefined}
       style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}
     >
       <div className="cjm-fill">
         <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} headingStale={headingStale} />
       </div>
+      {v2 && <CjV2Layer layout={layout} speedMph={props.unit === 'kph' ? props.speed / 1.609344 : props.speed} demo={props.demo} motion={props.motion} heading={heading} headingStale={headingStale} />}
       {bankHost ? createPortal(layout === 'portrait' ? <div className="cjm-below">{bank}</div> : bank, bankHost) : layout !== 'portrait' && <div className="cjm-ab">{bank}</div>}
     </div>
   );

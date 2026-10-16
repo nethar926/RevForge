@@ -6,6 +6,7 @@ import {ClusterBuilder} from '../themes/ClusterBuilder';
 import {FontPicker} from '../themes/FontPicker';
 import {ThemeColors} from '../themes/ThemeColors';
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -39,6 +40,11 @@ import { useDriveSimulation } from "./useDriveSimulation";
 import "./forge.css";
 import "./viewport.css";
 import { storageKey } from '../lib/storageKey';
+import { FEATURES, hiddenPanel } from '../features';
+
+function gatePanel<P extends string | null>(p: P): P | null {
+  return hiddenPanel(p) ? null : p;
+}
 
 interface Props {
   themes: ReturnType<typeof useThemes>;
@@ -121,9 +127,11 @@ export function ForgePage({
   const navigate = useNavigate();
   const garage=useVehicleGarage();
   const theme = themeForId(themes.skinId);
-  const [panel, setPanel] = useState<
-    "tuner" | "themes" | "scenes" | "garage" | "tune" | "studio" | "dashlab" | "account" | null
-  >(() => (searchParams.get("account") === "1" || new URLSearchParams(window.location.search).get("account") === "1") ? "account" : searchParams.get("studio") === "1" ? "studio" : isDrivePanel(searchParams.get("panel")) ? searchParams.get("panel") as DrivePanel : null);
+  type Panel = "tuner" | "themes" | "scenes" | "garage" | "tune" | "studio" | "dashlab" | "account" | null;
+  // Hidden features (src/features.ts; CJ preview only): Lab / Account never open — deep links (?panel= / ?account=1 /
+  // ?studio=1) and in-app calls land on Drive instead. Root build: hiddenPanel() is always false.
+  const [panel, setPanelRaw] = useState<Panel>(() => gatePanel((searchParams.get("account") === "1" || new URLSearchParams(window.location.search).get("account") === "1") ? "account" : searchParams.get("studio") === "1" ? "studio" : isDrivePanel(searchParams.get("panel")) ? searchParams.get("panel") as DrivePanel : null));
+  const setPanel = useCallback((p: Panel) => setPanelRaw(gatePanel(p)), []);
   const [ignited,setIgnited]=useState(false);
   const [scale,setScale]=useState(()=>{try{return Math.max(.65,Math.min(1.35,Number(localStorage.getItem(storageKey("revforge.hudScale"))??1)));}catch{return 1;}});
   const opacity = prefs.hudOpacity;
@@ -156,7 +164,8 @@ export function ForgePage({
   const driveMode = effectiveDriveMode(activePackId, mode);
   const config = useMemo(() => {
     const base = drivetrainFor(patch, sceneForId("road-66"));
-    const topFromGarage = garage.active ? garage.active.topSpeedKph / 3.6 : undefined;
+    // Hidden Account (src/features.ts, CJ preview): its active vehicle must not override TOP SPD (data kept).
+    const topFromGarage = FEATURES.account && garage.active ? garage.active.topSpeedKph / 3.6 : undefined;
     const topFromPrefs = prefs.maxTopSpeedMph / 2.2369362920544; // mph → m/s
     return {
       ...base,
@@ -259,11 +268,28 @@ export function ForgePage({
     packShellRef.current = (a) => {
       if (a.type === 'shutdown') { if (audio.running) stop(); }
       else if (a.type === 'toggle-mute') update({ masterMuted: !prefs.masterMuted });
-      else setPanel(a.panel);
+      else if (a.type === 'open-panel') setPanel(a.panel);
+      else if (a.type === 'nav') onCjNav(a.action);
+      else if (a.type === 'retry-gps') gps.start();
+      else if (a.type === 'set-ui') {
+        const { hudScale, jitter, jitterAmount, background, demo, media, gpsLabel: _l, ...ui } = a.partial;
+        if (Object.keys(ui).length) update(ui);
+        if (hudScale != null) setScale(Math.max(.65, Math.min(1.35, hudScale)));
+        if (jitter != null) setJitterEnabled(jitter);
+        if (jitterAmount != null) setJitterAmount(Math.max(0, Math.min(1, jitterAmount)));
+        if (background != null) audio.setBackgroundEnabled(background);
+        if (demo != null) sourceChange(demo ? 'demo' : 'gps');
+        if (media != null) setMediaEnabled(media);
+      }
     };
   });
   useEffect(() => connectPackShell((a) => packShellRef.current(a)), []);
   useEffect(() => setPackShellState({ muted: prefs.masterMuted, engineName: audio.patchName ?? '' }), [prefs.masterMuted, audio.patchName]);
+  // CJ v2 CONFIG (preview only) reads the current Drive settings from the shell state.
+  useEffect(() => {
+    if (!FEATURES.cjV2) return;
+    setPackShellState({ ui: { speedUnit: prefs.speedUnit, hudOpacity: prefs.hudOpacity, bloomGlow: prefs.bloomGlow, scanlineStrength: prefs.scanlineStrength, hudBezel: prefs.hudBezel, telemetryDensity: prefs.telemetryDensity, showKeepAliveTip: prefs.showKeepAliveTip, hudScale: scale, jitter: jitterEnabled, jitterAmount, background: audio.background, demo: source === 'demo', media: mediaEnabled, gpsLabel } });
+  });
   const start = () => {
     setIgnited(true);
     setMutedBeforeHide(false);
@@ -327,7 +353,7 @@ export function ForgePage({
         <section className="rev-scene" aria-label="Full-screen dashboard">
           <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={()=>audio.triggerUiCue('time-jump')} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
         </section>
-        <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{garage.active?.name??theme.name}</small>}</div>{cjNav?<CjNavRow current={currentCjPage('/drive',panel)} muted={prefs.masterMuted} labPanel={dashLabListed?'dashlab':'studio'} onAction={onCjNav}/>:<button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button>}</header>
+        <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{(FEATURES.account?garage.active?.name:undefined)??theme.name}</small>}</div>{cjNav?<CjNavRow current={currentCjPage('/drive',panel)} muted={prefs.masterMuted} labPanel={dashLabListed?'dashlab':'studio'} onAction={onCjNav}/>:<button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button>}</header>
         {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>
           {source==='demo'&&<label className="rev-throttle">Throttle <span>{Math.round(pedal*100)}%</span><input aria-label="Throttle" type="range" min="0" max="1" step=".01" disabled={!revReady} value={pedal} onChange={e=>setPedal(Number(e.target.value))}/></label>}
           <footer className="rev-dock" aria-label="Drive controls">
@@ -381,9 +407,9 @@ export function ForgePage({
                 <Icon name="close" />
               </button>
             </div>
-            {panel==='tuner'&&<div className="tuner-menu">{([['tune','Options','Base UI, Demo mode and playback'],['themes','Visuals',atmospheresListed?'Themes and Clusters':'Clusters'],['garage','Revs','Original engine collection'],[dashLabListed?'dashlab':'studio','Lab',dashLabListed?'DashLab and EngineForge':'EngineForge'],['account','Account','Vehicles and saved configurations']] as const).map(([id,label,hint])=><button key={id} onClick={()=>setPanel(id)}><strong>{label}</strong><small>{hint}</small><span>↗</span></button>)}<button onClick={()=>navigate('/sound-builder')}><strong>Sound Builder</strong><small>Build an engine sound from synth nodes</small><span>↗</span></button></div>}
+            {panel==='tuner'&&<div className="tuner-menu">{([['tune','Options','Base UI, Demo mode and playback'],['themes','Visuals',atmospheresListed?'Themes and Clusters':'Clusters'],['garage','Revs','Original engine collection'],[dashLabListed?'dashlab':'studio','Lab',dashLabListed?'DashLab and EngineForge':'EngineForge'],['account','Account','Vehicles and saved configurations']] as const).filter(([id])=>!hiddenPanel(id)).map(([id,label,hint])=><button key={id} onClick={()=>setPanel(id)}><strong>{label}</strong><small>{hint}</small><span>↗</span></button>)}{FEATURES.soundBuilder&&<button onClick={()=>navigate('/sound-builder')}><strong>Sound Builder</strong><small>Build an engine sound from synth nodes</small><span>↗</span></button>}</div>}
             {(panel==='themes'||panel==='scenes')&&<>{atmospheresListed&&<div role="tablist" aria-label="Visuals tabs"><button role="tab" className="rf-hit" aria-selected={panel==='themes'} onClick={()=>setPanel('themes')}>Themes</button><button role="tab" className="rf-hit" aria-selected={panel==='scenes'} onClick={()=>setPanel('scenes')}>Clusters</button></div>}{panel==='themes'&&atmospheresListed?<ThemePicker key="atmosphere" mode="atmosphere" selected={themes.atmosphereId} onSelect={themes.selectAtmosphere}/>:<>{isThemeListed(themes.atmosphereId)&&<button className="rf-hit" onClick={()=>themes.selectSkin(themes.atmosphereId)}>Simple RevForge HUD</button>}<ThemePicker key="cluster" mode="cluster" selected={themes.skinId} onSelect={selectCluster}/></>}<section className="theme-builder-panel" style={{marginTop:18}}><h2>Appearance</h2><AppearanceKnobs prefs={prefs} update={update}/></section><section className="theme-builder-panel"><h2>Drive Dynamics</h2><DriveDynamicsPanel prefs={prefs} update={update}/><p className="rf-frontend-note">Also on <code>/customize</code>. Frontend: fold under ☰ → Interface Options → Visuals when hamburger lands.</p></section></>}
-            {panel==='garage'&&<><p>Choose an original engine. Create an editable copy with Tune This Engine.</p><details className="garage-colors"><summary>Garage appearance · recolor</summary><ThemeColors themes={themes}/></details><div className="forge-garage-list">{BUILTIN_PATCHES.filter(p=>isEngineIdVisible(p.id)||audio.engineId===p.id).map(p=><article className="rev-engine-card" key={p.id}><button aria-pressed={audio.engineId===p.id} onClick={()=>onSelectEngine(structuredClone(p))}><strong>{p.name}</strong><small>{{ice:"Combustion",scifi:"Sci-fi",aerospace:"Jet",'ev-whine':"Electric"}[p.kind]} · Original preset</small></button><button onClick={()=>tuneEngine(p)}>Tune This Engine<span className="sr-only"> · {p.name}</span></button></article>)}</div></>}
+            {panel==='garage'&&<><p>Choose an original engine. Create an editable copy with Tune This Engine.</p><details className="garage-colors"><summary>Garage appearance · recolor</summary><ThemeColors themes={themes}/></details><div className="forge-garage-list">{BUILTIN_PATCHES.filter(p=>isEngineIdVisible(p.id)||audio.engineId===p.id).map(p=><article className="rev-engine-card" key={p.id}><button aria-pressed={audio.engineId===p.id} onClick={()=>onSelectEngine(structuredClone(p))}><strong>{p.name}</strong><small>{{ice:"Combustion",scifi:"Sci-fi",aerospace:"Jet",'ev-whine':"Electric"}[p.kind]} · Original preset</small></button>{FEATURES.lab&&<button onClick={()=>tuneEngine(p)}>Tune This Engine<span className="sr-only"> · {p.name}</span></button>}</article>)}</div></>}
             {(panel==='studio'||panel==='dashlab')&&<><div role="tablist" aria-label="Lab tabs">{dashLabListed&&<button role="tab" aria-selected={panel==='dashlab'} onClick={()=>setPanel('dashlab')}>DashLab</button>}<button role="tab" aria-selected={panel==='studio'} onClick={()=>setPanel('studio')}>EngineForge</button></div>{panel==='dashlab'&&dashLabListed?<Guide kind="dash"><ClusterBuilder widgets={themes.widgets} onChange={themes.saveWidgets} onUse={()=>{themes.selectSkin('custom-grid');setPanel(null);}}/></Guide>:<Guide kind="engine">{patch&&(!isCustomEngine(patch)?<section className="locked-engine"><h3>{patch.name}</h3><p>This is an original preset. Create a custom engine to tune its components.</p><button onClick={()=>tuneEngine(patch)}>Tune This Engine</button></section>:<><h3>{patch.name}</h3>{userPatches.length>0&&<label>Custom engine<select aria-label="Custom engine" value={patch.id} onChange={e=>{const p=userPatches.find(p=>p.id===e.target.value);if(p)onSelectEngine(p);}}>{userPatches.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}<button disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Stop audition':'Audition sound'}</button><NativeStudio key={patch.id} patch={patch} onChange={next=>{onSelectEngine(next);setRevision(r=>r+1);}} onSave={onSavePatch}/></>)}</Guide>}</>}
             {panel==='account'&&<AccountPanel garage={garage} themes={themes} patch={patch} userPatches={userPatches} onEngine={onSavePatch} onLoad={id=>{const c=themes.combinations.find(c=>c.id===id);if(c){themes.loadAppearance(c);onSavePatch(resolveVisibleEnginePatch(c.sound));}}}/>}
             {panel === "tune" && (

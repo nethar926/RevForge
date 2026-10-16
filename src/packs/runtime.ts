@@ -141,7 +141,15 @@ export type PackEngineCommand =
   | { type: 'charge'; level: number }
   | { type: 'discharge' }
   /** Carrier Jet ARM switch → engine.setAfterburnerArmed (Tomcat; no-op elsewhere). */
-  | { type: 'ab-armed'; armed: boolean };
+  | { type: 'ab-armed'; armed: boolean }
+  /** CJ v2: guarded jet UI cues (engine playJetCue?.(cue); absent on the base engine → silent). */
+  | { type: 'jet-cue'; cue: 'toggle' | 'bezelPress' | 'cursorStep' | 'selectConfirm' | 'pageChange' }
+  /** CJ v2: radar hum hook (engine setRadarOn?.(on); absent on the base engine). */
+  | { type: 'radar'; on: boolean }
+  /** CJ v2 CONFIG sound settings (engine setJetPrefs?.(prefs); absent on the base engine → stored only). */
+  | { type: 'jet-prefs'; prefs: Record<string, string | boolean> }
+  /** CJ v2 CONFIG › OPTIONS › ENGINE STARTUP (engine setJetStartMode?.('apu' | 'groundcart'); Dan's cold-start audio). */
+  | { type: 'jet-start-mode'; mode: 'apu' | 'groundcart' };
 type EngineCommandListener = (packId: string, cmd: PackEngineCommand) => void;
 const engineCommandListeners = new Set<EngineCommandListener>();
 
@@ -161,14 +169,40 @@ export function onPackEngineCommand(listener: EngineCommandListener): () => void
  * controls render inert.
  * ------------------------------------------------------------------------ */
 export type PackShellPanel = 'tuner' | 'tune' | 'scenes' | 'garage';
+/** Drive settings a pack CONFIG may change in place (UiPrefs keys + ForgePage's own session controls). */
+export interface PackShellUi {
+  speedUnit: 'mph' | 'kph';
+  hudOpacity: number;
+  bloomGlow: number;
+  scanlineStrength: number;
+  hudBezel: number;
+  telemetryDensity: 'full' | 'compact' | 'minimal';
+  showKeepAliveTip: boolean;
+  /** ForgePage session controls. */
+  hudScale: number;
+  jitter: boolean;
+  jitterAmount: number;
+  background: boolean;
+  demo: boolean;
+  media: boolean;
+  /** GPS status line (as on Tuner › Options). */
+  gpsLabel: string;
+}
 export type PackShellAction =
   | { type: 'shutdown' }
   | { type: 'toggle-mute' }
-  | { type: 'open-panel'; panel: PackShellPanel };
+  | { type: 'open-panel'; panel: PackShellPanel }
+  /** CJ v2 CONFIG: the same destinations as the CJ NAV row (routes / Drive panels). */
+  | { type: 'nav'; action: import('./carrier-jet.nav').CjNavAction }
+  /** CJ v2 CONFIG: change Drive settings in place. */
+  | { type: 'set-ui'; partial: Partial<PackShellUi> }
+  | { type: 'retry-gps' };
 export interface PackShellState {
   connected: boolean;
   muted: boolean;
   engineName: string;
+  /** Present once ForgePage publishes it (CJ v2 CONFIG reads current values). */
+  ui?: PackShellUi;
 }
 type ShellListener = (state: PackShellState) => void;
 let shellHandler: ((action: PackShellAction) => void) | null = null;
@@ -193,7 +227,7 @@ export function connectPackShell(handler: (action: PackShellAction) => void): ()
 
 export function setPackShellState(partial: Partial<Omit<PackShellState, 'connected'>>): void {
   const next = { ...shellState, ...partial };
-  if (next.muted === shellState.muted && next.engineName === shellState.engineName) return;
+  if (next.muted === shellState.muted && next.engineName === shellState.engineName && JSON.stringify(next.ui) === JSON.stringify(shellState.ui)) return;
   publishShell(next);
 }
 

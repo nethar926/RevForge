@@ -6,6 +6,8 @@ import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompa
 import { useRfLayout } from '../layout';
 import './carrier-jet-controls.css';
 import { cjPanelNeed } from './cjNavFit';
+import { FEATURES } from '../../features';
+import { cjConfigHosted, getCjConfig, openCjConfig, subscribeCjConfig, toggleCjConfig } from '../carrier-jet/configStore';
 
 export interface CjNavRowProps {
   /** Switch id of the current page (carrier-jet.nav currentCjPage). */
@@ -56,7 +58,10 @@ export function CjNavRow({ current, muted, labPanel = 'studio', onAction }: CjNa
   const hostRef = useRef<HTMLElement>(null);
   const slot = useSyncExternalStore(subscribeCjNavSlot, getCjNavSlot, () => null);
   const place = slot ? 'bank' : 'top';
-  const { items, overflow } = cjNavItems({ current, muted, moreOpen, compass: showCompass ? compass.state : undefined, demote });
+  // CJ v2: OPTIONS opens CONFIG (lit while open).
+  const cfg = useSyncExternalStore(subscribeCjConfig, getCjConfig, getCjConfig);
+  const cur = FEATURES.cjV2 && cfg.open ? 'options' : current;
+  const { items, overflow } = cjNavItems({ current: cur, muted, moreOpen, compass: showCompass ? compass.state : undefined, demote });
 
   // Re-fit from scratch whenever the slot width or the switch set changes.
   useEffect(() => {
@@ -106,6 +111,15 @@ export function CjNavRow({ current, muted, labPanel = 'studio', onAction }: CjNa
     }
     if (a.type === 'compass') {
       toggleCompass();
+      return;
+    }
+    if (FEATURES.cjV2 && id === 'options') {
+      setMoreOpen(false);
+      if (cjConfigHosted()) toggleCjConfig();
+      else {
+        openCjConfig(); // pending: shows once Drive mounts the board
+        onAction({ type: 'drive' });
+      }
       return;
     }
     if (a.type !== 'mute') setMoreOpen(false);

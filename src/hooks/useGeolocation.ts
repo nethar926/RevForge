@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { speedFromFix, type Fix } from "./gpsSpeed";
 import { kphToMph } from "../audio";
-import { publishGpsFix } from "./gpsFixes";
+import { publishGpsFix, publishGpsStatus } from "./gpsFixes";
 import { startGeolocation } from "./geoStart";
 
 /** Wall-clock gap after last successful watch callback before marking stale. */
@@ -40,6 +40,8 @@ export function useGeolocation(enabled: boolean) {
     timestamp: null,
     deviceTimestamp: null,
   });
+  // Pack HUDs (Carrier Jet GPS plate) read the status from the shared feed.
+  useEffect(() => publishGpsStatus(state.status), [state.status]);
   const session = useRef<{ cancel: () => void } | null>(null);
   const generation = useRef(0);
   const previous = useRef<Fix | null>(null);

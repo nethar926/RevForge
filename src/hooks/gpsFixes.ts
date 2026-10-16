@@ -43,3 +43,25 @@ export function subscribeGpsFixes(listener: Listener): () => void {
 export function latestGpsFix(): GpsFix | null {
   return latest;
 }
+
+/*
+ * GPS status feed (framework): useGeolocation publishes its status here so pack HUDs (the Carrier Jet GPS plate)
+ * read the same state as the Drive screen's input check without a second watch. 'idle' until the watch runs.
+ */
+type StatusListener = () => void;
+const statusListeners = new Set<StatusListener>();
+let status = 'idle';
+export function publishGpsStatus(next: string): void {
+  if (next === status) return;
+  status = next;
+  for (const l of [...statusListeners]) l();
+}
+export function getGpsStatus(): string {
+  return status;
+}
+export function subscribeGpsStatus(l: StatusListener): () => void {
+  statusListeners.add(l);
+  return () => {
+    statusListeners.delete(l);
+  };
+}
