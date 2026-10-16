@@ -255,12 +255,13 @@ test('initial acceleration swells, then crossfades into the sustain without a st
   assert.ok(Math.abs(post - pre) < 2, `handover ${pre.toFixed(1)} → ${post.toFixed(1)} dB`);
 });
 
-test('targeting cue fires once per lock (and respects the lock-sfx enable)', async () => {
+test('targeting cue: once per lock, the automatic ladder cue is rate-limited, explicit cues still fire', async () => {
   // rpm ramps through the ladder (identified .50 / lock .70 / kill .86, 4% hysteresis)
   const ramp = (t, t0, t1, a, b) => a + (b - a) * Math.min(1, Math.max(0, (t - t0) / (t1 - t0)));
   // Up into lock and wobble inside it: one cue
   const up = (t) => ({ speed: ramp(t, 0.5, 1.5, 0.3, 0.78) + 0.05 * Math.sin(t * 9), throttle: 0.6 });
-  // Up, back out below the .66 exit, up again: two cues
+  // Up, back out below the .66 exit, up again within 12 s: the automatic (ladder) cue is
+  // rate-limited, so a speed hovering at the lock edge can't repeat it — one cue
   const upDownUp = (t) => ({
     speed: t < 2.5 ? ramp(t, 0.5, 1.5, 0.3, 0.78) : t < 4 ? ramp(t, 2.5, 3, 0.78, 0.55) : ramp(t, 4, 4.5, 0.55, 0.78),
     throttle: 0.6,
@@ -278,7 +279,19 @@ test('targeting cue fires once per lock (and respects the lock-sfx enable)', asy
     return eng.base.ionCueCounts.target;
   };
   assert.equal(await count(up, 3, true), 1);
-  assert.equal(await count(upDownUp, 6, true), 2);
+  assert.equal(await count(upDownUp, 6, true), 1);
   assert.equal(await count(up, 3, false), 0);
+  // Explicit lock cues (triggerUiCue('lock')) are not rate-limited beyond their 1 s guard
+  let eng;
+  await renderIonTwin(() => ({ speed: 0.5, throttle: 0.4 }), 4, {
+    preroll: 0.5,
+    seed: 't-lock-explicit',
+    onEngine: (e) => (eng = e),
+    actions: [
+      [0.5, (e) => e.triggerUiCue('lock')],
+      [2.5, (e) => e.triggerUiCue('lock')],
+    ],
+  });
+  assert.equal(eng.base.ionCueCounts.target, 2);
 });
 

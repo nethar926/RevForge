@@ -363,8 +363,16 @@ export class EngineSynthImpl implements EngineSynth {
   private ionCue: IonCueVoice | null = null;
   private ionTargetVoice: IonCueVoice | null = null;
   private ionLastTargetAt = -10;
+  private ionLastLadderAt = -1e9;
   private ionStarterWanted = -1;
-  private ionAccelArmed = false;
+  /** Armed from the start (the engine starts parked); re-armed by ionAccelPhase after a real stop. */
+  private ionAccelArmed = true;
+  private ionAccelStillSince = -1;
+  private ionAccelLastFire = -1e9;
+  /** Throttle the recorded bed follows (held through simulated gear shifts). */
+  private ionBedThr = 0;
+  /** Pull-away phrases fired so far (diagnostics / tests). */
+  ionAccelCount = 0;
   private ionIdleOpenLag = 0;
   private ionIdleOpenAt = 0;
   private ionAccelT0 = -1;
@@ -735,6 +743,19 @@ export class EngineSynthImpl implements EngineSynth {
     }
     if (!this.started) return;
     if ((c === 'lock' || c === 'targeting') && this.g.ionDuck) {
+      this.playIonTarget();
+      return;
+    }
+    if (c === 'lock-ladder') {
+      // Automatic lock-ladder entry (lock sfx pref): rate-limited so a speed hovering at the
+      // lock edge can't repeat the targeting cue
+      if (!this.g.ionDuck) {
+        this.triggerUiCue('lock');
+        return;
+      }
+      const now = this.context.currentTime;
+      if (now - this.ionLastLadderAt < ION_TARGET_LADDER_GAP) return;
+      this.ionLastLadderAt = now;
       this.playIonTarget();
       return;
     }
@@ -3976,7 +3997,11 @@ export class EngineSynthImpl implements EngineSynth {
     // Recorded stems: continuous sustain + interior hum beds (granular), accel one-shot gate
     if (g.ionStemBed) {
       const share = this.ionStemShare();
-      const susDrive = clamp(ION_STEM_LEVEL.driveSpeed * d.speed + (1 - ION_STEM_LEVEL.driveSpeed) * thr);
+      // A simulated gear shift dips the throttle for a moment; the craft has no gearbox, so the
+      // recorded bed holds its pre-shift throttle instead of dipping on every shift
+      if (!d.shifting) this.ionBedThr = thr;
+      const bedThr = d.shifting ? this.ionBedThr : thr;
+      const susDrive = clamp(ION_STEM_LEVEL.driveSpeed * d.speed + (1 - ION_STEM_LEVEL.driveSpeed) * bedThr);
       const accelGate = this.ionAccelStemTick(accel.active, thrRaw, ionStemSustainDb(susDrive));
       const susOpen = clamp(this.ionStemOpenLag);
       const sw = (r: number) => Math.sin((r * Math.PI) / 2);
@@ -3986,12 +4011,14 @@ export class EngineSynthImpl implements EngineSynth {
       // rises out of the bed at a steady rate instead of jumping up from silence
       const openDb = ION_STEM_OPEN_FLOOR_DB * (1 - susOpen);
       const susG = share > 0 ? Math.pow(10, (ionStemSustainDb(susDrive) + openDb) / 20) * accelGate : 0;
-      const humG = share > 0 ? Math.pow(10, ION_STEM_LEVEL.humDb / 20) * (1 - susOpen * ION_STEM_LEVEL.humFade) : 0;
+      // The interior hum gives way as the voice opens, but a touch of it stays under the roar
+      const humIdle = Math.pow(10, ION_STEM_LEVEL.humDb / 20) * (1 - susOpen * ION_STEM_LEVEL.humFade);
+      const humG = share > 0 ? Math.max(humIdle, susG * Math.pow(10, ION_STEM_LEVEL.humUnderDb / 20)) : 0;
       reportIonStemLive(share > 0, share, Math.max(susG, humG));
       g.ionStemBed.update(ctx.currentTime, {
         speed: d.speed,
-        thr,
-        load: clamp(Math.max(loadAbs, thr)),
+        thr: bedThr,
+        load: clamp(Math.max(loadAbs, bedThr)),
         surge: clamp(this.ionSurgeEnv),
         sustainGain: susG,
         humGain: humG,
@@ -4036,10 +4063,23 @@ export class EngineSynthImpl implements EngineSynth {
   private ionAccelPhase(speed: number, thr: number): { active: number; open: number; bell: number } {
     const now = this.context.currentTime;
     const rest = speed < ION_ACCEL.fromSpeed;
-    if (rest && thr < 0.06) this.ionAccelArmed = true;
-    if (this.ionAccelArmed && rest && thr > 0.12) {
+    // Re-arm only after a real stop (well under fromSpeed, throttle off, held) and a minimum gap,
+    // so speed / throttle jitter around the threshold can't re-fire the pull-away phrase
+    const still = speed < ION_ACCEL.fromSpeed * ION_ACCEL_REARM.speedK && thr < 0.06;
+    if (!still) this.ionAccelStillSince = -1;
+    else if (this.ionAccelStillSince < 0) this.ionAccelStillSince = now;
+    if (
+      still &&
+      now - this.ionAccelStillSince >= ION_ACCEL_REARM.holdSec &&
+      now - this.ionAccelLastFire >= ION_ACCEL_REARM.minGapSec
+    ) {
+      this.ionAccelArmed = true;
+    }
+    if (this.ionAccelArmed && rest && thr > 0.12 && this.ionAccelT0 < 0) {
       this.ionAccelArmed = false;
       this.ionAccelT0 = now;
+      this.ionAccelLastFire = now;
+      this.ionAccelCount += 1;
     }
     if (this.ionAccelT0 < 0) return { active: 0, open: 1, bell: 0 };
     const t = (now - this.ionAccelT0) / ION_ACCEL.swellSec;
@@ -4439,7 +4479,12 @@ const ION_STEM_OPEN_TAU = { up: 0.25, down: 0.5 } as const;
 const ION_STEM_OPEN_FLOOR_DB = -24;
 /** Pull-away one-shot fade-in (s). */
 const ION_STEM_ACCEL_FADE_IN = 0.06;
-const ION_STEM_ACCEL_XFADE = 0.6;
+/** Accel one-shot → sustain bed hand-over (s, equal-power). */
+const ION_STEM_ACCEL_XFADE = 1.2;
+/** Pull-away re-arm: speed under fromSpeed × speedK with the throttle off for holdSec, minGapSec after the last one. */
+const ION_ACCEL_REARM = { speedK: 0.5, holdSec: 0.8, minGapSec: 6 } as const;
+/** Lock-ladder targeting cue (automatic, opt-in): at most one per this many seconds. */
+const ION_TARGET_LADDER_GAP = 12;
 
 const UPSHIFT_SFX_KEY = 'ds-upshift-sfx';
 

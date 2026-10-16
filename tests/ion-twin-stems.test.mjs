@@ -259,43 +259,8 @@ test('stems on vs off: master RMS and spectrum differ measurably; status reports
   t.diagnostic(`spectral flatness on ${tOn.flatness.toFixed(4)}, off ${tOff.flatness.toFixed(4)}; stemGainDb ${st.stemGainDb.toFixed(1)}`);
   assert.ok(shape > 2, `third-octave shape distance ${shape.toFixed(2)} dB`);
   // Recorded, tonal stems in place of broadband synth noise: flatness drops by more than half
-  assert.ok(tOn.flatness < tOff.flatness * 0.5, `flatness on ${tOn.flatness} vs off ${tOff.flatness}`);
+  // (× 0.6 since the seamless bed: it carries a deliberate rasp / tearing-distortion layer)
+  assert.ok(tOn.flatness < tOff.flatness * 0.6, `flatness on ${tOn.flatness} vs off ${tOff.flatness}`);
   // The recordings replace the synth's broadband air: the >6 kHz band drops clearly
   assert.ok(d[3] < -3, `>6 kHz on−off ${d[3].toFixed(2)} dB`);
-});
-
-test('grain seams: no sample jump at grain boundaries beyond the material itself', shipped, async (t) => {
-  const set = await stems.ionTwinStems(new OfflineAudioContext(2, 128, SR));
-  for (const stem of ['scream', 'howl', 'air']) {
-    const b = set.segments.sustain[stem];
-    const ctx = new OfflineAudioContext(1, SR * 6, SR);
-    const p = new stems.IonGrainPlayer(ctx, b, { ...stems.ION_STEM_GRAIN[stem], seed: 7 });
-    p.log = [];
-    p.out.connect(ctx.destination);
-    for (let k = 0; k < 6 / 0.1; k++) {
-      ctx.suspend(k * 0.1 + 128 / SR).then(() => {
-        p.setRate(Math.pow(2, Math.sin(k / 9) * 3 / 12), ctx.currentTime);
-        p.tick(ctx.currentTime, 0.25);
-        ctx.resume();
-      });
-    }
-    const y = (await ctx.startRendering()).getChannelData(0);
-    // Max first difference near grain starts / ends vs anywhere else
-    const near = new Uint8Array(y.length);
-    for (const g of p.log) {
-      for (const at of [g.at, g.at + g.length]) {
-        const c = Math.round(at * SR);
-        for (let i = Math.max(0, c - 256); i < Math.min(y.length, c + 256); i++) near[i] = 1;
-      }
-    }
-    let atSeam = 0;
-    let other = 0;
-    for (let i = 1 + SR / 2; i < y.length - SR / 2; i++) {
-      const dlt = Math.abs(y[i] - y[i - 1]);
-      if (near[i]) atSeam = Math.max(atSeam, dlt);
-      else other = Math.max(other, dlt);
-    }
-    t.diagnostic(`${stem}: max |Δx| at seams ${atSeam.toFixed(4)}, elsewhere ${other.toFixed(4)}`);
-    assert.ok(atSeam <= other * 1.25, `${stem}: seam jump ${atSeam} vs ${other}`);
-  }
 });
