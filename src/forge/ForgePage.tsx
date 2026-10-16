@@ -15,6 +15,7 @@ import {
   type PointerEvent,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { installFirstGestureUnlock, launchIgnited } from "../app/ignitionGate";
 import { CjNavRow } from "../packs/mounts/CjNavRow";
 import { currentCjPage, isDrivePanel, type CjNavAction, type DrivePanel } from "../packs/carrier-jet.nav";
 import CARRIER_JET_IDENTITY from "../packs/carrier-jet.identity";
@@ -132,7 +133,10 @@ export function ForgePage({
   // ?studio=1) and in-app calls land on Drive instead. Root build: hiddenPanel() is always false.
   const [panel, setPanelRaw] = useState<Panel>(() => gatePanel((searchParams.get("account") === "1" || new URLSearchParams(window.location.search).get("account") === "1") ? "account" : searchParams.get("studio") === "1" ? "studio" : isDrivePanel(searchParams.get("panel")) ? searchParams.get("panel") as DrivePanel : null));
   const setPanel = useCallback((p: Panel) => setPanelRaw(gatePanel(p)), []);
-  const [ignited,setIgnited]=useState(false);
+  // IGNITION splash only when the pref asks for it (default off → Drive straight away; app/ignitionGate.ts)
+  const [ignited,setIgnited]=useState(()=>launchIgnited(prefs.showIgnitionOnLaunch));
+  // splash off: the first tap / key anywhere unlocks audio (the CTA's resume, no engine start); then the listener goes
+  useEffect(()=>{if(prefs.showIgnitionOnLaunch)return;return installFirstGestureUnlock(document.getElementById("root")??document,audio.unlock);},[prefs.showIgnitionOnLaunch,audio.unlock]);
   const [scale,setScale]=useState(()=>{try{return Math.max(.65,Math.min(1.35,Number(localStorage.getItem(storageKey("revforge.hudScale"))??1)));}catch{return 1;}});
   const opacity = prefs.hudOpacity;
   useEffect(()=>{try{localStorage.setItem(storageKey("revforge.hudScale"),String(scale));}catch{/* session only */}},[scale]);

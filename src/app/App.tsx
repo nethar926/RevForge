@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { useAudioEngine } from "../hooks/useAudioEngine";
 import { useGeolocation } from "../hooks/useGeolocation";
@@ -19,6 +19,12 @@ import { packForEngineId, packForThemeId, resolveVisibleEnginePatch } from "../p
 import CARRIER_JET from "../packs/carrier-jet.identity";
 import { FALLBACK_ENGINE_ID } from "../themes/visibility";
 import { FEATURES } from "../features";
+
+/** Splash off (default): "/" boots straight to the Drive route, keeping the query (deep links). */
+function ToDrive() {
+  const { search, hash } = useLocation();
+  return <Navigate to={{ pathname: "/drive", search, hash }} replace />;
+}
 
 export default function App() {
   const { prefs, update, reset } = useUiPrefs();
@@ -90,7 +96,7 @@ export default function App() {
           key={path}
           path={path}
           element={
-            <ForgePage
+            path === "/" && !prefs.showIgnitionOnLaunch ? <ToDrive /> : <ForgePage
               themes={themes}
               audio={audio}
               gps={gps}

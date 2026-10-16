@@ -187,6 +187,14 @@ export function CustomizePage({ prefs, update, reset }: Props) {
           />
           <span>Show keep-tab-open tip</span>
         </label>
+        <label className="toggle-row mt">
+          <input
+            type="checkbox"
+            checked={prefs.showIgnitionOnLaunch}
+            onChange={(e) => update({ showIgnitionOnLaunch: e.target.checked })}
+          />
+          <span>Ignition screen on launch</span>
+        </label>
         <label className="toggle-row mt tesla-touch">
           <input
             type="checkbox"

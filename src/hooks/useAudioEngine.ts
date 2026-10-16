@@ -107,6 +107,16 @@ export function useAudioEngine(
     }
   }, [ensure,background]);
 
+  /** Unlock / resume the AudioContext from a user gesture (the IGNITION CTA's resume step) without starting the
+   * engine. Resolves true once the context is running. */
+  const unlock = useCallback(async (): Promise<boolean> => {
+    ensure();
+    const ctx = ctxRef.current;
+    if (!ctx) return false;
+    if (ctx.state !== "running") await ctx.resume();
+    return ctx.state === "running";
+  }, [ensure]);
+
   const stop = useCallback(() => {
     wantsRunning.current = false;
     startVersion.current++;
@@ -249,6 +259,7 @@ export function useAudioEngine(
   return useMemo(
     () => ({
       background,backgroundStatus,setBackgroundEnabled,getMediaElement,
+      unlock,
       error,
       starting,
       start,
@@ -274,6 +285,7 @@ export function useAudioEngine(
     }),
     [
       background,backgroundStatus,setBackgroundEnabled,getMediaElement,
+      unlock,
       error,
       starting,
       start,

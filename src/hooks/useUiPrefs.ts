@@ -6,6 +6,7 @@ import {
   DEFAULT_MAX_TOP_SPEED_MPH,
 } from './gearLogic';
 import { storageKey } from '../lib/storageKey';
+import { parseShowIgnition, SHOW_IGNITION_DEFAULT } from '../app/ignitionGate';
 
 export type ThemeId = 'night' | 'day' | 'neon' | 'mono';
 export type LayoutDensity = 'comfortable' | 'compact' | 'spacious';
@@ -35,6 +36,8 @@ export interface UiPrefs {
   telemetryDensity: TelemetryDensity;
   speedUnit: SpeedUnit;
   showKeepAliveTip: boolean;
+  /** Show the IGNITION splash on launch (Customize; default off: boot straight to Drive). */
+  showIgnitionOnLaunch: boolean;
   masterMuted: boolean;
   masterVolume: number;
   selectedEngineId: string;
@@ -94,6 +97,7 @@ export const DEFAULT_UI: UiPrefs = {
   telemetryDensity: 'full',
   speedUnit: 'mph',
   showKeepAliveTip: true,
+  showIgnitionOnLaunch: SHOW_IGNITION_DEFAULT,
   masterMuted: false,
   masterVolume: .65,
   selectedEngineId: FALLBACK_ENGINE_ID,
@@ -260,6 +264,7 @@ function load(): UiPrefs {
       ...parsed,
       mapping: { ...DEFAULT_UI.mapping, ...parsed.mapping },
       upshiftSfx,
+      showIgnitionOnLaunch: parseShowIgnition(parsed.showIgnitionOnLaunch),
       ionTwinSpeedScript: migrateIonTwinSpeedScript(parsed),
       ...dynamics,
     };
