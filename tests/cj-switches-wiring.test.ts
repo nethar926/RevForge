@@ -34,7 +34,7 @@ test('every Tuner menu item is reachable from the row / MORE (directly, or via �
   assert.ok(reachable().includes('sound-builder'));
   assert.equal(cjNavAction('lab', 'studio')?.type === 'panel' && (cjNavAction('lab', 'studio') as { panel: string }).panel, 'studio');
   // Tuner Options ('tune') and Revs ('garage') panels: every non-tuner panel shows "← TUNE" back to the full Tuner menu.
-  assert.match(forge, /\{panel!=="tuner"&&<button className="tuner-back" onClick=\{\(\)=>setPanel\("tuner"\)\}>← TUNE<\/button>\}/);
+  assert.match(forge, /\{panel!=="tuner"&&<button className="tuner-back" data-testid="cj-tune" onClick=\{\(\)=>setPanel\("tuner"\)\}>← TUNE<\/button>\}/);
 });
 
 test('row = DRIVE GARAGE VISUALS OPTIONS SOUND BUILDER (COMPASS) MUTE MORE; MORE = PRO BUILDER LAB DIAGNOSTICS ACCOUNT', () => {
@@ -114,6 +114,15 @@ test('wiring: CJ row replaces Tuner (after IGNITION) and ☰ (AppShell) only for
   assert.match(src('app/App.tsx'), /cjNav=\{packForThemeId\(themes\.skinId\)\?\.id === CARRIER_JET\.id\}/);
   const mount = src('packs/mounts/CarrierJetMount.tsx');
   assert.match(mount, /<CarrierJetAfterburnerGuard armed=\{armed\} guardOpen=\{guardOpen\}/);
+  assert.match(readFileSync(new URL('../src/forge/ForgePage.tsx', import.meta.url), 'utf8'), /<button className="tuner-back" data-testid="cj-tune" onClick=\{\(\)=>setPanel\("tuner"\)\}>← TUNE<\/button>/, 'stable cj-tune hook opens the Tuner');
+  assert.match(mount, /flightSlot=\{guard\}/, 'portrait: guard inside the HUD FLIGHT block');
+  assert.match(mount, /layout !== 'portrait' && <div className="cjm-ab">\{guard\}<\/div>/, 'host strip off portrait');
+  assert.match(mount, /layout === 'board' \|\| layout === 'window' \? 'compact' : 'auto'/, 'Tesla guard = compact');
+  const nav = readFileSync(new URL('../src/packs/mounts/CjNavRow.tsx', import.meta.url), 'utf8');
+  assert.match(nav, /variant=\{layout === 'board' \|\| layout === 'window' \? 'compact' : 'auto'\}/, 'Tesla row = compact');
+  const css = readFileSync(new URL('../src/packs/mounts/carrier-jet-controls.css', import.meta.url), 'utf8') + readFileSync(new URL('../src/packs/mounts/carrier-jet-mount.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /display:\s*none/, 'host CSS hides no switch / guard part');
+  assert.doesNotMatch(css, /portrait'\] > \.cjm-fill[^{]*\{ bottom: 68px/, 'portrait board keeps its 68px');
   assert.match(mount, /sendPackEngineCommand\(ID\.id, \{ type: 'ab-armed', armed: next \}\)/);
   assert.match(mount, /useState\(false\)/, 'guard starts closed');
   const bridge = src('packs/audioBridge.ts');

@@ -21,6 +21,8 @@ export interface CjNavRowProps {
  * Fits its slot: switches that do not fit move into MORE (CJ_DEMOTE_ORDER). MORE opens / closes the
  * tray (Escape or a tap outside closes it and returns focus to MORE). COMPASS appears only where the
  * iOS compass permission flow exists (phone layouts), and taps run requestPermission from the gesture.
+ * Variant: 'compact' on Tesla / desktop (board, drive window: every legend shown); phones keep 'auto'
+ * (compact in phone-landscape, portrait order DRIVE GARAGE MUTE COMPASS … MORE in portrait).
  */
 export function CjNavRow({ current, muted, labPanel = 'studio', onAction }: CjNavRowProps) {
   const layout = useRfLayout(false);
@@ -93,7 +95,7 @@ export function CjNavRow({ current, muted, labPanel = 'studio', onAction }: CjNa
   };
   return (
     <nav ref={hostRef} className="cjnav" aria-label="Carrier Jet navigation" data-rf-layout={layout} data-demote={demote || undefined} onKeyDown={onKeyDown}>
-      <CarrierJetSwitchPanel items={items} overflow={overflow} onSelect={onSelect} />
+      <CarrierJetSwitchPanel items={items} overflow={overflow} onSelect={onSelect} variant={layout === 'board' || layout === 'window' ? 'compact' : 'auto'} />
     </nav>
   );
 }

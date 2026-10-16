@@ -36,8 +36,9 @@ import './carrier-jet-controls.css';
  * (≤ 4 Hz, ≥ 1°). iOS compass permission is the COMPASS switch in the CJ switch row (CjNavRow).
  * Afterburner guard (Visual Skins' CarrierJetAfterburnerGuard): guardOpen is UI state (closed on load);
  * ARM persists (packs/abArmed.ts) and goes to the engine as an 'ab-armed' pack engine command, the same
- * runtime bus the AB zone comes back on. Sits under the FLIGHT column (Tesla / desktop) or in a strip
- * at the bottom of the board's box (phones) — carrier-jet-controls.css.
+ * runtime bus the AB zone comes back on. Compact strip under the FLIGHT column (Tesla / desktop), inside
+ * the HUD's FLIGHT block via flightSlot (portrait; the skin ignores the slot elsewhere), or in a strip at
+ * the bottom of the board's box (phone-landscape) — carrier-jet-controls.css.
  */
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
@@ -57,6 +58,10 @@ export function CarrierJetMount(props: PackHudProps) {
     setAbArmed(next);
     sendPackEngineCommand(ID.id, { type: 'ab-armed', armed: next });
   };
+  // Tesla / desktop (board, drive window): the skin's compact strip, every element shown; phones: 'auto'
+  // (compact strip in phone-landscape, compact inside the HUD's FLIGHT-block slot in portrait).
+  const guardVariant = layout === 'board' || layout === 'window' ? 'compact' : 'auto';
+  const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />;
   return (
     <div
       ref={ref}
@@ -67,11 +72,9 @@ export function CarrierJetMount(props: PackHudProps) {
       style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}
     >
       <div className="cjm-fill">
-        <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} />
+        <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} flightSlot={guard} />
       </div>
-      <div className="cjm-ab">
-        <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} />
-      </div>
+      {layout !== 'portrait' && <div className="cjm-ab">{guard}</div>}
     </div>
   );
 }

@@ -1,24 +1,13 @@
 /*
- * Carrier Jet controls host layout (framework glue; Visual Skins owns the art in skins/carrier-jet/switches.css).
- * The skin's CarrierJetSwitchPanel (≈754×198 px) and CarrierJetAfterburnerGuard (≈188×290 px) are drawn at
- * concept-sheet size and fit no Drive slot without covering the HUD at 1280×800, 773×601 or the phones, so
- * this file packs the same parts (lever art, lamps, labels, striped guard, ARM key, plate) into a 44px-high
- * menu slot and a 48px-high strip under the board. Text stays ≥ 11px, every target ≥ 44px; only sizes and
- * positions change, never colours / art. Delete these overrides once the skin ships a compact variant.
+ * Carrier Jet controls host layout (framework glue; Visual Skins owns the art and the compact sizing in
+ * skins/carrier-jet/switches.css). Only slot sizing and placement live here: the row fills the ☰ / Tuner
+ * slot right-aligned, the MORE tray drops down from it, and the afterburner guard strip sits under the
+ * board's FLIGHT column (Tesla / desktop) or at the bottom of the board's box (phone-landscape). Portrait
+ * draws the guard inside the HUD's FLIGHT block (flightSlot). Nothing is hidden or shrunk here.
  */
 
 /* ---------------- switch row in the ☰ / Tuner slot */
 .cjnav { position: relative; flex: 1 1 auto; min-width: 0; display: flex; justify-content: flex-end; }
-.cjnav .cjs { padding: 1px 2px; border-width: 1.5px; max-width: 100%; }
-.cjnav .cjs > .cjs-screw, .cjnav .cjs > .cjs-title { display: none; }
-.cjnav .cjs > .cjs-row { flex-wrap: nowrap; gap: 3px; }
-.cjnav .cjs .cjs-sw { flex-direction: row; align-items: center; justify-content: flex-start; gap: 4px; width: auto; min-width: 44px; min-height: 44px; padding: 2px 10px 2px 4px; }
-.cjnav .cjs .cjs-bat { width: 18px; height: 25px; }
-.cjnav .cjs .cjs-label { display: block; height: auto; max-width: 78px; text-align: left; white-space: normal; }
-.cjnav .cjs .cjs-lamp { top: 3px; right: 2px; width: 8px; height: 8px; }
-.cjnav .cjs .cjs-legend, .cjnav .cjs .cjs-hint { display: none; }
-/* denied keeps its amber DENIED legend visible (the accessible name says "denied, tap to retry") */
-.cjnav .cjs .cjs-sw[data-denied] .cjs-legend { display: block; }
 /* MORE tray drops down over the board while open, anchored to the row's right edge */
 .cjnav .cjs > .cjs-tray {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 40; margin: 0; padding: 8px;
@@ -27,33 +16,13 @@
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
 }
 .cjnav .cjs > .cjs-tray > .cjs-row { flex-wrap: wrap; justify-content: flex-end; }
-/* phone landscape: the slot is the 80px right rail → stacked cells (lever over label) */
-.cjnav[data-rf-layout='phone-landscape'] .cjs .cjs-sw { flex-direction: column; justify-content: center; gap: 1px; padding: 9px 4px 2px; }
-.cjnav[data-rf-layout='phone-landscape'] .cjs .cjs-label { text-align: center; }
+/* The open MORE tray must stack above the throttle rail (both z 12; the rail comes later in the DOM). */
+.rev-topbar:has(.cjnav [data-sw-id='more'][aria-expanded='true']) { z-index: 13; }
 
-/* ---------------- afterburner guard: horizontal strip (cap · guard well · plate) */
-.cjm-ab .cjg { flex-direction: row; align-items: center; width: auto; gap: 8px; padding: 4px 8px; }
-.cjm-ab .cjg-well { width: 152px; height: 48px; perspective: 300px; }
-.cjm-ab .cjg-arm-slot { left: 52px; top: 0; width: 100px; height: 48px; }
-.cjm-ab .cjg .cjg-arm { flex-direction: row; gap: 8px; width: 100px; height: 48px; }
-.cjm-ab .cjg-arm-t { font-size: 16px; }
-.cjm-ab .cjg-arm-s { font-size: 12px; }
-.cjm-ab .cjg .cjg-guard { left: 0; right: auto; top: 0; width: 152px; height: 48px; }
-.cjm-ab .cjg[data-open='true'] .cjg-guard { width: 46px; height: 48px; }
-.cjm-ab .cjg-lid, .cjm-ab .cjg-strip { height: 48px; }
-.cjm-ab .cjg-frame { -webkit-mask-size: 100% 100%, 96px 38px; mask-size: 100% 100%, 96px 38px; -webkit-mask-position: 0 0, 52px 5px; mask-position: 0 0, 52px 5px; }
-.cjm-ab .cjg-win { left: 52px; right: 4px; top: 5px; height: 38px; }
-.cjm-ab .cjg-tab, .cjm-ab .cjg-strip .cjg-tab { left: 2px; top: 7px; width: 42px; margin-left: 0; padding: 3px 0; font-size: 11px; line-height: 1.15; letter-spacing: 0.04em; white-space: normal; }
-.cjm-ab .cjg-plate { width: 104px; height: 34px; }
-
-/* placement: under the board's FLIGHT (left) column on Tesla / desktop; inside the board's box on phones */
+/* ---------------- afterburner guard strip placement (the guard itself is the skin's compact variant, 60px) */
 .cjm > .cjm-ab { position: absolute; z-index: 3; left: 0; top: calc(100% + 8px); }
-.cjm[data-rf-layout='portrait'] > .cjm-fill, .cjm[data-rf-layout='phone-landscape'] > .cjm-fill { bottom: 68px; }
-.cjm[data-rf-layout='portrait'] > .cjm-ab, .cjm[data-rf-layout='phone-landscape'] > .cjm-ab { top: auto; right: 0; bottom: 4px; width: max-content; margin: 0 auto; }
-.cjm[data-rf-layout='phone-landscape'] > .cjm-ab { bottom: calc(env(safe-area-inset-bottom, 0px) + 2px); }
-.cjm[data-rf-layout='portrait'] > .cjm-ab .cjg-cap, .cjm[data-rf-layout='phone-landscape'] > .cjm-ab .cjg-cap { display: none; }
+.cjm[data-rf-layout='phone-landscape'] > .cjm-fill { bottom: 68px; }
+.cjm[data-rf-layout='phone-landscape'] > .cjm-ab { top: auto; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 2px); width: max-content; margin: 0 auto; }
 /* GPS (no demo throttle) on board/window: the box runs down to the dock, so it yields a 68px strip to the guard. */
 .rev-viewport:not(:has(.rev-throttle)) .cjm:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-fill { bottom: 68px; }
 .rev-viewport:not(:has(.rev-throttle)) .cjm:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-ab { top: auto; bottom: 4px; }
-/* The open MORE tray must stack above the throttle rail (both z 12; the rail comes later in the DOM). */
-.rev-topbar:has(.cjnav [data-sw-id='more'][aria-expanded='true']) { z-index: 13; }

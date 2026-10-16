@@ -135,14 +135,16 @@ test('wiring sources: old jet skin CSS/overlay out of ThemeStage + index.css; mo
   assert.match(mount, /fullBoard = driveWindow \|\| layout === 'portrait' \|\| layout === 'phone-landscape'/);
   assert.match(mount, /fullBoard \? false : props\.compact === true \? true : 'auto'/);
   assert.match(mount, /data-rf-layout=\{layout\}/);
-  assert.match(mount, /<CarrierJetHud \{\.\.\.props\} compact=\{compact\} driveWindow=\{false\} abZone=\{abZone\} heading=\{heading\} \/>/);
+  assert.match(mount, /<CarrierJetHud \{\.\.\.props\} compact=\{compact\} driveWindow=\{false\} abZone=\{abZone\} heading=\{heading\} flightSlot=\{guard\} \/>/);
   assert.match(mount, /useSyncExternalStore\(subscribePackAbZone, readPackAbZone/);
   assert.match(mount, /useSyncExternalStore\(subscribePackAbZone, readPackAbZone/);
   // The mount's own drive-window state is data-box="drive" (the skin reads any ancestor data-drive-window).
   assert.match(mount, /data-box=\{driveWindow \? 'drive' : undefined\}/);
   assert.doesNotMatch(mount, /data-drive-window=/);
   // The skin renders the look tabs and persists the look itself: the mount adds neither.
-  assert.doesNotMatch(mount, /role="radiogroup"|onVariantChange=\{|\bvariant=\{/);
+  assert.doesNotMatch(mount, /role="radiogroup"|onVariantChange=\{/);
+  // the skin owns the look: no look variant on the HUD (the guard's own compact/auto variant prop is separate)
+  assert.doesNotMatch(mount.match(/<CarrierJetHud [^>]*\/>/)[0], /\bvariant=\{/);
   // Fill div, no transform scale (the skin sizes from its container).
   assert.doesNotMatch(mount, /rf-pack-box/);
   assert.doesNotMatch(src('packs/mounts/carrier-jet-mount.css'), /transform\s*:/);

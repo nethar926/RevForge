@@ -370,7 +370,7 @@ export function ForgePage({
           >
             <div className="forge-modal-heading">
               <div>
-                <span className="forge-eyebrow">REVFORGE / TUNE</span>{panel!=="tuner"&&<button className="tuner-back" onClick={()=>setPanel("tuner")}>← TUNE</button>}<h2>{panelTitle}</h2>
+                <span className="forge-eyebrow">REVFORGE / TUNE</span>{panel!=="tuner"&&<button className="tuner-back" data-testid="cj-tune" onClick={()=>setPanel("tuner")}>← TUNE</button>}<h2>{panelTitle}</h2>
               </div>
               <button
                 autoFocus
