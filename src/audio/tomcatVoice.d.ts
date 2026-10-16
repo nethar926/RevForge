@@ -172,3 +172,6 @@ export class TomcatVoice {
   update(params: Partial<EngineParams>, drv: TomcatDrive, tc?: number, when?: number): void;
   dispose(): void;
 }
+
+/** Wind / air-rush trims (1 = the ef4021e mix). */
+export const TC_AIR: Readonly<{ ramWind: number; ramBuffet: number; hot: number; bed: number; bedLpHz: number; bodyLpHz: number }>;

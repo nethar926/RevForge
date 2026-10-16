@@ -100,15 +100,29 @@ function baselineRoot() {
   symlinkSync(join(root, 'node_modules'), join(dir, 'node_modules'));
   return dir;
 }
+/**
+ * ef4021e's engine / wrapper code running the CURRENT Tomcat voice file. The wind trim (TC_AIR) is
+ * an intentional change to the voice itself; this root isolates everything else (cold start,
+ * flight phases, switch API) so "default off = unchanged" stays a sample-exact check.
+ */
+function baselineWithVoiceRoot() {
+  const dir = baselineRoot();
+  for (const f of ['src/audio/tomcatVoice.js', 'src/audio/tomcatVoice.d.ts']) writeFileSync(join(dir, f), read(f));
+  return dir;
+}
 let base = null;
+let baseVoice = null;
 try {
   base = baselineRoot();
+  baseVoice = baselineWithVoiceRoot();
 } catch {
   base = null; // shallow clone without ef4021e: the A/B tests below are skipped
 }
-process.on('exit', () => base && rmSync(base, { recursive: true, force: true }));
+process.on('exit', () => {
+  for (const d of [base, baseVoice]) if (d) rmSync(d, { recursive: true, force: true });
+});
 
-test('default off: drive model + targets identical to ef4021e (quick start, throttle, AB, shutdown)', { skip: !base && 'ef4021e not available' }, async () => {
+test('default off: drive model identical to ef4021e; targets identical except the intentional wind trim (TC_AIR)', { skip: !base && 'ef4021e not available' }, async () => {
   const old = await import(pathToFileURL(join(base, 'src/audio/tomcatVoice.js')).href);
   const run = (m) => {
     const prev = Math.random;
@@ -121,7 +135,7 @@ test('default off: drive model + targets identical to ef4021e (quick start, thro
         const t = i / 60;
         if (i === 60 * 24) m.tomcatBeginShutdown(s);
         const d = m.stepTomcatDrive(s, { speed: t > 10 ? 0.8 : 0.2, throttle: t > 8 ? 1 : 0.3, load: t > 8 ? 1 : 0.3 }, 1 / 60, {});
-        out.push(JSON.stringify({ d, T: m.tomcatTargets({}, d) }));
+        out.push({ d: JSON.stringify(d), T: m.tomcatTargets({}, d) });
       }
       return out;
     } finally {
@@ -131,17 +145,38 @@ test('default off: drive model + targets identical to ef4021e (quick start, thro
   const a = run(old);
   const b = run(voice);
   assert.equal(a.length, b.length);
-  for (let i = 0; i < a.length; i++) assert.equal(b[i], a[i], `frame ${i} differs`);
+  // Wind trim: these target levels are ef4021e × TC_AIR (the graph also adds the air LPs);
+  // every other target is unchanged.
+  const A = voice.TC_AIR;
+  const scaled = { ramWind: A.ramWind, ramBuffet: A.ramBuffet, roarHot: A.hot, idleBed: A.bed };
+  const same = (x, y, path) => {
+    if (typeof x === 'number') {
+      const k = path.split('.').at(-1);
+      const want = k in scaled ? y * scaled[k] : y;
+      assert.ok(Math.abs(x - want) <= 1e-12 * Math.max(1, Math.abs(want)), `${path}: ${x} vs ${want}`);
+      return;
+    }
+    if (x && typeof x === 'object') {
+      assert.deepEqual(Object.keys(x).sort(), Object.keys(y).sort(), path);
+      for (const k of Object.keys(x)) same(x[k], y[k], `${path}.${k}`);
+      return;
+    }
+    assert.equal(x, y, path);
+  };
+  for (let i = 0; i < a.length; i++) {
+    assert.equal(b[i].d, a[i].d, `frame ${i}: drive differs`);
+    same(b[i].T, a[i].T, `frame ${i}.T`);
+  }
 });
 
-test('default off: live chain render is sample-identical to ef4021e (start → drive → shutoff)', { skip: !base && 'ef4021e not available' }, async () => {
+test('default off: live chain is sample-identical to ef4021e engine code running the current Tomcat voice (start → drive → shutoff)', { skip: !baseVoice && 'ef4021e not available' }, async () => {
   const profile = (t) => (t < 5 ? { speed: 0, throttle: 0, load: 0 } : { speed: 0.3, throttle: 0.5, load: 0.5 });
   const opts = { patchId: 'aerospace-f14', seed: 'cj-default-live', fps: 30, cues: [{ t: 8, cue: 'shutdown' }] };
   let same = false;
   let worst = 0;
   // the harness tolerates a dropped suspend point (frame lands one step later); retry before failing
   for (let n = 0; n < 3 && !same; n++) {
-    const A = await renderLive(profile, 10, { ...opts, root: base });
+    const A = await renderLive(profile, 10, { ...opts, root: baseVoice });
     const B = await renderLive(profile, 10, opts);
     worst = 0;
     for (let c = 0; c < 2; c++) {

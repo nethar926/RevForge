@@ -105,6 +105,21 @@ export const TC_LOW = {
 };
 
 /**
+ * Wind / air-rush trims (linear, on top of the layer gains). The car moving supplies real wind,
+ * so the broadband air layers stay a faint touch: speed ram wind + buffet, the idle / spool
+ * airflow bed, the thrust² hot band and the roar body band's upper skirt. Not touched: turbine whine, the low end (deep / body /
+ * heavy / rumble), the afterburner core roar, starter air. 1 = the ef4021e mix.
+ */
+export const TC_AIR = Object.freeze({
+  ramWind: 0.25, // speed wind (BP 600–1500 Hz) −12 dB
+  ramBuffet: 0.25, // speed buffet −12 dB
+  hot: 0.3, // thrust² hot band (white BP 650–1100 Hz) −10.5 dB
+  bed: 0.9, // idle / spool airflow bed level (−0.9 dB) …
+  bedLpHz: 380, // … plus an LP ahead of its BP (≈ −13 dB at 800 Hz, −22 dB at 1.3 kHz); low skirt kept
+  bodyLpHz: 480, // deep + body roar bands share an LP: the body's 6 dB/oct upper skirt (0.4–4 kHz whoosh) drops
+});
+
+/**
  * Heavy bass (full power + afterburner lift). The extra level at full throttle and in the zones
  * comes from the low end: one mono heavy sub layer (white noise → 30 Hz HP → 120 Hz LP → soft
  * saturator → 2 × LP ≈ 95–110 Hz). The saturator makes it a dense, low-crest rumble, so it adds
@@ -745,7 +760,7 @@ function engineTargets(L, n2, n1, s, comb, starter, rate, pitch, ab) {
     fanTone: L.fan * 0.03 * Math.pow(clip(n1 / 0.35), 1.2) * (0.6 + 0.4 * s) * duck,
     buzz: L.fan * 0.05 * sstep((n1 - 0.62) / 0.33) * duck,
     buzzDrive: 1 + 6 * sstep((n1 - 0.8) / 0.2),
-    idleBed: L.idle * presence * (0.4 * (1 - 0.55 * s) * (0.3 + 0.7 * comb) + 0.2 * clip(Math.abs(rate) * 1.5)),
+    idleBed: TC_AIR.bed * L.idle * presence * (0.4 * (1 - 0.55 * s) * (0.3 + 0.7 * comb) + 0.2 * clip(Math.abs(rate) * 1.5)),
     idleHz: 420 + 900 * s,
     roarLow: L.roar * TC_LOW.deep * lowT,
     heavy: L.roar * TC_HEAVY.sub * hv + L.ab * TC_HEAVY.abSub * Math.pow(clip(ab), 1.2) * comb,
@@ -753,7 +768,7 @@ function engineTargets(L, n2, n1, s, comb, starter, rate, pitch, ab) {
     roarLowHz: 90 + 60 * thrust,
     roarBody: L.roar * TC_LOW.body * lowT,
     roarBodyHz: 130 + 120 * s + 30 * ab,
-    roarHot: L.roar * TC_LOW.hot * thrust * thrust,
+    roarHot: TC_AIR.hot * L.roar * TC_LOW.hot * thrust * thrust,
     roarHotHz: 650 + 450 * s,
     roarAm: TC_LOW.am * (0.35 + 0.65 * thrust),
     starterHz: 1500 + 5200 * clip(n2 / 0.45),
@@ -806,9 +821,9 @@ export function tomcatTargets(params = {}, drv = {}) {
     ticks: L.mech * 0.16 * presence * (1 - 0.75 * s),
     intake: L.mech * (0.07 * n1 + 0.08 * sp),
     intakeHz: 45 + 30 * n1,
-    ramWind: L.ram * 0.14 * sp * sp,
+    ramWind: TC_AIR.ramWind * L.ram * 0.14 * sp * sp,
     ramHz: 600 + 900 * sp,
-    ramBuffet: L.ram * 0.12 * Math.pow(sp, 1.5),
+    ramBuffet: TC_AIR.ramBuffet * L.ram * 0.12 * Math.pow(sp, 1.5),
     width: clip(num(p.stereoWidth, 0.62)),
     level: clip(num(p.tcLevel, 0.5), 0, 1) * 2 * TC_OUT_TRIM,
     whumpScale: abOn,
@@ -1041,17 +1056,22 @@ export class TomcatVoice {
       const whiteE = i ? this.whiteB : this.whiteA;
       e.idleBed = gain(0, e.bus);
       e.idleBp = filt('bandpass', 500, 0.9, e.idleBed);
-      pinkE.connect(e.idleBp);
+      e.idleAir = filt('lowpass', TC_AIR.bedLpHz, -3, e.idleBp); // air trim (Q in dB: −3 ≈ Butterworth)
+      pinkE.connect(e.idleAir);
       // core roar: low (LP), body (BP), hot (white BP)
       e.roarAm = gain(1, e.bus);
       e.roarAmDepth = gain(0, e.roarAm.gain);
       roll[i].connect(e.roarAmDepth);
+      // core-roar air trim: one LP shared by the deep and body bands (same phase on both, so their
+      // low-end sum is unchanged) steepens the body band's 6 dB/oct upper skirt — the 0.4–4 kHz whoosh
+      e.roarAir = filt('lowpass', TC_AIR.bodyLpHz, -3, null); // Q in dB: −3 ≈ Butterworth, no bump
+      pinkE.connect(e.roarAir);
       e.roarLow = gain(0, e.roarAm);
       e.roarLowLp = filt('lowpass', 90, 0.75, e.roarLow);
-      pinkE.connect(e.roarLowLp);
+      e.roarAir.connect(e.roarLowLp);
       e.roarBody = gain(0, e.roarAm);
       e.roarBodyBp = filt('bandpass', 180, 0.75, e.roarBody);
-      pinkE.connect(e.roarBodyBp);
+      e.roarAir.connect(e.roarBodyBp);
       e.roarHot = gain(0, e.bus);
       e.roarHotBp = filt('bandpass', 800, 0.7, e.roarHot);
       whiteE.connect(e.roarHotBp);

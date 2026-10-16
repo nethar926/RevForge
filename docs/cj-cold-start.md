@@ -309,3 +309,23 @@ is outside the audio layer, so it was left unchanged.
 heard. In the browser, the warning is spoken by default. The scripted call sequence is in
 `tests/cj-flight-render.mjs` (`FLIGHT_TIMELINE`); it follows the order of Frontend's
 `regimeToAudioCalls()`.
+
+## Wind trim (all Tomcat sounds)
+
+The car moving provides real wind, so the voice's broadband air layers are now just a faint touch
+(`TC_AIR` in `tomcatVoice.js`):
+
+* speed wind −12 dB
+* speed buffet −12 dB
+* thrust² hot band −10.5 dB
+* the idle / spool airflow bed, through an LP at 380 Hz (−13 dB at 800 Hz, −22 dB at 1.3 kHz)
+* the upper skirt of the roar body band, through an LP at 480 Hz that the deep and body bands share
+
+The turbine whine, the low end, the afterburner core roar, starter air, the ground-cart hose roar
+and the crossbleed rush are unchanged.
+
+Measured against ef4021e: the low end (< 120 Hz and 30–200 Hz) stays within ±0.1 dB at idle, mid,
+full and AB. Loudness is 0 to −1 LU lower, and the 1–4 kHz air band is 3–9 dB lower at speed.
+`tests/cj-wind.test.mjs` pins this. The cold-start "default off" identity test now compares
+against ef4021e's engine code running the current voice file, because the wind trim is an
+intentional voice change.
