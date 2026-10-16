@@ -77,8 +77,8 @@ test('identity: builtin keeps id/topology/snippet, label is Tomcat, voice select
   const b = builtins.getBuiltin('aerospace-f14');
   assert.equal(b.id, 'aerospace-f14');
   assert.equal(b.topology, 'aerospace-f14');
-  assert.equal(b.name, 'Tomcat');
-  assert.equal(pack.TOMCAT_PACK.name, 'Tomcat');
+  assert.equal(b.name, 'Carrier Jet');
+  assert.equal(pack.TOMCAT_PACK.name, 'Carrier Jet');
   assert.ok(pack.isTomcatPatch(b));
   assert.ok(pack.isTomcatPatch({ id: 'copy-1', kind: 'aerospace', params: { tomcatVoice: 1 } }));
   assert.ok(!pack.isTomcatPatch({ id: 'other', kind: 'aerospace', params: {} }), 'other aerospace patches keep the legacy graph');
