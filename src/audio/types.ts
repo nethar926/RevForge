@@ -435,6 +435,9 @@ export interface EngineSynth {
   setCalloutMode?(mode: JetCalloutMode | Partial<JetCalloutModes>): void;
   getCalloutMode?(): JetCalloutModes;
   setCautionVoice?(on: boolean): void;
+  /** Speed callouts (overspeedCaution / overspeedWarning). Default off — mirror Frontend's highSpeedCallouts. */
+  setHighSpeedCallouts?(on: boolean): void;
+  getHighSpeedCallouts?(): boolean;
   getCautionVoice?(): boolean;
   /** Original alert tone; 'note' is a silent no-op (returns false). */
   playAlertTone?(level: JetAlertLevel): boolean;
@@ -570,11 +573,11 @@ export type JetFlightPhase = 'TAXI' | 'TAKEOFF_ROLL' | 'AIRBORNE' | 'APPROACH' |
 export interface JetFlightInfo {
   /** Gear position. A transition INTO 'up' / 'down' plays the gearUp / gearDown cue; 'transit' plays nothing. */
   gear?: 'down' | 'up' | 'transit';
-  /** Frontend's afterburnerLit — same as setAfterburnerLaunch(lit). */
+  /** Frontend's hard-launch flag: while true and armed the AB is live (adds to afterburnerLit, never clears it). */
   launch?: boolean;
 }
-/** 'touchAndGo' is accepted as a harmless no-op (touch-and-go / go-around / launch have no callout). */
-export type JetCalloutId = 'abUnarmed' | 'overspeedCaution' | 'overspeedWarning' | 'gpsFail' | 'gearUp' | 'gearDown' | 'touchAndGo';
+/** 'touchAndGo' / 'goAround' / 'launch' are accepted as a harmless no-op (touch-and-go / go-around / launch have no callout). */
+export type JetCalloutId = 'abUnarmed' | 'overspeedCaution' | 'overspeedWarning' | 'gpsFail' | 'gearUp' | 'gearDown' | 'touchAndGo' | 'goAround' | 'launch';
 export type JetCalloutMode = 'voice' | 'tone' | 'off';
 export interface JetCalloutModes {
   warning: JetCalloutMode;

@@ -384,7 +384,9 @@ export class EngineSynthImpl implements EngineSynth {
   /** Tomcat flight phase (Frontend-detected), launch flag, AB speeds, callouts. */
   private flightPhase: JetFlightPhase | null = null;
   private flightGear: 'down' | 'transit' | 'up' | null = null;
+  /** setAfterburnerLaunch(afterburnerLit) and setFlightPhase info.launch, kept apart (OR'd into the drive). */
   private abLaunch = false;
+  private flightLaunch = false;
   private speedCfg: AudioSpeedConfig = { abEngageMph: TC_AB_ENGAGE_MPH, abDisengageMph: TC_AB_DISENGAGE_MPH };
   private callouts = new FlightCallouts({
     now: () => this.context.currentTime,
@@ -2429,7 +2431,7 @@ export class EngineSynthImpl implements EngineSynth {
       if (shaped.fast) stepParams = { ...this.params, tcSpoolTime: 0, spoolInertia: 0 };
     }
     tomcatSetAbSpeeds(this.tcState, this.speedCfg.abEngageMph, this.speedCfg.abDisengageMph);
-    tomcatSetAfterburnerLaunch(this.tcState, this.abLaunch);
+    tomcatSetAfterburnerLaunch(this.tcState, this.abLaunch || this.flightLaunch);
     const jv = this.g.jetVoice;
     const cold = !!jv && (this.jetColdEnabled || this.jetActive());
     if (cold) this.advanceJetQueue(dt);
@@ -2549,9 +2551,9 @@ export class EngineSynthImpl implements EngineSynth {
   setFlightPhase(phase: JetFlightPhase | null, info?: JetFlightInfo): void {
     if (this.disposed) return;
     if (phase !== null && !(TC_FLIGHT_PHASES as readonly string[]).includes(phase)) return;
-    const changed = phase !== this.flightPhase || (!!info && typeof info.launch === 'boolean' && info.launch !== this.abLaunch);
+    const changed = phase !== this.flightPhase || (!!info && typeof info.launch === 'boolean' && info.launch !== this.flightLaunch);
     this.flightPhase = phase;
-    if (info && typeof info.launch === 'boolean') this.abLaunch = info.launch;
+    if (info && typeof info.launch === 'boolean') this.flightLaunch = info.launch;
     // gear: cue only on a transition INTO 'up' / 'down' (nothing while 'transit'; the first report sets state)
     const raw = info?.gear as string | undefined;
     const gear = raw === 'moving' ? 'transit' : raw === 'up' || raw === 'down' || raw === 'transit' ? raw : undefined;
@@ -2597,6 +2599,14 @@ export class EngineSynthImpl implements EngineSynth {
 
   getCautionVoice(): boolean {
     return this.callouts.cautionVoice;
+  }
+
+  setHighSpeedCallouts(on: boolean): void {
+    this.callouts.setHighSpeed(on);
+  }
+
+  getHighSpeedCallouts(): boolean {
+    return this.callouts.highSpeed;
   }
 
   playAlertTone(level: JetAlertLevel): boolean {

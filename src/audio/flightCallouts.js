@@ -12,10 +12,14 @@ export const JET_CALLOUTS = {
   gpsFail: { level: 'caution', text: 'GPS signal lost' },
   /** Kept only so Frontend calls never break: touch-and-go / go-around / launch have no callout. */
   touchAndGo: { level: 'none' },
+  goAround: { level: 'none' },
+  launch: { level: 'none' },
   gearUp: { level: 'mechanical' },
   gearDown: { level: 'mechanical' },
 };
 export const JET_ALERT_LEVELS = ['note', 'caution', 'warning'];
+/** Speed callouts (HIGH SPEED / OVERSPEED) — off by default, like Frontend's highSpeedCallouts. */
+export const JET_HIGH_SPEED_IDS = ['overspeedCaution', 'overspeedWarning'];
 /** Voice settings: quieter than a car alert, slightly low pitch. */
 export const JET_VOICE = { volume: 0.6, pitch: 0.85, rate: 1, seconds: 1.6 };
 /** Per-id cooldown (s). Gear cues have a short one so a flapping gear flag never machine-guns. */
@@ -60,6 +64,7 @@ export class FlightCallouts {
     this.deps = deps;
     this.modes = { warning: 'voice', caution: 'tone' };
     this.cautionVoice = false;
+    this.highSpeed = false;
     this.last = new Map();
     this.active = null; // { level, until, kind: 'voice' | 'tone', handle }
   }
@@ -82,6 +87,10 @@ export class FlightCallouts {
 
   getMode() {
     return { ...this.modes };
+  }
+
+  setHighSpeed(on) {
+    this.highSpeed = !!on;
   }
 
   setCautionVoice(on) {
@@ -134,6 +143,7 @@ export class FlightCallouts {
   callout(id) {
     const c = JET_CALLOUTS[id];
     if (!c || c.level === 'none') return 'suppressed';
+    if (!this.highSpeed && JET_HIGH_SPEED_IDS.includes(id)) return 'suppressed';
     const now = this.deps.now();
     const cool = c.level === 'mechanical' ? JET_CALLOUT_COOLDOWN.mechanical : JET_CALLOUT_COOLDOWN.alert;
     const prev = this.last.get(id);

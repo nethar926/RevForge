@@ -127,7 +127,13 @@ test('callouts: default modes (warning voice, caution tone), phrases, volume / p
     const { a, tones, mech, clock } = arbiter();
     assert.deepEqual(a.getMode(), { warning: 'voice', caution: 'tone' });
     assert.equal(a.cautionVoice, false);
-    assert.equal(a.callout('overspeedWarning'), 'voice');
+    // HIGH SPEED / OVERSPEED are off by default (Frontend's highSpeedCallouts mirror)
+    assert.equal(a.highSpeed, false);
+    assert.equal(a.callout('overspeedWarning'), 'suppressed');
+    assert.equal(a.callout('overspeedCaution'), 'suppressed');
+    assert.equal(log.spoken.length, 0);
+    a.setHighSpeed(true);
+    assert.equal(a.callout('overspeedWarning'), 'voice', 'suppressed calls start no cooldown');
     assert.equal(log.spoken.at(-1).text, 'Overspeed');
     assert.ok(Math.abs(log.spoken.at(-1).volume - 0.6) < 1e-9);
     assert.ok(log.spoken.at(-1).pitch < 1 && log.spoken.at(-1).pitch > 0.7, 'slightly low pitch');
@@ -143,7 +149,7 @@ test('callouts: default modes (warning voice, caution tone), phrases, volume / p
     assert.equal(a.callout('gearDown'), 'mechanical');
     assert.deepEqual(mech, ['gearUp', 'gearDown']);
     assert.equal(a.callout('nope'), 'suppressed');
-    assert.equal(a.callout('touchAndGo'), 'suppressed', 'no callout for touch-and-go / go-around / launch');
+    for (const id of ['touchAndGo', 'goAround', 'launch']) assert.equal(a.callout(id), 'suppressed', `${id}: no callout`);
     clock.t += 5;
     a.setCautionVoice(false);
     assert.equal(a.callout('gpsFail'), 'tone', 'gpsFail is a caution: tone by default');
@@ -157,6 +163,7 @@ test('callouts: default modes (warning voice, caution tone), phrases, volume / p
 
 test('callouts: per-id cooldown ~20 s, off, tone mode, fallback to tone without speechSynthesis', () => {
   const { a, clock, tones } = arbiter();
+  a.setHighSpeed(true);
   // no speechSynthesis in node → warning falls back to tone
   assert.equal(a.callout('overspeedWarning'), 'tone');
   assert.equal(tones.at(-1).level, 'warning');
@@ -190,6 +197,7 @@ test('callouts: never stacked — a warning cancels a playing caution; others wa
   const log = mockSpeech();
   try {
     const { a, clock, tones } = arbiter();
+    a.setHighSpeed(true);
     assert.equal(a.callout('overspeedCaution'), 'tone');
     const caution = tones.at(-1);
     clock.t += 0.2;
@@ -270,7 +278,19 @@ test('live: phases shape the spool; touch-and-go re-spools faster than a takeoff
   assert.ok(rollRise < 6, `takeoff roll reaches MIL (${rollRise.toFixed(2)} s)`);
   assert.ok(tngRise < rollRise * 0.8, `touch-and-go re-spool ${tngRise.toFixed(2)} s vs takeoff roll ${rollRise.toFixed(2)} s`);
   // launch: armed AB lights at low speed, clears when launch drops below 77 mph
-  const c = await run('launch', [[0.5, (e) => e.setFlightPhase('TAKEOFF_ROLL', { launch: true })], [7, (e) => e.setAfterburnerLaunch(false)]], 10, () => ({ speed: mph(30), throttle: 1, load: 1 }));
+  // Frontend order (regimeToAudioCalls): setFlightPhase(phase, { gear, launch }) then setAfterburnerLaunch(afterburnerLit);
+  // a later phase change with launch: false must not put out a lit burner
+  const c = await run(
+    'launch',
+    [
+      [0.5, (e) => e.setFlightPhase('TAKEOFF_ROLL', { gear: 'down', launch: true })],
+      [0.5, (e) => e.setAfterburnerLaunch(true)],
+      [3, (e) => e.setFlightPhase('TAKEOFF_ROLL', { gear: 'down', launch: false })],
+      [7, (e) => e.setAfterburnerLaunch(false)],
+    ],
+    10,
+    () => ({ speed: mph(30), throttle: 1, load: 1 }),
+  );
   assert.ok(at(c.tr, 6.5).zone >= 1, `launch zone ${at(c.tr, 6.5).zone}`);
   assert.equal(at(c.tr, 9.9).zone, 0);
   assert.ok(samplePeakDb(channelsOf(c.buf)) <= -1);
@@ -290,6 +310,8 @@ test('live: speed config API, gear only on a transition into up/down, note silen
     [9.6, (e) => e.getAudioSpeedConfig()],
     [9.7, (e) => e.setAudioSpeedConfig({ abEngageMph: 75, abDisengageMph: 72 })],
     [9.8, (e) => e.setAudioSpeedConfig({})],
+    [9.85, (e) => e.playFlightCallout('overspeedWarning')],
+    [9.9, (e) => e.setHighSpeedCallouts(true)],
     [10, (e) => e.playFlightCallout('overspeedWarning')],
     [10.05, (e) => e.playFlightCallout('overspeedWarning')],
     [11, (e) => e.playFlightCallout('overspeedCaution')],
@@ -298,6 +320,7 @@ test('live: speed config API, gear only on a transition into up/down, note silen
     [12.2, (e) => e.playFlightCallout('gpsFail')],
     [12.3, (e) => e.getCalloutMode()],
     [12.4, (e) => e.playFlightCallout('touchAndGo')],
+    [12.5, (e) => e.playFlightCallout('goAround')],
     [14, (e) => e.playFlightCallout('gearDown')],
   ];
   const pending = [...steps];
@@ -318,7 +341,9 @@ test('live: speed config API, gear only on a transition into up/down, note silen
     },
   });
   const db = (from, to) => rmsDb(channelsOf(buf, from, to)[0]);
-  const [, , , , note, cfg0, cfgLegacy, cfgKeep, w1, w2, c1, , off1, off2, modeOff, tng, gearR] = results;
+  const [, , , , note, cfg0, cfgLegacy, cfgKeep, hsOff, , w1, w2, c1, , off1, off2, modeOff, tng, ga, gearR] = results;
+  assert.equal(hsOff, 'suppressed', 'high-speed callouts off by default');
+  assert.equal(ga, 'suppressed', 'goAround: no callout');
   assert.ok(db(0.3, 3.95) < -100, `nothing on the first gear report or during 'transit' (${db(0.3, 3.95).toFixed(1)} dB)`);
   assert.ok(db(4, 7.2) > -70, `gearUp cue on the transition into 'up' (${db(4, 7.2).toFixed(1)} dB)`);
   assert.equal(note, false);

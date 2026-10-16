@@ -248,7 +248,9 @@ method is a safe no-op on the other packs.
 | --- | --- |
 | `setFlightPhase(phase, info?)` | Takes `'TAXI' \| 'TAKEOFF_ROLL' \| 'AIRBORNE' \| 'APPROACH' \| 'ROLLOUT'` as-is (`'TOUCH_AND_GO'` is also accepted as an optional extra). `null` turns the shaping off. Unknown strings are ignored. |
 | `info.gear` | `'down' \| 'up' \| 'transit'`. Only a change **into** `'up'` or `'down'` plays a sound: the gear motor followed by the uplock or down-lock thunk (about 2.6 s or 2.85 s). Nothing plays during `'transit'`, and nothing plays for the first report, which only sets the state. These are mechanical sounds, not alerts, so callout mode `'off'` leaves them on. |
-| `info.launch` / `setAfterburnerLaunch(lit)` | Frontend's `afterburnerLit`. While it is true **and the burner is armed**, the afterburner is live at any speed and stages by demand as usual. When unarmed, nothing lights. |
+| `setAfterburnerLaunch(lit)` | Frontend's `afterburnerLit`. While it is true **and the burner is armed**, the afterburner is live at any speed and stages by demand as usual. When unarmed, nothing lights. |
+| `info.launch` | Frontend's hard-launch flag. It is kept separate from `afterburnerLit` and OR'd with it: a later `setFlightPhase(…, { launch: false })` never puts out a burner that `setAfterburnerLaunch(true)` lit. |
+| `setHighSpeedCallouts(on)` / `getHighSpeedCallouts()` | `overspeedCaution` / `overspeedWarning` callouts. **Off by default**, like Frontend's `highSpeedCallouts` setting; mirror that setting here. While off, those ids return `'suppressed'` and start no cooldown. |
 | `playFlightCallout(id)` | Returns `'voice' \| 'tone' \| 'mechanical' \| 'suppressed'`. |
 | `setCalloutMode(m)` / `getCalloutMode()` | `'voice'` (default), `'tone'` or `'off'`, or per level `{ warning, caution }`. `getCalloutMode()` returns `{ warning, caution }`; the default is `{ warning: 'voice', caution: 'tone' }`. |
 | `setCautionVoice(on)` / `getCautionVoice()` | Default `false`: cautions play their tone even in `'voice'` mode. |
@@ -259,12 +261,12 @@ method is a safe no-op on the other packs.
 
 | id | Level | Voice phrase | Default |
 | --- | --- | --- | --- |
-| `overspeedWarning` | warning | "Overspeed" | voice |
-| `overspeedCaution` | caution | "Speed caution" | tone |
+| `overspeedWarning` | warning | "Overspeed" | voice, once high-speed callouts are on (off by default) |
+| `overspeedCaution` | caution | "Speed caution" | tone, once high-speed callouts are on (off by default) |
 | `abUnarmed` | caution | "Afterburner unarmed" | tone |
 | `gpsFail` | caution | "GPS signal lost" | tone |
 | `gearUp` / `gearDown` | mechanical | — | gear motor + lock |
-| `touchAndGo` | — | — | harmless no-op (`'suppressed'`) |
+| `touchAndGo` / `goAround` / `launch` | — | — | harmless no-ops (`'suppressed'`) |
 
 Touch-and-go, go-around and launch have **no** callout. GPS ACQ and AB LIVE are notes, so they are
 silent.
@@ -303,4 +305,7 @@ is outside the audio layer, so it was left unchanged.
 
 `carrier-jet-flight-regimes.mp3` is rendered offline, and an offline render can't capture
 `speechSynthesis`. So the callouts in the MP3 are the **tone** versions, rendered with
-`setCalloutMode('tone')`. In the browser, the warning is spoken by default.
+`setCalloutMode('tone')`, and `setHighSpeedCallouts(true)` is on so the speed callouts can be
+heard. In the browser, the warning is spoken by default. The scripted call sequence is in
+`tests/cj-flight-render.mjs` (`FLIGHT_TIMELINE`); it follows the order of Frontend's
+`regimeToAudioCalls()`.
