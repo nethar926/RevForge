@@ -1,4 +1,5 @@
-import { useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useLayoutEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { CarrierJetAfterburnerGuard, CarrierJetHud } from '../../skins/carrier-jet';
 import ID from '../carrier-jet.identity';
 import { readPackAbZone, sendPackEngineCommand, subscribePackAbZone } from '../runtime';
@@ -37,9 +38,11 @@ import './carrier-jet-controls.css';
  * Afterburner guard (Visual Skins' CarrierJetAfterburnerGuard): guardOpen is UI state (closed on load);
  * ARM persists (packs/abArmed.ts) and goes to the engine as an 'ab-armed' pack engine command, the same
  * runtime bus the AB zone comes back on. Compact strip under the FLIGHT column (Tesla / desktop), inside
- * a 68px strip at the bottom of the board's box (portrait + phone-landscape) — carrier-jet-controls.css.
- * No flightSlot yet: in portrait the guard row squeezes the cards under FLIGHT into overlapping text, so the
- * skin's FLIGHT block stays exactly as at 9a3773a until Visual Skins reworks it (mount-only fallback).
+ * a 68px strip at the bottom of the board's box (phone-landscape) — carrier-jet-controls.css.
+ * Portrait (Option A): no flightSlot and no 68px yield, so the board / cards / dock are exactly as at 9a3773a;
+ * the guard strip is portaled to the end of .rev-viewport and sits in normal flow BELOW the dock, and the
+ * portrait drive page scrolls vertically by just that strip (+ safe-area margin). Tab / VoiceOver focus
+ * scrolls it into view (scroll-margin). Visual Skins' FLIGHT-slot rework can replace this later.
  */
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
@@ -59,9 +62,14 @@ export function CarrierJetMount(props: PackHudProps) {
     setAbArmed(next);
     sendPackEngineCommand(ID.id, { type: 'ab-armed', armed: next });
   };
-  // Tesla / desktop (board, drive window): the skin's compact strip, every element shown; phones: 'auto'
-  // (compact strip in portrait and phone-landscape).
-  const guardVariant = layout === 'board' || layout === 'window' ? 'compact' : 'auto';
+  // Tesla / desktop (board, drive window) and portrait (portaled outside any data-rf-layout ancestor): the
+  // skin's compact strip, every element shown; phone-landscape: 'auto' (resolves to compact).
+  const guardVariant = layout === 'phone-landscape' ? 'auto' : 'compact';
+  // Portrait: host the guard below the dock (end of the drive viewport) instead of inside the board.
+  const [below, setBelow] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setBelow(layout === 'portrait' ? (ref.current?.closest<HTMLElement>('.rev-viewport') ?? null) : null);
+  }, [layout, ref]);
   const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />;
   return (
     <div
@@ -75,7 +83,7 @@ export function CarrierJetMount(props: PackHudProps) {
       <div className="cjm-fill">
         <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} />
       </div>
-      <div className="cjm-ab">{guard}</div>
+      {below ? createPortal(<div className="cjm-below">{guard}</div>, below) : layout !== 'portrait' && <div className="cjm-ab">{guard}</div>}
     </div>
   );
 }

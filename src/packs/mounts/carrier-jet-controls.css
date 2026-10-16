@@ -2,8 +2,8 @@
  * Carrier Jet controls host layout (framework glue; Visual Skins owns the art and the compact sizing in
  * skins/carrier-jet/switches.css). Only slot sizing and placement live here: the row fills the ☰ / Tuner
  * slot right-aligned, the MORE tray drops down from it, and the afterburner guard strip sits under the
- * board's FLIGHT column (Tesla / desktop) or at the bottom of the board's box (portrait + phone-landscape).
- * Nothing is hidden or shrunk here.
+ * board's FLIGHT column (Tesla / desktop), at the bottom of the board's box (phone-landscape), or below the
+ * dock with a short page scroll (portrait). Nothing is hidden, shrunk or scaled here.
  */
 
 /* ---------------- switch row in the ☰ / Tuner slot */
@@ -21,9 +21,22 @@
 
 /* ---------------- afterburner guard strip placement (the guard itself is the skin's compact variant, 60px) */
 .cjm > .cjm-ab { position: absolute; z-index: 3; left: 0; top: calc(100% + 8px); }
-.cjm[data-rf-layout='portrait'] > .cjm-fill, .cjm[data-rf-layout='phone-landscape'] > .cjm-fill { bottom: 68px; }
-.cjm[data-rf-layout='portrait'] > .cjm-ab, .cjm[data-rf-layout='phone-landscape'] > .cjm-ab { top: auto; right: 0; bottom: 4px; width: max-content; margin: 0 auto; }
-.cjm[data-rf-layout='phone-landscape'] > .cjm-ab { bottom: calc(env(safe-area-inset-bottom, 0px) + 2px); }
+.cjm[data-rf-layout='phone-landscape'] > .cjm-fill { bottom: 68px; }
+.cjm[data-rf-layout='phone-landscape'] > .cjm-ab { top: auto; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 2px); width: max-content; margin: 0 auto; }
 /* GPS (no demo throttle) on board/window: the box runs down to the dock, so it yields a 68px strip to the guard. */
 .rev-viewport:not(:has(.rev-throttle)) .cjm:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-fill { bottom: 68px; }
 .rev-viewport:not(:has(.rev-throttle)) .cjm:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-ab { top: auto; bottom: 4px; }
+
+/* ---------------- portrait (Option A): the first screen is the 9a3773a drive page untouched; the guard strip
+   follows in normal flow below it (a 100%-tall spacer, then .cjm-below portaled to the end of .rev-viewport), and
+   the viewport scrolls by just the strip + safe-area margin. No snap, no scale. */
+.rev-viewport:has(.cjm[data-rf-layout='portrait']):has(> .cjm-below) { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.rev-viewport:has(.cjm[data-rf-layout='portrait']):has(> .cjm-below)::before { content: ''; display: block; height: 100%; }
+.rev-viewport > .cjm-below {
+  position: relative; z-index: 12; display: flex; justify-content: center;
+  padding: 16px 12px calc(max(10px, env(safe-area-inset-bottom, 0px)) + 8px); /* 16px top keeps the lit ARM glow (14px) off the first screen */
+}
+/* Tab / VoiceOver focus on the guard or its controls scrolls the whole strip (and the bottom inset) into view */
+.rev-viewport > .cjm-below .cjg,
+.rev-viewport > .cjm-below .cjg-guard,
+.rev-viewport > .cjm-below .cjg-arm { scroll-margin: 16px 0 calc(max(10px, env(safe-area-inset-bottom, 0px)) + 20px); }
