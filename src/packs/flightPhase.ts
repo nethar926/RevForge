@@ -100,7 +100,7 @@ export interface FlightPhaseConfig {
   gpsFailMs: number;
   /** m. Fixes with worse horizontal accuracy are low confidence (shown, never launch). */
   lowConfidenceAccuracyM: number;
-  /** ms. Event notes (AB LIVE, GO AROUND) stay in alerts[] this long. */
+  /** ms. Event notes (AB LIVE) stay in alerts[] this long. */
   noteTtlMs: number;
   /** ms. Event cautions (AB UNARMED) stay in alerts[] this long. */
   cautionTtlMs: number;
@@ -155,7 +155,7 @@ export const PHASE_DISPLAY_LABEL: Readonly<Record<FlightPhase, string>> = Object
 });
 export type FlightConfidence = 'high' | 'low' | 'none';
 export type FlightAlertLevel = 'warning' | 'caution' | 'note';
-export type FlightAlertId = 'overspeedWarning' | 'overspeedCaution' | 'gpsFail' | 'abUnarmed' | 'gpsAcq' | 'abLive' | 'goAround';
+export type FlightAlertId = 'overspeedWarning' | 'overspeedCaution' | 'gpsFail' | 'abUnarmed' | 'gpsAcq' | 'abLive';
 
 export interface FlightAlert {
   id: FlightAlertId;
@@ -172,10 +172,9 @@ export const FLIGHT_ALERTS: Readonly<Record<FlightAlertId, { text: string; level
   abUnarmed: { text: 'AB UNARMED', level: 'caution' },
   gpsAcq: { text: 'GPS ACQ', level: 'note' },
   abLive: { text: 'AB LIVE', level: 'note' },
-  goAround: { text: 'GO AROUND', level: 'note' },
 });
 /** Sort order inside alerts[]: most serious first, then this fixed order, then newest. */
-const ALERT_ORDER: readonly FlightAlertId[] = ['overspeedWarning', 'overspeedCaution', 'gpsFail', 'abUnarmed', 'gpsAcq', 'abLive', 'goAround'];
+const ALERT_ORDER: readonly FlightAlertId[] = ['overspeedWarning', 'overspeedCaution', 'gpsFail', 'abUnarmed', 'gpsAcq', 'abLive'];
 const LEVEL_RANK: Record<FlightAlertLevel, number> = { warning: 0, caution: 1, note: 2 };
 
 export interface GpsSpeedFix {
@@ -293,7 +292,6 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
     launchRunStart: number | null;
     abLit: boolean;
     abLitAt: number | null;
-    goAroundAt: number | null;
     abUnarmedAt: number | null;
     abUnarmedLaunchLatched: boolean;
     abUnarmedSpeedLatched: boolean;
@@ -332,7 +330,6 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
       launchRunStart: null,
       abLit: false,
       abLitAt: null,
-      goAroundAt: null,
       abUnarmedAt: null,
       abUnarmedLaunchLatched: false,
       abUnarmedSpeedLatched: false,
@@ -374,7 +371,6 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
     if (s.abUnarmedAt !== null && t - s.abUnarmedAt < config.cautionTtlMs) add('abUnarmed', s.abUnarmedAt);
     if (!fail && conf !== 'high') add('gpsAcq', s.acqSince);
     if (s.abLit && s.abLitAt !== null && t - s.abLitAt < config.noteTtlMs) add('abLive', s.abLitAt);
-    if (s.goAroundAt !== null && t - s.goAroundAt < config.noteTtlMs) add('goAround', s.goAroundAt);
     const list = alerts.sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level] || ALERT_ORDER.indexOf(a.id) - ALERT_ORDER.indexOf(b.id) || b.sinceMs - a.sinceMs);
     return {
       phase: s.phase,
@@ -495,7 +491,6 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
         } else if (!s.touchdownArmed && v >= T.airborne && !decelerating) {
           // go-around: back above airborneMph without having dipped below takeoffMph − hysteresis
           s.phase = 'AIRBORNE';
-          s.goAroundAt = clockT;
           events.push('goAround');
         }
       } else if (p === 'ROLLOUT') {

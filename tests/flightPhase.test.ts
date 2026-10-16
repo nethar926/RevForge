@@ -469,7 +469,7 @@ test('replay helper: CSV → timeline', () => {
   assert.match(out, /^ {3}t\(s\)/);
 });
 
-test('go-around: APPROACH → AIRBORNE above 40 without dipping below 32 → goAround event + GO AROUND note (noteTtlMs)', () => {
+test('go-around: APPROACH → AIRBORNE above 40 without dipping below 32 → goAround event, no visible note', () => {
   const tr = profile([[0, 0], [15, 45], [25, 45], [30, 33], [35, 45], [45, 45]]);
   const r = replay(tr);
   assert.deepEqual(phaseSeq(r), ['TAXI', 'TAKEOFF_ROLL', 'AIRBORNE', 'APPROACH', 'AIRBORNE']);
@@ -479,16 +479,8 @@ test('go-around: APPROACH → AIRBORNE above 40 without dipping below 32 → goA
   assert.ok(ev.speedMph >= 40);
   const back = r.phases[r.phases.length - 1];
   assert.equal(ev.t, back.t, 'emitted on the APPROACH → AIRBORNE fix');
-  const at = (t: number) => r.rows.find((x) => x.t === t)!.regime;
-  assert.deepEqual(
-    at(ev.t).alerts.filter((a) => a.id === 'goAround').map((a) => [a.text, a.level]),
-    [['GO AROUND', 'note']],
-  );
-  assert.ok(at(ev.t + 2).alerts.some((a) => a.id === 'goAround'), 'still shown inside noteTtlMs');
-  assert.ok(!at(ev.t + 3).alerts.some((a) => a.id === 'goAround'), 'gone after noteTtlMs (3000)');
-  // noteTtlMs override applies to GO AROUND
-  const r2 = replay(tr, { config: { noteTtlMs: 6000 } });
-  assert.ok(r2.rows.find((x) => x.t === ev.t + 5)!.regime.alerts.some((a) => a.id === 'goAround'));
+  // event only: no visible GO AROUND note (Wilson, Oct 16)
+  assert.ok(r.rows.every((x) => !x.regime.alerts.some((a) => (a.id as string) === 'goAround' || a.text === 'GO AROUND')));
   // dipping below 32 is a touchdown: no goAround, touch-and-go instead
   const tg = replay(profile([[0, 0], [15, 45], [25, 45], [31, 30], [33, 30], [40, 45], [45, 45]]));
   assert.equal(count(tg, 'goAround'), 0);
