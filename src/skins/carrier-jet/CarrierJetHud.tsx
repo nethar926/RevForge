@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import type { PackHudProps } from '../../packs/types';
 import {
   CARRIER_JET_DEFAULT_VARIANT,
-  CARRIER_JET_DESIGNATION,
   PARK_HOLD_MS,
   PARK_SPEED_MPH,
   SWEEP_TAPE_LO,
@@ -740,7 +739,6 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
       <div className="cj-in">
         <header className="cj-hdr">
           <span className="cj-lbl" data-cj-label="" data-cj-el="label">{label}</span>
-          <span className="cj-desig" data-cj-el="designation">{CARRIER_JET_DESIGNATION}</span>
           <span className="cj-sp" />
           <span className="cj-pill cj-gps" data-cj-el="gps-pill">
             <span className="cj-dot" aria-hidden="true">●</span>
