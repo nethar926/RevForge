@@ -62,3 +62,28 @@ test('drive-window row tier spans the dock; Hold to rev keeps ≥ 24px from the 
   // dock gap 8px + 16px margin = 24px clear between Hold to rev and the AB guard (Tesla dock, demo)
   assert.match(css, /\.rev-dock > \.rev-chip:not\(\.rev-stop\) ~ \.cjm-bank \{ margin-left: 16px; \}/);
 });
+
+test('773: the AB guard is the bank\'s leftmost element; Hold to rev sits to its right, ≥ 24px clear', () => {
+  // bank first in the dock line and only as wide as the guard; the row tier's containing block is the dock, so the
+  // guard's left edge = the tier's left edge (24px) and the first switch starts after the panel's left chrome.
+  assert.match(css, /\.rev-dock > \.cjm-bank\[data-rf-layout='window'\] \{ order: 0; flex: none; \}/);
+  assert.match(css, /\.rev-dock > \.rev-chip:not\(\.rev-stop\) ~ \.cjm-bank\[data-rf-layout='window'\] \{ margin-left: 0; \}/, 'no Hold-to-rev push margin in the window');
+  assert.match(css, /\.rev-dock:has\(> \.cjm-bank\[data-rf-layout='window'\]\) > \.rev-chip:not\(\.rev-stop\) \{ order: 1; \}/, 'Hold to rev after the bank');
+  assert.match(css, /\.rev-dock:has\(> \.cjm-bank\) > \.rev-stop \{ order: 2; \}/, 'Shutdown last');
+  // guard → Hold to rev = the bank's 24px right margin + the dock's 8px gap
+  const m = css.match(/\.rev-dock > \.cjm-bank \{ order: 1; flex: 1 1 0; position: relative; height: 48px; margin-right: (\d+)px; \}/);
+  assert.ok(m && Number(m[1]) + 8 >= 24);
+  assert.match(css, /\.rev-dock > \.cjm-bank\[data-rf-layout='window'\] > \.cjm-bank-nav \{ position: absolute; left: 0;/, 'tier starts at the dock edge = guard left');
+});
+
+test('773: the MORE tray opens upward right-aligned to MORE and stays on screen', () => {
+  const t = css.match(/\.rev-dock > \.cjm-bank\[data-rf-layout='window'\] \.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ left: auto; right: (\d+)px; \}/);
+  const pad = css.match(/\.rev-dock > \.cjm-bank \.cjnav \.cjs\[data-cjs-variant\]:not\(#cj-v\) \{ padding: \d+px (\d+)px \d+px \d+px; \}/);
+  assert.ok(t && pad, 'tray offset + panel padding rules present');
+  assert.equal(Number(t[1]), Number(pad[1]), 'tray right edge = MORE right edge (the panel right padding; MORE is the last cell)');
+  assert.match(css, /\.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ top: auto; bottom: calc\(100% \+ 6px\); \}/, 'opens upward');
+  assert.match(css, /max-width: min\(560px, calc\(100vw - 16px\)\)/);
+  // measured at 773@1.53: MORE right 548 (closed) / 536 (open); the 4-page tray is 352px wide → left 184, top 368
+  const TRAY_W = 352;
+  for (const moreRight of [548, 536]) assert.ok(moreRight - TRAY_W >= 0 && moreRight <= 773, `tray ${moreRight - TRAY_W}..${moreRight} on screen`);
+});

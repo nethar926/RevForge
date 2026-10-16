@@ -65,9 +65,10 @@
 .cjm-bank-nav > .cjnav { justify-content: flex-start; }
 /* From the bottom, MORE opens UPWARD (still right-aligned to the panel) and its host stacks above the throttle / top bar. */
 .cjnav[data-cjnav-place='bank'] .cjs > .cjs-tray { top: auto; bottom: calc(100% + 6px); }
-/* Drive window: the row is a left-anchored tier (narrowed clear of the throttle), so the tray opens from its left
-   edge and grows right, staying on screen. Portrait: centred on the full-width row (translate only, no scale). */
-.rev-dock > .cjm-bank[data-rf-layout='window'] .cjnav[data-cjnav-place='bank'] .cjs > .cjs-tray { left: 0; right: auto; }
+/* Drive window: the tray opens upward right-aligned to MORE's right edge (the panel's 6px right padding; the panel is
+   the tray's containing block), as at 1280. It is ≤ min(560px, 100vw − 16px) wide and MORE sits ≥ 480px from the
+   left at 773, so it stays fully on screen. Portrait: centred on the full-width row (translate only, no scale). */
+.rev-dock > .cjm-bank[data-rf-layout='window'] .cjnav[data-cjnav-place='bank'] .cjs > .cjs-tray { left: auto; right: 6px; }
 .cjm-below .cjnav[data-cjnav-place='bank'] .cjs > .cjs-tray { left: 50%; right: auto; transform: translateX(-50%); }
 .rev-dock:has(.cjnav [data-sw-id='more'][aria-expanded='true']),
 .rev-viewport > .cjm-below:has(.cjnav [data-sw-id='more'][aria-expanded='true']) { z-index: 13; }
@@ -87,6 +88,11 @@
 /* The tier spans the WHOLE dock (the bank is unpositioned there, so the dock is the containing block): all 7 switches
    fit at 773@1.53 in demo and GPS, nothing is demoted into MORE. Same 12px gap above the dock line as before. */
 .rev-dock > .cjm-bank[data-rf-layout='window'] { position: static; }
+/* …and the AB guard is the bank's leftmost element (nearest the driver), at the dock's left edge = the tier's left
+   edge, so no switch starts left of it. Hold to rev moves to the guard's right (24px bank margin + 8px dock gap). */
+.rev-dock > .cjm-bank[data-rf-layout='window'] { order: 0; flex: none; }
+.rev-dock > .rev-chip:not(.rev-stop) ~ .cjm-bank[data-rf-layout='window'] { margin-left: 0; }
+.rev-dock:has(> .cjm-bank[data-rf-layout='window']) > .rev-chip:not(.rev-stop) { order: 1; }
 .rev-dock > .cjm-bank[data-rf-layout='window'] > .cjm-bank-nav { position: absolute; left: 0; bottom: calc(100% + 12px); width: var(--cjm-nav-w, 100%); max-width: 100%; }
 /* ---------------- Tesla reflow: the board takes ALL the space between the top bar and the bank (container size, never
    scale()). Top: the top bar line (20…68) + 8. Bottom: dock edge 18 + dock padding 3 + the 48px line + the panel's
