@@ -2,7 +2,7 @@ import { useRef, type KeyboardEvent } from 'react';
 import { CARRIER_JET_VARIANTS, type CarrierJetVariant } from './model';
 
 /**
- * "Look: CARRIER JET / TOMCAT / SWING WING" segmented control, mirroring Stellar Helm's
+ * "Look: MATRIX / VECTOR / HOLO" segmented control (labels from LOOK_LABELS), mirroring Stellar Helm's
  * FrameToggle: WAI-ARIA radio group with roving tabindex and arrow / Home / End keys.
  * Each tab reads the same name as that variant's header label.
  * Selected = solid fill + heavier weight + a bar under the label (never colour alone).
@@ -24,7 +24,7 @@ export function VariantTabs({ variant, onChange }: { variant: CarrierJetVariant;
     refs.current[next]?.focus();
   };
   return (
-    <div className="cj-tabs" data-cj-el="tabs" role="radiogroup" aria-label="Carrier Jet look" onKeyDown={onKey}>
+    <div className="cj-tabs" data-cj-el="tabs" role="radiogroup" aria-label="Look" onKeyDown={onKey}>
       <span className="cj-tabs-cap" aria-hidden="true">Look</span>
       {CARRIER_JET_VARIANTS.map((o, i) => {
         const on = variant === o.id;

@@ -1,3 +1,4 @@
+import { CARRIER_JET_DEFAULT_VARIANT, LOOK_LABELS } from './model';
 import { wingPts } from './parts';
 import './carrier-jet.css';
 
@@ -8,7 +9,7 @@ const body = [...BODY, ...BODY.slice().reverse().map(([x, y]) => [-x, y] as [num
 const STAB: [number, number][] = [[23, 60], [58, 82], [60, 88], [58, 95], [24, 90]];
 
 /**
- * Picker thumbnail (decorative): the default SWING WING look, a night deck with the
+ * Picker thumbnail (decorative): the default HOLO look (swing-wing), a night deck with the
  * swing-wing planform. Wings sweep 20°→68° via CSS only (no SMIL); still at 30° under Reduce Motion.
  */
 export function CarrierJetThumb() {
@@ -35,8 +36,8 @@ export function CarrierJetThumb() {
       </g>
       <polygon points={pts(body)} fill="#243243" stroke="#d5dee8" strokeWidth="0.8" strokeLinejoin="round" />
       <ellipse cx="60" cy={CY - 63 * S} rx="1.3" ry="3.9" fill="#0b1018" stroke="#d5dee8" strokeWidth="0.5" />
-      <rect x="8" y="8" width="30" height="18" rx="3" fill="#0b1018" stroke="#5f7a99" strokeWidth="0.8" />
-      <text x="23" y="22" textAnchor="middle" fill="#ffc35a" fontSize="14" fontFamily="Oswald, sans-serif">F-14</text>
+      <rect x="6" y="8" width="34" height="18" rx="3" fill="#0b1018" stroke="#5f7a99" strokeWidth="0.8" />
+      <text x="23" y="22" textAnchor="middle" fill="#ffc35a" fontSize="14" fontFamily="Oswald, sans-serif">{LOOK_LABELS[CARRIER_JET_DEFAULT_VARIANT]}</text>
     </svg>
   );
 }
