@@ -91,3 +91,40 @@ test('ring panel: WARP FACTOR is the only readout (no centre digit, no GEAR, no 
   for (const c of ['sh-rpm', 'sh-mph', 'sh-power-head', 'sh-warp-num', 'role="meter"', "'WARP' : 'DRIVE'"]) assert.ok(hud.includes(c), c);
   assert.match(hud, /POWER · RPM × 1000/);
 });
+
+// MPH / RPM box parity with 510870f. The big readouts size from their container (cqh), so any
+// row the light-speed work adds above the bottom bar would shrink and shift them. The browser
+// gate (lightspeed/v3/parity.mjs) measures the boxes; this pins the CSS that makes them equal.
+test('MPH / RPM parity: readout sizing and the compact rows match 510870f; LIGHT SPEED adds no height', () => {
+  const css = read(`${SKIN}stellar-helm.css`).replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = new Map();
+  for (const m of css.matchAll(/([^{}@]+)\{([^{}]*)\}/g)) {
+    const decl = Object.fromEntries(m[2].split(';').map((d) => d.trim()).filter(Boolean).map((d) => { const i = d.indexOf(':'); return [d.slice(0, i).trim(), d.slice(i + 1).trim().replace(/\s+/g, ' ')]; }));
+    for (const sel of m[1].split(',').map((s) => s.trim().replace(/\s+/g, ' '))) rules.set(sel, { ...(rules.get(sel) || {}), ...decl });
+  }
+  const get = (sel, prop) => rules.get(sel)?.[prop];
+  // 510870f values, verbatim
+  assert.equal(get('.sh-mph', 'font'), '600 min(178px, 40cqh) / 0.92 var(--sh-display)');
+  assert.equal(get('.sh-rpm', 'font'), '600 min(80px, 17cqh) / 1 var(--sh-display)');
+  assert.equal(get('.sh-compact .sh-mph', 'font-size'), 'min(calc(120 * var(--u, 1px)), 42cqh)');
+  assert.equal(get('.sh-compact .sh-rpm', 'font-size'), 'min(calc(48 * var(--u, 1px)), 22cqh)');
+  assert.equal(get('.sh-compact[data-sh-tight] .sh-mph', 'font-size'), 'min(calc(120 * var(--u, 1px)), 34cqh)');
+  assert.equal(get('.sh.sh-compact', 'grid-template-rows'), '0px minmax(0, 1fr) auto calc(48 * var(--u, 1px))');
+  assert.equal(get('.sh.sh-compact', 'grid-template-columns'), 'calc(96 * var(--u, 1px)) minmax(0, 1fr) 0px minmax(calc(170 * var(--u, 1px)), 34%)');
+  // the power strip keeps its 510870f compact heights (no tight-mode squeeze either)
+  assert.equal(get('.sh-compact .sh-segs', 'height'), 'calc(20 * var(--u, 1px))');
+  assert.equal(get('.sh-compact .sh-segs', 'margin-top'), 'calc(16 * var(--u, 1px))');
+  assert.equal(get('.sh-compact .sh-nums', 'margin-top'), 'calc(2 * var(--u, 1px))');
+  assert.equal(get('.sh-compact .sh-power-head', 'font-size'), 'calc(11.25 * var(--u, 1px))');
+  assert.equal(get('.sh-compact[data-sh-tight] .sh-segs', 'height'), undefined);
+  // compact: the meter sits beside the power strip (ring column) and is size-contained, so it
+  // cannot make the power row (and so the auto grid row) taller than 510870f's
+  assert.equal(get('.sh.sh-compact .sh-power', 'display'), 'grid');
+  assert.match(css, /@supports \(grid-template-columns: subgrid\) \{ \.sh\.sh-compact \.sh-power \{ grid-template-columns: subgrid; \} \}/);
+  for (const c of ['.sh-power-head', '.sh-segs', '.sh-nums']) assert.equal(get(`.sh-compact .sh-power > ${c}`, 'grid-column'), '1', c);
+  assert.equal(get('.sh-compact .sh-ls', 'grid-column'), '3');
+  assert.equal(get('.sh-compact .sh-ls', 'grid-row'), '1 / 4');
+  assert.equal(get('.sh-compact .sh-ls', 'contain'), 'size');
+  assert.equal(get('.sh-compact .sh-ls', 'align-self'), 'stretch');
+  assert.notEqual(get('.sh-compact .sh-ls', 'display'), 'none');
+});

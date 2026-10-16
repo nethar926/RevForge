@@ -184,9 +184,9 @@
 /* ---- Compact (small Tesla window) ----
  * --u = one on-screen px (1 / host scale, measured by useHudCompact): every size here is
  * real screen px — text ≥11px, bar/tab targets ≥48px — whatever the host's fit.
- * Keeps: tabs, RPM / MPH / THR, rings + WARP FACTOR, power bar + REDLINE + scale,
- * bottom bar (modes, MUTE, Frame CLASSIC/NEO, SHUTDOWN). Drops: header (title/status/clock),
- * numbered data rows, log line, audio bus. Frame toggle + SHUTDOWN lose their fixed widths.
+ * Keeps: tabs, RPM / MPH / THR, rings + WARP FACTOR, power bar + REDLINE + scale, LIGHT SPEED
+ * meter (beside the power bar), bottom bar (modes, MUTE, Frame CLASSIC/NEO, SHUTDOWN). Drops:
+ * header (title/status/clock), numbered data rows, log line. Frame toggle + SHUTDOWN lose their fixed widths.
  */
 .sh.sh-compact,
 .sh.sh-compact[data-frame] {
@@ -226,12 +226,21 @@
 .sh-compact .sh-segs { gap: calc(3 * var(--u, 1px)); height: calc(20 * var(--u, 1px)); margin-top: calc(16 * var(--u, 1px)); }
 .sh-compact .sh-redline-mark { top: calc(-16 * var(--u, 1px)); padding-left: calc(4 * var(--u, 1px)); border-left-width: calc(2 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); line-height: calc(14 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
 .sh-compact .sh-nums { margin-top: calc(2 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); }
-/* LIGHT SPEED: one row (head · segments · LS); wraps onto two rows when the strip gets too narrow */
-.sh-compact .sh-ls { display: flex; flex-wrap: wrap; align-items: center; column-gap: calc(8 * var(--u, 1px)); row-gap: calc(3 * var(--u, 1px)); margin-top: calc(5 * var(--u, 1px)); }
-.sh-compact .sh-ls-head { flex: none; gap: calc(8 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); line-height: calc(16 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+/* LIGHT SPEED: reflowed beside the POWER strip, under the ring panel (the power section becomes a
+   subgrid of the main | ring columns). contain: size keeps the meter from adding height, so the power
+   row, and with it the RPM / MPH screen above, keeps the 510870f height and the 42cqh MPH digits are
+   unchanged. Stack: value / jump speed or the steady ◆ plate / segments + LS. */
+.sh.sh-compact .sh-power { display: grid; grid-template-columns: minmax(0, 1fr) 0px minmax(calc(150 * var(--u, 1px)), 40%); column-gap: calc(5 * var(--u, 1px)); align-content: start; }
+@supports (grid-template-columns: subgrid) { .sh.sh-compact .sh-power { grid-template-columns: subgrid; } }
+.sh-compact .sh-power > .sh-power-head, .sh-compact .sh-power > .sh-segs, .sh-compact .sh-power > .sh-nums { grid-column: 1; }
+.sh-compact .sh-power > .sh-power-head { grid-row: 1; }
+.sh-compact .sh-power > .sh-segs { grid-row: 2; }
+.sh-compact .sh-power > .sh-nums { grid-row: 3; }
+.sh-compact .sh-ls { grid-column: 3; grid-row: 1 / 4; align-self: stretch; contain: size; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: calc(2 * var(--u, 1px)); margin-top: 0; }
+.sh-compact .sh-ls-head { flex-direction: column; align-items: flex-start; gap: calc(2 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); line-height: calc(16 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
+.sh-compact .sh-ls-track { gap: calc(4 * var(--u, 1px)); margin-top: 0; }
 .sh-compact .sh-ls-jump, .sh-compact .sh-ls-plate { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
 .sh-compact .sh-ls-plate { padding: 0 calc(6 * var(--u, 1px)); }
-.sh-compact .sh-ls-track { flex: 1 1 calc(120 * var(--u, 1px)); gap: calc(4 * var(--u, 1px)); margin-top: 0; }
 .sh-compact .sh-ls-segs { gap: calc(2 * var(--u, 1px)); height: calc(10 * var(--u, 1px)); }
 .sh-compact .sh-ls-cap { padding: 0 calc(4 * var(--u, 1px)); border-width: calc(1 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); line-height: calc(14 * var(--u, 1px)); }
 .sh-compact .sh-bar { gap: calc(6 * var(--u, 1px)); }
@@ -282,6 +291,6 @@
 .sh-compact[data-sh-tight] .sh-warp { gap: 0; }
 .sh-compact[data-sh-tight] .sh-warp-num { font-size: calc(36 * var(--u, 1px)); }
 .sh-compact[data-sh-tight] .sh-warp-label { line-height: calc(13 * var(--u, 1px)); }
-/* Tight: the LIGHT SPEED row is paid for by a shorter POWER strip, so the RPM / MPH block keeps its height */
-.sh-compact[data-sh-tight] .sh-segs { height: calc(12 * var(--u, 1px)); }
-.sh-compact[data-sh-tight] .sh-ls { margin-top: calc(3 * var(--u, 1px)); }
+/* Tight: POWER HEAD folds, so the LIGHT SPEED stack beside the power strip packs a little closer */
+.sh-compact[data-sh-tight] .sh-ls, .sh-compact[data-sh-tight] .sh-ls-head { gap: calc(1 * var(--u, 1px)); }
+.sh-compact[data-sh-tight] .sh-ls-head { line-height: calc(14 * var(--u, 1px)); }
