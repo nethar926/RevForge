@@ -31,11 +31,11 @@ export const FLIGHT_TIMELINE = [
   [48, 'ROLLOUT (25 mph)', (e) => e.setFlightPhase('ROLLOUT', { gear: 'down' })],
   [50.5, 'touch-and-go: TAKEOFF_ROLL launch + afterburnerLit', (e) => (e.setFlightPhase('TAKEOFF_ROLL', { gear: 'down', launch: true }), e.setAfterburnerLaunch(true), e.playFlightCallout('touchAndGo'))],
   [56, 'AIRBORNE (launch over)', (e) => e.setFlightPhase('AIRBORNE', { gear: 'down', launch: false })],
-  [66.5, 'afterburnerLit off (below 77 mph)', (e) => e.setAfterburnerLaunch(false)],
   [57, 'gear transit', (e) => e.setFlightPhase('AIRBORNE', { gear: 'transit' })],
   [59, 'gear up → gearUp', (e) => e.setFlightPhase('AIRBORNE', { gear: 'up' })],
   [62, 'APPROACH, gear transit', (e) => e.setFlightPhase('APPROACH', { gear: 'transit' })],
   [64, 'gear down → gearDown', (e) => e.setFlightPhase('APPROACH', { gear: 'down' })],
+  [66.5, 'afterburnerLit off (below 77 mph)', (e) => e.setAfterburnerLaunch(false)],
   [69, 'ROLLOUT', (e) => e.setFlightPhase('ROLLOUT', { gear: 'down' })],
   [71, 'AB disarmed', (e) => e.setAfterburnerArmed(false)],
   [72, 'unarmed launch: TAKEOFF_ROLL launch (afterburnerLit stays false)', (e) => e.setFlightPhase('TAKEOFF_ROLL', { gear: 'down', launch: true })],
@@ -67,7 +67,7 @@ export function flightProfile(t) {
 }
 
 export async function renderFlight(opts = {}) {
-  const pending = [...FLIGHT_TIMELINE];
+  const pending = [...FLIGHT_TIMELINE].sort((a, b) => a[0] - b[0]);
   const log = [];
   let now = 0;
   const buf = await renderLive(flightProfile, opts.seconds ?? FLIGHT_SECONDS, {
