@@ -116,18 +116,38 @@ test('wiring: CJ row replaces Tuner (after IGNITION) and ☰ (AppShell) only for
   assert.match(mount, /<CarrierJetAfterburnerGuard armed=\{armed\} guardOpen=\{guardOpen\}/);
   assert.match(readFileSync(new URL('../src/forge/ForgePage.tsx', import.meta.url), 'utf8'), /<button className="tuner-back" data-testid="cj-tune" onClick=\{\(\)=>setPanel\("tuner"\)\}>← TUNE<\/button>/, 'stable cj-tune hook opens the Tuner');
   assert.doesNotMatch(mount, /flightSlot=/, 'no FLIGHT slot: the skin FLIGHT block stays as at 9a3773a (mount-only portrait fallback)');
-  assert.match(mount, /^\s*<div className="cjm-ab">\{guard\}<\/div>$/m, 'host strip in every layout, portrait included');
-  assert.match(mount, /layout === 'board' \|\| layout === 'window' \? 'compact' : 'auto'/, 'Tesla guard = compact');
+  assert.match(mount, /\{below \? createPortal\(<div className="cjm-below">\{guard\}<\/div>, below\) : layout !== 'portrait' && <div className="cjm-ab">\{guard\}<\/div>\}/, 'portrait: guard portaled below the dock; elsewhere the host strip');
+  assert.match(mount, /const guardVariant = layout === 'phone-landscape' \? 'auto' : 'compact';/, 'Tesla + portrait guard = compact (phone-landscape auto = compact)');
   const nav = readFileSync(new URL('../src/packs/mounts/CjNavRow.tsx', import.meta.url), 'utf8');
   assert.match(nav, /variant=\{layout === 'board' \|\| layout === 'window' \? 'compact' : 'auto'\}/, 'Tesla row = compact');
   const css = readFileSync(new URL('../src/packs/mounts/carrier-jet-controls.css', import.meta.url), 'utf8') + readFileSync(new URL('../src/packs/mounts/carrier-jet-mount.css', import.meta.url), 'utf8');
   assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /display:\s*none/, 'host CSS hides no switch / guard part');
-  assert.match(css, /\.cjm\[data-rf-layout='portrait'\] > \.cjm-fill, \.cjm\[data-rf-layout='phone-landscape'\] > \.cjm-fill \{ bottom: 68px; \}/, 'portrait + phone-landscape boards yield the 68px guard strip');
-  assert.match(css, /\.cjm\[data-rf-layout='portrait'\] > \.cjm-ab, \.cjm\[data-rf-layout='phone-landscape'\] > \.cjm-ab \{ top: auto; right: 0; bottom: 4px;/, 'portrait guard strip at the bottom of the box');
+  assert.match(css, /\.cjm\[data-rf-layout='phone-landscape'\] > \.cjm-fill \{ bottom: 68px; \}/, 'phone-landscape board yields the 68px guard strip');
+  assert.doesNotMatch(css, /portrait'\][^{]*> \.cjm-fill[^{]*\{ bottom: 68px/, 'portrait board keeps its 9a3773a height (no 68px yield)');
   assert.match(mount, /sendPackEngineCommand\(ID\.id, \{ type: 'ab-armed', armed: next \}\)/);
   assert.match(mount, /useState\(false\)/, 'guard starts closed');
   const bridge = src('packs/audioBridge.ts');
   assert.match(bridge, /cmd\.type === 'ab-armed'\) e\.setAfterburnerArmed\?\.\(cmd\.armed\)/);
   assert.match(bridge, /applySavedAbArmed\(live\)/);
   assert.doesNotMatch(src('packs/mounts/carrier-jet-mount.css'), /cjm-compass/);
+});
+
+test('portrait Option A: guard below the dock, viewport scrolls by the strip, focus scrolls it into view', () => {
+  const css = readFileSync(new URL('../src/packs/mounts/carrier-jet-controls.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
+  // portal target = the drive viewport, portrait only
+  assert.match(mount, /setBelow\(layout === 'portrait' \? \(ref\.current\?\.closest<HTMLElement>\('\.rev-viewport'\) \?\? null\) : null\)/);
+  const scroller = css.match(/\.rev-viewport:has\(\.cjm\[data-rf-layout='portrait'\]\):has\(> \.cjm-below\) \{([^}]*)\}/);
+  assert.ok(scroller, 'portrait-only scroll container rule');
+  assert.match(scroller[1], /overflow-y: auto/);
+  assert.match(scroller[1], /overscroll-behavior: contain/);
+  assert.doesNotMatch(css, /scroll-snap/, 'no scroll-snap');
+  assert.doesNotMatch(css, /scale\(/, 'no scale()');
+  // the first screen is a 100%-tall spacer, so the strip sits in normal flow below the dock
+  assert.match(css, /\.rev-viewport:has\(\.cjm\[data-rf-layout='portrait'\]\):has\(> \.cjm-below\)::before \{ content: ''; display: block; height: 100%; \}/);
+  const below = css.match(/\.rev-viewport > \.cjm-below \{([^}]*)\}/);
+  assert.ok(below && /position: relative/.test(below[1]) && /env\(safe-area-inset-bottom/.test(below[1]), 'strip in flow with a safe-area bottom margin');
+  // scroll-margin on the strip and both focusable controls
+  for (const sel of ['.cjg', '.cjg-guard', '.cjg-arm']) assert.ok(css.includes(`.rev-viewport > .cjm-below ${sel}`), `scroll-margin covers ${sel}`);
+  assert.match(css, /\.cjg-arm \{ scroll-margin: 16px 0 calc\(max\(10px, env\(safe-area-inset-bottom, 0px\)\) \+ 20px\); \}/);
 });
