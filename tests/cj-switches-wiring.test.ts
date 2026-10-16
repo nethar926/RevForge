@@ -169,7 +169,7 @@ test('bottom bank: guard left + row right in one panel; row portals into it once
   assert.match(css, /\.rev-dock:has\(> \.cjm-bank\) > \.rev-stop \{ order: 2; \}/);
   assert.match(css, /\.rev-viewport > \.rev-dock:has\(> \.cjm-bank\) \{ overflow: visible; \}/, 'dock does not clip the tray');
   assert.match(css, /\.cjm-bank\[data-rf-layout='window'\] > \.cjm-bank-nav \{ position: absolute; left: 0; bottom: calc\(100% \+ 12px\); width: var\(--cjm-nav-w, 100%\);/);
-  assert.match(mount, /tr\.left - 8 - bankEl\.getBoundingClientRect\(\)\.left/, 'window row tier clears the throttle card');
+  assert.match(mount, /tr\.left - 8 - cb\.getBoundingClientRect\(\)\.left/, 'window row tier clears the throttle card (measured from the tier containing block)');
   assert.match(css, /> \.rev-topbar > div \{ min-height: 48px; \}/, 'top bar keeps its 48px line without the row');
   // MORE opens upward from the bank and stacks above everything
   assert.match(css, /\.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ top: auto; bottom: calc\(100% \+ 6px\); \}/);

@@ -79,9 +79,14 @@
    bottom sits 12px above the viewport edge. The space the guard used to take under the board is left empty. */
 .rev-viewport > .rev-dock:has(> .cjm-bank) { overflow: visible; }
 .rev-dock > .cjm-bank { order: 1; flex: 1 1 0; position: relative; height: 48px; margin-right: 24px; } /* + the dock gap: ≥ 34px clear of Shutdown */
+/* Demo: Hold to rev sits left of the bank; 16px + the dock's 8px gap keep it ≥ 24px clear of the AB guard. */
+.rev-dock > .rev-chip:not(.rev-stop) ~ .cjm-bank { margin-left: 16px; }
 .rev-dock:has(> .cjm-bank) > .rev-stop { order: 2; }
 /* Drive window: too narrow for one line, so the row sits on a tier just above the guard, kept clear of the demo
    throttle card (--cjm-nav-w, measured by CarrierJetMount). */
+/* The tier spans the WHOLE dock (the bank is unpositioned there, so the dock is the containing block): all 7 switches
+   fit at 773@1.53 in demo and GPS, nothing is demoted into MORE. Same 12px gap above the dock line as before. */
+.rev-dock > .cjm-bank[data-rf-layout='window'] { position: static; }
 .rev-dock > .cjm-bank[data-rf-layout='window'] > .cjm-bank-nav { position: absolute; left: 0; bottom: calc(100% + 12px); width: var(--cjm-nav-w, 100%); max-width: 100%; }
 /* ---------------- Tesla reflow: the board takes ALL the space between the top bar and the bank (container size, never
    scale()). Top: the top bar line (20…68) + 8. Bottom: dock edge 18 + dock padding 3 + the 48px line + the panel's

@@ -5,6 +5,7 @@ import { cjMaxDemote, cjNavAction, cjNavItems, type CjNavAction } from '../carri
 import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompass } from '../heading';
 import { useRfLayout } from '../layout';
 import './carrier-jet-controls.css';
+import { cjPanelNeed } from './cjNavFit';
 
 export interface CjNavRowProps {
   /** Switch id of the current page (carrier-jet.nav currentCjPage). */
@@ -79,7 +80,7 @@ export function CjNavRow({ current, muted, labPanel = 'studio', onAction }: CjNa
     const host = hostRef.current;
     const panel = host?.querySelector<HTMLElement>('.cjs');
     if (!host || !panel) return;
-    if (panel.scrollWidth > host.clientWidth + 0.5 && demote < cjMaxDemote(showCompass)) setDemote(demote + 1);
+    if (cjPanelNeed(panel) > host.clientWidth + 0.5 && demote < cjMaxDemote(showCompass)) setDemote(demote + 1);
   });
 
   const focusMore = () => hostRef.current?.querySelector<HTMLElement>('[data-sw-id="more"]')?.focus();

@@ -111,7 +111,8 @@ export function CarrierJetMount(props: PackHudProps) {
       const nr = nav?.getBoundingClientRect();
       // only when the card shares the row tier's height band
       if (!tr || !nr || tr.bottom <= nr.top || tr.top >= nr.bottom) return bankEl.style.removeProperty('--cjm-nav-w');
-      const w = Math.floor(tr.left - 8 - bankEl.getBoundingClientRect().left);
+      const cb = (nav?.offsetParent as HTMLElement | null) ?? bankEl; // the dock (the bank is unpositioned in the window)
+      const w = Math.floor(tr.left - 8 - cb.getBoundingClientRect().left);
       bankEl.style.setProperty('--cjm-nav-w', `${Math.max(0, w)}px`);
     };
     fit();
