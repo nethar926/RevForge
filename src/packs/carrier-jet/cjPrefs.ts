@@ -21,6 +21,8 @@ export interface CjPrefs {
   highSpeedCallouts: boolean;
   abUnarmedCall: 'silent' | 'tone' | 'voice';
   switchSound: boolean;
+  /** CONFIG › SND › AUTO LAUNCH: Dan's GPS carrier-launch detector (setAutoLaunch; default on). */
+  autoLaunch: boolean;
   startMode: 'apu' | 'gndAir';
   motion: 'auto' | 'reduced' | 'full';
   distUnit: 'mi' | 'km';
@@ -33,7 +35,7 @@ export interface CjPrefs {
   cjFirstStartDone: boolean;
 }
 export const CJ_PREFS_DEFAULT: Readonly<CjPrefs> = Object.freeze({
-  calloutMode: 'voice', highSpeedCallouts: false, abUnarmedCall: 'silent', switchSound: true, startMode: 'apu', motion: 'auto', distUnit: 'mi', tempUnit: 'f', pressUnit: 'psi', hdgRef: 'M', shelfAutoOpen: true, cjFirstStartDone: false,
+  calloutMode: 'voice', highSpeedCallouts: false, abUnarmedCall: 'silent', switchSound: true, autoLaunch: true, startMode: 'apu', motion: 'auto', distUnit: 'mi', tempUnit: 'f', pressUnit: 'psi', hdgRef: 'M', shelfAutoOpen: true, cjFirstStartDone: false,
 });
 export const CJ_PREFS_KEY = 'revforge.pack.carrier-jet.config';
 /** Start mode (cold start's prefs.ts folded in: one source of truth). */
@@ -53,6 +55,7 @@ export function parseCjPrefs(raw: string | null, startRaw: string | null = null)
     highSpeedCallouts: o.highSpeedCallouts === true,
     abUnarmedCall: pick(o.abUnarmedCall, ['silent', 'tone', 'voice'] as const, d.abUnarmedCall),
     switchSound: o.switchSound !== false,
+    autoLaunch: o.autoLaunch !== false,
     startMode: startRaw === 'gndAir' ? 'gndAir' : 'apu',
     motion: pick(o.motion, ['auto', 'reduced', 'full'] as const, d.motion),
     distUnit: pick(o.distUnit, ['mi', 'km'] as const, d.distUnit),
@@ -111,6 +114,7 @@ export interface CjPrefsEngine {
   setHighSpeedCallouts?(on: boolean): void;
   setAbUnarmedCall?(mode: 'voice' | 'tone' | 'silent'): void;
   setJetSwitchSound?(on: boolean): void;
+  setAutoLaunch?(on: boolean): void;
   setJetStartMode?(mode: 'apu' | 'groundcart'): void;
   setJetPrefs?(p: Record<string, string | boolean>): void;
 }
@@ -131,6 +135,7 @@ export function applyCjPrefsToEngine(e: CjPrefsEngine | null | undefined, p: CjP
   call(() => e.setHighSpeedCallouts?.(p.highSpeedCallouts));
   call(() => e.setAbUnarmedCall?.(p.abUnarmedCall));
   call(() => e.setJetSwitchSound?.(p.switchSound));
+  call(() => e.setAutoLaunch?.(p.autoLaunch));
   call(() => e.setJetStartMode?.(p.startMode === 'gndAir' ? 'groundcart' : 'apu'));
   const { startMode: _s, ...rest } = p;
   call(() => e.setJetPrefs?.(rest as unknown as Record<string, string | boolean>));

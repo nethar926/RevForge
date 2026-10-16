@@ -125,3 +125,11 @@
 .rev-dock > .cjm-bank .cjnav .cjs[data-cjs-variant]:not(#cj-v) > .cjs-tray > .cjs-tray-h { font-size: 13px; line-height: 13px; }
 .rev-dock > .cjm-bank[data-rf-layout='window'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-label,
 .rev-dock > .cjm-bank[data-rf-layout='window'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-legend { font-size: 13px; line-height: 13px; letter-spacing: 0; }
+
+/* carrier-launch AB light (launchLight.ts): the AB control's LAUNCH state, backlit amber like the AB readouts; a soft
+   burner flicker, steady under Reduce Motion. 12px legend (≥ 11px floor). */
+.cjm-bank > .cjm-bank-ab { position: relative; }
+.cjm-bank-ab > .cjm-launch { position: absolute; right: 4px; top: 4px; z-index: 2; pointer-events: none; padding: 1px 6px; border-radius: 3px;
+  font: 800 12px/14px 'B612', system-ui, sans-serif; letter-spacing: 0.08em; color: #1a0e00; background: #ffb54a; box-shadow: 0 0 8px 1px rgb(255 181 74 / 0.75); }
+.cjm-bank[data-ab-launch][data-launch-motion='live'] > .cjm-bank-ab > .cjm-launch { animation: cjm-launch-flicker 0.42s steps(2, jump-none) infinite alternate; }
+@keyframes cjm-launch-flicker { from { opacity: 1; } to { opacity: 0.8; } }

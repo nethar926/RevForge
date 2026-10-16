@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { CarrierJetAfterburnerGuard, CarrierJetHud, useCarrierJetVariant } from '../../skins/carrier-jet';
 import ID from '../carrier-jet.identity';
@@ -22,6 +22,8 @@ import { getMapView, setRadar, subscribeMapView } from '../carrier-jet/mapView';
 import { getCjPrefs, reducedMotion, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
 import { useCjPark, useColdStart } from './CjColdStart';
 import { CjV2Layer } from './CjV2Layer';
+import { getPackJet, subscribePackJet } from '../jetBridge';
+import { LAUNCH_OFF, launchAbZone, launchStep, readLaunchActive } from '../carrier-jet/launchLight';
 
 /**
  * Framework adapter: ThemeStage telemetry → Visual Skins' Carrier Jet HUD.
@@ -75,7 +77,7 @@ const subSysReduced = (f: () => void) => {
 
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
-  const abZone = useSyncExternalStore(subscribePackAbZone, readPackAbZone, () => undefined);
+  const abZoneAudio = useSyncExternalStore(subscribePackAbZone, readPackAbZone, () => undefined);
   const driveWindow = !!props.driveWindow;
   const layout = useRfLayout(driveWindow);
   const fullBoard = driveWindow || layout === 'portrait' || layout === 'phone-landscape';
@@ -181,6 +183,12 @@ export function CarrierJetMount(props: PackHudProps) {
   const sysReduced = useSyncExternalStore(subSysReduced, readSysReduced, () => false);
   const reduced = reducedMotion(prefs, sysReduced || !props.motion);
   const cold = useColdStart({ park, mode: prefs.startMode, reduced, tesla });
+  // carrier-launch AB light (launchLight.ts): poll Dan's getLaunchActive() on the HUD tick (every render; no rAF)
+  const jetApi = useSyncExternalStore(subscribePackJet, getPackJet, getPackJet);
+  const [launch, setLaunch] = useState(LAUNCH_OFF);
+  const launchActive = readLaunchActive(jetApi, props.running);
+  useEffect(() => setLaunch((p) => launchStep(p, launchActive)), [launchActive]);
+  const abZone = launchAbZone(abZoneAudio, launch.lit); // a launch lights the AB readouts like normal AB
   const coldOn = v2 && cold.on;
   // Phones (no shelf / PULL / QUICK START placement yet): skip the cold start, so the engine is never locked out.
   const coldPhone = coldOn && !tesla && !cold.live;
@@ -212,9 +220,14 @@ export function CarrierJetMount(props: PackHudProps) {
       <GpsRadarPlate gps={props.demo ? 'none' : cjGps(gpsStatus)} radarOn={mapView.radar} onRadarToggle={onRadar} size={layout === 'board' ? 'wide' : 'narrow'} />
     </div>
   ) : null;
-  const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />;
+  const guard = (
+    <>
+      <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />
+      {launch.lit && <span className="cjm-launch" aria-hidden="true">LAUNCH</span>}
+    </>
+  );
   const bank = (
-    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined}>
+    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined}>
       {plate}
       <div className="cjm-bank-ab">{guard}</div>
       {spds ? coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div> : <div className="cjm-bank-nav" ref={setNavSlot} />}
@@ -248,6 +261,7 @@ export function CarrierJetMount(props: PackHudProps) {
       </CjHeadingEase>
       {spds && coldOn && cold.render.shelf()}
       {coldOn && <p className="cjcs-say" role="status" aria-live="polite">{cold.say}</p>}
+      <p className="rf-sr-only cjm-launch-say" role="status" aria-live="polite">{launch.say}</p>
       {bankB && vp.dock && createPortal(bankB, vp.dock)}
       {bankHost ? createPortal(layout === 'portrait' ? <div className="cjm-below">{bank}</div> : bank, bankHost) : layout !== 'portrait' && <div className="cjm-ab">{bank}</div>}
     </div>

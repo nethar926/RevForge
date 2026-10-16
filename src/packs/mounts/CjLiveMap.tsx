@@ -331,9 +331,11 @@ export function CjHeadingReadout({ heading, headingStale, hdgRef }: { heading: n
   const pos = fix ? { lat: fix.latitude, lon: fix.longitude } : null;
   const pair = useMemo(() => (heading == null ? null : headingPair(heading, pos)), [heading, fix]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!pair) return null;
+  const label = `Compass, ${headingSpeech(pair, hdgRef)}${headingStale ? ', held' : ''}`;
   return (
-    <div className="cjv2-hdgro" role="img" aria-label={`Compass, ${headingSpeech(pair, hdgRef)}${headingStale ? ', held' : ''}`}>
-      {pair.m != null ? <CjHeadingLegend trueHdg={pair.t} magHdg={pair.m} lead={hdgRef} stale={headingStale} /> : <span data-stale={headingStale || undefined}>{`HDG ${String(Math.round(pair.t) % 360).padStart(3, '0')} T`}</span>}
+    // the accessible name sits on Meghan's legend (ariaLabel → role=group); the wrapper carries none
+    <div className="cjv2-hdgro">
+      {pair.m != null ? <CjHeadingLegend trueHdg={pair.t} magHdg={pair.m} lead={hdgRef} stale={headingStale} ariaLabel={label} /> : <span role="img" aria-label={label} data-stale={headingStale || undefined}>{`HDG ${String(Math.round(pair.t) % 360).padStart(3, '0')} T`}</span>}
     </div>
   );
 }

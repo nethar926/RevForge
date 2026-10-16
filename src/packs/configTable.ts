@@ -8,7 +8,7 @@
  *   ROLE  VEHICLE (OPAC · BRT⚑ · SCAN⚑ · BEZEL⚑ · SCALE⚑ · FONTS P⚑ · COLORS P⚑) + DYNAMICS (TOP SPD · IDLE LO ·
  *         IDLE HI · JITTER · JIT % · MEDIA — all P)
  *   TLM   LOOK (the theme's looks) · UNITS (SPEED · HDG M/T · DIST⚑ · TEMP⚑ · PRESS⚑) · READOUT (DENSITY⚑)
- *   SND   PACK ▸ P · AUDIO (MUTE · VOL = SYS read-only · SW SND · BKGND) · ALERTS (CALLS · HI-SPD · AB UNARM — REQ)
+ *   SND   PACK ▸ P · AUDIO (MUTE · VOL = SYS read-only · SW SND · AUTO LAUNCH · BKGND) · ALERTS (CALLS · HI-SPD · AB UNARM — REQ)
  *   MAP   GPS P · FIX + RETRY · COMPASS (phones) · RADAR · STYLE · RNG · MODE · (i) MAP CREDIT (REQ)
  *   OPT   ENGINE STARTUP P (APU / STANDARD) · MOTION (REQ) · ALERTS ▸ · TIP · DIAG ▸ P · ABOUT · RESET ▸ P
  * ⚑ = KEEP, FLAGGED (Meghan's map). P = Park only: disabled with PARK_REASON while moving. View changes are live.
@@ -180,6 +180,7 @@ export function buildConfig(spec: PackConfigSpec): Record<PageId, ConfigPage> {
         { id: 'mute', group: 'AUDIO', label: 'MUTE', value: (c) => onOff(c.muted), on: (c) => c.muted, aria: (c) => `Mute, ${c.muted ? 'on' : 'off'}`, effect: () => ({ type: 'mute' }) },
         { id: 'vol', group: 'AUDIO', label: 'VOL', value: () => 'SYS', readOnly: 'Follows the system volume', aria: () => 'Volume follows the system volume' },
         { id: 'swSnd', group: 'AUDIO', label: 'SW SND', value: (c) => onOff(c.prefs.switchSound), on: (c) => c.prefs.switchSound, aria: (c) => `Switch sounds, ${c.prefs.switchSound ? 'on' : 'off'}`, effect: (c) => ({ type: 'prefs', partial: { switchSound: !c.prefs.switchSound } }) },
+        { id: 'autoLaunch', group: 'AUDIO', label: 'AUTO LAUNCH', value: (c) => onOff(c.prefs.autoLaunch), on: (c) => c.prefs.autoLaunch, aria: (c) => `Auto launch, ${c.prefs.autoLaunch ? 'on' : 'off'}`, effect: (c) => ({ type: 'prefs', partial: { autoLaunch: !c.prefs.autoLaunch } }) },
         { id: 'bkgnd', group: 'AUDIO', label: 'BKGND', needsUi: true, value: (c) => onOff(c.ui!.background), on: (c) => !!c.ui?.background, aria: (c) => `Background audio, ${c.ui!.background ? 'on' : 'off'}`, effect: (c) => ({ type: 'ui', partial: { background: !c.ui!.background } }) },
         ...alerts,
         ...(ex.sound ?? []),

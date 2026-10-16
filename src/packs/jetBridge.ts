@@ -21,6 +21,10 @@ export interface PackJetApi {
   getJetChecklist?(variant?: JetVariant): JetChecklist;
   jetQuickStart?(): boolean;
   getJetStartMode?(): JetStartMode;
+  /* Dan's carrier-launch detector (fd583b2): AUTO LAUNCH (CONFIG › SND) and the AB launch light */
+  setAutoLaunch?(enabled: boolean): void;
+  getAutoLaunch?(): boolean;
+  getLaunchActive?(): boolean;
 }
 
 const NEEDED = ['setJetColdStart', 'getJetColdStart', 'setJetStartMode', 'setJetSystem', 'getJetSystems', 'onJetSystemChange', 'jetEmergencyStop', 'setJetSwitchSound', 'playJetCue'] as const;
