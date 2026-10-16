@@ -406,27 +406,34 @@ export function tomcatSetAfterburnerLaunch(state, launch) {
 
 /* ── carrier-launch detector (GPS speed only; the Tesla browser has no accelerometer) ── */
 
-/** ≈0.3 g (mph gained per second) held ≥ TC_LAUNCH_HOLD_S → launch; < ≈0.15 g for TC_LAUNCH_DROP_S → off. */
-export const TC_LAUNCH_ON_MPHS = 6.7;
+/**
+ * ≈0.25 g (mph gained per second, over a ~1 s window) held ≥ TC_LAUNCH_HOLD_S → launch;
+ * < ≈0.15 g for TC_LAUNCH_DROP_S → off. Dips between the two thresholds don't restart the hold.
+ */
+export const TC_LAUNCH_ON_MPHS = 5.5;
 export const TC_LAUNCH_OFF_MPHS = 3.4;
 export const TC_LAUNCH_HOLD_S = 1.0;
 export const TC_LAUNCH_DROP_S = 2.0;
 /** Look-back window for the speed slope; ~1 s matches the car's ~1 Hz GPS fixes. */
 export const TC_LAUNCH_WINDOW_S = 1.0;
+/** Faster than any car (≈1.6 g): a GPS reacquire / glitch, not a launch. Hold off a moment. */
+export const TC_LAUNCH_MAX_MPHS = 35;
+export const TC_LAUNCH_GLITCH_HOLDOFF_S = 3.0;
 
 export function createLaunchDetector() {
-  return { t: 0, hist: [], on: false, holdFrom: -1, dropFrom: -1, accel: 0 };
+  return { t: 0, hist: [], on: false, holdFrom: -1, dropFrom: -1, accel: 0, holdoffUntil: -1 };
 }
 
 /** Clear the detector (disarm, disable, pack change). */
 export function resetLaunchDetector(det) {
   det.t = 0; det.hist.length = 0; det.on = false; det.holdFrom = -1; det.dropFrom = -1; det.accel = 0;
+  det.holdoffUntil = -1;
 }
 
 /**
  * One step at absolute time nowS (seconds, monotonic). speedNorm is DrivingInput.speed
  * (0..1 of TC_SPEED_FULL_MPH). Works whether the caller sends raw ~1 Hz fixes or eased speed
- * every frame, and however often it is stepped. Returns whether a launch is active.
+ * every frame, at any frame rate. Returns whether a launch is active.
  */
 export function stepLaunchDetector(det, speedNorm, nowS) {
   const t = num(nowS, det.t);
@@ -434,7 +441,8 @@ export function stepLaunchDetector(det, speedNorm, nowS) {
   det.t = t;
   const mph = clip(num(speedNorm, 0)) * TC_SPEED_FULL_MPH;
   const last = det.hist[det.hist.length - 1];
-  if (!last || last[1] !== mph || t - last[0] >= 0.04) det.hist.push([t, mph]);
+  const prev = det.hist[det.hist.length - 1];
+  if (!prev || prev[1] !== mph || t - prev[0] >= 0.04) det.hist.push([t, mph]);
   while (det.hist.length > 2 && det.hist[1][0] <= t - TC_LAUNCH_WINDOW_S) det.hist.shift();
   if (det.hist.length > 1 && t - det.hist[0][0] > 3) det.hist.splice(0, det.hist.length - 1);
   const W = TC_LAUNCH_WINDOW_S;
@@ -447,11 +455,14 @@ export function stepLaunchDetector(det, speedNorm, nowS) {
   }
   const span = t - t0;
   det.accel = span >= W * 0.5 ? (mph - vBack) / Math.min(span, W) : 0;
+  // steeper than any car (GPS reacquire / glitch, raw or eased): stay out until the holdoff ends
+  if (det.accel > TC_LAUNCH_MAX_MPHS) det.holdoffUntil = Math.max(det.holdoffUntil, t + TC_LAUNCH_GLITCH_HOLDOFF_S);
+  const held = t < det.holdoffUntil;
   if (!det.on) {
-    if (det.accel >= TC_LAUNCH_ON_MPHS) {
+    if (!held && det.accel >= TC_LAUNCH_ON_MPHS) {
       if (det.holdFrom < 0) det.holdFrom = t;
-      if (t - det.holdFrom >= TC_LAUNCH_HOLD_S) { det.on = true; det.dropFrom = -1; }
-    } else det.holdFrom = -1;
+    } else if (held || det.accel < TC_LAUNCH_OFF_MPHS) det.holdFrom = -1;
+    if (det.holdFrom >= 0 && t - det.holdFrom >= TC_LAUNCH_HOLD_S) { det.on = true; det.dropFrom = -1; }
   } else if (det.accel < TC_LAUNCH_OFF_MPHS) {
     if (det.dropFrom < 0) det.dropFrom = t;
     if (t - det.dropFrom >= TC_LAUNCH_DROP_S) { det.on = false; det.holdFrom = -1; }
