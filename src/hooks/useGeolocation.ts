@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { speedFromFix, type Fix } from "./gpsSpeed";
 import { kphToMph } from "../audio";
+import { publishGpsFix } from "./gpsFixes";
 
 /** Wall-clock gap after last successful watch callback before marking stale. */
 const STALE_MS = 10000;
@@ -71,60 +72,88 @@ export function useGeolocation(enabled: boolean) {
       deviceTimestamp: null,
       errorMessage: undefined,
     }));
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        if (request !== generation.current) return;
-        const wallNow = Date.now();
-        // Continuous watch is alive as soon as a callback arrives — do not
-        // mark stale solely because pos.timestamp is clock-skewed / old.
-        lastCallbackAt.current = wallNow;
-        const deviceTs = pos.timestamp;
-        const skew =
-          !Number.isFinite(deviceTs) ||
-          Math.abs(wallNow - deviceTs) > SKEW_MS;
-        // Prefer wall time for haversine continuity when device clock is odd.
-        const fixTs = skew ? wallNow : deviceTs;
-        const fix: Fix = {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          speed: pos.coords.speed,
-          timestamp: fixTs,
-        };
-        const { speed, estimated } = speedFromFix(fix, previous.current);
-        if (!previous.current || fixTs > previous.current.timestamp)
-          previous.current = fix;
-        if (speed === null || !Number.isFinite(speed) || speed < 0) {
-          setState({
-            status: "waiting",
-            mph: 0,
-            accuracy: pos.coords.accuracy,
-            timestamp: fixTs,
-            deviceTimestamp: deviceTs,
-            errorMessage:
-              "Location received; waiting for two accurate fixes to estimate speed.",
-          });
-          return;
-        }
+    const geo = navigator.geolocation;
+    const options: PositionOptions = { enableHighAccuracy: true, maximumAge: 500, timeout: 8000 };
+    const onFix = (pos: GeolocationPosition) => {
+      if (request !== generation.current) return;
+      const wallNow = Date.now();
+      // Continuous watch is alive as soon as a callback arrives — do not
+      // mark stale solely because pos.timestamp is clock-skewed / old.
+      lastCallbackAt.current = wallNow;
+      const deviceTs = pos.timestamp;
+      const skew =
+        !Number.isFinite(deviceTs) ||
+        Math.abs(wallNow - deviceTs) > SKEW_MS;
+      // Prefer wall time for haversine continuity when device clock is odd.
+      const fixTs = skew ? wallNow : deviceTs;
+      const fix: Fix = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        speed: pos.coords.speed,
+        timestamp: fixTs,
+      };
+      // Raw feed for heading consumers (packs/heading.ts) — same fixes, no second watch.
+      publishGpsFix({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        heading: pos.coords.heading,
+        speed: pos.coords.speed,
+        timestamp: fixTs,
+      });
+      const { speed, estimated } = speedFromFix(fix, previous.current);
+      if (!previous.current || fixTs > previous.current.timestamp)
+        previous.current = fix;
+      if (speed === null || !Number.isFinite(speed) || speed < 0) {
         setState({
-          status: "live",
-          mph: speed * 2.236936,
-          estimated,
+          status: "waiting",
+          mph: 0,
           accuracy: pos.coords.accuracy,
           timestamp: fixTs,
           deviceTimestamp: deviceTs,
+          errorMessage:
+            "Location received; waiting for two accurate fixes to estimate speed.",
         });
+        return;
+      }
+      setState({
+        status: "live",
+        mph: speed * 2.236936,
+        estimated,
+        accuracy: pos.coords.accuracy,
+        timestamp: fixTs,
+        deviceTimestamp: deviceTs,
+      });
+    };
+    const onError = (err: GeolocationPositionError) => {
+      if (request !== generation.current) return;
+      setState((s) => ({
+        ...s,
+        mph: 0,
+        status: err.code === err.PERMISSION_DENIED ? "denied" : "waiting",
+        errorMessage: err.message,
+      }));
+    };
+    // Tesla browser: a watchPosition opened without a prior getCurrentPosition can be denied
+    // silently. Ask once first, then open the continuous watch from its callback (success, or any
+    // error except a denial — a timeout still falls through to the watch, as before).
+    let watching = false;
+    const openWatch = () => {
+      if (watching || request !== generation.current) return;
+      watching = true;
+      watchId.current = geo.watchPosition(onFix, onError, options);
+    };
+    geo.getCurrentPosition(
+      (pos) => {
+        onFix(pos);
+        openWatch();
       },
       (err) => {
-        if (request !== generation.current) return;
-        setState((s) => ({
-          ...s,
-          mph: 0,
-          status: err.code === err.PERMISSION_DENIED ? "denied" : "waiting",
-          errorMessage: err.message,
-        }));
+        onError(err);
+        if (err.code !== err.PERMISSION_DENIED) openWatch();
       },
-      { enableHighAccuracy: true, maximumAge: 500, timeout: 8000 },
+      options,
     );
   }, [stop]);
   useEffect(() => {

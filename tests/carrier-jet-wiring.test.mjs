@@ -135,7 +135,7 @@ test('wiring sources: old jet skin CSS/overlay out of ThemeStage + index.css; mo
   assert.match(mount, /fullBoard = driveWindow \|\| layout === 'portrait' \|\| layout === 'phone-landscape'/);
   assert.match(mount, /fullBoard \? false : props\.compact === true \? true : 'auto'/);
   assert.match(mount, /data-rf-layout=\{layout\}/);
-  assert.match(mount, /<CarrierJetHud \{\.\.\.props\} compact=\{compact\} driveWindow=\{false\} abZone=\{abZone\} \/>/);
+  assert.match(mount, /<CarrierJetHud \{\.\.\.props\} compact=\{compact\} driveWindow=\{false\} abZone=\{abZone\} heading=\{heading\} \/>/);
   assert.match(mount, /useSyncExternalStore\(subscribePackAbZone, readPackAbZone/);
   assert.match(mount, /useSyncExternalStore\(subscribePackAbZone, readPackAbZone/);
   // The mount's own drive-window state is data-box="drive" (the skin reads any ancestor data-drive-window).

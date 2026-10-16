@@ -5,6 +5,7 @@ import { readPackAbZone, subscribePackAbZone } from '../runtime';
 import type { PackHudProps } from '../types';
 import { useFitBox } from './useFitBox';
 import { useRfLayout } from '../layout';
+import { useHeading } from '../heading';
 import './pack-fit.css';
 import './carrier-jet-mount.css';
 
@@ -28,6 +29,10 @@ import './carrier-jet-mount.css';
  * abZone: Audio's getAfterburnerZone / onAfterburnerZoneChange when the live engine has them
  * (feature-detected in audioBridge, read via useSyncExternalStore); otherwise undefined and the skin
  * derives the zone from load, then throttle.
+ * heading (packs/heading.ts): GPS course from the app's one geolocation watch (coords.heading, else
+ * the two-fix bearing), or the phone compass while it reports fresh data; held once known, throttled
+ * (≤ 4 Hz, ≥ 1°). The iOS-only "Allow compass" button appears in the phone layouts only — Tesla /
+ * desktop render nothing new (no sensors, no requestPermission) and keep '---' until a GPS fix.
  */
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
@@ -39,6 +44,7 @@ export function CarrierJetMount(props: PackHudProps) {
   // the skin's 'auto' size threshold swaps in the essential layout). Elsewhere an explicit host
   // request forces compact, otherwise the skin decides from its own size (full at 1280×800).
   const compact: boolean | 'auto' = fullBoard ? false : props.compact === true ? true : 'auto';
+  const { heading, compassPrompt, allowCompass } = useHeading(layout);
   return (
     <div
       ref={ref}
@@ -49,8 +55,13 @@ export function CarrierJetMount(props: PackHudProps) {
       style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}
     >
       <div className="cjm-fill">
-        <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} />
+        <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} />
       </div>
+      {compassPrompt && (
+        <button type="button" className="cjm-compass" aria-label="Allow compass for heading" onClick={allowCompass}>
+          Allow compass
+        </button>
+      )}
     </div>
   );
 }
