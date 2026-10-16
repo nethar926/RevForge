@@ -315,3 +315,22 @@ test('aerospace-f14 skin left untouched', () => {
   const f14 = readdirSync(join(root, 'src/skins/aerospace-f14')).sort();
   assert.deepEqual(f14, ['AerospaceF14Overlay.tsx', 'aerospace-f14.css']);
 });
+
+test('tomcat full board: DEMO / GPS LIVE gets its own space under the speed digits (no stretch, full layout only)', () => {
+  const css = readFileSync(join(SKIN, 'carrier-jet.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter((m) => /\.cj-spd-src\b/.test(m[1]) && /margin-top/.test(m[2]));
+  assert.equal(rules.length, 1, 'one DEMO spacing rule');
+  const [, sel, body] = rules[0];
+  assert.match(sel.trim(), /^\.cj\[data-variant='tomcat'\]\[data-layout='full'\] \.cj-spd-src$/, 'Tomcat full board only');
+  // The 190k Barlow numeral's text box hangs 0.1465em (27.84k) below its line box; MPH (22k) + 4px gap sits above DEMO's
+  // text box (~1px inset): the reserve must cover 27.84k - 22k - 3px for every k, and be 0 when the board is small.
+  const m = body.match(/margin-top:\s*max\(0px,\s*calc\((\d+(?:\.\d+)?) \* var\(--k\) - (\d+(?:\.\d+)?)px\)\)/);
+  assert.ok(m, body);
+  const [a, c] = [Number(m[1]), Number(m[2])];
+  for (let k = 0.3; k <= 2.0001; k += 0.01) {
+    const overhang = 0.1465 * 190 * k - Math.max(15, 22 * k) - 3;
+    assert.ok(Math.max(0, a * k - c) >= overhang, `k ${k.toFixed(2)}: reserve ${(a * k - c).toFixed(2)} < overhang ${overhang.toFixed(2)}`);
+  }
+  assert.match(css, /\.cj\[data-variant='tomcat'\] \.cj-spd-num \{ font-size: calc\(190 \* var\(--k\)\); letter-spacing: -0\.02em; \}/, 'digit size unchanged');
+  assert.doesNotMatch(css, /\.cj-spd[^{]*\{[^}]*(transform|scale|font-stretch)/, 'no stretch or scale on the speed block');
+});

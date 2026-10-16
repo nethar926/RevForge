@@ -172,6 +172,11 @@
 .cj[data-variant='tomcat'] .cj-lab { font-size: max(13px, calc(14 * var(--k))); letter-spacing: 0.2em; }
 .cj[data-variant='tomcat'] .cj-spd-num { font-size: calc(190 * var(--k)); letter-spacing: -0.02em; }
 .cj[data-variant='tomcat'] .cj-spd-unit { font-size: max(15px, calc(22 * var(--k))); }
+/* Full board: the 190k Barlow numeral's text box hangs 0.1465em below its 0.9 line box, which grows faster
+   than the MPH line (22k) + 4px gap above DEMO, so on the taller reflow board (k 0.9 at 1280) the "00" box
+   ran 2.25px into DEMO. Reserve DEMO's space instead: push DEMO alone down by >= that overhang
+   (6k - 2px >= 27.84k - 22k - 3px). Digit size, MPH and every other look / layout unchanged. */
+.cj[data-variant='tomcat'][data-layout='full'] .cj-spd-src { margin-top: max(0px, calc(6 * var(--k) - 2px)); }
 .cj[data-variant='tomcat'] .cj-k-num { font-size: calc(80 * var(--k)); font-weight: 600; }
 .cj[data-variant='tomcat'] .cj-sw-num { font-size: calc(96 * var(--k)); font-weight: 600; }
 .cj[data-variant='tomcat'] .cj-mode { font-size: max(13px, calc(15 * var(--k))); }
