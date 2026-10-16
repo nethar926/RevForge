@@ -3,6 +3,7 @@
  * Buses: mechanical bed + soft combustion pulses + intake×throttle + exhaust waveguide.
  * V8 per-bank schedule 180°/90°/180°/270° + dual-collector L/R burble.
  * Family 4 rotary: eccentric chamber-pulse (chambersPerRotor × rotors / 360°).
+ * Family 5 odd-fire 90° V6 (Chrono Coupe): uneven 150°/90° alternating intervals, banks alternate.
  * RES / §2.3: firingFamily + firingMask + misfire so lope changes (no Wiebe).
  * Anti-digital: soft asymmetric envelopes, noise/body dominate — no saw/square lead.
  * Self-contained (no imports) for Tesla Chromium AudioWorklet constraints.
@@ -39,7 +40,7 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
       { name: 'crackle', defaultValue: 0.35, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
       { name: 'masterGain', defaultValue: 0.7, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
       { name: 'misfire', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
-      { name: 'firingFamily', defaultValue: 0, minValue: 0, maxValue: 4, automationRate: 'k-rate' },
+      { name: 'firingFamily', defaultValue: 0, minValue: 0, maxValue: 5, automationRate: 'k-rate' },
       // §2.3: bit i set = slot i disabled; 0 = all fire (chamber mask for rotary)
       { name: 'firingMask', defaultValue: 0, minValue: 0, maxValue: 255, automationRate: 'k-rate' },
       // Dual-collector L/R burble delay (ms). Pack-driven; clamp 0.5–3 in process.
@@ -70,6 +71,9 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
     // I6 even: 120° global (6 events / 720°)
     this._i6Deg = new Float64Array([0, 120, 240, 360, 480, 600]);
     this._i6Bank = new Int8Array([0, 1, 0, 1, 0, 1]);
+    // Odd-fire 90° V6 (family 5): common-pin crank → 150°/90° alternating intervals
+    this._oddV6Deg = new Float64Array([0, 150, 240, 390, 480, 630]);
+    this._oddV6Bank = new Int8Array([0, 1, 0, 1, 0, 1]);
 
     // Scratch schedule buffers (filled per-block from family)
     this._evtDeg = new Float64Array(12);
@@ -263,6 +267,13 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
         this._evtBank[i] = this._flatBank[i];
       }
       this._cycleDeg = 720;
+    } else if (family === 5) {
+      n = 6;
+      for (let i = 0; i < n; i++) {
+        this._evtDeg[i] = this._oddV6Deg[i];
+        this._evtBank[i] = this._oddV6Bank[i];
+      }
+      this._cycleDeg = 720;
     } else if (cylN === 6) {
       n = 6;
       for (let i = 0; i < n; i++) {
@@ -403,7 +414,8 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
       Math.min(this._burbleLen - 2, Math.floor((collectorMs * 0.001) * sr)),
     );
 
-    // 0=auto → crossplane@8 else even; 1=cross; 2=flat; 3=even/i6; 4=rotary chamber-pulse
+    // 0=auto → crossplane@8 else even; 1=cross; 2=flat; 3=even/i6; 4=rotary chamber-pulse;
+    // 5=odd-fire 90° V6
     let family = Math.round(fam0);
     if (family === 0) family = cylN === 8 ? 1 : 3;
 
@@ -484,7 +496,7 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
 
       // Half-order mechanical AM lope (stronger at idle / cross-plane)
       const revsPerSample = degPerSample / 360;
-      this._lopePhase += revsPerSample * Math.PI * (useBankGeom ? 1.0 : isRotary ? 1.5 : 2.0);
+      this._lopePhase += revsPerSample * Math.PI * (useBankGeom || family === 5 ? 1.0 : isRotary ? 1.5 : 2.0);
       const lopeAm = 0.6 + 0.4 * Math.sin(this._lopePhase);
       const lopeAm2 = 0.75 + 0.25 * Math.sin(this._lopePhase * 0.5 + 0.7);
 
@@ -521,6 +533,8 @@ class PulseEngineProcessor extends AudioWorkletProcessor {
         if (!disabledByMask && !disabledByCyl && !misfireSkip) {
           const bank = this._evtBank[slot];
           let amp = 0.78 + Math.random() * (0.25 + rough * 0.25);
+          // Odd-fire V6: the fire after the long 150° gap breathes better than the 90° one
+          if (family === 5) amp *= slot % 2 === 0 ? 1.16 : 0.84;
           if (lope > 0.0005) {
             // Big-overlap cam: fixed cylinder imbalance + cycle variance + occasional lazy fire,
             // stronger fires on the rich side of the hunt.
