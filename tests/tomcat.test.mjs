@@ -500,6 +500,8 @@ test('no gears (live chain): gear rpm, shift flags + upshift cues leave Tomcat u
         now = t;
         if (t === 0) {
           engine.setUpshiftSfxEnabled(true);
+          // this sweep (≈21 mph/s) is a carrier launch; pin the 80 mph speed gate (fd583b2 auto-launch off)
+          engine.setAutoLaunch?.(false);
           if (seen) engine.onAfterburnerZoneChange((z) => seen.push({ z, t: now }));
         }
       },
