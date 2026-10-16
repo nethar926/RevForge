@@ -144,3 +144,33 @@
 .rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) .rev-dock .rev-stop {
   margin-left: 0;
 }
+
+/*
+ * "Allow compass" (packs/heading.ts): iOS only (DeviceOrientationEvent.requestPermission), rendered
+ * only in the phone layouts, so Tesla / desktop never see it. ≥ 44pt target, sits on the board's
+ * bottom edge until the user decides (choice persisted).
+ */
+.cjm > .cjm-compass {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  width: max-content;
+  margin: 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1.5px solid currentColor;
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.78);
+  color: #f2f2f2;
+  font: 600 15px/1 system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.cjm > .cjm-compass:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
