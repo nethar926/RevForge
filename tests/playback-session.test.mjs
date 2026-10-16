@@ -254,6 +254,43 @@ test('auto-resume rejected by the browser → stays paused (canResume), no retry
   assertRampFromSilence(master);
 });
 
+test('a rejecting / throwing ctx.resume() or ctx.suspend() never escapes as an unhandled rejection; tap fallback stays offered', async () => {
+  const unhandled = [];
+  const onUnhandled = (r) => unhandled.push(r);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    for (const mode of ['reject', 'throw']) {
+      const { s, ctx, master, dom, win, ms, advance } = session();
+      if (mode === 'throw') ctx.resume = function () { this.resumes++; throw new Error('NotAllowedError (sync)'); };
+      else ctx.grant = 'reject';
+      ctx.suspend = async function () { this.suspends++; throw new Error('InvalidStateError'); };
+      s.attach(ctx, master);
+      s.markRunning();
+      dom.visibilityState = 'hidden';
+      dom.emit('visibilitychange');
+      advance(PS.FADE_OUT_S * 1000 + 25); // post-fade suspend() rejects
+      ctx.state = 'suspended'; // the browser suspended it anyway
+      dom.visibilityState = 'visible';
+      dom.emit('visibilitychange'); // auto-resume attempt → resume() fails
+      win.emit('pageshow'); // second interruption-end path joins / retries once
+      ms.handlers.play?.(); // hardware play routed through Media Session
+      assert.equal(await s.resume(), false, `${mode}: tap attempt resolves false, never rejects`);
+      await flush(8);
+      advance(PS.RESUME_TIMEOUT_MS * 4);
+      await flush(8);
+      assert.ok(ctx.resumes >= 1, `${mode}: resume() was attempted`);
+      assert.equal(s.getSnapshot().state, 'paused', `${mode}: stays paused`);
+      assert.equal(s.getSnapshot().canResume, true, `${mode}: tap-to-resume offered`);
+      assert.equal(master.level, 0, `${mode}: silent`);
+      assert.equal(ramps(master).length, 0);
+    }
+    await new Promise((r) => setTimeout(r, 20)); // let Node report any unhandled rejection
+    assert.deepEqual(unhandled.map(String), [], 'no unhandled rejection');
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
+  }
+});
+
 test('auto-resume left pending → gives up after RESUME_TIMEOUT_MS, stays paused; tap resumes', async () => {
   const { s, ctx, master, win, advance } = session();
   s.attach(ctx, master);
@@ -713,19 +750,65 @@ test('master never exceeds unity gain and rampIn starts from silence over ~250 m
   assert.ok(peak(y) <= 0.25 + 1e-4, 'never above the source level');
 });
 
+/**
+ * Render an OfflineAudioContext with callbacks at given offline times (off.suspend(t) → fn →
+ * off.resume()). node-web-audio-api registers each suspend(t) asynchronously on its own thread,
+ * so under CPU load startRendering() can overtake a registration, which then rejects with
+ * InvalidStateError. Those promises used to be fire-and-forget (no catch, never awaited): the
+ * rejection surfaced as an unhandled rejection and failed whichever test was running. Here every
+ * suspend promise is caught and settled before returning; a step whose suspend was rejected is
+ * reported in `missed` (its callback never ran), and the caller re-renders from scratch.
+ */
+async function renderWithSteps(off, steps) {
+  const at = {};
+  const missed = [];
+  const settled = steps.map(([t, fn]) =>
+    off.suspend(t).then(
+      async () => {
+        at[t] = off.currentTime;
+        try {
+          await fn();
+        } finally {
+          await off.resume();
+        }
+      },
+      (err) => {
+        missed.push(`${t}: ${err?.name ?? err}`);
+      },
+    ),
+  );
+  // Give the library's suspend registrations a moment to land before the renderer starts.
+  await new Promise((r) => setTimeout(r, 5));
+  const buf = await off.startRendering();
+  await Promise.all(settled); // no dangling promise outlives the test
+  return { y: buf.getChannelData(0), at, missed };
+}
+/** Re-run a whole offline render (fresh context) when the library dropped a suspend point. */
+async function withSteps(attempt, tries = 3) {
+  let r;
+  for (let n = 0; n < tries; n++) {
+    r = await attempt();
+    if (r.missed.length === 0) return r;
+  }
+  assert.deepEqual(r.missed, [], `offline suspend points rejected on all ${tries} renders`);
+  return r;
+}
+
 test('fadeOut reaches silence within 150 ms', async () => {
   const sr = 44100;
-  const ctx = new OfflineAudioContext(1, sr, sr);
-  const bus = PS.createMasterBus(ctx);
-  bus.fade.gain.value = 1;
-  sine(ctx, bus.input, 0.25);
   // Measure from the moment the fade was actually scheduled: under a loaded test run the
   // offline renderer can be a quantum or two past the suspend point when the callback fires.
   let t0 = 0.2;
   let end = 0;
-  ctx.suspend(0.2).then(() => { t0 = ctx.currentTime; end = bus.fadeOut(); ctx.resume(); });
-  const y = await ctx.startRendering();
-  const x = y.getChannelData(0);
+  const { y: x } = await withSteps(() => {
+    const ctx = new OfflineAudioContext(1, sr, sr);
+    const bus = PS.createMasterBus(ctx);
+    bus.fade.gain.value = 1;
+    sine(ctx, bus.input, 0.25);
+    t0 = 0.2;
+    end = 0;
+    return renderWithSteps(ctx, [[0.2, () => { t0 = ctx.currentTime; end = bus.fadeOut(); }]]);
+  });
   assert.ok(end > 0, 'fadeOut ran');
   assert.ok(end - t0 <= 0.15 + 1e-6, `fade scheduled within 150 ms (${((end - t0) * 1000).toFixed(1)} ms)`);
   assert.ok(peak(x, Math.min(x.length - 1, Math.ceil((end + 0.01) * sr))) < 1e-3, 'silent after the fade');
@@ -733,23 +816,27 @@ test('fadeOut reaches silence within 150 ms', async () => {
 
 test('auto-resume through the real master bus: from silence, 250 ms ramp, back to the same level, never louder', async () => {
   const sr = 44100;
-  const off = new OfflineAudioContext(1, Math.round(2.2 * sr), sr);
-  const bus = PS.createMasterBus(off);
   const amp = 0.25;
-  sine(off, bus.input, amp);
-  const h = env();
-  const s = new PS.PlaybackSession({ env: h.e });
-  const ctx = new FakeCtx(); // lifecycle events; the bus runs on the offline renderer
-  s.attach(ctx, bus);
-  bus.rampIn();
-  s.markRunning();
-  const at = {};
-  const step = (t, fn) => off.suspend(t).then(async () => { at[t] = off.currentTime; fn(); await flush(); off.resume(); });
-  step(0.5, () => ctx.setState('interrupted'));
-  step(0.55, () => ctx.setState('running')); // call ends 50 ms into the 150 ms fade
-  step(1.2, () => { h.dom.visibilityState = 'hidden'; h.dom.emit('visibilitychange'); h.advance(PS.FADE_OUT_S * 1000 + 25); });
-  step(1.6, () => { h.dom.visibilityState = 'visible'; h.dom.emit('visibilitychange'); });
-  const y = (await off.startRendering()).getChannelData(0);
+  let s;
+  const { y, at } = await withSteps(() => {
+    const off = new OfflineAudioContext(1, Math.round(2.2 * sr), sr);
+    const bus = PS.createMasterBus(off);
+    sine(off, bus.input, amp);
+    const h = env();
+    s = new PS.PlaybackSession({ env: h.e });
+    const ctx = new FakeCtx(); // lifecycle events; the bus runs on the offline renderer
+    s.attach(ctx, bus);
+    bus.rampIn();
+    s.markRunning();
+    const step = (t, fn) => [t, async () => { fn(); await flush(); }];
+    return renderWithSteps(off, [
+      step(0.5, () => ctx.setState('interrupted')),
+      step(0.55, () => ctx.setState('running')), // call ends 50 ms into the 150 ms fade
+      step(1.2, () => { h.dom.visibilityState = 'hidden'; h.dom.emit('visibilitychange'); h.advance(PS.FADE_OUT_S * 1000 + 25); }),
+      step(1.6, () => { h.dom.visibilityState = 'visible'; h.dom.emit('visibilitychange'); }),
+    ]);
+  });
+  for (const t of [0.5, 0.55, 1.2, 1.6]) assert.equal(typeof at[t], 'number', `step at ${t} s ran`);
   const i = (t) => Math.round(t * sr);
   assert.ok(peak(y) <= amp + 1e-4, `never above the pre-interruption level (peak ${peak(y).toFixed(4)})`);
   for (const t of [0.55, 1.6]) {
