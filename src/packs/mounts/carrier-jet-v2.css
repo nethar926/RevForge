@@ -93,7 +93,7 @@
 .cjv2-trail { fill: #8dffad; fill-opacity: 0.18; }
 .cjv2-bug, .cjv2-own { fill: #8dffad; }
 .cjv2-grid { stroke: #1d5a33; stroke-width: 0.5; }
-.cjv2-n { fill: #8dffad; font-size: 16px; text-anchor: middle; } /* ≥ 11px down to the 773 cell (×0.7) */
+.cjv2-n { fill: #8dffad; font-size: 18px; text-anchor: middle; } /* 10.3px at 773 with 16; 18 gives ≥11.5px */
 .cjv2-map .cjv2-corner { position: absolute; font-size: 11px; line-height: 13px; letter-spacing: 0.06em; white-space: nowrap; }
 .cjv2-tl { left: 8px; top: 6px; } .cjv2-tr { right: 52px; top: 6px; } .cjv2-bl { left: 8px; bottom: 6px; } .cjv2-br { right: 8px; bottom: 6px; color: #6c8a74; }
 .cjv2-tr[data-stale='true'] { opacity: 0.45; }
