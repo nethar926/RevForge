@@ -438,3 +438,25 @@
   .cj-thumb-wing-r { animation: none; transform: rotate(30deg); }
   .cj-thumb-wing-l { animation: none; transform: rotate(-30deg); }
 }
+
+/* ---------------- v2 board fixes (Board 2 regrid, CARRIER JET look; 1280 board + 773 drive window) */
+/* RPM: a short RPM cell (773: ~26px of content under SPEED) puts RPM + digits on one line over a thinner bar, so the
+   digits (VT323, >= 11px) fit fully instead of collapsing to 0. Taller cells (1280) never match: unchanged. */
+@container (max-height: 34px) {
+  .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-rpm { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; column-gap: 6px; align-items: end; }
+  .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-rpm > .cj-lab { grid-column: 1; grid-row: 1; line-height: 13px; }
+  .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-rpm > .cj-k-num { grid-column: 2; grid-row: 1; margin: 0; font-size: max(11px, min(calc(100cqh - 8px), 28cqw)); line-height: 1; white-space: nowrap; }
+  .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-rpm > .cj-rpm-bar { grid-column: 1 / 3; grid-row: 2; height: 6px; margin-top: 2px; }
+}
+/* OVER · DECK / AUTO: sits left of the SWEEP digits, bottom on the digits' baseline, clear of the tape and its caret
+   (it used to hang under the digits, over the tape's right end). The chip keeps its box in the flow, so the digits
+   do not move. In the 773 cell it wraps to two lines (OVER · / DECK) to fit between the planform and the digits. */
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-mode { transform: translate(calc(-100% - 6px), calc(-100% - 4px)); }
+@container cj (max-width: 1000px) {
+  .cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-mode.is-over { width: calc(4.6em + 12px); white-space: normal; text-align: center; line-height: 1.15; }
+}
+/* AOA legend: when its viewBox shrinks enough that the >= 11.2px floor pushes the glyphs above the cell top (773),
+   move it down into view and left (into the meet letterbox), clear of the '30' scale label. Zero at 1280. */
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-eng [data-cj-el='aoa'] > text:first-child {
+  transform: translate(min(0px, calc((19px - 11.2px / var(--cj-sv, 1)) * 2)), max(calc(11.2px / var(--cj-sv, 1) - 19px), 0px));
+}

@@ -8,6 +8,7 @@ import {
   QUICK_START_MIN, QUICK_START_MIN_NARROW, RADAR_MIN, RADAR_MIN_NARROW, SHELF_SLOTS, TOGGLE_MIN, GUARDED_TOGGLE_MIN,
   type CjAnnunciator, type CjGps,
 } from '../index';
+import { CarrierJetAfterburnerGuard } from '../../AfterburnerGuard';
 import { jetSystemListFixture, shelfStateApuStep5, shelfStateCartB4 } from './fixtures';
 
 const noop = () => {};
@@ -44,7 +45,7 @@ function Gallery() {
   const gpsStates: CjGps[] = ['none', 'fail', 'acq', 'live'];
   return (
     <>
-      <h1 className="gal-h1">CARRIER JET · COLD-START PARTS</h1>
+      <h1 className="gal-h1">JET · COLD-START PARTS</h1>
       <p className="gal-sub">Production React parts (src/skins/carrier-jet/parts) at their 1× minimum sizes, after the v2 concept sheet. Dev-only gallery, not linked from the app.</p>
 
       <Sec id="toggles" title="BAT TOGGLE · 60×96">
@@ -142,18 +143,20 @@ function Gallery() {
         </Item>
       </Sec>
 
-      <Sec id="bank" title="BOTTOM BANK · GUARD END (PULL · GPS+RADAR · QUICK START)">
+      <Sec id="bank" title="BOTTOM BANK · GUARD END (AB GUARD · PULL · GPS+RADAR · QUICK START)">
         <Item cap="1280">
-          <div className="gal-bank">
-            <div style={{ width: PULL_MIN.w }}><PullHandle phase="rest" progress={0} /></div>
+          <div className="gal-bank" data-gal-bank="1280">
+            <div style={{ alignSelf: 'flex-end' }} data-bank-el="ab-guard"><CarrierJetAfterburnerGuard armed={false} onArm={noop} guardOpen={false} onGuardToggle={noop} variant="compact" /></div>
+            <div style={{ width: PULL_MIN.w }} data-bank-el="pull"><PullHandle phase="rest" progress={0} /></div>
             <div style={{ width: PLATE_MIN.w }}><GpsPlate gps="live" /></div>
             <div style={{ width: RADAR_MIN.w }}><RadarToggle on={false} onToggle={noop} /></div>
             <div style={{ width: QUICK_START_MIN.w }}><QuickStartGuard guardOpen={false} running={false} onGuardToggle={noop} onStart={noop} /></div>
           </div>
         </Item>
         <Item cap="773">
-          <div className="gal-bank">
-            <div style={{ width: PULL_MIN_NARROW.w }}><PullHandle phase="rest" progress={0} size="narrow" /></div>
+          <div className="gal-bank" data-gal-bank="773">
+            <div style={{ alignSelf: 'flex-end' }} data-bank-el="ab-guard"><CarrierJetAfterburnerGuard armed={false} onArm={noop} guardOpen={false} onGuardToggle={noop} variant="compact" /></div>
+            <div style={{ width: PULL_MIN_NARROW.w }} data-bank-el="pull"><PullHandle phase="rest" progress={0} size="narrow" /></div>
             <div style={{ width: GPS_RADAR_PLATE_MIN_NARROW.w }}><GpsRadarPlate gps="live" radarOn onRadarToggle={noop} size="narrow" /></div>
             <div style={{ width: QUICK_START_MIN_NARROW.w }}><QuickStartGuard guardOpen={false} running={false} onGuardToggle={noop} onStart={noop} size="narrow" /></div>
           </div>

@@ -17,7 +17,7 @@ timer and gesture. Prop interfaces: `../types.ts`. Sizes and pure helpers: `toke
 | `GuardedCover` over a toggle | 60×140 | shelf cell (L/R ENG) |
 | `ApuBlock` / `GndAirBlock` | 128×140 / 140×96 | shelf POWER group (`block` prop) |
 | `SwitchShelf` | 735×374 (APU list, guards on L/R ENG) | reflow board box: 1248×641 (1280), 757×376 (773) |
-| `PullHandle` | 76×118 / 66×118 narrow | bank, far left; grip 64×44 |
+| `PullHandle` | 76×118 / 66×118 narrow | bank, right of the AB guard (the guard stays leftmost, nearest the driver); grip 64×44 |
 | `QuickStartGuard` | 118×118 / 96×118 narrow | bank |
 | `GpsPlate` | 50×118 / 44×118 narrow | bank, beside the AB guard |
 | `RadarToggle` | 56×118 / 44×118 narrow | beside GPS |
