@@ -44,6 +44,14 @@ import type {
   JetChecklist,
   JetSystemEntry,
   JetVariant,
+  AudioSpeedConfig,
+  JetAlertLevel,
+  JetCalloutId,
+  JetCalloutMode,
+  JetCalloutModes,
+  JetCalloutResult,
+  JetFlightInfo,
+  JetFlightPhase,
   LockStage,
   ScannerEdge,
   SynthNodeDesc,
@@ -85,8 +93,15 @@ import {
   tomcatColdEngine,
   tomcatColdGate,
   tomcatSetColdMode,
+  tomcatPhaseInput,
+  tomcatSetAbSpeeds,
+  tomcatSetAfterburnerLaunch,
+  TC_AB_DISENGAGE_MPH,
+  TC_AB_ENGAGE_MPH,
+  TC_FLIGHT_PHASES,
   type TomcatDrive,
 } from './tomcatVoice';
+import { FlightCallouts } from './flightCallouts';
 import {
   JET_DEFAULT_FOLEY,
   JET_ESTOP_DELAY,
@@ -366,6 +381,22 @@ export class EngineSynthImpl implements EngineSynth {
   private jetMode: JetStartMode = 'apu';
   private jetCold = createJetColdState();
   private jetQueue: JetQueue | null = null;
+  /** Tomcat flight phase (Frontend-detected), launch flag, AB speeds, callouts. */
+  private flightPhase: JetFlightPhase | null = null;
+  private flightGear: 'down' | 'transit' | 'up' | null = null;
+  private abLaunch = false;
+  private speedCfg: AudioSpeedConfig = { abEngageMph: TC_AB_ENGAGE_MPH, abDisengageMph: TC_AB_DISENGAGE_MPH };
+  private callouts = new FlightCallouts({
+    now: () => this.context.currentTime,
+    canPlay: () => !this.disposed && !!this.g.tcVoice && this.started,
+    tone: (level) => {
+      const jv = this.ensureJetVoice();
+      if (!jv) return null;
+      const h = jv.alertTone(level, this.context.currentTime + 0.005);
+      return { seconds: h.seconds, cancel: () => jv.cancelAlert(h, this.context.currentTime) };
+    },
+    mechanical: (id) => !!this.ensureJetVoice()?.cue(id === 'gearUp' ? 'gearUp' : 'gearDown'),
+  });
   /** setJetSwitchSound (switch foley in setJetSystem); default on. */
   private jetSwitchSound = true;
   private jetListeners = new Set<(state: JetSystemsState, change: JetSystemChange) => void>();
@@ -457,6 +488,7 @@ export class EngineSynthImpl implements EngineSynth {
 
   stop(): void {
     this.started = false;
+    this.callouts.reset();
     if (this.g.tcVoice && this.tcState.phase !== 'shutdown') {
       // Plain stop (no shutdown cue): output fades below; the next start() runs a fresh start sequence.
       this.tcState = createTomcatDriveState('off');
@@ -2387,11 +2419,21 @@ export class EngineSynthImpl implements EngineSynth {
     const dt =
       immediate || !this.tcLastMs ? 1 / 60 : Math.min(0.25, Math.max(0.004, (nowMs - this.tcLastMs) / 1000));
     this.tcLastMs = nowMs;
-    const input: DrivingInput = { ...d, load: this.lastLoadProvided ? d.load : undefined };
+    let input: DrivingInput = { ...d, load: this.lastLoadProvided ? d.load : undefined };
+    let stepParams = this.params;
+    if (this.flightPhase) {
+      // Frontend flight phase: taxi low thrust · takeoff roll MIL push · airborne cruise ·
+      // approach / rollout spool-down · touch-and-go MIL with a fast re-spool
+      const shaped = tomcatPhaseInput(this.flightPhase, input);
+      input = shaped.input as DrivingInput;
+      if (shaped.fast) stepParams = { ...this.params, tcSpoolTime: 0, spoolInertia: 0 };
+    }
+    tomcatSetAbSpeeds(this.tcState, this.speedCfg.abEngageMph, this.speedCfg.abDisengageMph);
+    tomcatSetAfterburnerLaunch(this.tcState, this.abLaunch);
     const jv = this.g.jetVoice;
     const cold = !!jv && (this.jetColdEnabled || this.jetActive());
     if (cold) this.advanceJetQueue(dt);
-    const drv = stepTomcatDrive(this.tcState, input, dt, this.params);
+    const drv = stepTomcatDrive(this.tcState, input, dt, stepParams);
     this.tcDrive = drv;
     let vDrv = drv;
     if (cold && jv) {
@@ -2480,7 +2522,7 @@ export class EngineSynthImpl implements EngineSynth {
   /**
    * Tomcat: arm / disarm the afterburner (Frontend persists the switch and passes it in). Default
    * armed so never calling this is byte-identical. Disarm: zone reports 0 and the callback fires
-   * once; the sound releases via the same destage fade as a below-72 mph drop. Re-arm below 75 mph
+   * once; the sound releases via the same destage fade as a below-77 mph drop. Re-arm below 80 mph
    * stays out until speed reaches 75. No-op on other packs / same-value calls.
    */
   setAfterburnerArmed(armed: boolean): void {
@@ -2495,6 +2537,84 @@ export class EngineSynthImpl implements EngineSynth {
   /** Tomcat: whether the afterburner is armed (default true). true on other packs. */
   getAfterburnerArmed(): boolean {
     return this.g.tcVoice ? !!this.tcState.abArmed : true;
+  }
+
+  /* ───────────── Tomcat flight phases / callouts (docs/cj-cold-start.md) ───────────── */
+
+  /**
+   * Flight phase from Frontend's detector (audio does no detection). Shapes the thrust the voice
+   * hears; info.gear runs the gear actuators / lock thunks; info.launch = setAfterburnerLaunch.
+   * null clears the shaping (compat). Unknown phases are ignored.
+   */
+  setFlightPhase(phase: JetFlightPhase | null, info?: JetFlightInfo): void {
+    if (this.disposed) return;
+    if (phase !== null && !(TC_FLIGHT_PHASES as readonly string[]).includes(phase)) return;
+    const changed = phase !== this.flightPhase || (!!info && typeof info.launch === 'boolean' && info.launch !== this.abLaunch);
+    this.flightPhase = phase;
+    if (info && typeof info.launch === 'boolean') this.abLaunch = info.launch;
+    // gear: cue only on a transition INTO 'up' / 'down' (nothing while 'transit'; the first report sets state)
+    const raw = info?.gear as string | undefined;
+    const gear = raw === 'moving' ? 'transit' : raw === 'up' || raw === 'down' || raw === 'transit' ? raw : undefined;
+    if (gear && gear !== 'transit' && this.flightGear && gear !== this.flightGear) {
+      if (this.g.tcVoice && this.started) this.ensureJetVoice()?.cue(gear === 'up' ? 'gearUp' : 'gearDown');
+    }
+    if (gear) this.flightGear = gear;
+    // re-step only on a real change (Frontend may repeat the same phase every frame)
+    if (changed) this.kickJet();
+  }
+
+  getFlightPhase(): JetFlightPhase | null {
+    return this.flightPhase;
+  }
+
+  /** Frontend launch flag: armed → AB live at any speed (zones by demand); unarmed → nothing (call the callout). */
+  setAfterburnerLaunch(lit: boolean): void {
+    if (this.disposed || this.abLaunch === !!lit) return;
+    this.abLaunch = !!lit;
+    this.kickJet();
+  }
+
+  getAfterburnerLaunch(): boolean {
+    return this.abLaunch;
+  }
+
+  playFlightCallout(id: JetCalloutId): JetCalloutResult {
+    if (this.disposed) return 'suppressed';
+    return this.callouts.callout(id) as JetCalloutResult;
+  }
+
+  setCalloutMode(mode: JetCalloutMode | Partial<JetCalloutModes>): void {
+    this.callouts.setMode(mode);
+  }
+
+  getCalloutMode(): JetCalloutModes {
+    return this.callouts.getMode();
+  }
+
+  setCautionVoice(on: boolean): void {
+    this.callouts.setCautionVoice(on);
+  }
+
+  getCautionVoice(): boolean {
+    return this.callouts.cautionVoice;
+  }
+
+  playAlertTone(level: JetAlertLevel): boolean {
+    if (this.disposed) return false;
+    return this.callouts.alertTone(level);
+  }
+
+  getAudioSpeedConfig(): AudioSpeedConfig {
+    return { ...this.speedCfg };
+  }
+
+  /** Partial update; disengage is kept ≥ 0.5 mph under engage. Returns the applied config. */
+  setAudioSpeedConfig(partial: Partial<AudioSpeedConfig>): AudioSpeedConfig {
+    const next = { ...this.speedCfg, ...(partial || {}) };
+    const probe = createTomcatDriveState('off');
+    this.speedCfg = tomcatSetAbSpeeds(probe, next.abEngageMph, next.abDisengageMph);
+    this.kickJet();
+    return { ...this.speedCfg };
   }
 
   /* ───────────── Tomcat cold start (docs/cj-cold-start.md) ───────────── */

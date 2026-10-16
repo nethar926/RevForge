@@ -41,12 +41,16 @@ export const TC_MIL_THROTTLE = 0.8;
 /** Normalised drive speed 1.0 ≙ 120 mph (mphToSpeed default; setDriving clamps speed to 0..1). */
 export const TC_SPEED_FULL_MPH = 120;
 /**
- * The afterburner engages by speed: on at ≥ 75 mph, off again below 72 mph (3 mph hysteresis, so
- * it never chatters around one speed). Below the engaged state the lit zone is 0 at any throttle.
- * 75 mph = 120.7 km/h = 33.53 m/s → 0.625 normalised; 72 mph → 0.6.
+ * The afterburner engages by speed (when armed): on at ≥ 80 mph, off again below 77 mph (3 mph
+ * hysteresis, so it never chatters around one speed). Below the engaged state the lit zone is 0 at
+ * any throttle — unless Frontend flags a launch (tomcatSetAfterburnerLaunch). Configurable per
+ * state (tomcatSetAbSpeeds); the previous 75 / 72 mph pair is TC_AB_LEGACY_MPH (compat path).
+ * 80 mph = 128.75 km/h = 35.76 m/s → 0.6667 normalised; 77 mph → 0.6417.
  */
-export const TC_AB_ENGAGE_MPH = 75;
-export const TC_AB_DISENGAGE_MPH = 72;
+export const TC_AB_ENGAGE_MPH = 80;
+export const TC_AB_DISENGAGE_MPH = 77;
+/** The original fixed engage pair (pass to tomcatSetAbSpeeds / setAudioSpeedConfig for the old feel). */
+export const TC_AB_LEGACY_MPH = Object.freeze({ abEngageMph: 75, abDisengageMph: 72 });
 export const TC_AB_ENGAGE_SPEED = TC_AB_ENGAGE_MPH / TC_SPEED_FULL_MPH;
 export const TC_AB_DISENGAGE_SPEED = TC_AB_DISENGAGE_MPH / TC_SPEED_FULL_MPH;
 /** Afterburner demand needed to light zone k (index k-1) once engaged. Demand = load if supplied,
@@ -359,10 +363,85 @@ export function tomcatAbDemand(input) {
  * Speed engage state with hysteresis: engages at ≥ TC_AB_ENGAGE_SPEED (75 mph), stays engaged down
  * to TC_AB_DISENGAGE_SPEED (72 mph) and drops below it. `speed` is the normalised setDriving speed.
  */
-export function tomcatAbEngaged(speed, engaged) {
+export function tomcatAbEngaged(speed, engaged, on = TC_AB_ENGAGE_SPEED, off = TC_AB_DISENGAGE_SPEED) {
   const v = clip(num(speed, 0));
   const eps = 1e-9; // float noise from mph / km/h / m/s conversions never flips the edge
-  return engaged ? v >= TC_AB_DISENGAGE_SPEED - eps : v >= TC_AB_ENGAGE_SPEED - eps;
+  return engaged ? v >= off - eps : v >= on - eps;
+}
+
+/**
+ * Per-state AB engage speeds in mph (normalised by TC_SPEED_FULL_MPH). disengage < engage is
+ * enforced (≥ 0.5 mph band). Returns the applied { abEngageMph, abDisengageMph }.
+ */
+export function tomcatSetAbSpeeds(state, engageMph = TC_AB_ENGAGE_MPH, disengageMph = TC_AB_DISENGAGE_MPH) {
+  const on = Math.max(1, Math.min(TC_SPEED_FULL_MPH, num(engageMph, TC_AB_ENGAGE_MPH)));
+  const off = Math.max(0, Math.min(on - 0.5, num(disengageMph, on - 3)));
+  state.abOnSpeed = on / TC_SPEED_FULL_MPH;
+  state.abOffSpeed = off / TC_SPEED_FULL_MPH;
+  return { abEngageMph: on, abDisengageMph: off };
+}
+
+/** Frontend launch flag: while true and armed, the afterburner is engaged at any speed. */
+export function tomcatSetAfterburnerLaunch(state, launch) {
+  const v = !!launch;
+  if (!!state.abLaunch === v) return false;
+  state.abLaunch = v;
+  return true;
+}
+
+/* ── flight phases (Frontend detects them; audio only shapes the thrust it hears) ── */
+
+export const TC_FLIGHT_PHASES = ['TAXI', 'TAKEOFF_ROLL', 'AIRBORNE', 'APPROACH', 'ROLLOUT', 'TOUCH_AND_GO'];
+/** Per-phase thrust shaping (throttle 0..1 in, shaped command out). */
+export const TC_PHASE_SHAPE = {
+  taxiMax: 0.36, // TAXI: low thrust, pedal scaled into 0..taxiMax
+  cruiseBase: 0.5, // AIRBORNE: cruise base + pedal share (never below cruise, MIL at full pedal)
+  cruiseSpan: 0.3,
+  approachMax: 0.3, // APPROACH: spooling down, capped
+  rolloutMax: 0, // ROLLOUT: idle
+};
+/**
+ * Shape a DrivingInput for a flight phase. TAKEOFF_ROLL / TOUCH_AND_GO: full MIL push (more if the
+ * pedal asks). TOUCH_AND_GO also returns fast: true (quick re-spool). Unknown / null phase → input
+ * unchanged (compat).
+ */
+export function tomcatPhaseInput(phase, input) {
+  const d = input || {};
+  const thr = clip(num(d.throttle, 0));
+  const hasLoad = d.load !== undefined && d.load !== null && Number.isFinite(Number(d.load));
+  const S = TC_PHASE_SHAPE;
+  let t = thr;
+  let cap = null;
+  let fast = false;
+  switch (phase) {
+    case 'TAXI':
+      t = S.taxiMax * thr;
+      cap = S.taxiMax;
+      break;
+    case 'TAKEOFF_ROLL':
+      t = Math.max(thr, TC_MIL_THROTTLE);
+      break;
+    case 'TOUCH_AND_GO':
+      t = Math.max(thr, TC_MIL_THROTTLE);
+      fast = true;
+      break;
+    case 'AIRBORNE':
+      t = S.cruiseBase + S.cruiseSpan * thr + (thr > TC_MIL_THROTTLE ? thr - TC_MIL_THROTTLE : 0);
+      break;
+    case 'APPROACH':
+      t = Math.min(thr, S.approachMax);
+      cap = S.approachMax;
+      break;
+    case 'ROLLOUT':
+      t = S.rolloutMax;
+      cap = S.rolloutMax;
+      break;
+    default:
+      return { input: d, fast: false };
+  }
+  const out = { ...d, throttle: clip(t) };
+  if (hasLoad) out.load = cap === null ? Math.max(clip(Number(d.load)), phase === 'TAKEOFF_ROLL' || phase === 'TOUCH_AND_GO' ? TC_MIL_THROTTLE : 0) : Math.min(clip(Number(d.load)), cap);
+  return { input: out, fast };
 }
 
 /**
@@ -440,7 +519,9 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
   const speedIn = clip(num(d.speed, 0));
   state.speed = lag(state.speed, speedIn, step, 0.8);
   // armed gate: while disarmed the engage latch stays clear (re-arm in 72–75 mph needs a fresh ≥75)
-  state.abEngaged = state.abArmed ? tomcatAbEngaged(speedIn, state.abEngaged) : false;
+  state.abEngaged = state.abArmed
+    ? !!state.abLaunch || tomcatAbEngaged(speedIn, state.abEngaged, state.abOnSpeed ?? TC_AB_ENGAGE_SPEED, state.abOffSpeed ?? TC_AB_DISENGAGE_SPEED)
+    : false;
 
   const x = clip(state.thrCmd / TC_MIL_THROTTLE);
   const sCmd = clip(Math.pow(x, 0.75) + state.speed * 0.03);

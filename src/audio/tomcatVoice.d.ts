@@ -32,6 +32,11 @@ export interface TomcatDriveState {
   abEngaged: boolean;
   /** Frontend arm switch; default true. */
   abArmed: boolean;
+  /** Frontend launch flag (absent = false). */
+  abLaunch?: boolean;
+  /** Normalised AB engage / disengage speeds (absent = 80 / 77 mph defaults). */
+  abOnSpeed?: number;
+  abOffSpeed?: number;
   /** Lit afterburner zone 0..5 (0 = off). */
   abZone: number;
   abTimer: number;
@@ -114,7 +119,15 @@ export function tomcatSetRunning(s: TomcatDriveState): void;
 export function tomcatBeginStart(s: TomcatDriveState): boolean;
 export function tomcatBeginShutdown(s: TomcatDriveState): boolean;
 export function tomcatAbDemand(input: Partial<DrivingInput> | null | undefined): number;
-export function tomcatAbEngaged(speed: number, engaged: boolean): boolean;
+export function tomcatAbEngaged(speed: number, engaged: boolean, on?: number, off?: number): boolean;
+export const TC_AB_LEGACY_MPH: Readonly<{ abEngageMph: number; abDisengageMph: number }>;
+/** Per-state AB engage / disengage speeds (mph). Returns the applied pair. */
+export function tomcatSetAbSpeeds(state: TomcatDriveState, engageMph?: number, disengageMph?: number): { abEngageMph: number; abDisengageMph: number };
+/** Frontend launch flag (AB engaged at any speed while armed). Returns true on a change. */
+export function tomcatSetAfterburnerLaunch(state: TomcatDriveState, launch: boolean): boolean;
+export const TC_FLIGHT_PHASES: readonly ('TAXI' | 'TAKEOFF_ROLL' | 'AIRBORNE' | 'APPROACH' | 'ROLLOUT' | 'TOUCH_AND_GO')[];
+export const TC_PHASE_SHAPE: Readonly<{ taxiMax: number; cruiseBase: number; cruiseSpan: number; approachMax: number; rolloutMax: number }>;
+export function tomcatPhaseInput(phase: string | null | undefined, input: Partial<DrivingInput>): { input: Partial<DrivingInput>; fast: boolean };
 /** Arm / disarm AB. Returns true when the value changed. Same-value calls are no-ops. */
 export function tomcatSetAfterburnerArmed(state: TomcatDriveState, armed: boolean): boolean;
 /** Heavy-bass lift (full power + afterburner): sub layer gains, low-pass corners, saturator drive. */

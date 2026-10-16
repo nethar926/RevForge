@@ -4,7 +4,7 @@ import type {SoundLayer} from './types';
 import {nextLockStage} from './lockStage';
 import {JetLayers} from './JetLayers';
 import {SignalGraph} from './SignalGraph';
-import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge,JetCue,JetStartMode,JetSwitchFoley,JetSystem,JetSystemChange,JetSystemsState,JetVariant,JetSystemEntry,JetChecklist} from './types';
+import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge,JetCue,JetStartMode,JetSwitchFoley,JetSystem,JetSystemChange,JetSystemsState,JetVariant,JetSystemEntry,JetChecklist,JetFlightPhase,JetFlightInfo,JetCalloutId,JetCalloutResult,JetCalloutMode,JetCalloutModes,JetAlertLevel,AudioSpeedConfig} from './types';
 import {getJetSystemList,getJetChecklist} from './jetColdStart';
 import {EnvelopeMeter} from './envelopeMeter';
 import {ProceduralCharacter} from './ProceduralCharacter';
@@ -46,6 +46,19 @@ export class CharacterEngine implements EngineSynth {
  getJetSwitchSound():boolean{return this.base.getJetSwitchSound?.()??true;}
  getJetSystemList(variant:JetVariant='apu'):JetSystemEntry[]{return this.base.getJetSystemList?.(variant)??(getJetSystemList(variant) as JetSystemEntry[]);}
  getJetChecklist(variant:JetVariant='apu'):JetChecklist{return this.base.getJetChecklist?.(variant)??getJetChecklist(variant);}
+ /** Tomcat flight phases / callouts / AB speeds — forwarded; safe no-ops on other packs. */
+ setFlightPhase(phase:JetFlightPhase|null,info?:JetFlightInfo):void{if(!this.disposed)this.base.setFlightPhase?.(phase,info);}
+ getFlightPhase():JetFlightPhase|null{return this.base.getFlightPhase?.()??null;}
+ setAfterburnerLaunch(launch:boolean):void{if(!this.disposed)this.base.setAfterburnerLaunch?.(launch);}
+ getAfterburnerLaunch():boolean{return this.base.getAfterburnerLaunch?.()??false;}
+ playFlightCallout(id:JetCalloutId):JetCalloutResult{return this.disposed?'suppressed':(this.base.playFlightCallout?.(id)??'suppressed');}
+ setCalloutMode(mode:JetCalloutMode|Partial<JetCalloutModes>):void{this.base.setCalloutMode?.(mode);}
+ getCalloutMode():JetCalloutModes{return this.base.getCalloutMode?.()??{warning:'voice',caution:'tone'};}
+ setCautionVoice(on:boolean):void{this.base.setCautionVoice?.(on);}
+ getCautionVoice():boolean{return this.base.getCautionVoice?.()??false;}
+ playAlertTone(level:JetAlertLevel):boolean{return this.disposed?false:(this.base.playAlertTone?.(level)??false);}
+ getAudioSpeedConfig():AudioSpeedConfig{return this.base.getAudioSpeedConfig?.()??{abEngageMph:80,abDisengageMph:77};}
+ setAudioSpeedConfig(partial:Partial<AudioSpeedConfig>):AudioSpeedConfig{return this.base.setAudioSpeedConfig?.(partial)??this.getAudioSpeedConfig();}
  jetEmergencyStop():boolean{return this.disposed?false:(this.base.jetEmergencyStop?.()??false);}
  jetAutoStart(mode?:JetStartMode):boolean{return this.disposed?false:(this.base.jetAutoStart?.(mode)??false);}
  jetQuickStart():boolean{return this.disposed?false:(this.base.jetQuickStart?.()??false);}

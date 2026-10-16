@@ -237,3 +237,70 @@ Our own short plain-words lists (not taken from any manual).
 6. Nav platform off, avionics off
 7. Seat belt sign off
 8. Battery off
+
+## Flight phases, callouts and afterburner speeds
+
+Frontend owns flight-phase detection (`regimeToAudioCalls()` on `frontend/cj-flight-phase`); the
+audio layer only **consumes** its calls. Nothing here detects anything, and nothing is stored. Every
+method is a safe no-op on the other packs.
+
+| Call | What it does |
+| --- | --- |
+| `setFlightPhase(phase, info?)` | Takes `'TAXI' \| 'TAKEOFF_ROLL' \| 'AIRBORNE' \| 'APPROACH' \| 'ROLLOUT'` as-is (`'TOUCH_AND_GO'` is also accepted as an optional extra). `null` turns the shaping off. Unknown strings are ignored. |
+| `info.gear` | `'down' \| 'up' \| 'transit'`. Only a change **into** `'up'` or `'down'` plays a sound: the gear motor followed by the uplock or down-lock thunk (about 2.6 s or 2.85 s). Nothing plays during `'transit'`, and nothing plays for the first report, which only sets the state. These are mechanical sounds, not alerts, so callout mode `'off'` leaves them on. |
+| `info.launch` / `setAfterburnerLaunch(lit)` | Frontend's `afterburnerLit`. While it is true **and the burner is armed**, the afterburner is live at any speed and stages by demand as usual. When unarmed, nothing lights. |
+| `playFlightCallout(id)` | Returns `'voice' \| 'tone' \| 'mechanical' \| 'suppressed'`. |
+| `setCalloutMode(m)` / `getCalloutMode()` | `'voice'` (default), `'tone'` or `'off'`, or per level `{ warning, caution }`. `getCalloutMode()` returns `{ warning, caution }`; the default is `{ warning: 'voice', caution: 'tone' }`. |
+| `setCautionVoice(on)` / `getCautionVoice()` | Default `false`: cautions play their tone even in `'voice'` mode. |
+| `playAlertTone(level)` | `'caution'` / `'warning'` play the original tones. `'note'` is **silent** (no-op, returns `false`); the level stays in the API. |
+| `getAudioSpeedConfig()` / `setAudioSpeedConfig(partial)` | `{ abEngageMph: 80, abDisengageMph: 77 }`. Disengage is kept at least 0.5 mph below engage. For the old feel, pass `{ abEngageMph: 75, abDisengageMph: 72 }` (also exported as `TC_AB_LEGACY_MPH`). |
+
+### Callouts
+
+| id | Level | Voice phrase | Default |
+| --- | --- | --- | --- |
+| `overspeedWarning` | warning | "Overspeed" | voice |
+| `overspeedCaution` | caution | "Speed caution" | tone |
+| `abUnarmed` | caution | "Afterburner unarmed" | tone |
+| `gpsFail` | caution | "GPS signal lost" | tone |
+| `gearUp` / `gearDown` | mechanical | — | gear motor + lock |
+| `touchAndGo` | — | — | harmless no-op (`'suppressed'`) |
+
+Touch-and-go, go-around and launch have **no** callout. GPS ACQ and AB LIVE are notes, so they are
+silent.
+
+* **Voice** uses the browser's `speechSynthesis` (no recorded audio): volume 0.6, pitch 0.85 (a
+  little low), normal rate. If speech isn't available, it plays the tone instead.
+* **Tones** are original. Caution is two soft rounded triangle pulses (880 → 698.5 Hz). Warning is
+  four quicker alternating pulses (988 / 1319 Hz): more urgent, but still well under a car alert.
+* **Never stacked.** A warning cancels a caution that is playing (speech is cancelled, or the tone
+  fades out in about 12 ms). Any other callout that arrives while an alert is playing is dropped.
+* **Per-id cooldown:** 20 s for alerts, 2 s for gear cues. A suppressed call doesn't start a cooldown.
+
+### Thrust per phase
+
+The phase reshapes the throttle and load that the Tomcat voice hears. Frontend's raw input is never
+changed.
+
+| Phase | Shaping |
+| --- | --- |
+| TAXI | Low thrust: pedal scaled into 0 – 0.36 |
+| TAKEOFF_ROLL | At least MIL (0.8); more pedal still asks for burner demand |
+| AIRBORNE | Cruise: 0.5 + 0.3 × pedal (MIL at full pedal) |
+| APPROACH | Spool-down, capped at 0.3 |
+| ROLLOUT | Idle |
+| TOUCH_AND_GO (optional) | MIL with a fast re-spool (spool time at its brisk end) |
+
+### Afterburner speeds
+
+When armed, auto-engage is now at **≥ 80 mph**, and the burner drops out again **below 77 mph**
+(previously 75 / 72). `afterburnerLit` overrides the speed gate while armed.
+
+Note for Frontend: `src/skins/carrier-jet/model.ts` still describes the old 75 mph band. That file
+is outside the audio layer, so it was left unchanged.
+
+### Offline demo
+
+`carrier-jet-flight-regimes.mp3` is rendered offline, and an offline render can't capture
+`speechSynthesis`. So the callouts in the MP3 are the **tone** versions, rendered with
+`setCalloutMode('tone')`. In the browser, the warning is spoken by default.

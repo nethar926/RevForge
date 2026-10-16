@@ -112,9 +112,9 @@ test('AB demand: load when provided, throttle only when load is undefined', () =
   assert.equal(tomcatZoneTarget(1, 0, 0.5), 0, 'spool gate: no AB before the engines reach the light-up spool');
   // below the engage speed nothing lights, whatever the pedal / load
   const s = settled();
-  const f = runDrive(s, () => ({ speed: mph(72), throttle: 1, load: 1 }), 3);
+  const f = runDrive(s, () => ({ speed: mph(77), throttle: 1, load: 1 }), 3);
   assert.ok(f.every((x) => x.abZone === 0));
-  // engaged (≥ 75 mph) with a low load (e.g. coasting): zone 1 is the engaged minimum, never more
+  // engaged (≥ 80 mph) with a low load (e.g. coasting): zone 1 is the engaged minimum, never more
   const coast = runDrive(s, () => ({ speed: mph(90), throttle: 1, load: 0.5 }), 3);
   assert.equal(coast.at(-1).abZone, 1);
   assert.ok(coast.every((x) => x.abZone <= 1));
@@ -149,7 +149,7 @@ test('AB staging: zones light 1→5 one at a time with the documented delays, th
   // back to mil while still engaged → de-stage to the zone-1 minimum
   const mil = runDrive(s, () => ({ speed: 0.7, throttle: 0.8, load: 0.8 }), 1);
   assert.equal(mil.at(-1).abZone, 1);
-  // below 72 mph → clean sequential de-stage to 0
+  // below 77 mph → clean sequential de-stage to 0
   const up5 = runDrive(s, () => ({ speed: 0.7, throttle: 1, load: 1 }), 2);
   assert.equal(up5.at(-1).abZone, 5);
   const down = runDrive(s, () => ({ speed: mph(71), throttle: 1, load: 1 }), 1);
@@ -174,35 +174,35 @@ test('AB hysteresis + fallback: throttle stages zones when load is omitted', () 
   assert.equal(hold.at(-1).abZone, 5);
 });
 
-test('AB engages by speed: 0 at 74 mph full throttle, engages at 75, stays at 73, drops at 71.9', () => {
-  // unit: 75 mph = 120.7 km/h = 33.53 m/s → 0.625 normalised; 72 mph → 0.6
-  assert.equal(TC_AB_ENGAGE_SPEED, 0.625);
-  assert.equal(TC_AB_DISENGAGE_SPEED, 0.6);
-  assert.ok(Math.abs((120.7 / 1.609344) / 120 - TC_AB_ENGAGE_SPEED) < 1e-4);
-  assert.ok(Math.abs((33.53 * 2.2369362920544) / 120 - TC_AB_ENGAGE_SPEED) < 1e-4);
-  assert.equal(tomcatAbEngaged(mph(74.99), false), false);
-  assert.equal(tomcatAbEngaged(mph(75), false), true);
-  assert.equal(tomcatAbEngaged(mph(72), true), true);
-  assert.equal(tomcatAbEngaged(mph(71.99), true), false);
+test('AB engages by speed: 0 at 79 mph full throttle, engages at 80, stays at 78, drops at 76.9', () => {
+  // unit: 80 mph = 128.75 km/h = 35.76 m/s → 0.6667 normalised; 77 mph → 0.6417
+  assert.equal(TC_AB_ENGAGE_SPEED, 80 / 120);
+  assert.equal(TC_AB_DISENGAGE_SPEED, 77 / 120);
+  assert.ok(Math.abs((128.75 / 1.609344) / 120 - TC_AB_ENGAGE_SPEED) < 1e-4);
+  assert.ok(Math.abs((35.76 * 2.2369362920544) / 120 - TC_AB_ENGAGE_SPEED) < 1e-4);
+  assert.equal(tomcatAbEngaged(mph(79.99), false), false);
+  assert.equal(tomcatAbEngaged(mph(80), false), true);
+  assert.equal(tomcatAbEngaged(mph(77), true), true);
+  assert.equal(tomcatAbEngaged(mph(76.99), true), false);
   const full = (m) => () => ({ speed: mph(m), throttle: 1, load: 1 });
   const s = settled({ speed: mph(60), throttle: 1, load: 1 });
-  const at74 = runDrive(s, full(74), 3);
-  assert.ok(at74.every((f) => f.abZone === 0 && !f.abEngaged), 'no AB at 74 mph, full throttle');
-  const at75 = runDrive(s, full(75), 2);
-  assert.ok(at75[0].abEngaged, 'engages on the first frame at 75 mph');
-  assert.equal(at75.find((f) => f.abZone > 0).abZone, 1, 'zone 1 first');
-  assert.ok(Math.abs(at75.find((f) => f.abZone > 0).t - TC_AB_FIRST_DELAY) < 1 / 30, 'normal ignition delay');
-  assert.equal(at75.at(-1).abZone, 5, 'full demand stages to zone 5');
-  const at73 = runDrive(s, full(73), 3);
-  assert.ok(at73.every((f) => f.abZone === 5 && f.abEngaged), 'stays engaged at 73 mph');
-  const at72 = runDrive(s, full(72), 1);
-  assert.ok(at72.every((f) => f.abZone === 5), 'still engaged at exactly 72 mph');
-  const at719 = runDrive(s, full(71.9), 1);
-  assert.ok(!at719[0].abEngaged, 'disengages below 72 mph');
-  assert.equal(at719.at(-1).abZone, 0, 'drops to 0 at 71.9 mph');
-  // no chatter: speed wobbling 72.5..74.5 mph from below never engages; 72.5..74.5 from above never drops
+  const at79 = runDrive(s, full(79), 3);
+  assert.ok(at79.every((f) => f.abZone === 0 && !f.abEngaged), 'no AB at 79 mph, full throttle');
+  const at80 = runDrive(s, full(80), 2);
+  assert.ok(at80[0].abEngaged, 'engages on the first frame at 80 mph');
+  assert.equal(at80.find((f) => f.abZone > 0).abZone, 1, 'zone 1 first');
+  assert.ok(Math.abs(at80.find((f) => f.abZone > 0).t - TC_AB_FIRST_DELAY) < 1 / 30, 'normal ignition delay');
+  assert.equal(at80.at(-1).abZone, 5, 'full demand stages to zone 5');
+  const at78 = runDrive(s, full(78), 3);
+  assert.ok(at78.every((f) => f.abZone === 5 && f.abEngaged), 'stays engaged at 78 mph');
+  const at77 = runDrive(s, full(77), 1);
+  assert.ok(at77.every((f) => f.abZone === 5), 'still engaged at exactly 77 mph');
+  const at719 = runDrive(s, full(76.9), 1);
+  assert.ok(!at719[0].abEngaged, 'disengages below 77 mph');
+  assert.equal(at719.at(-1).abZone, 0, 'drops to 0 at 76.9 mph');
+  // no chatter: speed wobbling 77.5..79.5 mph from below never engages; 77.5..79.5 from above never drops
   const s2 = settled({ speed: mph(70), throttle: 1, load: 1 });
-  const wobble = (t) => ({ speed: mph(73.5 + Math.sin(t * 9) * 1), throttle: 1, load: 1 });
+  const wobble = (t) => ({ speed: mph(78.5 + Math.sin(t * 9) * 1), throttle: 1, load: 1 });
   assert.ok(runDrive(s2, wobble, 3).every((f) => f.abZone === 0));
   runDrive(s2, full(80), 2);
   assert.ok(runDrive(s2, wobble, 3).every((f) => f.abZone === 5));
@@ -299,9 +299,9 @@ test('no gears (drive model): a 0→150 mph gearbox sweep leaves spool + AB iden
     assert.ok(!Object.keys(geared.at(-1)).some((k) => /gear|shift/i.test(k)), 'snapshot has no gear fields');
     // spool climbs smoothly (no saw-tooth): never drops more than the twin wander allows
     for (let i = 1; i < geared.length; i++) assert.ok(geared[i].spool - geared[i - 1].spool > -0.002, `spool dip at ${geared[i].t}`);
-    // the burner engages once, when the sweep passes 75 mph (t = 10 s), and stays lit to 150 mph
+    // the burner engages once, when the sweep passes 80 mph (t ≈ 10.67 s), and stays lit to 150 mph
     const firstLit = geared.find((f) => f.abZone > 0);
-    assert.ok(firstLit.t >= 10 && firstLit.t < 10.3, `AB at ${firstLit.t}`);
+    assert.ok(firstLit.t >= 10.6 && firstLit.t < 10.95, `AB at ${firstLit.t}`);
     const lightEvents = geared.flatMap((f) => f.events).filter((e) => e.type === 'abLight').map((e) => e.zone);
     assert.deepEqual(lightEvents, [1, 2, 3, 4, 5]);
   }
@@ -329,8 +329,8 @@ test('engine API: getAfterburnerZone() + onAfterburnerZoneChange(cb) follow the 
   let unsub;
   let hadApi = false;
   const S = (mph) => mph / 120;
-  // full throttle at 74 mph (no AB) → 75 mph (engage, zones 1-5) → 71.9 mph (disengage)
-  const profile = (t) => (t < 5 ? { speed: S(74), throttle: 1, load: 1 } : t < 7 ? { speed: S(75), throttle: 1, load: 1 } : { speed: S(71.9), throttle: 1, load: 1 });
+  // full throttle at 79 mph (no AB) → 80 mph (engage, zones 1-5) → 76.9 mph (disengage)
+  const profile = (t) => (t < 5 ? { speed: S(79), throttle: 1, load: 1 } : t < 7 ? { speed: S(80), throttle: 1, load: 1 } : { speed: S(76.9), throttle: 1, load: 1 });
   // Brisk spool (tcSpoolTime 0) keeps the render short; staging delays do not depend on it.
   await renderLive(profile, 8.5, {
     patchId: 'aerospace-f14',
@@ -469,7 +469,7 @@ test('gesture-only start: setDriving before start() is silent; start() runs the 
 
 test('no gears (live chain): gear rpm, shift flags + upshift cues leave Tomcat unchanged; other packs still shift', async () => {
   const fps = 30;
-  const [t0, t1] = [3, 10]; // 0 → 150 mph over 3..10 s (75 mph at 6.5 s)
+  const [t0, t1] = [3, 10]; // 0 → 150 mph over 3..10 s (80 mph at ≈ 6.73 s)
   const cues = gearChangeTimes(t0, t1, fps).flatMap((t) => [{ t, cue: 'upshift' }, { t, cue: 'downshift' }]);
   assert.equal(cues.length, 10, 'five gear changes in the sweep');
   let now = 0;
@@ -507,9 +507,9 @@ test('no gears (live chain): gear rpm, shift flags + upshift cues leave Tomcat u
   const d = diff(tcClean, tcGeared);
   assert.ok(d.rms > 1e-3, 'Tomcat render is audible');
   assert.ok(d.max < 1e-6, `Tomcat output moved with gear signals / shift cues (max |Δ| ${d.max})`);
-  // AB engages once as the sweep passes 75 mph and stages straight to 5 — one callback per zone
+  // AB engages once as the sweep passes 80 mph and stages straight to 5 — one callback per zone
   assert.deepEqual(seen.map((x) => x.z), [1, 2, 3, 4, 5]);
-  assert.ok(seen[0].t >= 6.5 && seen[0].t < 6.8, `AB engaged at ${seen[0].t}`);
+  assert.ok(seen[0].t >= 6.7 && seen[0].t < 7.05, `AB engaged at ${seen[0].t}`);
   // another (non-gearless) pack still reacts to the same gear rpm saw-tooth and plays the upshift bark
   const evClean = await render('ev-whine', 'clean', false, 6);
   const evGeared = await render('ev-whine', 'geared', true, 6);
@@ -550,15 +550,15 @@ test('AB armed flag: default armed, disarm/re-arm, hysteresis band, same-value n
   assert.equal(tomcatSetAfterburnerArmed(s, true), true);
   const re80 = runDrive(s, () => ({ speed: mph(80), throttle: 1, load: 1 }), 2);
   assert.equal(re80.at(-1).abZone, 5);
-  // disarm, hold 73 mph, re-arm → stays 0 until 75 (no flicker in the hysteresis band)
+  // disarm, hold 78 mph, re-arm → stays 0 until 80 (no flicker in the hysteresis band)
   tomcatSetAfterburnerArmed(s, false);
-  runDrive(s, () => ({ speed: mph(73), throttle: 1, load: 1 }), 2);
+  runDrive(s, () => ({ speed: mph(78), throttle: 1, load: 1 }), 2);
   tomcatSetAfterburnerArmed(s, true);
-  const at73 = runDrive(s, () => ({ speed: mph(73), throttle: 1, load: 1 }), 2);
-  assert.ok(at73.every((f) => f.abZone === 0 && !f.abEngaged), 're-arm at 73 stays out');
-  const at75 = runDrive(s, () => ({ speed: mph(75), throttle: 1, load: 1 }), 2);
-  assert.ok(at75[0].abEngaged);
-  assert.equal(at75.at(-1).abZone, 5);
+  const at78 = runDrive(s, () => ({ speed: mph(78), throttle: 1, load: 1 }), 2);
+  assert.ok(at78.every((f) => f.abZone === 0 && !f.abEngaged), 're-arm at 78 stays out');
+  const at80 = runDrive(s, () => ({ speed: mph(80), throttle: 1, load: 1 }), 2);
+  assert.ok(at80[0].abEngaged);
+  assert.equal(at80.at(-1).abZone, 5);
 });
 
 test('AB armed: engine API zone 0 + one callback on disarm; smooth release ≤ normal disengage', async () => {
@@ -570,10 +570,10 @@ test('AB armed: engine API zone 0 + one callback on disarm; smooth release ≤ n
     }
     return m;
   };
-  // Normal below-72 disengage release window (zone 5 → 0)
+  // Normal below-77 disengage release window (zone 5 → 0)
   const seenSpeed = [];
   const bufSpeed = await renderLive(
-    (t) => (t < 6 ? { speed: S(80), throttle: 1, load: 1 } : { speed: S(71.9), throttle: 1, load: 1 }),
+    (t) => (t < 6 ? { speed: S(80), throttle: 1, load: 1 } : { speed: S(76.9), throttle: 1, load: 1 }),
     9,
     {
       patchId: 'aerospace-f14',
@@ -656,22 +656,22 @@ test('AB armed: engine API zone 0 + one callback on disarm; smooth release ≤ n
   assert.ok(seenRe.at(-1) === 5, `re-arm restages to 5, got ${seenRe.at(-1)}`);
 });
 
-test('AB armed: re-arm at 73 mph stays zone 0 until 75; NP / Chrono unchanged', async () => {
+test('AB armed: re-arm at 78 mph stays zone 0 until 80; NP / Chrono unchanged', async () => {
   const S = (m) => m / 120;
   const seen = [];
   let now = 0;
   let phase = 'spool';
-  let zoneAt73 = null;
+  let zoneAt78 = null;
   await renderLive(
     (t) => {
-      if (phase === 'band' || phase === 'armed73') return { speed: S(73), throttle: 1, load: 1 };
-      if (phase === 'go75') return { speed: S(75), throttle: 1, load: 1 };
+      if (phase === 'band' || phase === 'armed78') return { speed: S(78), throttle: 1, load: 1 };
+      if (phase === 'go80') return { speed: S(80), throttle: 1, load: 1 };
       return { speed: S(80), throttle: 1, load: 1 };
     },
     12,
     {
       patchId: 'aerospace-f14',
-      seed: 'tomcat-ab-arm-73',
+      seed: 'tomcat-ab-arm-78',
       params: { tcSpoolTime: 0 },
       fps: 30,
       onFrame: (engine, t) => {
@@ -682,22 +682,22 @@ test('AB armed: re-arm at 73 mph stays zone 0 until 75; NP / Chrono unchanged', 
           phase = 'band';
         } else if (phase === 'band' && t >= 7) {
           engine.setAfterburnerArmed(true);
-          phase = 'armed73';
-        } else if (phase === 'armed73' && t >= 8.5 && t < 9) {
-          zoneAt73 = engine.getAfterburnerZone();
-        } else if (phase === 'armed73' && t >= 9) {
-          assert.equal(zoneAt73, 0, 'still 0 at 73 after re-arm');
-          phase = 'go75';
+          phase = 'armed78';
+        } else if (phase === 'armed78' && t >= 8.5 && t < 9) {
+          zoneAt78 = engine.getAfterburnerZone();
+        } else if (phase === 'armed78' && t >= 9) {
+          assert.equal(zoneAt78, 0, 'still 0 at 78 after re-arm');
+          phase = 'go80';
         }
       },
     },
   );
-  assert.equal(phase, 'go75');
-  assert.equal(zoneAt73, 0);
-  // no zone lights between re-arm and the 75 mph step
+  assert.equal(phase, 'go80');
+  assert.equal(zoneAt78, 0);
+  // no zone lights between re-arm and the 80 mph step
   const mid = seen.filter((x) => x.t >= 7 && x.t < 9);
-  assert.ok(mid.every((x) => x.z === 0), `no flicker at 73: ${JSON.stringify(mid)}`);
-  assert.ok(seen.some((x) => x.t >= 9 && x.z >= 1), 'engages once speed hits 75');
+  assert.ok(mid.every((x) => x.z === 0), `no flicker at 78: ${JSON.stringify(mid)}`);
+  assert.ok(seen.some((x) => x.t >= 9 && x.z >= 1), 'engages once speed hits 80');
 
   // Non-Tomcat packs: methods are harmless no-ops; gear models unchanged (byte-identical path).
   for (const id of ['night-pursuit', 'chrono-coupe']) {

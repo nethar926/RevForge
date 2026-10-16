@@ -37,6 +37,7 @@ export const JET_DEFAULT_FOLEY: Readonly<Record<JetSystem, JetSwitchFoley>>;
 export const JET_ENGINE_PAN: number;
 export const JET_CART_PAN: number;
 export const JET_ESTOP_DELAY: number;
+export const JET_GEAR_RUN: number;
 export const JET_COLD_TRIM: number;
 export const JET_COLD_LEVEL: Readonly<Record<string, number>>;
 
@@ -52,5 +53,8 @@ export class JetColdStartVoice {
   update(st: JetColdState, eng?: { starterA?: number; starterB?: number; n2a?: number; n2b?: number }, when?: number): void;
   /** Foley / one-shot. Extra internal cues: relay, cartClunk, xbValve, apuLightoff, lightoff, igniter. */
   cue(name: JetCue | string, opts?: { when?: number; pan?: number; level?: number; down?: boolean }): boolean;
+  /** Original caution / warning alert tone on its own gain (cancel with cancelAlert). */
+  alertTone(level: 'caution' | 'warning', t: number, level2?: number): { gain: GainNode; seconds: number };
+  cancelAlert(h: { gain: GainNode } | null | undefined, t: number): void;
   dispose(): void;
 }

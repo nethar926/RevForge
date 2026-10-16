@@ -423,6 +423,23 @@ export interface EngineSynth {
   jetQuickStart?(): boolean;
   /** One-shot switch foley / cue (works on the Tomcat pack with cold start on or off). */
   playJetCue?(cue: JetCue, opts?: { pan?: number; level?: number }): boolean;
+  /** Tomcat flight phase from Frontend's detector (null = no shaping, compat). Shapes thrust; gear info runs gear cues. */
+  setFlightPhase?(phase: JetFlightPhase | null, info?: JetFlightInfo): void;
+  getFlightPhase?(): JetFlightPhase | null;
+  /** Frontend's afterburnerLit: while true and armed, the afterburner is live at any speed. */
+  setAfterburnerLaunch?(lit: boolean): void;
+  getAfterburnerLaunch?(): boolean;
+  /** Callout: voice (speechSynthesis) / tone / mechanical (gear); per-id cooldown, never stacked. */
+  playFlightCallout?(id: JetCalloutId): JetCalloutResult;
+  /** String: 'voice' (warnings speak, cautions tone unless setCautionVoice(true)) | 'tone' | 'off'; or per level. */
+  setCalloutMode?(mode: JetCalloutMode | Partial<JetCalloutModes>): void;
+  getCalloutMode?(): JetCalloutModes;
+  setCautionVoice?(on: boolean): void;
+  getCautionVoice?(): boolean;
+  /** Original alert tone; 'note' is a silent no-op (returns false). */
+  playAlertTone?(level: JetAlertLevel): boolean;
+  getAudioSpeedConfig?(): AudioSpeedConfig;
+  setAudioSpeedConfig?(partial: Partial<AudioSpeedConfig>): AudioSpeedConfig;
   /** Optional cabin low-pass hint (Hz) for the CharacterEngine wrapper; undefined = default mapping. */
   getAcousticCutoffHint?(): number | undefined;
   /** Night Pursuit: soft original electronic tick at a scanner sweep edge (level = params.scannerTick). */
@@ -545,4 +562,30 @@ export interface JetSystemChange {
   system: JetSystem | null;
   on: boolean;
   source: 'api' | 'auto' | 'emergency' | 'engine' | 'mode' | 'stop' | 'shutdown';
+}
+
+/* ── Tomcat flight phases (Frontend detects; audio consumes) — see docs/cj-cold-start.md ── */
+/** Frontend's regime strings, unchanged. 'TOUCH_AND_GO' is an optional extra (fast re-spool). */
+export type JetFlightPhase = 'TAXI' | 'TAKEOFF_ROLL' | 'AIRBORNE' | 'APPROACH' | 'ROLLOUT' | 'TOUCH_AND_GO';
+export interface JetFlightInfo {
+  /** Gear position. A transition INTO 'up' / 'down' plays the gearUp / gearDown cue; 'transit' plays nothing. */
+  gear?: 'down' | 'up' | 'transit';
+  /** Frontend's afterburnerLit — same as setAfterburnerLaunch(lit). */
+  launch?: boolean;
+}
+/** 'touchAndGo' is accepted as a harmless no-op (touch-and-go / go-around / launch have no callout). */
+export type JetCalloutId = 'abUnarmed' | 'overspeedCaution' | 'overspeedWarning' | 'gpsFail' | 'gearUp' | 'gearDown' | 'touchAndGo';
+export type JetCalloutMode = 'voice' | 'tone' | 'off';
+export interface JetCalloutModes {
+  warning: JetCalloutMode;
+  caution: JetCalloutMode;
+}
+/** 'note' is silent (kept for the API); caution / warning have original tones. */
+export type JetAlertLevel = 'note' | 'caution' | 'warning';
+export type JetCalloutResult = 'voice' | 'tone' | 'mechanical' | 'suppressed';
+export interface AudioSpeedConfig {
+  /** AB auto-engage (armed) at ≥ this speed; default 80. */
+  abEngageMph: number;
+  /** …and out again below this; default 77. */
+  abDisengageMph: number;
 }
