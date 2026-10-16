@@ -50,10 +50,11 @@ test('headingStale: NEEDS MOTION caption in every look and layout, heading digit
     for (const g of groups) assert.match(g.attrs, /data-stale="true"/, `${k}: heading marked stale`);
     assert.ok(boxDigits(h).every((d) => d.includes('047')), `${k}: digits 047 still shown`);
     const P = PALETTES[v.id];
-    // digits in the dim text tone, ticks in the (dimmer) ghost tone; neither in the live symbol colour
-    assert.match(h, new RegExp(`<text[^>]*fill="${P.winText}"[^>]*>047</text>`), `${k}: dim digits`);
+    // digits in the stale text tone, ticks / scale / box edge in the (dimmer) stale line tone; none in the live symbol colour
+    assert.match(h, new RegExp(`<text[^>]*fill="${P.hdgStaleText}"[^>]*>047</text>`), `${k}: dim digits`);
     for (const g of groups) assert.doesNotMatch(g.body, new RegExp(`<line[^>]*stroke="${P.sym}"`), `${k}: no live-colour ticks`);
-    for (const g of groups) assert.match(g.body, new RegExp(`<line[^>]*stroke="${P.ghost}"`), `${k}: ghost ticks`);
+    for (const g of groups) assert.match(g.body, new RegExp(`<line[^>]*stroke="${P.hdgStaleLine}"`), `${k}: dimmed ticks`);
+    for (const g of groups) assert.match(g.body, new RegExp(`<rect[^>]*fill="${P.boxBg}"[^>]*stroke="${P.hdgStaleLine}"`), `${k}: dimmed box edge`);
   }
 });
 

@@ -30,6 +30,7 @@ import { Approach, AoaTape, DeckMarks, Engines, HeadingTape, Indexer, Ladder, Pl
 import { VariantTabs } from './VariantTabs';
 import { useCarrierJetVariant } from './variantStore';
 import './carrier-jet.css';
+import './hardware.css';
 
 /**
  * Carrier Jet HUD props: the PackHudProps ThemeStage hands every pack HUD, plus the

@@ -7,6 +7,12 @@ export interface CjPalette {
   ghost: string; jetFill: string; jetStroke: string; wingFill: string; wingStroke: string; canopy: string; arc: string; arcText: string; text: string;
   onSpeed: string; idxOff: string; idxHigh: string; idxOn: string; idxLow: string; lensBg: string; datum: string; ball: string; ballEdge: string;
   abFill: string; abText: string; abLabel: string; glow: string;
+  /**
+   * Stale heading (headingStale) tones, a darker, greyer cast of the live symbology:
+   * hdgStaleLine = ticks / scale / box edge at 40% of the live symbol colour over the CRT ground;
+   * hdgStaleText = digits + scale numbers, dropped to just over the 4.5:1 text floor on the lightest ground they sit on.
+   */
+  hdgStaleLine: string; hdgStaleText: string;
 }
 
 export const PALETTES: Record<CarrierJetVariant, CjPalette> = {
@@ -16,6 +22,7 @@ export const PALETTES: Record<CarrierJetVariant, CjPalette> = {
     ghost: '#2f7d49', jetFill: '#0b2615', jetStroke: '#7ef7a1', wingFill: '#1f6a3a', wingStroke: '#c4ffd4', canopy: '#03100a', arc: '#5fd685', arcText: '#7ef7a1', text: '#7ef7a1',
     onSpeed: '#ffb54a', idxOff: '#45ad66', idxHigh: '#7ef7a1', idxOn: '#ffb54a', idxLow: '#ff8a66', lensBg: '#03100a', datum: '#7ef7a1', ball: '#ffb54a', ballEdge: '#fff1cf',
     abFill: '#ffb54a', abText: '#1a0e00', abLabel: '#ffb54a', glow: '#7ef7a1',
+    hdgStaleLine: '#356c46', hdgStaleText: '#59956c',
   },
   tomcat: {
     sym: '#5dff9a', symText: '#5dff9a', ref: '#f4f7f5', ground: '#000000', boxBg: '#000', tapeBg: '#000', edge: '#5dff9a', fill: '#2fcf6e', tick: '#5dff9a', tapeText: '#d9e0dc',
@@ -23,6 +30,7 @@ export const PALETTES: Record<CarrierJetVariant, CjPalette> = {
     ghost: '#4f7d62', jetFill: '#06140c', jetStroke: '#5dff9a', wingFill: '#5dff9a', wingStroke: '#5dff9a', canopy: '#000', arc: '#5dff9a', arcText: '#d9e0dc', text: '#d9e0dc',
     onSpeed: '#ffc23d', idxOff: '#66706b', idxHigh: '#5dff9a', idxOn: '#ffc23d', idxLow: '#ff7b6b', lensBg: '#000', datum: '#5dff9a', ball: '#ffc23d', ballEdge: '#fff',
     abFill: '#ffc23d', abText: '#000', abLabel: '#ffc23d', glow: '#5dff9a',
+    hdgStaleLine: '#25663e', hdgStaleText: '#3f855b',
   },
   'swing-wing': {
     sym: '#9fcbff', symText: '#cfe3ff', ref: '#ffc35a', ground: '#132235', boxBg: '#0b1018', tapeBg: '#0b1018', edge: '#7fb6f5', fill: '#4ea3ff', tick: '#9fcbff', tapeText: '#dbe6f2',
@@ -30,5 +38,6 @@ export const PALETTES: Record<CarrierJetVariant, CjPalette> = {
     ghost: '#4b6a8f', jetFill: '#243243', jetStroke: '#d5dee8', wingFill: '#3b4d63', wingStroke: '#ffc35a', canopy: '#0b1018', arc: '#4ea3ff', arcText: '#cfe3ff', text: '#dbe6f2',
     onSpeed: '#ffc35a', idxOff: '#5f7a99', idxHigh: '#5be38f', idxOn: '#ffc35a', idxLow: '#ff7070', lensBg: '#05080d', datum: '#5be38f', ball: '#ffc35a', ballEdge: '#fff',
     abFill: '#ffc35a', abText: '#120a00', abLabel: '#ffc35a', glow: '',
+    hdgStaleLine: '#485d77', hdgStaleText: '#818c9a',
   },
 };

@@ -250,11 +250,12 @@ export function Ladder({ x, y, w, h, P, pitch = 0, bank = 0 }: { x: number; y: n
 const card = (d: number) => ({ 0: 'N', 90: 'E', 180: 'S', 270: 'W' } as Record<number, string>)[d] ?? String(d / 10);
 const hdgText = (heading: number | undefined) => (heading === undefined ? '---' : String(Math.round(heading) % 360).padStart(3, '0'));
 /**
- * Stale heading (`stale` with a heading): the scale and digits are drawn in the palette's dim tones, never
- * flashing. Ticks drop to P.ghost (still >= 3:1 on the CRT ground), digits and scale labels to P.winText
- * (>= 4.5:1 on P.boxBg), so the ticks are dimmed more than the digits. Undefined heading keeps '---' as is.
+ * Stale heading (`stale` with a heading): the scale, box edge and digits drop to the palette's stale tones (a darker,
+ * greyer cast), never flashing. Ticks / scale / box edge go to P.hdgStaleLine (40% of the live symbol colour), digits
+ * and scale numbers to P.hdgStaleText (about a quarter to a third of the live luminance, still >= 4.5:1 on the CRT
+ * ground). Undefined heading keeps '---' and the live tones as is.
  */
-const staleTones = (P: CjPalette, dim: boolean) => (dim ? { line: P.ghost, text: P.winText } : { line: P.sym, text: P.symText });
+const staleTones = (P: CjPalette, dim: boolean) => (dim ? { line: P.hdgStaleLine, text: P.hdgStaleText, edge: P.hdgStaleLine } : { line: P.sym, text: P.symText, edge: P.sym });
 export function Rose({ x, y, w, h, P, heading, stale = false }: { x: number; y: number; w: number; h: number; P: CjPalette; heading?: number; stale?: boolean }) {
   const id = useId().replace(/:/g, '');
   const hd = heading ?? 0;
@@ -287,7 +288,7 @@ export function Rose({ x, y, w, h, P, heading, stale = false }: { x: number; y: 
         <path d={`M${f1(cx)} ${f1(cy - 22)} l-6 18 h12 z M${f1(cx - 14)} ${f1(cy - 6)} h28`} fill={P.ref} stroke={P.ref} strokeWidth="2" />
       </g>
       <path d={`M${f1(cx)} ${f1(y + 36)} l-8 -8 h16 z`} fill={P.ref} />
-      <rect x={f1(cx - 40)} y={y - 2} width="80" height="30" fill={P.boxBg} stroke={P.sym} strokeWidth="1.5" />
+      <rect x={f1(cx - 40)} y={y - 2} width="80" height="30" fill={P.boxBg} stroke={tone.edge} strokeWidth="1.5" />
       <T x={cx} y={y + 19} size={16} fill={tone.text} weight={700} ls={0.1}>{hdgText(heading)}</T>
     </g>
   );
@@ -323,7 +324,7 @@ export function HeadingTape({ x, y, w, P, heading, span = 60, stale = false }: {
           );
         })}
       </g>
-      <rect x={f1(cx - 36)} y={y - 6} width="72" height="30" fill={P.boxBg} stroke={P.sym} strokeWidth="1.5" />
+      <rect x={f1(cx - 36)} y={y - 6} width="72" height="30" fill={P.boxBg} stroke={tone.edge} strokeWidth="1.5" />
       <T x={cx} y={y + 15} size={15} fill={tone.text} weight={700} ls={0.1}>{hdgText(heading)}</T>
       <path d={`M${f1(cx)} ${y + 38} l-6 9 h12 z`} fill={P.ref} />
     </g>
