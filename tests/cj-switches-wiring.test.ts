@@ -115,14 +115,15 @@ test('wiring: CJ row replaces Tuner (after IGNITION) and ☰ (AppShell) only for
   const mount = src('packs/mounts/CarrierJetMount.tsx');
   assert.match(mount, /<CarrierJetAfterburnerGuard armed=\{armed\} guardOpen=\{guardOpen\}/);
   assert.match(readFileSync(new URL('../src/forge/ForgePage.tsx', import.meta.url), 'utf8'), /<button className="tuner-back" data-testid="cj-tune" onClick=\{\(\)=>setPanel\("tuner"\)\}>← TUNE<\/button>/, 'stable cj-tune hook opens the Tuner');
-  assert.match(mount, /flightSlot=\{guard\}/, 'portrait: guard inside the HUD FLIGHT block');
-  assert.match(mount, /layout !== 'portrait' && <div className="cjm-ab">\{guard\}<\/div>/, 'host strip off portrait');
+  assert.doesNotMatch(mount, /flightSlot=/, 'no FLIGHT slot: the skin FLIGHT block stays as at 9a3773a (mount-only portrait fallback)');
+  assert.match(mount, /^\s*<div className="cjm-ab">\{guard\}<\/div>$/m, 'host strip in every layout, portrait included');
   assert.match(mount, /layout === 'board' \|\| layout === 'window' \? 'compact' : 'auto'/, 'Tesla guard = compact');
   const nav = readFileSync(new URL('../src/packs/mounts/CjNavRow.tsx', import.meta.url), 'utf8');
   assert.match(nav, /variant=\{layout === 'board' \|\| layout === 'window' \? 'compact' : 'auto'\}/, 'Tesla row = compact');
   const css = readFileSync(new URL('../src/packs/mounts/carrier-jet-controls.css', import.meta.url), 'utf8') + readFileSync(new URL('../src/packs/mounts/carrier-jet-mount.css', import.meta.url), 'utf8');
   assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /display:\s*none/, 'host CSS hides no switch / guard part');
-  assert.doesNotMatch(css, /portrait'\] > \.cjm-fill[^{]*\{ bottom: 68px/, 'portrait board keeps its 68px');
+  assert.match(css, /\.cjm\[data-rf-layout='portrait'\] > \.cjm-fill, \.cjm\[data-rf-layout='phone-landscape'\] > \.cjm-fill \{ bottom: 68px; \}/, 'portrait + phone-landscape boards yield the 68px guard strip');
+  assert.match(css, /\.cjm\[data-rf-layout='portrait'\] > \.cjm-ab, \.cjm\[data-rf-layout='phone-landscape'\] > \.cjm-ab \{ top: auto; right: 0; bottom: 4px;/, 'portrait guard strip at the bottom of the box');
   assert.match(mount, /sendPackEngineCommand\(ID\.id, \{ type: 'ab-armed', armed: next \}\)/);
   assert.match(mount, /useState\(false\)/, 'guard starts closed');
   const bridge = src('packs/audioBridge.ts');

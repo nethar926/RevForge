@@ -37,8 +37,9 @@ import './carrier-jet-controls.css';
  * Afterburner guard (Visual Skins' CarrierJetAfterburnerGuard): guardOpen is UI state (closed on load);
  * ARM persists (packs/abArmed.ts) and goes to the engine as an 'ab-armed' pack engine command, the same
  * runtime bus the AB zone comes back on. Compact strip under the FLIGHT column (Tesla / desktop), inside
- * the HUD's FLIGHT block via flightSlot (portrait; the skin ignores the slot elsewhere), or in a strip at
- * the bottom of the board's box (phone-landscape) — carrier-jet-controls.css.
+ * a 68px strip at the bottom of the board's box (portrait + phone-landscape) — carrier-jet-controls.css.
+ * No flightSlot yet: in portrait the guard row squeezes the cards under FLIGHT into overlapping text, so the
+ * skin's FLIGHT block stays exactly as at 9a3773a until Visual Skins reworks it (mount-only fallback).
  */
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
@@ -59,7 +60,7 @@ export function CarrierJetMount(props: PackHudProps) {
     sendPackEngineCommand(ID.id, { type: 'ab-armed', armed: next });
   };
   // Tesla / desktop (board, drive window): the skin's compact strip, every element shown; phones: 'auto'
-  // (compact strip in phone-landscape, compact inside the HUD's FLIGHT-block slot in portrait).
+  // (compact strip in portrait and phone-landscape).
   const guardVariant = layout === 'board' || layout === 'window' ? 'compact' : 'auto';
   const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />;
   return (
@@ -72,9 +73,9 @@ export function CarrierJetMount(props: PackHudProps) {
       style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}
     >
       <div className="cjm-fill">
-        <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} flightSlot={guard} />
+        <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} />
       </div>
-      {layout !== 'portrait' && <div className="cjm-ab">{guard}</div>}
+      <div className="cjm-ab">{guard}</div>
     </div>
   );
 }
