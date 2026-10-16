@@ -390,6 +390,32 @@ export interface EngineSynth {
   setAfterburnerArmed?(armed: boolean): void;
   /** Tomcat: whether the afterburner is armed (default true). true on other packs. */
   getAfterburnerArmed?(): boolean;
+  /**
+   * Tomcat cold start (opt-in, default OFF — when off the quick Start is unchanged). While on,
+   * start() only unlocks audio: the engines stay dark until switched on with setJetSystem.
+   */
+  setJetColdStart?(enabled: boolean): void;
+  getJetColdStart?(): boolean;
+  /** Which recommended sequence jetAutoStart() runs (default 'apu'). Does not gate anything. */
+  setJetStartMode?(mode: JetStartMode): void;
+  getJetStartMode?(): JetStartMode;
+  /**
+   * Permissive: does exactly what it is called with (any order, no interlocks) and returns true
+   * while cold start is on (false: cold start off / other pack / unknown id). Plays the switch
+   * foley on a change (default per JET_DEFAULT_FOLEY; opts.foley overrides, false = silent).
+   */
+  setJetSystem?(system: JetSystem, on: boolean, opts?: { foley?: JetSwitchFoley | false }): boolean;
+  getJetSystems?(): JetSystemsState;
+  /** Fires on every switch change and engine phase change; returns an unsubscribe function. */
+  onJetSystemChange?(cb: (state: JetSystemsState, change: JetSystemChange) => void): () => void;
+  /** PULL: handle foley + short warning tone, then fuel cut / everything off and spools down. */
+  jetEmergencyStop?(): boolean;
+  /** Runs the recommended sequence for `mode` (default getJetStartMode()). */
+  jetAutoStart?(mode?: JetStartMode): boolean;
+  /** Convenience: BATT → L ENG → R ENG straight away (no APU / cart). */
+  jetQuickStart?(): boolean;
+  /** One-shot switch foley / cue (works on the Tomcat pack with cold start on or off). */
+  playJetCue?(cue: JetCue, opts?: { pan?: number; level?: number }): boolean;
   /** Optional cabin low-pass hint (Hz) for the CharacterEngine wrapper; undefined = default mapping. */
   getAcousticCutoffHint?(): number | undefined;
   /** Night Pursuit: soft original electronic tick at a scanner sweep edge (level = params.scannerTick). */
@@ -413,4 +439,47 @@ export interface ParamMeta {
   options?: number[];
   /** Pro Builder group label (Ion Twin layers, etc.) */
   group?: string;
+}
+
+/* ── Tomcat cold start (see docs/cj-cold-start.md) ── */
+/** Switchable systems: battery, seat-belt sign, APU, external ground air cart, crossbleed valve, engines. */
+export type JetSystem = 'batt' | 'seatbelt' | 'apu' | 'aircart' | 'crossbleed' | 'engL' | 'engR';
+/** Recommended start sequence for jetAutoStart. */
+export type JetStartMode = 'apu' | 'groundcart';
+/** Switch foley kinds. */
+export type JetSwitchFoley = 'toggle' | 'guardOpen' | 'guardClose' | 'hold' | 'pull';
+/** playJetCue cues: switch foley + afterburner guard cover + chime + warning tone. */
+export type JetCue =
+  | JetSwitchFoley
+  | 'abGuardOpen'
+  | 'abGuardClose'
+  | 'chime'
+  | 'warning'
+  /** cockpit display config menu (bezel buttons) */
+  | 'bezelPress'
+  | 'cursorStep'
+  | 'selectConfirm'
+  | 'pageChange';
+/** Engine phase in cold start. */
+export type JetEnginePhase = 'off' | 'starting' | 'run' | 'shutdown';
+export interface JetSystemsState extends Record<JetSystem, boolean> {
+  coldStart: boolean;
+  mode: JetStartMode;
+  engines: { L: JetEnginePhase; R: JetEnginePhase };
+  /** APU spool 0..1 / ready (≥ 95 %). */
+  apuSpool: number;
+  apuReady: boolean;
+  /** Air cart spool 0..1 / ready. */
+  cartSpool: number;
+  cartReady: boolean;
+  /** jetAutoStart / jetQuickStart sequence in progress. */
+  autoRunning: boolean;
+  /** Emergency stop pending (warning tone playing, fuel cut follows). */
+  emergency: boolean;
+}
+export interface JetSystemChange {
+  /** null for mode / reset changes. */
+  system: JetSystem | null;
+  on: boolean;
+  source: 'api' | 'auto' | 'emergency' | 'engine' | 'mode' | 'stop' | 'shutdown';
 }

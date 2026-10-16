@@ -4,7 +4,7 @@ import type {SoundLayer} from './types';
 import {nextLockStage} from './lockStage';
 import {JetLayers} from './JetLayers';
 import {SignalGraph} from './SignalGraph';
-import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge} from './types';
+import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge,JetCue,JetStartMode,JetSwitchFoley,JetSystem,JetSystemChange,JetSystemsState} from './types';
 import {EnvelopeMeter} from './envelopeMeter';
 import {ProceduralCharacter} from './ProceduralCharacter';
 import {gearlessDrivingInput,isGearlessPatch,tomcatHeadroomGain} from './tomcatPack';
@@ -33,6 +33,18 @@ export class CharacterEngine implements EngineSynth {
  setAfterburnerArmed(armed:boolean):void{if(!this.disposed)this.base.setAfterburnerArmed?.(armed);}
  /** Tomcat: whether AB is armed (default true). true on other packs / disposed. */
  getAfterburnerArmed():boolean{return this.disposed?true:(this.base.getAfterburnerArmed?.()??true);}
+ /** Tomcat cold start (default off) — forwarded; safe no-ops / false on other packs or disposed. See docs/cj-cold-start.md. */
+ setJetColdStart(enabled:boolean):void{if(!this.disposed)this.base.setJetColdStart?.(enabled);}
+ getJetColdStart():boolean{return this.disposed?false:(this.base.getJetColdStart?.()??false);}
+ setJetStartMode(mode:JetStartMode):void{if(!this.disposed)this.base.setJetStartMode?.(mode);}
+ getJetStartMode():JetStartMode{return this.base.getJetStartMode?.()??'apu';}
+ setJetSystem(system:JetSystem,on:boolean,opts?:{foley?:JetSwitchFoley|false}):boolean{return this.disposed?false:(this.base.setJetSystem?.(system,on,opts)??false);}
+ getJetSystems():JetSystemsState{return this.base.getJetSystems?.()??{batt:false,seatbelt:false,apu:false,aircart:false,crossbleed:false,engL:false,engR:false,coldStart:false,mode:'apu',engines:{L:'off',R:'off'},apuSpool:0,apuReady:false,cartSpool:0,cartReady:false,autoRunning:false,emergency:false};}
+ onJetSystemChange(cb:(state:JetSystemsState,change:JetSystemChange)=>void):()=>void{return this.base.onJetSystemChange?.(cb)??(()=>undefined);}
+ jetEmergencyStop():boolean{return this.disposed?false:(this.base.jetEmergencyStop?.()??false);}
+ jetAutoStart(mode?:JetStartMode):boolean{return this.disposed?false:(this.base.jetAutoStart?.(mode)??false);}
+ jetQuickStart():boolean{return this.disposed?false:(this.base.jetQuickStart?.()??false);}
+ playJetCue(cue:JetCue,opts?:{pan?:number;level?:number}):boolean{return this.disposed?false:(this.base.playJetCue?.(cue,opts)??false);}
  scannerTick(edge:ScannerEdge='right'):void{if(!this.disposed&&this.running)this.base.scannerTick?.(edge);}
  setPursuitBoost(amount:number):void{const v=Math.max(0,Math.min(1,Number.isFinite(amount)?amount:0));if(typeof this.base.setPursuitBoost==='function')this.base.setPursuitBoost(v);else this.base.setParams({pursuitBoost:v});}
  /** Chrono Coupe charge 0..1 — forwarded (base ignores it on other packs). Safe when stopped. */

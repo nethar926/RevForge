@@ -11,6 +11,10 @@ export interface TomcatEngineState {
   starter: number;
   wander: number;
   nextTick: number;
+  /** Cold start only (absent otherwise): this engine's own phase / phase time / next igniter tick. */
+  cold?: TomcatPhase;
+  coldT?: number;
+  coldTick?: number;
 }
 export interface TomcatDriveState {
   phase: TomcatPhase;
@@ -32,13 +36,18 @@ export interface TomcatDriveState {
   stallCooldown: number;
   prevSpool: number;
   rate: number;
+  /** Cold start (per-engine control) — absent by default. */
+  cold?: boolean;
 }
 export type TomcatEvent =
   | { type: 'lightoff'; engine: number }
   | { type: 'igniter'; engine: number }
   | { type: 'abLight'; zone: number }
   | { type: 'abDestage'; zone: number }
-  | { type: 'stall'; amount: number };
+  | { type: 'stall'; amount: number }
+  /** Cold start only: engine reached idle / finished its rundown. */
+  | { type: 'engineRun'; engine: number }
+  | { type: 'engineOff'; engine: number };
 export interface TomcatDrive {
   phase: TomcatPhase;
   n2a: number;
@@ -66,6 +75,10 @@ export interface TomcatDrive {
   rate: number;
   events: TomcatEvent[];
   settled: boolean;
+  /** Cold start only. */
+  cold?: boolean;
+  coldA?: TomcatPhase;
+  coldB?: TomcatPhase;
 }
 
 export const TC_IDLE_N2: number;
@@ -117,6 +130,12 @@ export function tomcatHeavyGate(spool: number): number;
 export function tomcatHeavyCurve(n?: number, sat?: number): Float32Array;
 export function tomcatZoneTarget(demand: number, zone: number, spool: number): number;
 export function tomcatTimeScale(params?: Partial<EngineParams>): number;
+/** Cold-start spool constants (crank, igniters, light-off → idle). */
+export const TC_COLD: Readonly<{ crankTc: number; crankTo: number; igniteN2: number; tickEvery: number; tickAfterLit: number; accelScale: number; rundownTc: number; soloTrim: number }>;
+/** Enter / leave per-engine cold-start control. Returns true when the mode changed. */
+export function tomcatSetColdMode(state: TomcatDriveState, on: boolean): boolean;
+/** Cold mode: fuel on (start) / fuel cut (rundown) for engine 0 (left) / 1 (right). */
+export function tomcatColdEngine(state: TomcatDriveState, engine: 0 | 1, on: boolean): boolean;
 export function stepTomcatDrive(
   state: TomcatDriveState,
   input: Partial<DrivingInput>,

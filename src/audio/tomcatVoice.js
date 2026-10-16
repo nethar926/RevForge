@@ -208,6 +208,127 @@ export function tomcatBeginShutdown(s) {
   return true;
 }
 
+/* ── cold start (opt-in): per-engine fuel / start control. state.cold is absent by default, so the
+ *  default drive path (both engines together via tomcatBeginStart / tomcatBeginShutdown) is untouched. */
+
+/** Cold-start light-off is slower and more deliberate than the quick start (seconds-scale). */
+export const TC_COLD = {
+  crankTc: 4, // starter spin-up time constant (N2 → 30 %), light-off at 16 % N2 ≈ 3 s
+  crankTo: 0.3,
+  igniteN2: 0.08, // igniters start ticking above this N2
+  tickEvery: 0.3, // igniter tick spacing (s)
+  tickAfterLit: 0.9, // igniters keep ticking this long after light-off
+  accelScale: 0.55, // light-off → idle acceleration vs the quick start
+  rundownTc: 2.2, // fuel-cut N2 rundown time constant (s)
+  soloTrim: 0.72, // per-engine bus level while the other engine is dark (one engine ≈ half the jet)
+};
+
+/**
+ * Enter / leave the cold-start mode. On enter each engine keeps its current state (running engines
+ * stay running). On leave the legacy phases take over: both lit → 'run', none → rundown, one lit →
+ * the legacy start sequence brings the other one up without disturbing the lit one.
+ */
+export function tomcatSetColdMode(s, on) {
+  const v = !!on;
+  if (!!s.cold === v) return false;
+  if (v) {
+    s.cold = true;
+    for (const e of [s.a, s.b]) {
+      e.cold = s.phase === 'run' || (s.phase === 'starting' && e.lit) ? 'run' : s.phase === 'starting' ? 'starting' : e.n2 > 0.004 ? 'shutdown' : 'off';
+      e.coldT = 0;
+      e.coldTick = 0;
+    }
+    return true;
+  }
+  const lit = [s.a, s.b].filter((e) => e.cold === 'run' || (e.cold === 'starting' && e.lit));
+  s.cold = false;
+  for (const e of [s.a, s.b]) {
+    delete e.cold;
+    delete e.coldT;
+    delete e.coldTick;
+  }
+  if (lit.length === 2) s.phase = 'run';
+  else if (lit.length === 0) s.phase = [s.a, s.b].some((e) => e.n2 > 0.004) ? 'shutdown' : 'off';
+  else {
+    s.phase = 'starting';
+    s.phaseTime = TC_ENGINE_B_START_OFFSET + 0.05; // both engines past their start offset
+    for (const e of [s.a, s.b]) if (!lit.includes(e)) e.lit = false;
+  }
+  if (s.phase !== 'starting') s.phaseTime = 0;
+  return true;
+}
+
+/** Cold mode: fuel on (start sequence) / fuel cut (rundown) for engine 0 (left) or 1 (right). */
+export function tomcatColdEngine(s, idx, on) {
+  if (!s.cold) return false;
+  const e = idx ? s.b : s.a;
+  if (on) {
+    if (e.cold === 'starting' || e.cold === 'run') return false;
+    e.cold = 'starting';
+    e.lit = false;
+    e.coldT = 0;
+    e.coldTick = 0;
+    return true;
+  }
+  if (e.cold === 'off' || e.cold === 'shutdown') return false;
+  e.cold = 'shutdown';
+  e.coldT = 0;
+  return true;
+}
+
+/** Cold mode, one engine: returns its N2 target (same spool laws as the legacy phases). */
+function coldEngineStep(e, i, step, ts, det, sCmd, slow, events) {
+  e.coldT += step;
+  if (e.cold === 'starting') {
+    e.starter = e.n2 < 0.45 ? lag(e.starter, 1, step, 0.25) : lag(e.starter, 0, step, 0.45);
+    if (!e.lit) {
+      e.n2 = lag(e.n2, TC_COLD.crankTo, step, TC_COLD.crankTc * ts);
+      if (e.n2 >= 0.16) {
+        e.lit = true;
+        e.litAt = e.coldT;
+        events.push({ type: 'lightoff', engine: i });
+      }
+    } else {
+      const acc = (TC_COLD.accelScale * (0.16 + 0.24 * sstep((e.n2 - 0.15) / 0.45))) / ts;
+      e.n2 = spoolStep(e.n2, TC_IDLE_N2 * (1 + (i ? det : 0)), step, acc, 1, 0.3 * ts);
+    }
+    e.comb = e.lit ? lag(e.comb, 1, step, 0.5) : 0;
+    const ign = e.n2 >= TC_COLD.igniteN2 && (!e.lit || e.coldT - e.litAt < TC_COLD.tickAfterLit);
+    if (ign && e.coldT >= e.coldTick) {
+      events.push({ type: 'igniter', engine: i });
+      e.coldTick = e.coldT + TC_COLD.tickEvery;
+    }
+    if (e.lit && e.n2 >= TC_IDLE_N2 * (1 + (i ? det : 0)) - 0.004) {
+      e.cold = 'run';
+      e.coldT = 0;
+      events.push({ type: 'engineRun', engine: i });
+    }
+    return TC_IDLE_N2;
+  }
+  if (e.cold === 'run') {
+    const n2Target = (TC_IDLE_N2 + (1 - TC_IDLE_N2) * sCmd) * (1 + (i ? det : 0) + e.wander);
+    const s = tomcatSpoolNorm(e.n2);
+    const accel = ((0.14 + 0.3 * sstep(s / 0.7)) * (1 - TC_IDLE_N2)) / (ts * slow);
+    const decel = (0.55 * (1 - TC_IDLE_N2)) / (ts * slow);
+    e.n2 = spoolStep(e.n2, n2Target, step, accel, decel, (n2Target > e.n2 ? 0.4 : 0.55) * ts * slow);
+    e.comb = lag(e.comb, 1, step, 0.3);
+    e.lit = true;
+    e.starter = lag(e.starter, 0, step, 0.3);
+    return n2Target;
+  }
+  // shutdown / off: fuel cut → natural rundown (no step anywhere; slower than the quick shutoff)
+  e.lit = false;
+  e.comb = lag(e.comb, 0, step, 0.3);
+  e.n2 = Math.max(0, e.n2 - (e.n2 / TC_COLD.rundownTc + 0.006) * step);
+  e.starter = lag(e.starter, 0, step, 0.2);
+  if (e.cold === 'shutdown' && e.n2 < 0.004 && e.comb < 0.01) {
+    e.cold = 'off';
+    e.coldT = 0;
+    events.push({ type: 'engineOff', engine: i });
+  }
+  return 0;
+}
+
 /** Afterburner demand: `load` when the caller supplied it (finite), otherwise throttle. */
 export function tomcatAbDemand(input) {
   const d = input || {};
@@ -315,7 +436,9 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
     // slow random wander (keeps the twin beat drifting)
     e.wander = clip((e.wander + (Math.random() * 2 - 1) * Math.sqrt(step) * 0.0012) * Math.exp(-step / 4), -0.003, 0.003);
     let n2Target = 0;
-    if (state.phase === 'starting') {
+    if (state.cold) {
+      n2Target = coldEngineStep(e, i, step, ts, det, sCmd, slow, events);
+    } else if (state.phase === 'starting') {
       const te = state.phaseTime - (i === 1 ? TC_ENGINE_B_START_OFFSET : 0);
       if (te >= 0) {
         e.starter = e.n2 < 0.45 ? lag(e.starter, 1, step, 0.12) : lag(e.starter, 0, step, 0.3);
@@ -365,7 +488,15 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
   }
 
   // phase transitions
-  if (state.phase === 'starting') {
+  if (state.cold) {
+    // cold start: the shared phase follows the two independent engines
+    const ph = engines.map((e) => e.cold);
+    const next = ph.includes('starting') ? 'starting' : ph.includes('run') ? 'run' : ph.includes('shutdown') ? 'shutdown' : 'off';
+    if (next !== state.phase) {
+      state.phase = next;
+      state.phaseTime = 0;
+    }
+  } else if (state.phase === 'starting') {
     const done = engines.every((e) => e.lit && e.n2 >= TC_IDLE_N2 - 0.004);
     if (done || state.phaseTime > 8) {
       if (!done) tomcatSetRunning(state);
@@ -436,7 +567,7 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
       Math.abs(state.speed - clip(num(d.speed, 0))) < 0.003;
   else settled = false;
 
-  return {
+  const out = {
     phase: state.phase,
     n2a: state.a.n2,
     n2b: state.b.n2,
@@ -464,6 +595,12 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
     events,
     settled,
   };
+  if (state.cold) {
+    out.cold = true;
+    out.coldA = state.a.cold;
+    out.coldB = state.b.cold;
+  }
+  return out;
 }
 
 /* ───────────────────────────── targets ───────────────────────────── */
@@ -541,6 +678,8 @@ export function tomcatTargets(params = {}, drv = {}) {
   const n1 = clip(num(drv.n1, 0));
   const sp = clip(num(drv.speed, 0));
   const abOn = L.ab;
+  // cold start (one engine may be stopped): each mechanical tone follows the engine that drives it
+  const mp = drv.cold ? [a.presence, b.presence, clip(num(drv.n1a, 0) / 0.3)] : [presence, presence, clip(n1 / 0.3)];
   return {
     a,
     b,
@@ -560,10 +699,10 @@ export function tomcatTargets(params = {}, drv = {}) {
     crackle: abOn * L.crackle * TC_LOW.crackle * sstep(ab * 1.25),
     abHiss: abOn * L.crackle * TC_LOW.hiss * ab,
     gearHz: a.n2Hz * TC_RATIOS.gear,
-    gear: L.mech * 0.011 * presence * (0.6 + 0.4 * s),
-    mesh: L.mech * 0.009 * presence,
-    shaftN2: L.mech * 0.0065 * presence,
-    shaftN1: L.mech * 0.005 * clip(n1 / 0.3),
+    gear: L.mech * 0.011 * mp[0] * (0.6 + 0.4 * s),
+    mesh: L.mech * 0.009 * mp[0],
+    shaftN2: L.mech * 0.0065 * mp[1],
+    shaftN1: L.mech * 0.005 * mp[2],
     tickDrive: 0.45 + 0.75 * presence * (1 - 0.8 * s),
     ticks: L.mech * 0.16 * presence * (1 - 0.75 * s),
     intake: L.mech * (0.07 * n1 + 0.08 * sp),
@@ -939,6 +1078,7 @@ export class TomcatVoice {
 
     this.jit = [0, 0];
     this.lastTargets = null;
+    this.coldBus = false;
   }
 
   n(node) {
@@ -969,6 +1109,12 @@ export class TomcatVoice {
       setT(e.csN2.offset, E.n2Hz * (1 + this.jit[i]), t, gp);
       setT(e.csN1.offset, E.n1Hz * (1 + this.jit[i] * 0.6), t, gp);
       setT(e.pan.pan, pans[i], t, 0.2);
+      if (drv && drv.cold) {
+        // cold start: an engine on its own is about half the jet (the other side is dark)
+        const other = (i ? T.a : T.b).presence;
+        setT(e.bus.gain, TC_COLD.soloTrim + (1 - TC_COLD.soloTrim) * clip(other), t, 0.3);
+        this.coldBus = true;
+      } else if (this.coldBus) setT(e.bus.gain, 1, t, 0.3);
       setT(e.whine1.gain, E.whine, t, g);
       setT(e.whine1h.gain, E.whineH, t, g);
       setT(e.whine2.gain, E.whine2, t, g);
