@@ -220,6 +220,47 @@ function env(){
   orientationRequestPermission:!!(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function'),
   motionRequestPermission:!!(window.DeviceMotionEvent&&typeof DeviceMotionEvent.requestPermission==='function')};
 }
+/* ---------- Input / display (live matchMedia) ---------- */
+var IQ=[['pointerCoarse','(pointer: coarse)'],['pointerFine','(pointer: fine)'],['hoverHover','(hover: hover)'],['hoverNone','(hover: none)'],
+ ['anyPointerCoarse','(any-pointer: coarse)'],['anyPointerFine','(any-pointer: fine)'],['anyHoverHover','(any-hover: hover)']];
+var I={media:{},devicePixelRatio:null,screen:null,inner:null,changes:0,lastChangeMs:null};
+function inputRead(){
+ for(var i=0;i<IQ.length;i++)I.media[IQ[i][0]]=mq(IQ[i][1]);
+ I.devicePixelRatio=window.devicePixelRatio;
+ I.screen=screen.width+'x'+screen.height;I.inner=innerWidth+'x'+innerHeight;
+}
+function inputChanged(){inputRead();I.changes++;I.lastChangeMs=Math.round(now()-T0);if(typeof render==='function')render();}
+inputRead();
+IQ.forEach(function(q){
+ try{var m=matchMedia(q[1]);if(m.addEventListener)m.addEventListener('change',inputChanged);else if(m.addListener)m.addListener(inputChanged);}catch(e){}
+});
+var dprMq=null;
+function watchDpr(){
+ try{
+  if(dprMq){if(dprMq.removeEventListener)dprMq.removeEventListener('change',onDpr);else if(dprMq.removeListener)dprMq.removeListener(onDpr);}
+  dprMq=matchMedia('(resolution: '+window.devicePixelRatio+'dppx)');
+  if(dprMq.addEventListener)dprMq.addEventListener('change',onDpr);else if(dprMq.addListener)dprMq.addListener(onDpr);
+ }catch(e){}
+}
+function onDpr(){watchDpr();inputChanged();}
+watchDpr();
+window.addEventListener('resize',inputChanged);
+window.addEventListener('orientationchange',inputChanged);
+function yn(v){return v===null?'—':v?'yes':'no';}
+function inputState(){
+ inputRead();
+ return {pointerCoarse:I.media.pointerCoarse,pointerFine:I.media.pointerFine,hoverHover:I.media.hoverHover,hoverNone:I.media.hoverNone,
+  anyPointerCoarse:I.media.anyPointerCoarse,anyPointerFine:I.media.anyPointerFine,anyHoverHover:I.media.anyHoverHover,
+  devicePixelRatio:I.devicePixelRatio,screen:I.screen,inner:I.inner,changes:I.changes,lastChangeMs:I.lastChangeMs};
+}
+function inputRows(){
+ var r=[];for(var i=0;i<IQ.length;i++)r.push([IQ[i][1],yn(I.media[IQ[i][0]])]);
+ r.push(['window.devicePixelRatio',String(I.devicePixelRatio)]);
+ r.push(['screen (width x height)',I.screen]);
+ r.push(['inner (innerWidth x innerHeight)',I.inner]);
+ r.push(['Input changes seen',I.changes+(I.lastChangeMs!==null?' (last at '+(I.lastChangeMs/1000).toFixed(1)+' s)':'')]);
+ return r;
+}
 if(navigator.permissions&&navigator.permissions.query){
  ['geolocation','accelerometer','gyroscope','magnetometer'].forEach(function(n){
   try{navigator.permissions.query({name:n}).then(function(p){E.perm[n]=p.state;p.onchange=function(){E.perm[n]=p.state;};},function(e){E.perm[n]='query error: '+(e&&e.name);});}
@@ -279,7 +320,8 @@ function verdicts(){
   gyroMotion:motionVerdict(),
   updatesPerSec:+G.rate.get().toFixed(2),medianGapMs:gs?Math.round(gs.median):null,
   speedAccuracy:!G.n?'no fixes yet':(G.n-G.nulls.speedAccuracy)?('present, latest '+(L&&isNum(L.spdAcc)?L.spdAcc.toFixed(2)+' m/s':'null')):(L&&L.spdAcc===undefined?'not in API':'null in all fixes'),
-  nullPct:{altitude:pct(G.nulls.altitude,G.n),altitudeAccuracy:pct(G.nulls.altitudeAccuracy,G.n),heading:pct(G.nulls.heading,G.n),speed:pct(G.nulls.speed,G.n)}
+  nullPct:{altitude:pct(G.nulls.altitude,G.n),altitudeAccuracy:pct(G.nulls.altitudeAccuracy,G.n),heading:pct(G.nulls.heading,G.n),speed:pct(G.nulls.speed,G.n)},
+  input:inputState()
  };
 }
 
@@ -334,7 +376,9 @@ function render(){
  ]);
  var gr=[];for(var k in GS){var s=GS[k];gr.push([k,(s.supported?'supported':'unsupported')+' - '+s.status+(s.error?' ('+s.error+')':'')+(s.readings?', '+s.readings+' readings':'')]);}
  rows('tGen',gr);
+ inputRead();
  var e=env(),er=[];for(var x in e)er.push([x,typeof e[x]==='object'?JSON.stringify(e[x]):String(e[x])]);
+ er=er.concat(inputRows());
  rows('tEnv',er);
  $('tEnv').rows[0].cells[1].className='mono';
  // summary
@@ -347,7 +391,11 @@ function render(){
   vr('Compass before tap',v.compassBeforeTap)+vr('Compass after tap',v.compassAfterTap)+vr('Gyro / motion',v.gyroMotion)+
   pr('GPS updates/s',v.updatesPerSec.toFixed(2)+' / median gap '+(v.medianGapMs===null?'—':v.medianGapMs+' ms'))+
   pr('Speed accuracy',v.speedAccuracy)+
-  pr('Null %','alt '+v.nullPct.altitude+', altAcc '+v.nullPct.altitudeAccuracy+', hdg '+v.nullPct.heading+', spd '+v.nullPct.speed);
+  pr('Null %','alt '+v.nullPct.altitude+', altAcc '+v.nullPct.altitudeAccuracy+', hdg '+v.nullPct.heading+', spd '+v.nullPct.speed)+
+  pr('Pointer','coarse '+yn(v.input.pointerCoarse)+', fine '+yn(v.input.pointerFine))+
+  pr('Hover','hover '+yn(v.input.hoverHover)+', none '+yn(v.input.hoverNone))+
+  pr('Any pointer / hover','coarse '+yn(v.input.anyPointerCoarse)+', fine '+yn(v.input.anyPointerFine)+', any-hover '+yn(v.input.anyHoverHover))+
+  pr('DPR / screen / inner',v.input.devicePixelRatio+' / '+v.input.screen+' / '+v.input.inner);
  $('sumAge').textContent='at '+((now()-T0)/1000).toFixed(0)+' s';
 }
 setInterval(render,500);render();
@@ -362,7 +410,7 @@ function report(){
    computedBearing:G.bearing,bearingDistM:G.bearingDist,derivedSpeedSuccessive:G.derivedSucc,derivedSpeedAnchor:G.derivedAnchor,watchStarted:G.watchId!==null,errors:G.errors,recentFixes:G.fixes},
   orientation:{tapped:O.tapped,tapAtMs:O.tapAt,permission:O.perm,beforeTap:cl(O.before),afterTap:cl(O.after)},
   motion:{events:M.n,eventsBeforeTap:M.nBefore,withData:M.data,withRotation:M.rot,ratePerSec:+M.rate.get().toFixed(2),last:M.last},
-  genericSensor:gs,environment:env()};
+  genericSensor:gs,environment:env(),input:inputState()};
 }
 window.__sensorReport=report;
 $('bCopy').addEventListener('click',function(){
