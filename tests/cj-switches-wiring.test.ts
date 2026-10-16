@@ -173,7 +173,7 @@ test('bottom bank: guard left + row right in one panel; row portals into it once
   assert.match(css, /> \.rev-topbar > div \{ min-height: 48px; \}/, 'top bar keeps its 48px line without the row');
   // MORE opens upward from the bank and stacks above everything
   assert.match(css, /\.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ top: auto; bottom: calc\(100% \+ 6px\); \}/);
-  assert.match(css, /\.cjm-bank\[data-rf-layout='window'\] \.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ left: 0; right: auto; \}/, 'window tray opens from the tier\'s left edge (stays on screen)');
+  assert.match(css, /\.cjm-bank\[data-rf-layout='window'\] \.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ left: auto; right: 6px; \}/, 'window tray right-aligned to MORE (stays on screen)');
   assert.match(css, /\.cjm-below \.cjnav\[data-cjnav-place='bank'\] \.cjs > \.cjs-tray \{ left: 50%; right: auto; transform: translateX\(-50%\); \}/, 'portrait tray centred, translate only');
   assert.match(css, /:has\(\.cjm\[data-rf-layout='phone-landscape'\]\):has\(\.cjm-bank\[data-cjm-bank\]\) > \.rev-topbar \{ min-height: 48px; \}/, 'landscape rail keeps the row line so the throttle does not move');
   assert.match(css, /\.rev-dock:has\(\.cjnav \[data-sw-id='more'\]\[aria-expanded='true'\]\)/);
