@@ -1,0 +1,82 @@
+/*
+ * Carrier Jet switch panel (SwitchPanel.tsx) and afterburner guard (AfterburnerGuard.tsx).
+ * Panel gray, CJ amber #ffb54a, CJ green #7ef7a1, B612 stencil labels (font declared in carrier-jet.css).
+ * Targets >= 44px, text >= 11px, text pairs >= 4.5:1. Lit states are steady (no blink, no transition).
+ * Only the guard flip moves: transform + opacity, 160ms, off under prefers-reduced-motion.
+ */
+.cjs, .cjg { box-sizing: border-box; font-family: 'B612', 'Barlow Semi Condensed', system-ui, sans-serif; font-weight: 700; line-height: 1; color: #fff; -webkit-font-smoothing: antialiased; }
+.cjs *, .cjs *::before, .cjs *::after, .cjg *, .cjg *::before, .cjg *::after { box-sizing: border-box; }
+
+/* ---------------- screws (shared) */
+.cjs-screw { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #d9dde0, #6a7075); border: 1px solid #2a2d30; }
+.cjs-screw::after { content: ''; position: absolute; left: 2px; right: 2px; top: 5px; height: 2px; background: #33373a; transform: rotate(35deg); }
+.cjs-screw[data-pos='tl'] { left: 6px; top: 6px; }
+.cjs-screw[data-pos='tr'] { right: 6px; top: 6px; }
+.cjs-screw[data-pos='bl'] { left: 6px; bottom: 6px; }
+.cjs-screw[data-pos='br'] { right: 6px; bottom: 6px; }
+
+/* ---------------- switch panel */
+.cjs { position: relative; display: inline-block; max-width: 100%; padding: 30px 18px 20px; border: 2px solid #2c3033; border-radius: 6px; background: linear-gradient(180deg, #555c62, #43494e); box-shadow: inset 0 1px 0 #767d83; }
+.cjs-title { position: absolute; top: 9px; left: 28px; font-size: 12px; letter-spacing: 0.22em; color: #fff; }
+.cjs-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.cjs-cell { display: flex; margin: 0; padding: 0; }
+.cjs .cjs-sw {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px;
+  width: 84px; min-width: 44px; min-height: 144px; margin: 0; padding: 6px 4px 8px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.24); border-radius: 4px; background: transparent;
+  color: #fff; font: inherit; text-transform: uppercase; cursor: pointer; transition: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.cjs .cjs-sw:active { background: rgba(0, 0, 0, 0.16); }
+.cjs .cjs-sw:focus-visible { outline: 3px solid #ffb54a; outline-offset: 2px; }
+.cjs-label { display: flex; align-items: flex-end; justify-content: center; height: 30px; font-size: 12.5px; line-height: 1.15; letter-spacing: 0.04em; text-align: center; color: #fff; }
+.cjs-lamp { position: absolute; top: 40px; right: 6px; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid #1a1d1f; background: #26302a; }
+.cjs-lamp[data-on='true'] { background: #7ef7a1; box-shadow: 0 0 6px #7ef7a1; }
+.cjs-bat { display: block; flex: none; width: 56px; height: 76px; }
+.cjs-legend { font-size: 11.5px; letter-spacing: 0.08em; color: #fff; white-space: nowrap; }
+.cjs-sw[data-up='true'] .cjs-legend { padding: 2px 5px; border-radius: 2px; background: #141618; color: #7ef7a1; }
+/* denied (e.g. COMPASS permission refused): amber dashed cell, amber legends on a dark plate, still a live button */
+.cjs .cjs-sw[data-denied] { border: 2px dashed #ffb54a; background: rgba(20, 22, 24, 0.35); }
+.cjs-sw[data-denied] .cjs-legend, .cjs-hint { padding: 2px 4px; border-radius: 2px; background: #141618; color: #ffb54a; }
+.cjs-hint { max-width: 100%; font-size: 11px; line-height: 1.15; letter-spacing: 0; text-align: center; white-space: normal; }
+.cjs-tray { margin-top: 12px; padding-top: 10px; border-top: 2px dashed rgba(255, 255, 255, 0.32); }
+.cjs-tray-h { margin: 0 0 8px 2px; font-size: 12px; letter-spacing: 0.18em; color: #fff; }
+
+/* ---------------- afterburner guard (option B, window cover) */
+.cjg { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 8px; width: 188px; padding: 12px 14px 14px; border: 2px solid #2c3033; border-radius: 6px; background: linear-gradient(180deg, #555c62, #43494e); box-shadow: inset 0 1px 0 #767d83; }
+.cjg-cap { font-size: 12px; letter-spacing: 0.2em; color: #fff; }
+.cjg-well { position: relative; width: 156px; height: 196px; border-radius: 6px; background: #22272b; box-shadow: inset 0 2px 6px #000; perspective: 520px; }
+.cjg-arm-slot { position: absolute; left: 30px; top: 80px; width: 96px; height: 96px; }
+.cjg .cjg-arm {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 96px; height: 96px; margin: 0; padding: 0;
+  border: 2px solid #8d979c; border-radius: 8px; background: #1b1f22; color: #e3e8e4; font: inherit; cursor: pointer; transition: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.cjg .cjg-arm[aria-checked='true'] { border-color: #fff1cf; background: #ffb54a; color: #1a0e00; box-shadow: 0 0 14px rgba(255, 181, 74, 0.55); }
+.cjg .cjg-arm:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.cjg-arm-t { font-size: 22px; letter-spacing: 0.12em; }
+.cjg-arm-s { padding: 2px 6px; border-radius: 2px; font-size: 13px; letter-spacing: 0.14em; }
+.cjg-arm[aria-checked='false'] .cjg-arm-s { border: 1.5px solid #8d979c; }
+.cjg .cjg-guard { position: absolute; left: 8px; right: 8px; top: 8px; height: 184px; margin: 0; padding: 0; border: 0; background: transparent; color: #fff; font: inherit; cursor: pointer; overflow: visible; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.cjg[data-open='true'] .cjg-guard { height: 52px; }
+.cjg .cjg-guard:focus-visible { outline: 3px solid #ffb54a; outline-offset: 3px; border-radius: 6px; }
+.cjg-lid, .cjg-strip { position: absolute; left: 0; right: 0; top: 0; border: 2px solid #1c1e20; border-radius: 6px; background: repeating-linear-gradient(-45deg, #c8261b 0 12px, #f2c21b 12px 24px); transform-origin: 50% 0; transition: transform 160ms ease-out, opacity 160ms ease-out; }
+.cjg-lid { height: 184px; border: 0; background: none; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5)); }
+/* striped frame with a real cut-out, so the ARM key below shows through the smoked glass */
+.cjg-frame {
+  position: absolute; inset: 0; border: 2px solid #1c1e20; border-radius: 6px; background: repeating-linear-gradient(-45deg, #c8261b 0 12px, #f2c21b 12px 24px);
+  -webkit-mask-image: linear-gradient(#000, #000), linear-gradient(#000, #000); mask-image: linear-gradient(#000, #000), linear-gradient(#000, #000);
+  -webkit-mask-size: 100% 100%, 108px 108px; mask-size: 100% 100%, 108px 108px;
+  -webkit-mask-position: 0 0, 14px 64px; mask-position: 0 0, 14px 64px;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.cjg-win { position: absolute; left: 12px; right: 12px; top: 62px; height: 112px; border: 2px solid #1c1e20; border-radius: 6px; background: linear-gradient(160deg, rgba(255, 255, 255, 0.16) 0 20%, rgba(255, 255, 255, 0) 20%), rgba(10, 12, 14, 0.42); }
+.cjg-tab { position: absolute; left: 50%; top: 10px; width: 104px; margin-left: -52px; padding: 7px 0; border-radius: 3px; background: #141618; color: #fff; font-size: 13px; letter-spacing: 0.14em; text-align: center; }
+.cjg-strip { height: 52px; background: repeating-linear-gradient(-45deg, #8f1b13 0 12px, #b48f14 12px 24px); }
+.cjg-strip .cjg-tab { top: 9px; }
+.cjg[data-open='false'] .cjg-strip { opacity: 0; transform: rotateX(90deg); }
+.cjg[data-open='true'] .cjg-lid { opacity: 0; transform: rotateX(-88deg); }
+.cjg-plate { display: flex; align-items: center; justify-content: center; width: 156px; height: 34px; border: 1.5px solid #8d979c; border-radius: 4px; background: #141618; color: #e3e8e4; font-size: 13px; letter-spacing: 0.14em; }
+.cjg-plate[data-armed='true'] { border-color: #fff1cf; background: #ffb54a; color: #1a0e00; }
+@media (prefers-reduced-motion: reduce) {
+  .cjg-lid, .cjg-strip { transition: none; }
+}
