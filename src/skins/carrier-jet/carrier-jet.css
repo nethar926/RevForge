@@ -316,8 +316,14 @@
 .cj-c-right:has(> .cj-hstale) > :nth-child(2) { grid-row: 2; grid-column: 1; }
 .cj-c-right:has(> .cj-hstale) > :nth-child(3) { grid-row: 3; grid-column: 1; }
 .cj-c-right > .cj-hstale { grid-row: 1; grid-column: 1; align-self: end; justify-self: start; margin: 0 0 2px 2px; }
-/* C reflow: between ladder and tape in the column; the negative margin cancels its height + one gap (layout unchanged) */
-.cj-c-lh > .cj-hstale { position: relative; flex: none; align-self: flex-start; height: 16px; margin: -20px 0 0 2px; }
+/* C reflow: between ladder and tape in the column; the margins cancel its height + one gap (16 - 22 + 2 = -4 = -gap,
+   layout unchanged). 2px higher than the old -20px / 0, so it clears the tape's 350 / 010 labels by >= 2px. */
+.cj-c-lh > .cj-hstale { position: relative; flex: none; align-self: flex-start; height: 16px; margin: -22px 0 2px 2px; }
+/* Phone landscape (e.g. 650x369 @2, 844x390 @3): the ladder-to-tape gap is shorter than an 11px chip plus 2px either
+   side (it overlapped the 350 label by 0.7px), so the chip sits directly UNDER the heading tape instead (flex order;
+   DOM order unchanged; 16 + 7 - 27 = -4 = -gap, so the centred column does not move), tracked tighter. 7px down
+   so that where it is wider than the column (568x320) it still drops below STBY's line box by >= 2px. */
+[data-rf-layout="phone-landscape"] .cj .cj-c-lh > .cj-hstale { order: 1; margin: 7px 0 -27px 2px; padding: 0 3px; letter-spacing: 0; }
 
 /* ---------------- phones (Frontend's layout picker: data-rf-layout on the pack mount root). Every rule below is
    scoped under [data-rf-layout="phone-landscape"] or [data-rf-layout="portrait"]; the HUD also turns compact on there.

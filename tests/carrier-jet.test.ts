@@ -291,11 +291,13 @@ test('banned strings: none in src/skins/carrier-jet (incl. "AEROSPACE F14")', ()
 
 // Tailwind turns a bare "out"+"line" word into a stray utility class, so comments must not carry it.
 const BARE_OL = new RegExp('\\b' + 'out' + 'line' + '\\b');
-test('skin hygiene: no SMIL, no backdrop-filter, no bare o-line word in comments, OFL fonts shipped', () => {
+test('skin hygiene: no SMIL, no backdrop-filter (only `none`, to strip host frost), no bare o-line word in comments, OFL fonts shipped', () => {
   const files = skinText();
   for (const { f, s } of files) {
     assert.doesNotMatch(s, /<animate|<animateTransform|<animateMotion|<set\s/i, `${f}: SMIL`);
-    assert.doesNotMatch(s, /backdrop-filter\s*:|backdropFilter/i, `${f}: backdrop-filter`);
+    // hardware.css turns the host dock's frosted glass off (`backdrop-filter: none`); the skin never adds a blur
+    const noBlurOff = s.replace(/(-webkit-)?backdrop-filter:\s*none(\s*!important)?\s*;/g, '');
+    assert.doesNotMatch(noBlurOff, /backdrop-filter\s*:|backdropFilter/i, `${f}: backdrop-filter`);
     const comments = (s.match(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|\{\/\*[\s\S]*?\*\/\}|<!--[\s\S]*?-->/g) ?? []).join('\n');
     assert.doesNotMatch(comments, BARE_OL, `${f}: bare o-line word in a comment`);
   }
