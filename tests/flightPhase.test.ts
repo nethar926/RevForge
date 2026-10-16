@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  FLIGHT_EVENT_CALLOUT,
   FLIGHT_PHASE_DEFAULTS,
   G_MPS2,
+  PHASE_DISPLAY_LABEL,
   applyFlightAudioCalls,
   createFlightPhase,
   eventToAudioCall,
@@ -211,6 +213,7 @@ test('touch-and-go at a light: decel to 12, re-accel → touchAndGo, straight to
   const ga = replay(profile([[0, 0], [15, 45], [25, 45], [30, 34], [35, 45], [40, 45]]));
   assert.deepEqual(phaseSeq(ga), ['TAXI', 'TAKEOFF_ROLL', 'AIRBORNE', 'APPROACH', 'AIRBORNE']);
   assert.equal(count(ga, 'touchAndGo'), 0);
+  assert.equal(count(ga, 'goAround'), 1);
   // rejected takeoff (36 → 25, never airborne) returns to TAXI without a touch-and-go
   const rto = replay(profile([[0, 0], [10, 37], [12, 37], [16, 25], [20, 25]]));
   assert.deepEqual(phaseSeq(rto), ['TAXI', 'TAKEOFF_ROLL', 'TAXI']);
@@ -464,4 +467,87 @@ test('replay helper: CSV → timeline', () => {
   assert.match(out, /!launch/);
   assert.match(out, /AIRBORNE/);
   assert.match(out, /^ {3}t\(s\)/);
+});
+
+test('go-around: APPROACH → AIRBORNE above 40 without dipping below 32 → goAround event + GO AROUND note (noteTtlMs)', () => {
+  const tr = profile([[0, 0], [15, 45], [25, 45], [30, 33], [35, 45], [45, 45]]);
+  const r = replay(tr);
+  assert.deepEqual(phaseSeq(r), ['TAXI', 'TAKEOFF_ROLL', 'AIRBORNE', 'APPROACH', 'AIRBORNE']);
+  assert.equal(count(r, 'goAround'), 1);
+  assert.equal(count(r, 'touchAndGo'), 0);
+  const ev = r.events.find((e) => e.type === 'goAround')!;
+  assert.ok(ev.speedMph >= 40);
+  const back = r.phases[r.phases.length - 1];
+  assert.equal(ev.t, back.t, 'emitted on the APPROACH → AIRBORNE fix');
+  const at = (t: number) => r.rows.find((x) => x.t === t)!.regime;
+  assert.deepEqual(
+    at(ev.t).alerts.filter((a) => a.id === 'goAround').map((a) => [a.text, a.level]),
+    [['GO AROUND', 'note']],
+  );
+  assert.ok(at(ev.t + 2).alerts.some((a) => a.id === 'goAround'), 'still shown inside noteTtlMs');
+  assert.ok(!at(ev.t + 3).alerts.some((a) => a.id === 'goAround'), 'gone after noteTtlMs (3000)');
+  // noteTtlMs override applies to GO AROUND
+  const r2 = replay(tr, { config: { noteTtlMs: 6000 } });
+  assert.ok(r2.rows.find((x) => x.t === ev.t + 5)!.regime.alerts.some((a) => a.id === 'goAround'));
+  // dipping below 32 is a touchdown: no goAround, touch-and-go instead
+  const tg = replay(profile([[0, 0], [15, 45], [25, 45], [31, 30], [33, 30], [40, 45], [45, 45]]));
+  assert.equal(count(tg, 'goAround'), 0);
+  assert.equal(count(tg, 'touchAndGo'), 1);
+  // normal takeoff (TAKEOFF_ROLL → AIRBORNE) never emits goAround
+  assert.equal(count(replay(profile([[0, 0], [15, 45], [30, 45]])), 'goAround'), 0);
+  // no audio callout for goAround
+  assert.equal(FLIGHT_EVENT_CALLOUT.goAround, null);
+  assert.equal(eventToAudioCall({ type: 'goAround' }), null);
+});
+
+test('gpsFail one-shot event: once per outage when GPS FAIL becomes active → playFlightCallout(gpsFail)', () => {
+  let clk = 0;
+  const e = createFlightPhase({ now: () => clk });
+  const evs: FlightEvent[] = [];
+  e.onFlightEvent((ev) => evs.push(ev));
+  const fix = (t: number, mps = 10) => {
+    clk = t * 1000;
+    e.pushFix({ speedMps: mps, timestampMs: clk });
+  };
+  const tickAt = (t: number) => {
+    clk = t * 1000;
+    e.tick();
+  };
+  for (let t = 0; t <= 5; t++) fix(t);
+  for (let t = 6; t <= 15; t++) tickAt(t); // ≤ 10 s since last fix: no event yet
+  assert.equal(evs.filter((x) => x.type === 'gpsFail').length, 0);
+  for (let t = 16; t <= 40; t++) tickAt(t); // outage continues: exactly one event
+  assert.equal(evs.filter((x) => x.type === 'gpsFail').length, 1);
+  assert.equal(evs.find((x) => x.type === 'gpsFail')!.atMs, 16_000);
+  assert.deepEqual(e.getFlightRegime().cautions, ['gpsFail']);
+  // stale / null fixes during the outage don't clear it or re-fire
+  clk = 41_000;
+  e.pushFix({ speedMps: null, timestampMs: 41_000 });
+  e.pushFix({ speedMps: 10, timestampMs: 30_000 });
+  assert.equal(evs.filter((x) => x.type === 'gpsFail').length, 1);
+  fix(42); // good fix clears it
+  assert.deepEqual(e.getFlightRegime().cautions, []);
+  for (let t = 43; t <= 60; t++) tickAt(t); // second outage → second event
+  assert.equal(evs.filter((x) => x.type === 'gpsFail').length, 2);
+  // never before a fix was live
+  let c2 = 0;
+  const e2 = createFlightPhase({ now: () => c2 });
+  let n = 0;
+  e2.onFlightEvent((ev) => void (ev.type === 'gpsFail' && n++));
+  for (c2 = 0; c2 <= 60_000; c2 += 1000) e2.tick();
+  assert.equal(n, 0);
+  // audio mapping
+  assert.equal(FLIGHT_EVENT_CALLOUT.gpsFail, 'gpsFail');
+  assert.deepEqual(eventToAudioCall({ type: 'gpsFail' }), { method: 'playFlightCallout', args: ['gpsFail'] });
+});
+
+test('PHASE_DISPLAY_LABEL: TAKEOFF_ROLL → T/O ROLL, others as-is', () => {
+  assert.deepEqual(PHASE_DISPLAY_LABEL, {
+    TAXI: 'TAXI',
+    TAKEOFF_ROLL: 'T/O ROLL',
+    AIRBORNE: 'AIRBORNE',
+    APPROACH: 'APPROACH',
+    ROLLOUT: 'ROLLOUT',
+  });
+  assert.ok(Object.isFrozen(PHASE_DISPLAY_LABEL));
 });

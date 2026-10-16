@@ -4,8 +4,8 @@
  * Feed it ~1 Hz GPS fixes; it derives a "flight regime" for the jet pack:
  *   phase  TAXI → TAKEOFF_ROLL → AIRBORNE → APPROACH → ROLLOUT → TAXI (or touch-and-go → TAKEOFF_ROLL)
  *   gear   gearDown / gearTransit, launch, afterburnerLit, alerts (GPS / AB / high-speed), confidence
- * and fires one-shot events (gearUp, gearDown, launch, touchAndGo, abUnarmed, overspeedCaution,
- * overspeedWarning). Audio (Dan) subscribes with onFlightRegimeChange / onFlightEvent; the HUD
+ * and fires one-shot events (gearUp, gearDown, launch, touchAndGo, goAround, abUnarmed,
+ * overspeedCaution, overspeedWarning, gpsFail). Audio (Dan) subscribes with onFlightRegimeChange / onFlightEvent; the HUD
  * (Scott) reads getFlightRegime() / getTopAlert(). See FlightAudioApi + regimeToAudioCalls /
  * eventToAudioCall at the bottom for the audio call shapes (no wiring here).
  *
@@ -100,7 +100,7 @@ export interface FlightPhaseConfig {
   gpsFailMs: number;
   /** m. Fixes with worse horizontal accuracy are low confidence (shown, never launch). */
   lowConfidenceAccuracyM: number;
-  /** ms. Event notes (AB LIVE) stay in alerts[] this long. */
+  /** ms. Event notes (AB LIVE, GO AROUND) stay in alerts[] this long. */
   noteTtlMs: number;
   /** ms. Event cautions (AB UNARMED) stay in alerts[] this long. */
   cautionTtlMs: number;
@@ -145,9 +145,17 @@ export const FLIGHT_PHASE_DEFAULTS: Readonly<Omit<FlightPhaseConfig, 'now'>> = O
 // ───────────────────────────── types ─────────────────────────────
 
 export type FlightPhase = 'TAXI' | 'TAKEOFF_ROLL' | 'AIRBORNE' | 'APPROACH' | 'ROLLOUT';
+/** HUD label per phase (TAKEOFF_ROLL is abbreviated; the rest are shown as-is). */
+export const PHASE_DISPLAY_LABEL: Readonly<Record<FlightPhase, string>> = Object.freeze({
+  TAXI: 'TAXI',
+  TAKEOFF_ROLL: 'T/O ROLL',
+  AIRBORNE: 'AIRBORNE',
+  APPROACH: 'APPROACH',
+  ROLLOUT: 'ROLLOUT',
+});
 export type FlightConfidence = 'high' | 'low' | 'none';
 export type FlightAlertLevel = 'warning' | 'caution' | 'note';
-export type FlightAlertId = 'overspeedWarning' | 'overspeedCaution' | 'gpsFail' | 'abUnarmed' | 'gpsAcq' | 'abLive';
+export type FlightAlertId = 'overspeedWarning' | 'overspeedCaution' | 'gpsFail' | 'abUnarmed' | 'gpsAcq' | 'abLive' | 'goAround';
 
 export interface FlightAlert {
   id: FlightAlertId;
@@ -164,9 +172,10 @@ export const FLIGHT_ALERTS: Readonly<Record<FlightAlertId, { text: string; level
   abUnarmed: { text: 'AB UNARMED', level: 'caution' },
   gpsAcq: { text: 'GPS ACQ', level: 'note' },
   abLive: { text: 'AB LIVE', level: 'note' },
+  goAround: { text: 'GO AROUND', level: 'note' },
 });
 /** Sort order inside alerts[]: most serious first, then this fixed order, then newest. */
-const ALERT_ORDER: readonly FlightAlertId[] = ['overspeedWarning', 'overspeedCaution', 'gpsFail', 'abUnarmed', 'gpsAcq', 'abLive'];
+const ALERT_ORDER: readonly FlightAlertId[] = ['overspeedWarning', 'overspeedCaution', 'gpsFail', 'abUnarmed', 'gpsAcq', 'abLive', 'goAround'];
 const LEVEL_RANK: Record<FlightAlertLevel, number> = { warning: 0, caution: 1, note: 2 };
 
 export interface GpsSpeedFix {
@@ -196,7 +205,16 @@ export interface FlightRegime {
   confidence: FlightConfidence;
 }
 
-export type FlightEventType = 'touchAndGo' | 'launch' | 'abUnarmed' | 'overspeedCaution' | 'overspeedWarning' | 'gearUp' | 'gearDown';
+export type FlightEventType =
+  | 'touchAndGo'
+  | 'goAround'
+  | 'launch'
+  | 'abUnarmed'
+  | 'overspeedCaution'
+  | 'overspeedWarning'
+  | 'gearUp'
+  | 'gearDown'
+  | 'gpsFail';
 export interface FlightEvent {
   type: FlightEventType;
   atMs: number;
@@ -275,6 +293,7 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
     launchRunStart: number | null;
     abLit: boolean;
     abLitAt: number | null;
+    goAroundAt: number | null;
     abUnarmedAt: number | null;
     abUnarmedLaunchLatched: boolean;
     abUnarmedSpeedLatched: boolean;
@@ -313,6 +332,7 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
       launchRunStart: null,
       abLit: false,
       abLitAt: null,
+      goAroundAt: null,
       abUnarmedAt: null,
       abUnarmedLaunchLatched: false,
       abUnarmedSpeedLatched: false,
@@ -354,6 +374,7 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
     if (s.abUnarmedAt !== null && t - s.abUnarmedAt < config.cautionTtlMs) add('abUnarmed', s.abUnarmedAt);
     if (!fail && conf !== 'high') add('gpsAcq', s.acqSince);
     if (s.abLit && s.abLitAt !== null && t - s.abLitAt < config.noteTtlMs) add('abLive', s.abLitAt);
+    if (s.goAroundAt !== null && t - s.goAroundAt < config.noteTtlMs) add('goAround', s.goAroundAt);
     const list = alerts.sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level] || ALERT_ORDER.indexOf(a.id) - ALERT_ORDER.indexOf(b.id) || b.sinceMs - a.sinceMs);
     return {
       phase: s.phase,
@@ -379,7 +400,11 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
     const prevAcq = s.snapshot && s.snapshot.alerts.some((a) => a.id === 'gpsAcq');
     if (conf !== 'high' && !prevAcq) s.acqSince = t;
     const prevFail = s.snapshot && s.snapshot.alerts.some((a) => a.id === 'gpsFail');
-    if (gpsFailAt(t) && !prevFail && s.lastUsableAt !== null) s.failSince = s.lastUsableAt + config.gpsFailMs;
+    if (gpsFailAt(t) && !prevFail && s.lastUsableAt !== null) {
+      // once per outage: the alert stays active until the next usable fix clears it
+      s.failSince = s.lastUsableAt + config.gpsFailMs;
+      events = [...events, 'gpsFail'];
+    }
     const prev = s.snapshot;
     const next = build(t);
     s.snapshot = next;
@@ -467,7 +492,12 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
         else if (s.touchdownArmed && v >= T.takeoff && !decelerating) {
           s.phase = 'TAKEOFF_ROLL';
           events.push('touchAndGo');
-        } else if (!s.touchdownArmed && v >= T.airborne && !decelerating) s.phase = 'AIRBORNE'; // go-around
+        } else if (!s.touchdownArmed && v >= T.airborne && !decelerating) {
+          // go-around: back above airborneMph without having dipped below takeoffMph − hysteresis
+          s.phase = 'AIRBORNE';
+          s.goAroundAt = clockT;
+          events.push('goAround');
+        }
       } else if (p === 'ROLLOUT') {
         if (v <= T.fullStop || (s.slowSince !== null && fixT - s.slowSince >= config.taxiStopHoldMs)) s.phase = 'TAXI';
         else if (v >= T.takeoff && !decelerating) {
@@ -596,7 +626,7 @@ export function createFlightPhase(overrides: Partial<FlightPhaseConfig> = {}): F
 // ───────────────────────────── audio call shapes (no wiring here) ─────────────────────────────
 
 /** Callouts Dan's audio can play. */
-export type FlightCallout = 'abUnarmed' | 'overspeedCaution' | 'overspeedWarning' | 'gearUp' | 'gearDown';
+export type FlightCallout = 'abUnarmed' | 'overspeedCaution' | 'overspeedWarning' | 'gearUp' | 'gearDown' | 'gpsFail';
 export type FlightCalloutMode = 'voice' | 'tone' | 'off';
 export type FlightGearState = 'down' | 'up' | 'transit';
 
@@ -611,7 +641,7 @@ export interface FlightAudioApi {
 /** One audio call as data: { method, args } for any FlightAudioApi method. */
 export type FlightAudioCall = { [K in keyof FlightAudioApi]: { method: K; args: Parameters<FlightAudioApi[K]> } }[keyof FlightAudioApi];
 
-/** Maps each event type to the callout it plays (touchAndGo / launch are not callouts). */
+/** Maps each event type to the callout it plays (touchAndGo / goAround / launch are not callouts). */
 export const FLIGHT_EVENT_CALLOUT: Readonly<Record<FlightEventType, FlightCallout | null>> = Object.freeze({
   abUnarmed: 'abUnarmed',
   overspeedCaution: 'overspeedCaution',
@@ -619,6 +649,8 @@ export const FLIGHT_EVENT_CALLOUT: Readonly<Record<FlightEventType, FlightCallou
   gearUp: 'gearUp',
   gearDown: 'gearDown',
   touchAndGo: null,
+  goAround: null,
+  gpsFail: 'gpsFail',
   launch: null,
 });
 
@@ -634,7 +666,7 @@ export function regimeToAudioCalls(next: FlightRegime, prev: FlightRegime | null
   return calls;
 }
 
-/** Audio call for a one-shot event, or null (touchAndGo / launch have no callout). */
+/** Audio call for a one-shot event, or null (touchAndGo / goAround / launch have no callout). */
 export function eventToAudioCall(ev: Pick<FlightEvent, 'type'>): FlightAudioCall | null {
   const id = FLIGHT_EVENT_CALLOUT[ev.type];
   return id ? { method: 'playFlightCallout', args: [id] } : null;
