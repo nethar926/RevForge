@@ -143,7 +143,7 @@ export type PackEngineCommand =
   /** Carrier Jet ARM switch → engine.setAfterburnerArmed (Tomcat; no-op elsewhere). */
   | { type: 'ab-armed'; armed: boolean }
   /** CJ v2: guarded jet UI cues (engine playJetCue?.(cue); absent on the base engine → silent). */
-  | { type: 'jet-cue'; cue: 'toggle' | 'bezelPress' | 'cursorStep' | 'selectConfirm' | 'pageChange' }
+  | { type: 'jet-cue'; cue: 'toggle' | 'bezelPress' | 'cursorStep' | 'selectConfirm' | 'pageChange' | 'radarOn' }
   /** CJ v2: radar hum hook (engine setRadarOn?.(on); absent on the base engine). */
   | { type: 'radar'; on: boolean }
   /** CJ v2 CONFIG sound settings (engine setJetPrefs?.(prefs); absent on the base engine → stored only). */

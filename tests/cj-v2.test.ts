@@ -61,7 +61,10 @@ test('hidden features: no VoiceOver node — CONFIG pages never list them', () =
 test('bank order: plate < guard (DOM + grid column), NAV row under the guard; Hold to rev / Shutdown to the right', () => {
   const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
   assert.match(mount, /if \(dock\.firstElementChild !== bankEl\) dock\.prepend\(bankEl\)/, 'bank leads the dock DOM (before Hold / Shutdown)');
-  assert.match(mount, /\{plate\}\s*<div className="cjm-bank-ab">\{guard\}<\/div>\s*<div className="cjm-bank-nav"/, 'DOM / VoiceOver order: plate, guard, row');
+  assert.match(mount, /\{plate\}\s*<div className="cjm-bank-ab">\{guard\}<\/div>\s*\{spds \? coldOn && <div className="cjm-bank-shelf">[^\n]*: <div className="cjm-bank-nav"/, 'DOM / VoiceOver order: plate, guard, (v3 Tesla: SHELF key | phones: NAV row)');
+  // CJ v3 NAV → SPDS: on the Tesla board the NAV panel is gone (functions on the edge keys / CONFIG), the slot is never published
+  assert.match(mount, /const spds = FEATURES\.cjV2 && tesla;/);
+  assert.match(mount, /if \(!spds \|\| !docked\) return;\s*setCjNavSpds\(true\);/);
   const G = String.raw`\.rev-dock > \.cjm-bank\[data-cjm-v2\]:is\(\[data-rf-layout='board'\], \[data-rf-layout='window'\]\)`;
   assert.match(css, new RegExp(G + String.raw` > \.cjm-bank-plate \{ grid-column: 1; grid-row: 1 \/ 3;`));
   assert.match(css, new RegExp(G + String.raw` > \.cjm-bank-ab \{ grid-column: 2; grid-row: 1;`));

@@ -8,29 +8,14 @@ import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompa
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
 import { board2Cells, keyCount, keyXs, KEY_H, KEY_W, TOP_CELLS, type Box, type CellId } from '../carrier-jet/geometry';
-import { applyMapKey, getMapView, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
+import { applyMapKey, getMapView, radarCue, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
 import { getCjPrefs, reducedMotion, setCjPrefs, subscribeCjPrefs, type CjPrefs } from '../carrier-jet/cjPrefs';
 import { closeCjConfig, getCjConfig, registerCjConfigHost, setCjConfig, subscribeCjConfig } from '../carrier-jet/configStore';
 import { CELL_ORDER, TILE_SLOTS } from '../carrier-jet/configCells';
-import { cellKeys, KEY_CELLS, type EdgeKey } from '../carrier-jet/edgeKeys';
+import { cellKeys, KEY_CELLS, RIGHT_BANK, SPARE_INDEX, type EdgeKey } from '../carrier-jet/edgeKeys';
+import { cjNavAction, cjNavItems } from '../carrier-jet.nav';
 import { disabledReason, itemAria, itemValue, MAP_CREDIT, pageTiles, runItem, visibleItems, type ConfigCtx, type ConfigEffect, type ConfigItem } from '../configTable';
 import { CJ_CONFIG } from '../carrier-jet/configPages';
-
-/** Park = under PARK_SPEED_MPH for PARK_HOLD_MS (the skin model's values). */
-const PARK_SPEED_MPH = 0.5;
-const PARK_HOLD_MS = 2000;
-function usePark(speedMph: number): boolean {
-  const [park, setPark] = useState(speedMph < PARK_SPEED_MPH);
-  useEffect(() => {
-    if (speedMph >= PARK_SPEED_MPH) {
-      setPark(false);
-      return;
-    }
-    const t = setTimeout(() => setPark(true), PARK_HOLD_MS);
-    return () => clearTimeout(t);
-  }, [speedMph >= PARK_SPEED_MPH]); // eslint-disable-line react-hooks/exhaustive-deps
-  return park;
-}
 
 const sysReduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const subSysReduced = (f: () => void) => {
@@ -42,7 +27,7 @@ const subSysReduced = (f: () => void) => {
 
 /** Guarded jet cue (engine playJetCue?.(); silent on the base engine). Switch sound off → no cue. */
 function cue(c: Extract<PackEngineCommand, { type: 'jet-cue' }>['cue']) {
-  if (!getCjPrefs().switchSound) return;
+  if (!getCjPrefs().switchSound && c !== 'radarOn') return;
   sendPackEngineCommand(ID.id, { type: 'jet-cue', cue: c });
 }
 
@@ -184,12 +169,15 @@ function MapCell({ box, view, heading, headingStale, reduced }: { box: Box; view
               {rangeRings(view.range).map((r) => (
                 <circle key={r.mi} r={46 * r.r} className="cjv2-ring" />
               ))}
-              <g className="cjv2-sweep">
-                {!reduced && <path className="cjv2-trail" d="M0 0 L0 -46 A46 46 0 0 0 -32.5 -32.5 Z" />}
-                <line x1="0" y1="0" x2="0" y2="-46" className="cjv2-beam" />
-              </g>
               <path d="M0 -50 L-4 -43 L4 -43 Z" className="cjv2-bug" />
               <path d="M0 -4 L3 4 L0 2 L-3 4 Z" className="cjv2-own" />
+            </svg>
+            {/* sweep: its own HTML-level svg (same viewBox + inset), rotated as an element about its CSS box centre = the
+                viewBox centre under meet. No CSS transform on SVG children (transform-box: view-box put the pivot at a
+                corner, Wilson Oct 16). Reduce Motion: static beam, no trail. */}
+            <svg className="cjv2-sweepsvg" viewBox="-50 -50 100 100" aria-hidden="true">
+              {!reduced && <path className="cjv2-trail" d="M0 0 L0 -46 A46 46 0 0 0 -32.5 -32.5 Z" />}
+              <line x1="0" y1="0" x2="0" y2="-46" className="cjv2-beam" />
             </svg>
             <span className="cjv2-corner cjv2-tl">{view.mode === 'map' ? 'MAP' : 'TERR'}</span>
             <span className="cjv2-corner cjv2-tr" data-stale={headingStale}>{hdg}</span>
@@ -234,7 +222,7 @@ function Tile({ it, c, box, onRun, next }: { it: ConfigItem | 'next'; c: ConfigC
   }
   const why = disabledReason(it, c);
   return (
-    <button type="button" className="cjv2-tile" style={boxStyle(box)} data-tile={it.id} aria-disabled={why ? true : undefined} aria-pressed={it.on ? it.on(c) : undefined} aria-label={itemAria(it, c)} onClick={() => onRun(it)}>
+    <button type="button" className="cjv2-tile" style={boxStyle(box)} data-tile={it.id} aria-disabled={why ? true : undefined} role={it.id === 'mute' ? 'switch' : undefined} aria-checked={it.id === 'mute' ? !!it.on?.(c) : undefined} aria-pressed={it.on && it.id !== 'mute' ? it.on(c) : undefined} aria-label={itemAria(it, c)} onClick={() => onRun(it)}>
       {it.group && <small className="cjv2-group" aria-hidden="true">{it.group}</small>}
       <strong aria-hidden="true">{it.label}</strong>
       <small aria-hidden="true">{why ?? itemValue(it, c)}</small>
@@ -256,7 +244,8 @@ function gridBoxes(b: Box, n: number): Box[] {
 /* ------------------------------------------------------------------ the layer */
 export interface CjV2LayerProps {
   layout: RfLayout;
-  speedMph: number;
+  /** Park (CarrierJetMount useCjPark: ≤ 0.5 mph for 1.5 s, leaves above 2) — shared with the cold start. */
+  park: boolean;
   demo: boolean;
   /** ThemeStage "Animated environment"; MOTION AUTO also honours it. */
   motion: boolean;
@@ -264,10 +253,9 @@ export interface CjV2LayerProps {
   headingStale: boolean;
 }
 
-export function CjV2Layer({ layout, speedMph, demo, motion, heading, headingStale }: CjV2LayerProps) {
+export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }: CjV2LayerProps) {
   const selfRef = useRef<HTMLDivElement>(null);
   const geo = useGeo(selfRef, layout);
-  const park = usePark(speedMph);
   const view = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const cfg = useSyncExternalStore(subscribeCjConfig, getCjConfig, getCjConfig);
@@ -287,11 +275,39 @@ export function CjV2Layer({ layout, speedMph, demo, motion, heading, headingStal
       firstPrefs.current = false;
       return;
     }
-    const { startMode, ...rest } = prefs;
+    const { startMode: _s, ...rest } = prefs;
     sendPackEngineCommand(ID.id, { type: 'jet-prefs', prefs: rest as unknown as Record<string, string | boolean> });
-    sendPackEngineCommand(ID.id, { type: 'jet-start-mode', mode: startMode === 'gndAir' ? 'groundcart' : 'apu' });
   }, [prefs]);
   useEffect(() => sendPackEngineCommand(ID.id, { type: 'radar', on: view.radar }), [view.radar]);
+  // RADAR warm-up hum: once per OFF → ON (plate switch or CONFIG tile); never on OFF, mount / restore, or while muted
+  const prevRadar = useRef<boolean | undefined>(undefined);
+  useEffect(() => {
+    const c = radarCue(prevRadar.current, view.radar, shell.muted);
+    prevRadar.current = view.radar;
+    if (c) cue(c);
+  }, [view.radar]); // eslint-disable-line react-hooks/exhaustive-deps
+  // MORE sheet (the MORE edge key): the old MORE tray's items + the moved NAV switches' homes
+  const [moreOpen, setMoreOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const k = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreOpen(false);
+    };
+    const away = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!sheetRef.current?.contains(t) && !t?.closest?.('[data-key="more"]')) setMoreOpen(false);
+    };
+    window.addEventListener('keydown', k);
+    document.addEventListener('pointerdown', away);
+    return () => {
+      window.removeEventListener('keydown', k);
+      document.removeEventListener('pointerdown', away);
+    };
+  }, [moreOpen]);
+  useEffect(() => {
+    if (moreOpen) sheetRef.current?.querySelector<HTMLElement>('button')?.focus();
+  }, [moreOpen]);
 
   const ctx: ConfigCtx = useMemo(
     () => ({ park, muted: shell.muted, look, map: view, prefs, ui: shell.connected ? shell.ui : undefined, compass: { available: compassFlowAvailable(layout), state: compass.state } }),
@@ -341,7 +357,14 @@ export function CjV2Layer({ layout, speedMph, demo, motion, heading, headingStal
       return setSay(`${k.legend}: ${k.reason}`);
     }
     switch (k.id) {
-      case 'config': cue('pageChange'); return setCjConfig({ open: true, page: 'home', sub: 0 });
+      case 'drive':
+        // DRIVE = RTN to the board (closes CONFIG and the MORE sheet); on the board it is the current page
+        cue('bezelPress');
+        setMoreOpen(false);
+        if (cfg.open) return closeCjConfig();
+        return setSay('Drive: board showing');
+      case 'more': cue('bezelPress'); return setMoreOpen((o) => !o);
+      case 'config': cue('pageChange'); setMoreOpen(false); return setCjConfig({ open: true, page: 'home', sub: 0 });
       case 'rtn': return apply({ type: 'rtn' });
       case 'prev': cue('cursorStep'); return setCjConfig({ sub: cfg.sub - 1 });
       case 'next': cue('cursorStep'); return setCjConfig({ sub: cfg.sub + 1 });
@@ -398,19 +421,39 @@ export function CjV2Layer({ layout, speedMph, demo, motion, heading, headingStal
           // drive window: SPEED's keys sit in the ENG strip (no top key row; see carrier-jet-v2.css)
           const b = layout === 'window' && cell === 'speed' ? cells.eng : cells[cell];
           const n = keyCount(b.width);
-          const keys = cellKeys(cell, n, { map: view, config: cfg.open ? { tiles: Object.fromEntries(CELL_ORDER.map((c) => [c, tileFor(c)])), subs: paged.subs } : null });
+          const keys = cellKeys(cell, n, { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(CELL_ORDER.map((c) => [c, tileFor(c)])), subs: paged.subs } : null });
           const xs = keyXs(b, n);
           const top = b.top + b.height + geo.gap;
           return (
             <div key={cell} className="cjv2-keys" data-cell={cell} role="group" aria-label={`${cell} keys`}>
               {keys.map((k, i) => (
-                <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k?.id} data-reason={k?.reason ? true : undefined}>
+                <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k?.id} data-reason={k?.reason ? true : cell === RIGHT_BANK && i === SPARE_INDEX && !k ? 'spare' : undefined}>
                   <BezelKey legend={k?.legend} active={!!k?.active} ariaLabel={k?.ariaLabel} onPress={k ? () => onKey(cell, k) : undefined} />
                 </div>
               ))}
             </div>
           );
         })}
+      {moreOpen && edge && (() => {
+        const b = cells[RIGHT_BANK];
+        const tray = cjNavItems({ current: 'drive', muted: shell.muted, moreOpen: true }).overflow;
+        const go = (f: () => void) => {
+          cue('selectConfirm');
+          setMoreOpen(false);
+          f();
+        };
+        return (
+          <div ref={sheetRef} className="cjv2-more" role="dialog" aria-label="More" style={{ right: geo.board.left + geo.board.width - (b.left + b.width), bottom: `calc(100% - ${b.top + b.height}px)` }}>
+            <span className="cjv2-more-h" aria-hidden="true">MORE</span>
+            <button type="button" onClick={() => go(() => setCjConfig({ open: true, page: 'options', sub: 0 }))} aria-label="Options, opens config options">OPTIONS ▸</button>
+            <button type="button" role="switch" aria-checked={shell.muted} aria-label="Audio mute" onClick={() => { cue('selectConfirm'); apply({ type: 'mute' }); }}>MUTE · {shell.muted ? 'ON' : 'OFF'}</button>
+            {tray.map((it) => {
+              const a = cjNavAction(it.id);
+              return a ? <button key={it.id} type="button" onClick={() => go(() => requestPackShell({ type: 'nav', action: a }))}>{it.label.toUpperCase()} ▸</button> : null;
+            })}
+          </div>
+        );
+      })()}
       <p className="cjv2-say" role="status" aria-live="polite">{say}</p>
     </div>
   );

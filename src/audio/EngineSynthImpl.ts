@@ -35,6 +35,24 @@ import type {
   EnginePatch,
   EngineSynth,
   IceMode,
+  JetCue,
+  JetStartMode,
+  JetSwitchFoley,
+  JetSystem,
+  JetSystemChange,
+  JetSystemsState,
+  JetChecklist,
+  JetSystemEntry,
+  JetVariant,
+  AudioSpeedConfig,
+  JetAbUnarmedCall,
+  JetAlertLevel,
+  JetCalloutId,
+  JetCalloutMode,
+  JetCalloutModes,
+  JetCalloutResult,
+  JetFlightInfo,
+  JetFlightPhase,
   LockStage,
   ScannerEdge,
   SynthNodeDesc,
@@ -73,8 +91,35 @@ import {
   tomcatBeginStart,
   tomcatSetAfterburnerArmed,
   tomcatSetRunning,
+  tomcatColdEngine,
+  tomcatColdGate,
+  tomcatSetColdMode,
+  tomcatPhaseInput,
+  tomcatSetAbSpeeds,
+  tomcatSetAfterburnerLaunch,
+  TC_AB_DISENGAGE_MPH,
+  TC_AB_ENGAGE_MPH,
+  TC_FLIGHT_PHASES,
   type TomcatDrive,
 } from './tomcatVoice';
+import { FlightCallouts } from './flightCallouts';
+import type { GearSequence } from './jetGear';
+import {
+  JET_DEFAULT_FOLEY,
+  JET_ESTOP_DELAY,
+  JET_MOMENTARY,
+  JET_POWERED,
+  JET_SYSTEMS,
+  getJetChecklist,
+  getJetSystemList,
+  JetColdStartVoice,
+  createJetColdState,
+  jetApuReady,
+  jetAutoStartSteps,
+  jetCartReady,
+  stepJetCold,
+  type JetAutoStep,
+} from './jetColdStart';
 
 type Kind = EnginePatch['kind'];
 
@@ -239,7 +284,12 @@ interface GraphHandles {
   tcVoice?: TomcatVoice;
   /** Tomcat limiter headroom pad between the voice and the engine master. */
   tcPad?: GainNode;
+  /** Tomcat cold-start systems + switch foley (created lazily: only once cold start / a jet cue is used). */
+  jetVoice?: JetColdStartVoice;
 }
+
+/** Cold-start step list with its cursor (jetAutoStart / jetQuickStart / emergency stop). */
+type JetQueue = { kind: 'auto' | 'estop'; steps: (JetAutoStep | { allOff: true })[]; i: number; wait: number };
 
 const workletContexts = new WeakSet<BaseAudioContext>();
 
@@ -328,6 +378,33 @@ export class EngineSynthImpl implements EngineSynth {
   private tcLastZone = 0;
   /** True when the latest setDriving call supplied `load` (Tomcat stages AB from load when given). */
   private lastLoadProvided = false;
+  /** Tomcat cold start (opt-in, default off). */
+  private jetColdEnabled = false;
+  private jetMode: JetStartMode = 'apu';
+  private jetCold = createJetColdState();
+  private jetQueue: JetQueue | null = null;
+  /** Tomcat flight phase (Frontend-detected), launch flag, AB speeds, callouts. */
+  private flightPhase: JetFlightPhase | null = null;
+  private flightGear: 'down' | 'transit' | 'up' | null = null;
+  private gearSeq: GearSequence | null = null;
+  /** setAfterburnerLaunch(afterburnerLit) and setFlightPhase info.launch, kept apart (OR'd into the drive). */
+  private abLaunch = false;
+  private flightLaunch = false;
+  private speedCfg: AudioSpeedConfig = { abEngageMph: TC_AB_ENGAGE_MPH, abDisengageMph: TC_AB_DISENGAGE_MPH };
+  private callouts = new FlightCallouts({
+    now: () => this.context.currentTime,
+    canPlay: () => !this.disposed && !!this.g.tcVoice && this.started,
+    tone: (level) => {
+      const jv = this.ensureJetVoice();
+      if (!jv) return null;
+      const h = jv.alertTone(level, this.context.currentTime + 0.005);
+      return { seconds: h.seconds, cancel: () => jv.cancelAlert(h, this.context.currentTime) };
+    },
+    mechanical: (id) => this.gearLever(id === 'gearUp' ? 'up' : 'down'),
+  });
+  /** setJetSwitchSound (switch foley in setJetSystem); default on. */
+  private jetSwitchSound = true;
+  private jetListeners = new Set<(state: JetSystemsState, change: JetSystemChange) => void>();
 
   constructor(ctx: AudioContext, patch?: EnginePatch) {
     this.context = ctx;
@@ -390,6 +467,12 @@ export class EngineSynthImpl implements EngineSynth {
 
     smooth(this.output.gain, 1, 0.08, this.context);
     this.started = true;
+    if (this.g.tcVoice && this.jetColdEnabled) {
+      // Tomcat cold start: start() only unlocks audio; the engines stay dark until switched on.
+      this.tcLastMs = 0;
+      this.applyTomcatDriving(this.driving, false);
+      return;
+    }
     if (this.g.tcVoice) {
       // Tomcat: start() runs the engine start sequence (air starter → light-off → idle). It is the
       // audible unlock confirmation, so no idle chuff; a following 'starter' cue is a no-op.
@@ -410,6 +493,7 @@ export class EngineSynthImpl implements EngineSynth {
 
   stop(): void {
     this.started = false;
+    this.callouts.reset();
     if (this.g.tcVoice && this.tcState.phase !== 'shutdown') {
       // Plain stop (no shutdown cue): output fades below; the next start() runs a fresh start sequence.
       this.tcState = createTomcatDriveState('off');
@@ -417,6 +501,14 @@ export class EngineSynthImpl implements EngineSynth {
       if (this.tcSettleTimer) clearTimeout(this.tcSettleTimer);
       this.tcSettleTimer = null;
       this.notifyTomcatZone(0);
+      if (this.jetColdEnabled) {
+        // cold start: a plain stop resets every switch (the output fade covers the systems too)
+        tomcatSetColdMode(this.tcState, true);
+        this.jetQueue = null;
+        this.jetCold = createJetColdState();
+        this.g.jetVoice?.update(this.jetCold, {});
+        this.emitJet({ system: null, on: false, source: 'stop' });
+      }
     }
     const now = this.context.currentTime;
     const hold = Math.max(0, this.shutoffUntil - now);
@@ -439,6 +531,8 @@ export class EngineSynthImpl implements EngineSynth {
     this.disposed = true;
     this.started = false;
     this.tcZoneListeners.clear();
+    this.jetListeners.clear();
+    this.jetQueue = null;
     try {
       this.teardownGraph();
       this.envelope.dispose();
@@ -556,6 +650,8 @@ export class EngineSynthImpl implements EngineSynth {
       this.tcState = createTomcatDriveState();
       this.tcLastMs = 0;
       this.tcDrive = null;
+      this.jetQueue = null;
+      this.jetCold = createJetColdState();
       this.g = this.buildGraph(patch.kind, patch.topology);
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
@@ -635,6 +731,10 @@ export class EngineSynthImpl implements EngineSynth {
     const now = this.context.currentTime;
     if (this.lastStarterAt >= 0 && now - this.lastStarterAt < 0.45) return;
     this.lastStarterAt = now;
+    if (this.g.tcVoice && this.jetColdEnabled) {
+      // Tomcat cold start: the engines start from their own switches (setJetSystem / jetAutoStart)
+      return;
+    }
     if (this.g.tcVoice) {
       // Tomcat: (re)start sequence only from off / shutdown; ignored while starting or running.
       if (tomcatBeginStart(this.tcState)) {
@@ -679,6 +779,13 @@ export class EngineSynthImpl implements EngineSynth {
       if (cur < 0.85) g.linearRampToValueAtTime(1, now + 0.02);
     } catch {
       /* ignore */
+    }
+    if (this.g.tcVoice && this.jetColdEnabled) {
+      // Tomcat cold start: fuel cut on both engines + every system off (no warning tone)
+      this.jetQueue = null;
+      this.jetAllOff('shutdown');
+      this.applyTomcatDriving(this.driving, false);
+      return;
     }
     if (this.g.tcVoice) {
       // Tomcat: fuel cut → afterburner de-stages → both spools run down (the voice is the tail)
@@ -1059,6 +1166,7 @@ export class EngineSynthImpl implements EngineSynth {
       g.tcVoice = new TomcatVoice(ctx, g.tcPad, { whiteBuf: this.whiteBuf, pinkBuf: this.pinkBuf });
       // Switched to this pack while running → settle straight at idle (voice level glides in)
       if (this.started) tomcatSetRunning(this.tcState);
+      if (this.jetColdEnabled) this.enterJetCold(g);
     } else if (kind === 'aerospace') {
       this.buildAerospace(g);
     } else {
@@ -2125,6 +2233,7 @@ export class EngineSynthImpl implements EngineSynth {
     }
     try {
       g.tcVoice?.dispose();
+      g.jetVoice?.dispose();
       g.tcPad?.disconnect();
     } catch {
       /* ignore */
@@ -2315,11 +2424,46 @@ export class EngineSynthImpl implements EngineSynth {
     const dt =
       immediate || !this.tcLastMs ? 1 / 60 : Math.min(0.25, Math.max(0.004, (nowMs - this.tcLastMs) / 1000));
     this.tcLastMs = nowMs;
-    const input: DrivingInput = { ...d, load: this.lastLoadProvided ? d.load : undefined };
-    const drv = stepTomcatDrive(this.tcState, input, dt, this.params);
+    let input: DrivingInput = { ...d, load: this.lastLoadProvided ? d.load : undefined };
+    let stepParams = this.params;
+    if (this.flightPhase) {
+      // Frontend flight phase: taxi low thrust · takeoff roll MIL push · airborne cruise ·
+      // approach / rollout spool-down · touch-and-go MIL with a fast re-spool
+      const shaped = tomcatPhaseInput(this.flightPhase, input);
+      input = shaped.input as DrivingInput;
+      if (shaped.fast) stepParams = { ...this.params, tcSpoolTime: 0, spoolInertia: 0 };
+    }
+    tomcatSetAbSpeeds(this.tcState, this.speedCfg.abEngageMph, this.speedCfg.abDisengageMph);
+    tomcatSetAfterburnerLaunch(this.tcState, this.abLaunch || this.flightLaunch);
+    const jv = this.g.jetVoice;
+    const cold = !!jv && (this.jetColdEnabled || this.jetActive());
+    if (cold) this.advanceJetQueue(dt);
+    const drv = stepTomcatDrive(this.tcState, input, dt, stepParams);
     this.tcDrive = drv;
+    let vDrv = drv;
+    if (cold && jv) {
+      // cold start: light-off / igniters play on that engine's side (cold voice), not centred
+      const now = this.context.currentTime;
+      let engineChanged = false;
+      for (const ev of drv.events) {
+        if (ev.type === 'lightoff' || ev.type === 'igniter') {
+          jv.cue(ev.type, { when: now, pan: ev.engine ? 0.5 : -0.5 });
+        } else if ((ev.type as string) === 'engineRun' || (ev.type as string) === 'engineOff') engineChanged = true;
+      }
+      if (drv.events.length) vDrv = { ...drv, events: drv.events.filter((e) => e.type !== 'lightoff' && e.type !== 'igniter') };
+      for (const ev of stepJetCold(this.jetCold, dt, drv)) {
+        if (ev.type === 'apuLightoff') jv.cue('apuLightoff', { when: now });
+        else if (ev.type === 'strobe') jv.cue('strobe', { when: now });
+      }
+      try {
+        jv.update(this.jetCold, drv, now);
+      } catch {
+        /* never block drive path */
+      }
+      if (engineChanged) this.emitJet({ system: null, on: false, source: 'engine' });
+    }
     try {
-      v.update(this.params, drv, immediate ? 0.02 : 0.05, this.context.currentTime);
+      v.update(this.params, vDrv, immediate ? 0.02 : 0.05, this.context.currentTime);
     } catch {
       /* never block drive path */
     }
@@ -2341,7 +2485,7 @@ export class EngineSynthImpl implements EngineSynth {
     }
     if (this.tcSettleTimer) clearTimeout(this.tcSettleTimer);
     this.tcSettleTimer = null;
-    const live = this.started || drv.phase === 'shutdown' || drv.phase === 'starting';
+    const live = this.started || drv.phase === 'shutdown' || drv.phase === 'starting' || (cold && this.jetActive());
     if (!drv.settled && live && !this.disposed) {
       this.tcSettleTimer = setTimeout(() => {
         this.tcSettleTimer = null;
@@ -2383,7 +2527,7 @@ export class EngineSynthImpl implements EngineSynth {
   /**
    * Tomcat: arm / disarm the afterburner (Frontend persists the switch and passes it in). Default
    * armed so never calling this is byte-identical. Disarm: zone reports 0 and the callback fires
-   * once; the sound releases via the same destage fade as a below-72 mph drop. Re-arm below 75 mph
+   * once; the sound releases via the same destage fade as a below-77 mph drop. Re-arm below 80 mph
    * stays out until speed reaches 75. No-op on other packs / same-value calls.
    */
   setAfterburnerArmed(armed: boolean): void {
@@ -2398,6 +2542,455 @@ export class EngineSynthImpl implements EngineSynth {
   /** Tomcat: whether the afterburner is armed (default true). true on other packs. */
   getAfterburnerArmed(): boolean {
     return this.g.tcVoice ? !!this.tcState.abArmed : true;
+  }
+
+  /* ───────────── Tomcat flight phases / callouts (docs/cj-cold-start.md) ───────────── */
+
+  /**
+   * Flight phase from Frontend's detector (audio does no detection). Shapes the thrust the voice
+   * hears; info.gear runs the gear actuators / lock thunks; info.launch = setAfterburnerLaunch.
+   * null clears the shaping (compat). Unknown phases are ignored.
+   */
+  setFlightPhase(phase: JetFlightPhase | null, info?: JetFlightInfo): void {
+    if (this.disposed) return;
+    if (phase !== null && !(TC_FLIGHT_PHASES as readonly string[]).includes(phase)) return;
+    const changed = phase !== this.flightPhase || (!!info && typeof info.launch === 'boolean' && info.launch !== this.flightLaunch);
+    this.flightPhase = phase;
+    if (info && typeof info.launch === 'boolean') this.flightLaunch = info.launch;
+    // gear (jetGear.js): the sequence starts on the move into 'transit'; the lock clunk lands when
+    // 'up' / 'down' is reported (or at the default travel time). A direct up ↔ down jump plays a
+    // compressed sequence. The first report only sets the state.
+    const raw = info?.gear as string | undefined;
+    const gear = raw === 'moving' ? 'transit' : raw === 'up' || raw === 'down' || raw === 'transit' ? raw : undefined;
+    const prev = this.flightGear;
+    if (gear && prev && gear !== prev && this.g.tcVoice && this.started) this.gearTransition(prev, gear);
+    if (gear) this.flightGear = gear;
+    // re-step only on a real change (Frontend may repeat the same phase every frame)
+    if (changed) this.kickJet();
+  }
+
+  /**
+   * Gear lever (playFlightCallout gearUp / gearDown, playJetCue): a full sequence with the default
+   * lock. Shares the one live sequence with the setFlightPhase gear path, so Frontend firing the
+   * gear event and the 'transit' state on the same tick plays it once; a later 'up' / 'down' report
+   * locks it.
+   */
+  private gearLever(dir: 'up' | 'down'): boolean {
+    const jv = this.ensureJetVoice();
+    if (!jv) return false;
+    const now = this.context.currentTime;
+    const seq = this.gearSeq;
+    if (seq && !seq.locked && seq.dir === dir && now < seq.lockAt) return true; // already moving that way
+    if (seq && !seq.locked && now < seq.lockAt) seq.abort(now);
+    this.gearSeq = jv.gearStart(dir, now + 0.005);
+    return true;
+  }
+
+  private gearTransition(prev: 'down' | 'transit' | 'up', gear: 'down' | 'transit' | 'up'): void {
+    const jv = this.ensureJetVoice();
+    if (!jv) return;
+    const now = this.context.currentTime;
+    const seq = this.gearSeq;
+    if (gear === 'transit') {
+      const dir = prev === 'down' ? 'up' : 'down';
+      const moving = seq && !seq.locked && now < seq.lockAt;
+      if (moving && seq.dir === dir) return; // already moving that way (e.g. the gear event came first)
+      if (moving) seq.abort(now); // reversal mid-travel
+      this.gearSeq = jv.gearStart(dir, now + 0.005);
+      return;
+    }
+    // arrived at 'up' / 'down'
+    if (prev === 'transit' && seq && seq.dir === gear && seq.endT > now) {
+      seq.lock(now); // catch-up or (late) no-op: never a second clunk
+      return;
+    }
+    if (seq && !seq.locked) seq.abort(now);
+    this.gearSeq = jv.gearStart(gear, now + 0.005, { compressed: true });
+  }
+
+  getFlightPhase(): JetFlightPhase | null {
+    return this.flightPhase;
+  }
+
+  /** Frontend launch flag: armed → AB live at any speed (zones by demand); unarmed → nothing (call the callout). */
+  setAfterburnerLaunch(lit: boolean): void {
+    if (this.disposed || this.abLaunch === !!lit) return;
+    this.abLaunch = !!lit;
+    this.kickJet();
+  }
+
+  getAfterburnerLaunch(): boolean {
+    return this.abLaunch;
+  }
+
+  playFlightCallout(id: JetCalloutId): JetCalloutResult {
+    if (this.disposed) return 'suppressed';
+    return this.callouts.callout(id) as JetCalloutResult;
+  }
+
+  setCalloutMode(mode: JetCalloutMode | Partial<JetCalloutModes>): void {
+    this.callouts.setMode(mode);
+  }
+
+  getCalloutMode(): JetCalloutModes {
+    return this.callouts.getMode();
+  }
+
+  setCautionVoice(on: boolean): void {
+    this.callouts.setCautionVoice(on);
+  }
+
+  getCautionVoice(): boolean {
+    return this.callouts.cautionVoice;
+  }
+
+  setHighSpeedCallouts(on: boolean): void {
+    this.callouts.setHighSpeed(on);
+  }
+
+  getHighSpeedCallouts(): boolean {
+    return this.callouts.highSpeed;
+  }
+
+  setAbUnarmedCall(mode: JetAbUnarmedCall): void {
+    this.callouts.setAbUnarmedCall(mode);
+  }
+
+  getAbUnarmedCall(): JetAbUnarmedCall {
+    return this.callouts.abUnarmedCall;
+  }
+
+  playAlertTone(level: JetAlertLevel): boolean {
+    if (this.disposed) return false;
+    return this.callouts.alertTone(level);
+  }
+
+  getAudioSpeedConfig(): AudioSpeedConfig {
+    return { ...this.speedCfg };
+  }
+
+  /** Partial update; disengage is kept ≥ 0.5 mph under engage. Returns the applied config. */
+  setAudioSpeedConfig(partial: Partial<AudioSpeedConfig>): AudioSpeedConfig {
+    const next = { ...this.speedCfg, ...(partial || {}) };
+    const probe = createTomcatDriveState('off');
+    this.speedCfg = tomcatSetAbSpeeds(probe, next.abEngageMph, next.abDisengageMph);
+    this.kickJet();
+    return { ...this.speedCfg };
+  }
+
+  /* ───────────── Tomcat cold start (docs/cj-cold-start.md) ───────────── */
+
+  private ensureJetVoice(g: GraphHandles = this.g): JetColdStartVoice | undefined {
+    if (!g.tcVoice || !g.tcPad || this.disposed) return undefined;
+    if (!g.jetVoice) g.jetVoice = new JetColdStartVoice(this.context, g.tcPad, { whiteBuf: this.whiteBuf, pinkBuf: this.pinkBuf });
+    return g.jetVoice;
+  }
+
+  /** Switch the drive model to per-engine control; running engines stay running (switches follow). */
+  private enterJetCold(g: GraphHandles = this.g): void {
+    this.ensureJetVoice(g);
+    tomcatSetColdMode(this.tcState, true);
+    const sys = this.jetCold.systems;
+    const on = (c: string | undefined) => c === 'run' || c === 'starting';
+    const a = (this.tcState.a as { cold?: string }).cold;
+    const b = (this.tcState.b as { cold?: string }).cold;
+    sys.engL = on(a);
+    sys.engR = on(b);
+    if (sys.engL || sys.engR) {
+      sys.batt = true;
+      this.jetCold.hum = 1;
+      this.jetCold.gyro = 1;
+    }
+  }
+
+  /** Something still sounding / moving in the cold-start systems (keeps the settle loop alive). */
+  private jetActive(): boolean {
+    const c = this.jetCold;
+    return (
+      !!this.jetQueue ||
+      JET_SYSTEMS.some((k) => c.systems[k as JetSystem]) ||
+      c.apuN > 1e-3 ||
+      c.cartN > 1e-3 ||
+      c.gyro > 1e-3 ||
+      c.hum > 1e-3 ||
+      c.xbFlow > 1e-3 ||
+      c.cartEng > 1e-3 ||
+      c.pumpL > 1e-3 ||
+      c.pumpR > 1e-3 ||
+      c.avion > 1e-3 ||
+      c.oxy > 1e-3 ||
+      c.ins > 1e-3 ||
+      c.hyd > 1e-3
+    );
+  }
+
+  private jetEnginePhase(i: 0 | 1): 'off' | 'starting' | 'run' | 'shutdown' {
+    const e = (i ? this.tcState.b : this.tcState.a) as { cold?: 'off' | 'starting' | 'run' | 'shutdown' };
+    if (e.cold) return e.cold;
+    const p = this.tcState.phase;
+    return p === 'run' || p === 'starting' || p === 'shutdown' ? p : 'off';
+  }
+
+  private emitJet(change: JetSystemChange): void {
+    if (!this.jetListeners.size) return;
+    const st = this.getJetSystems();
+    for (const cb of [...this.jetListeners]) {
+      try {
+        cb(st, change);
+      } catch {
+        /* listener errors never block audio */
+      }
+    }
+  }
+
+  /** Apply one switch: state, foley on a change, the system's own one-shots, engine fuel / gates. */
+  private applyJetSystem(system: JetSystem, on: boolean, source: JetSystemChange['source'], foley?: JetSwitchFoley | false): void {
+    const sys = this.jetCold.systems;
+    const jv = this.ensureJetVoice();
+    const now = this.context.currentTime;
+    const quiet = source === 'emergency' || source === 'shutdown';
+    const sound = foley !== false && this.jetSwitchSound;
+    if ((JET_MOMENTARY as string[]).includes(system)) {
+      // momentary push / pull: fires on true, springs back (state stays false)
+      if (!on) return;
+      if (system === 'emergencyStop') {
+        this.jetEmergencyStop();
+        return;
+      }
+      if (sound) jv?.cue(foley ?? JET_DEFAULT_FOLEY[system], { when: now });
+      if (system === 'masterCaution') jv?.cue('cautionReset', { when: now + 0.06 });
+      else if (system === 'quickStart' && sys.quickStartGuard) this.startJetQueue(this.quickStartSteps());
+      this.emitJet({ system, on: true, source });
+      return;
+    }
+    const prev = sys[system];
+    sys[system] = on;
+    if (prev !== on && jv) {
+      if (sound) {
+        const kind = system === 'quickStartGuard' && !on ? 'guardClose' : (foley ?? JET_DEFAULT_FOLEY[system]);
+        jv.cue(kind, { when: now, down: !on, pan: system.endsWith('L') ? -0.25 : system.endsWith('R') ? 0.25 : 0 });
+      }
+      if (!quiet) {
+        const side = system.endsWith('R') ? 0.5 : system.endsWith('L') ? -0.5 : 0;
+        if (system === 'batt') jv.cue('relay', { when: now + 0.035, level: on ? 1 : 0.7 });
+        else if (system === 'seatbelt') jv.cue('chime', { when: now + 0.09, down: !on });
+        else if (system === 'aircart') jv.cue(on ? 'hoseConnect' : 'hoseRelease', { when: now + (on ? 0.12 : 0.3), pan: 0.4 });
+        else if (system === 'crossbleed') jv.cue('xbValve', { when: now + 0.05, level: on ? 1 : 0.6, down: !on });
+        else if ((system === 'ignL' || system === 'ignR') && on) jv.cue('igniterArm', { when: now + 0.03, pan: side });
+        else if (system === 'avionics' || system === 'navLights' || system === 'anticollision') jv.cue('relayTick', { when: now + 0.03, level: on ? 1 : 0.7 });
+        else if (system === 'hydraulics' || system === 'oxygen' || system === 'fuelPumpL' || system === 'fuelPumpR') jv.cue('valveClick', { when: now + 0.03, pan: side, level: 0.7 });
+        else if (system === 'canopy') jv.cue('canopy', { when: now + 0.1, down: !on });
+        else if (system === 'inertialNav' && on) jv.cue('relayTick', { when: now + 0.03 });
+      }
+    }
+    if (system === 'engL' || system === 'engR') tomcatColdEngine(this.tcState, system === 'engR' ? 1 : 0, on);
+    // light-off gates engage once Frontend uses the throttle / ignition switch (docs: Throttle gate)
+    if (system === 'throttleL' || system === 'throttleR') tomcatColdGate(this.tcState, system === 'throttleR' ? 1 : 0, { fuel: on });
+    if (system === 'ignL' || system === 'ignR') tomcatColdGate(this.tcState, system === 'ignR' ? 1 : 0, { ign: on });
+    if (prev !== on) this.emitJet({ system, on, source });
+  }
+
+  private quickStartSteps(): JetQueue['steps'] {
+    const sys = this.jetCold.systems;
+    const steps: JetQueue['steps'] = [{ system: 'batt', on: true }, { wait: 0.4 }];
+    // throttles / igniters only if Frontend wired them (their gates are armed) and they are off
+    for (const s of ['L', 'R'] as const) {
+      if (!sys[`ign${s}`] && (this.tcState[s === 'L' ? 'a' : 'b'] as { coldIgn?: boolean }).coldIgn === false) steps.push({ system: `ign${s}`, on: true });
+      if (!sys[`throttle${s}`] && (this.tcState[s === 'L' ? 'a' : 'b'] as { coldFuel?: boolean }).coldFuel === false) steps.push({ system: `throttle${s}`, on: true });
+    }
+    steps.push({ system: 'engL', on: true }, { wait: 0.6 }, { system: 'engR', on: true });
+    return steps;
+  }
+
+  private startJetQueue(steps: JetQueue['steps']): void {
+    this.jetQueue = { kind: 'auto', steps, i: 0, wait: 0 };
+    this.emitJet({ system: null, on: true, source: 'auto' });
+  }
+
+  /** Fuel cut + every switch off (silent switches); everything spools down naturally. */
+  private jetAllOff(source: JetSystemChange['source']): void {
+    for (const k of JET_POWERED as JetSystem[]) {
+      if (this.jetCold.systems[k]) this.applyJetSystem(k, false, source, false);
+    }
+  }
+
+  /** Advance the auto-start / emergency step list by dt seconds. */
+  private advanceJetQueue(dt: number): void {
+    const q = this.jetQueue;
+    if (!q) return;
+    let budget = dt;
+    while (q.i < q.steps.length) {
+      const st = q.steps[q.i];
+      if ('wait' in st) {
+        q.wait += budget;
+        budget = 0;
+        if (q.wait + 1e-9 < st.wait) return;
+        budget = q.wait - st.wait;
+        q.wait = 0;
+        q.i++;
+      } else if ('until' in st) {
+        const c = this.jetCold;
+        const ok =
+          st.until === 'apuReady'
+            ? jetApuReady(c)
+            : st.until === 'cartReady'
+              ? jetCartReady(c)
+              : this.jetEnginePhase(st.until === 'engRRun' ? 1 : 0) === 'run';
+        if (!ok) return;
+        q.i++;
+      } else if ('allOff' in st) {
+        q.i++;
+        this.jetAllOff('emergency');
+      } else {
+        q.i++;
+        this.applyJetSystem(st.system, st.on, q.kind === 'estop' ? 'emergency' : 'auto');
+      }
+    }
+    this.jetQueue = null;
+    this.emitJet({ system: null, on: false, source: q.kind === 'estop' ? 'emergency' : 'auto' });
+  }
+
+  private kickJet(): void {
+    if (this.g.tcVoice && !this.disposed) this.applyTomcatDriving(this.driving, false);
+  }
+
+  /**
+   * Tomcat cold start on / off (default off; off = the quick Start, unchanged). On: the engines
+   * stay dark until switched on (running engines keep running). Off: back to the legacy phases.
+   * Frontend keeps the preference (the audio layer stores nothing).
+   */
+  setJetColdStart(enabled: boolean): void {
+    const v = !!enabled;
+    if (v === this.jetColdEnabled || this.disposed) return;
+    this.jetColdEnabled = v;
+    this.jetQueue = null;
+    if (!this.g.tcVoice) return;
+    if (v) this.enterJetCold();
+    else {
+      tomcatSetColdMode(this.tcState, false);
+      // switches reset silently; hum / APU / cart fade through the model (settle loop keeps stepping)
+      for (const k of JET_SYSTEMS as JetSystem[]) this.jetCold.systems[k] = false;
+    }
+    this.emitJet({ system: null, on: v, source: 'mode' });
+    this.kickJet();
+  }
+
+  getJetColdStart(): boolean {
+    return this.jetColdEnabled;
+  }
+
+  /** Which recommended sequence jetAutoStart() runs ('apu' default | 'groundcart'). Gates nothing. */
+  setJetStartMode(mode: JetStartMode): void {
+    const m: JetStartMode = mode === 'groundcart' ? 'groundcart' : 'apu';
+    if (m === this.jetMode) return;
+    this.jetMode = m;
+    this.emitJet({ system: null, on: false, source: 'mode' });
+  }
+
+  getJetStartMode(): JetStartMode {
+    return this.jetMode;
+  }
+
+  /** Switch foley in setJetSystem on / off (default on). System sounds (hum, APU, chime …) stay. */
+  setJetSwitchSound(enabled: boolean): void {
+    this.jetSwitchSound = !!enabled;
+  }
+
+  getJetSwitchSound(): boolean {
+    return this.jetSwitchSound;
+  }
+
+  /** Panel description for Frontend (neutral labels, groups, kinds, advisory requires, order). */
+  getJetSystemList(variant: JetVariant = 'apu'): JetSystemEntry[] {
+    return getJetSystemList(variant) as JetSystemEntry[];
+  }
+
+  /** Our own short plain-words startup / shutdown checklist. */
+  getJetChecklist(variant: JetVariant = 'apu'): JetChecklist {
+    return getJetChecklist(variant);
+  }
+
+  /**
+   * Permissive switch: does exactly what it is called with, in any order (Frontend owns start order
+   * and the Park-only lockout). An engine switched on without an air source still starts. Returns
+   * true while cold start is on (false: off / other pack / unknown id). A manual call cancels a
+   * running jetAutoStart / jetQuickStart.
+   */
+  setJetSystem(system: JetSystem, on: boolean, opts?: { foley?: JetSwitchFoley | false }): boolean {
+    if (this.disposed || !this.g.tcVoice || !this.jetColdEnabled) return false;
+    if (!(JET_SYSTEMS as string[]).includes(system)) return false;
+    if (this.jetQueue?.kind === 'auto') this.jetQueue = null;
+    this.applyJetSystem(system, !!on, 'api', opts?.foley);
+    this.kickJet();
+    return true;
+  }
+
+  getJetSystems(): JetSystemsState {
+    const c = this.jetCold;
+    return {
+      ...c.systems,
+      coldStart: this.jetColdEnabled,
+      mode: this.jetMode,
+      engines: { L: this.jetEnginePhase(0), R: this.jetEnginePhase(1) },
+      apuSpool: c.apuN,
+      apuReady: jetApuReady(c),
+      cartSpool: c.cartN,
+      cartReady: jetCartReady(c),
+      autoRunning: this.jetQueue?.kind === 'auto',
+      emergency: this.jetQueue?.kind === 'estop',
+      hydPressure: c.hyd,
+      switchSound: this.jetSwitchSound,
+    };
+  }
+
+  onJetSystemChange(cb: (state: JetSystemsState, change: JetSystemChange) => void): () => void {
+    if (typeof cb !== 'function') return () => undefined;
+    this.jetListeners.add(cb);
+    return () => {
+      this.jetListeners.delete(cb);
+    };
+  }
+
+  /** PULL: handle foley + short warning tone, then fuel cut / all systems off → natural spool-down. */
+  jetEmergencyStop(): boolean {
+    if (this.disposed || !this.g.tcVoice || !this.jetColdEnabled) return false;
+    const jv = this.ensureJetVoice();
+    const now = this.context.currentTime;
+    if (this.jetQueue?.kind !== 'estop') {
+      if (this.jetSwitchSound) jv?.cue('pull', { when: now });
+      jv?.cue('warning', { when: now + 0.24 });
+    }
+    this.jetQueue = { kind: 'estop', steps: [{ wait: JET_ESTOP_DELAY }, { allOff: true }], i: 0, wait: 0 };
+    this.emitJet({ system: null, on: false, source: 'emergency' });
+    this.kickJet();
+    return true;
+  }
+
+  /** Recommended sequence (default mode: getJetStartMode()). Frontend may also run the steps itself. */
+  jetAutoStart(mode?: JetStartMode): boolean {
+    if (this.disposed || !this.g.tcVoice || !this.jetColdEnabled) return false;
+    if (mode) this.setJetStartMode(mode);
+    this.jetQueue = { kind: 'auto', steps: jetAutoStartSteps(this.jetMode), i: 0, wait: 0 };
+    this.emitJet({ system: null, on: true, source: 'auto' });
+    this.kickJet();
+    return true;
+  }
+
+  /** Convenience: BATT → L ENG → R ENG straight away (+ wired igniters / throttles to on / idle). */
+  jetQuickStart(): boolean {
+    if (this.disposed || !this.g.tcVoice || !this.jetColdEnabled) return false;
+    this.startJetQueue(this.quickStartSteps());
+    this.kickJet();
+    return true;
+  }
+
+  /** One-shot switch foley / cue on the Tomcat pack (cold start on or off), e.g. 'abGuardOpen'. */
+  playJetCue(cue: JetCue, opts?: { pan?: number; level?: number }): boolean {
+    if (this.disposed) return false;
+    const jv = this.ensureJetVoice();
+    if (!jv) return false;
+    if (cue === 'gearUp' || cue === 'gearDown') return this.gearLever(cue === 'gearUp' ? 'up' : 'down');
+    return jv.cue(cue, { pan: opts?.pan, level: opts?.level });
   }
 
   /**

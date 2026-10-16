@@ -29,7 +29,7 @@ export const CJ_PREFS_DEFAULT: Readonly<CjPrefs> = Object.freeze({
   calloutMode: 'voice', highSpeedCallouts: false, abUnarmedCall: 'silent', switchSound: true, startMode: 'apu', motion: 'auto', distUnit: 'mi', tempUnit: 'f', pressUnit: 'psi',
 });
 export const CJ_PREFS_KEY = 'revforge.pack.carrier-jet.config';
-/** Shared with frontend/cj-cold-start's prefs.ts. */
+/** Start mode (cold start's prefs.ts folded in: one source of truth). */
 export const START_MODE_KEY = 'revforge.pack.carrier-jet.startMode';
 
 const pick = <T extends string>(v: unknown, ok: readonly T[], d: T): T => (ok.includes(v as T) ? (v as T) : d);
@@ -94,3 +94,34 @@ export function setCjPrefs(partial: Partial<CjPrefs>, kv: KV | null = local()): 
 export const resetCjPrefsCache = () => {
   cur = null;
 };
+
+/** The engine methods the CJ prefs drive (all optional: feature-detected, no-ops on engines without them). */
+export interface CjPrefsEngine {
+  setCalloutMode?(mode: 'voice' | 'tone' | 'off'): void;
+  setHighSpeedCallouts?(on: boolean): void;
+  setAbUnarmedCall?(mode: 'voice' | 'tone' | 'silent'): void;
+  setJetSwitchSound?(on: boolean): void;
+  setJetStartMode?(mode: 'apu' | 'groundcart'): void;
+  setJetPrefs?(p: Record<string, string | boolean>): void;
+}
+/** AB UNARMED CALL is muted while callouts are OFF (Dan: callout mode off also mutes it); the UI shows why. */
+export const AB_UNARMED_OFF_REASON = 'Callouts are off';
+export const abUnarmedReason = (p: Pick<CjPrefs, 'calloutMode'>) => (p.calloutMode === 'off' ? AB_UNARMED_OFF_REASON : undefined);
+/** Push the saved prefs to an engine: on every engine connect (load) and on every change (audioBridge). */
+export function applyCjPrefsToEngine(e: CjPrefsEngine | null | undefined, p: CjPrefs): void {
+  if (!e) return;
+  const call = (f: () => void) => {
+    try {
+      f();
+    } catch {
+      /* engine not ready */
+    }
+  };
+  call(() => e.setCalloutMode?.(p.calloutMode));
+  call(() => e.setHighSpeedCallouts?.(p.highSpeedCallouts));
+  call(() => e.setAbUnarmedCall?.(p.abUnarmedCall));
+  call(() => e.setJetSwitchSound?.(p.switchSound));
+  call(() => e.setJetStartMode?.(p.startMode === 'gndAir' ? 'groundcart' : 'apu'));
+  const { startMode: _s, ...rest } = p;
+  call(() => e.setJetPrefs?.(rest as unknown as Record<string, string | boolean>));
+}

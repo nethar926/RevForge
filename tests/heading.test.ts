@@ -153,7 +153,7 @@ test('emit rule: first value, ≥ 1° changes (wrap-aware), or a new whole-degre
 test('wiring: CJ mount passes heading; useGeolocation calls getCurrentPosition before watchPosition and publishes fixes', () => {
   const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
   assert.match(mount, /useHeading\(layout\)/);
-  assert.match(mount, /<CarrierJetHud[^>]*heading=\{heading\}/);
+  assert.match(mount, /<CarrierJetHud[^>]*heading=\{h(?:eading)?\}/);
   assert.doesNotMatch(mount, /Allow compass/, "the overlay button is gone: iOS permission is the COMPASS switch (CjNavRow)");
   const geo = readFileSync(new URL('../src/hooks/useGeolocation.ts', import.meta.url), 'utf8');
   assert.match(geo, /startGeolocation\(geo, onFix, onError, options\)/, 'start sequence lives in geoStart.ts (tests/geo-start.test.ts)');
@@ -228,7 +228,7 @@ test('persistence throttle: ≤ 1 write per HEADING_SAVE_MS, newest pending valu
 test('wiring: mount passes headingStale (chip shown while stale, hidden once live); no host hint overlay', () => {
   const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
   assert.match(mount, /const \{ heading, stale: headingStale \} = useHeading\(layout\);/);
-  assert.match(mount, /<CarrierJetHud [^>]*heading=\{heading\} headingStale=\{headingStale\} \/>/);
+  assert.match(mount, /<CarrierJetHud [^>]*heading=\{h(?:eading)?\} headingStale=\{headingStale\} \/>/);
   assert.doesNotMatch(mount.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ''), /NEEDS MOTION|hdg-hint/, 'the skin owns the chip (b0f4a8d); no second chip from the host');
   const heading = readFileSync(new URL('../src/packs/heading.ts', import.meta.url), 'utf8');
   assert.match(heading, /setStale\(view\.stale\);/);

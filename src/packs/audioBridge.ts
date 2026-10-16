@@ -2,6 +2,9 @@ import type { EngineParams, EngineSynth } from '../audio/types';
 import { NIGHT_PURSUIT_ID } from './migrations';
 import type { PackIdentity } from './types';
 import { applySavedAbArmed } from './abArmed';
+import { asPackJet, setPackJetSource } from './jetBridge';
+import { applyCjPrefsToEngine, getCjPrefs, type CjPrefsEngine } from './carrier-jet/cjPrefs';
+import { FEATURES } from '../features';
 import { getPackMode, onPackEngineCommand, onPackMode, onScannerPass, setPackAbZoneSource, setPackEnvelopeSource, type PackMode, type ScannerEdge } from './runtime';
 
 /**
@@ -78,8 +81,8 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
       // CJ v2 hooks: optional methods, feature-detected (none on the base engine; Dan's audio adds them).
       else if (cmd.type === 'jet-cue') (e as { playJetCue?: (c: string) => void }).playJetCue?.(cmd.cue);
       else if (cmd.type === 'radar') (e as { setRadarOn?: (on: boolean) => void }).setRadarOn?.(cmd.on);
-      else if (cmd.type === 'jet-prefs') (e as { setJetPrefs?: (p: Record<string, string | boolean>) => void }).setJetPrefs?.(cmd.prefs);
-      else if (cmd.type === 'jet-start-mode') (e as { setJetStartMode?: (m: 'apu' | 'groundcart') => void }).setJetStartMode?.(cmd.mode);
+      // CJ v2/v3: the whole saved prefs set (callouts, HI-SPD, AB UNARMED CALL, SW SND, ENGINE STARTUP), guarded per method
+      else if (cmd.type === 'jet-prefs' || cmd.type === 'jet-start-mode') applyCjPrefsToEngine(e as CjPrefsEngine, getCjPrefs());
     } catch {
       /* engine not ready */
     }
@@ -92,6 +95,11 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
   } catch {
     /* engine not ready */
   }
+  // CJ v3 (preview only): saved CONFIG prefs on load (every engine connect) + the cold-start API for the mount.
+  if (FEATURES.cjV2) {
+    applyCjPrefsToEngine(live as CjPrefsEngine | null, getCjPrefs());
+    setPackJetSource(asPackJet(live));
+  }
   if (live && typeof live.getAfterburnerZone === 'function' && typeof live.onAfterburnerZoneChange === 'function') {
     setPackAbZoneSource({ get: () => live.getAfterburnerZone?.(), subscribe: (cb) => live.onAfterburnerZoneChange?.(cb) });
   } else {
@@ -103,6 +111,7 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
     return () => {
       offCommands();
       setPackAbZoneSource(null);
+      if (FEATURES.cjV2) setPackJetSource(null);
     };
   }
   applyBoost(eng(), getPackMode(packId));
@@ -127,5 +136,6 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
     offScan();
     setPackEnvelopeSource(null);
     setPackAbZoneSource(null);
+    if (FEATURES.cjV2) setPackJetSource(null);
   };
 }

@@ -24,6 +24,38 @@
 .rev-dock > .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-bank-nav {
   grid-column: 2; grid-row: 2; justify-self: stretch; position: static; inset: auto; width: auto; max-width: none; min-width: 0;
 }
+/* CJ v3 NAV → SPDS (Meghan, Oct 16): the NAV panel is gone (DRIVE / MORE = right-bank edge keys, OPTIONS = CONFIG › OPT,
+   MUTE = CONFIG › SND). The stack keeps the afterburner on top; under it (the old NAV band, 60 tall): SHELF · Hold to
+   rev · Shutdown (Hold stays the DOM node right before Shutdown — the skin pairs them). After the stack, a second dock
+   group: EMER STOP PULL · QUICK START (cold only). DOM = plate, guard, SHELF, Hold, Shutdown, PULL, QUICK START. */
+.rev-dock > .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-bank-shelf { grid-column: 2; grid-row: 2; justify-self: start; align-self: end; display: flex; }
+.rev-dock:has(> .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window'])) { --cjv3-plate: 107px; --cjv3-guard: 343px; --cjv3-shelf: 0px; }
+.rev-dock:has(> .cjm-bank[data-cjm-v2][data-rf-layout='window']) { --cjv3-plate: 89px; }
+.rev-dock:has(> .cjm-bank[data-cjm-v2] > .cjm-bank-shelf) { --cjv3-shelf: 88px; }
+.rev-dock > .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window']) { margin-right: 8px !important; }
+.rev-dock:has(> .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window'])) > .rev-chip:not(.rev-stop) {
+  position: absolute !important; left: calc(var(--cjv3-plate) + 8px + var(--cjv3-shelf)) !important; bottom: -3px !important; margin: 0 !important;
+}
+.rev-dock:has(> .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window'])) > .rev-stop {
+  position: absolute !important; left: calc(var(--cjv3-plate) + 8px + var(--cjv3-guard)) !important; translate: -100% 0; bottom: -3px !important; margin: 0 !important;
+}
+.rev-dock > .cjm-bank-b { order: 3; flex: none; display: flex; align-items: flex-end; gap: 8px; align-self: flex-end; margin-bottom: -6px; }
+.cjm-bank-b > .cjcs-pull { position: relative; display: flex; }
+.cjm-bank-b .cjp-pull { width: 76px; flex: none; }
+.cjm-bank-b[data-rf-layout='window'] .cjp-pull { width: 66px; }
+.cjm-bank-b .cjp-pull-grip { touch-action: none; }
+.cjm-bank-b > .cjcs-qs { display: flex; }
+.cjm-bank-b .cjp-qs { width: 118px; flex: none; }
+.cjm-bank-b[data-rf-layout='window'] .cjp-qs { width: 96px; }
+.cjcs-shelfkey { box-sizing: border-box; width: 80px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0;
+  border: 1px solid #1d2022; border-radius: 6px; cursor: pointer; color: #f3f1e8; font: 700 13px/1 'B612', system-ui, sans-serif; letter-spacing: 0.12em;
+  background: linear-gradient(#5b6267, #3f4549); box-shadow: inset 1px 1px 0 rgb(255 255 255 / 0.25), inset -1px -1px 0 rgb(0 0 0 / 0.4), 1px 2px 3px rgb(0 0 0 / 0.5); }
+.cjcs-shelfkey small { font-size: 11px; letter-spacing: 0.06em; color: #8dffad; }
+.cjcs-shelfkey[aria-expanded='true'] small { color: #ffc35a; }
+.cjcs-shelfkey[aria-disabled='true'] { color: #c9cfd3; cursor: default; }
+.cjcs-shelfkey[aria-disabled='true'] small { color: #c9cfd3; }
+.cjcs-shelfkey:active:not([aria-disabled='true']) { background: linear-gradient(#3f4549, #5b6267); }
+.cjcs-shelfkey:focus-visible { outline: 2px solid #8dffad; outline-offset: 2px; }
 .cjm-bank[data-cjm-v2][data-rf-layout='phone-landscape'] > .cjm-bank-plate { display: none; } /* 68px strip: no room for 118 */
 .rev-viewport > .cjm-below > .cjm-bank[data-cjm-v2] > .cjm-bank-plate { align-self: center; margin-bottom: 0; }
 /* the row under the guard keeps its 48px switch floor; tighter gaps at 1280 as before */
@@ -104,11 +136,11 @@
 .cjv2-map .cjv2-corner { position: absolute; font-size: 11px; line-height: 13px; letter-spacing: 0.06em; white-space: nowrap; }
 .cjv2-tl { left: 8px; top: 6px; } .cjv2-tr { right: 52px; top: 6px; } .cjv2-bl { left: 8px; bottom: 6px; } .cjv2-br { right: 8px; bottom: 6px; color: #6c8a74; }
 .cjv2-tr[data-stale='true'] { opacity: 0.45; }
-.cjv2-sweep { transform-box: view-box; transform-origin: 50% 50%; animation: cjv2-sweep 4s linear infinite; }
-@keyframes cjv2-sweep { to { transform: rotate(360deg); } }
-.cjv2[data-motion='static'] .cjv2-sweep { animation: none; }
+.cjv2-scope > .cjv2-sweepsvg { transform-origin: 50% 50%; will-change: transform; animation: cjv2-sweep 4s linear infinite; pointer-events: none; }
+@keyframes cjv2-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.cjv2[data-motion='static'] .cjv2-scope > .cjv2-sweepsvg { animation: none; will-change: auto; }
 .cjv2[data-motion='static'] .cjv2-trail { display: none; }
-@media (prefers-reduced-motion: reduce) { .cjv2-sweep { animation: none; } .cjv2-trail { display: none; } }
+@media (prefers-reduced-motion: reduce) { .cjv2-scope > .cjv2-sweepsvg { animation: none; } .cjv2-trail { display: none; } }
 .cjv2-info { position: absolute; top: 0; right: 0; width: 44px; height: 44px; border: 0; background: transparent; color: #8dffad; font: 700 13px/1 'B612', system-ui, sans-serif; cursor: pointer; padding: 0; z-index: 1; }
 .cjv2-info::before { content: ''; position: absolute; left: 11px; top: 11px; width: 19px; height: 19px; border: 1.5px solid currentColor; border-radius: 50%; }
 .cjv2-info:focus-visible { outline: 2px solid #8dffad; outline-offset: -2px; }
@@ -126,7 +158,7 @@
 .cjv2-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; text-align: center; cursor: pointer; font: inherit; color: #8dffad; overflow: hidden;
   border: 3px solid #111416; border-radius: 10px; background: radial-gradient(ellipse at 50% 40%, #08190e, #041009 70%); box-shadow: 0 0 0 2px #535c62, inset 0 0 24px rgb(0 0 0 / 0.8); container-type: size; }
 .cjv2-tile[aria-disabled='true'] { cursor: default; color: #6c8a74; }
-.cjv2-tile strong { font-size: max(12px, min(20px, 13cqw)); line-height: 1.1; letter-spacing: 0.06em; white-space: nowrap; }
+.cjv2-tile strong { font-size: max(12px, min(20px, 13cqw)); line-height: 1.1; letter-spacing: 0.06em; white-space: normal; text-wrap: balance; overflow-wrap: anywhere; }
 .cjv2-tile small { font-size: 11px; line-height: 13px; font-weight: 600; letter-spacing: 0.02em; color: #6fe593; white-space: nowrap; }
 .cjv2-tile .cjv2-group { color: #a9b3ad; letter-spacing: 0.14em; }
 .cjv2-tile .cjv2-note { color: #ffc35a; }
@@ -144,3 +176,44 @@
 /* Header GPS pill (Visual Skins' [data-cj-el='gps-pill']): hidden in every look wherever the GPS+RADAR plate is
    mounted (all v2 layouts but phone-landscape, whose 68px strip has no plate); the plate's aria-label carries the state. */
 .cjm[data-cjm-v2]:not([data-rf-layout='phone-landscape']) .cj [data-cj-el='gps-pill'] { display: none; }
+
+/* ---------------- CJ v3 MORE sheet (the MORE edge key): over the COMPASS cell, right-aligned to it */
+.cjv2 > .cjv2-more { position: absolute; display: flex; flex-direction: column; gap: 6px; padding: 8px; min-width: 168px; z-index: 4;
+  border: 3px solid #111416; border-radius: 10px; background: #041009; box-shadow: 0 0 0 2px #535c62, 0 6px 16px rgb(0 0 0 / 0.6); }
+.cjv2-more-h { font-size: 11px; line-height: 13px; letter-spacing: 0.16em; color: #dfe5e1; }
+.cjv2-more > button { min-height: 44px; min-width: 44px; padding: 0 12px; text-align: left; cursor: pointer; font: inherit; font-size: 13px; letter-spacing: 0.06em; color: #8dffad;
+  background: transparent; border: 1px solid #2f7a48; border-radius: 6px; }
+.cjv2-more > button[aria-checked='true'] { color: #ffc35a; border-color: #ffc35a; }
+.cjv2-more > button:focus-visible { outline: 2px solid #8dffad; outline-offset: 2px; }
+
+/* ---------------- CJ v3 cold start: Park-only switch shelf over the board (Meghan's SwitchShelf fills the board box) */
+.cjm > .cjcs-shelf { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.cjm > .cjcs-shelf[data-open='closed'] { display: none; }
+.cjcs-shelf > .cjp-shelf { pointer-events: auto; }
+.cjcs-shelf > .cjcs-card { position: absolute; right: 14px; bottom: 14px; width: 132px; height: 64px; pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 8px;
+  border: 0; border-radius: 3px; text-align: left; color: #1d2022; background: linear-gradient(160deg, #f5f0e2, #e6dfcc); box-shadow: 1px 2px 4px rgb(0 0 0 / 0.55); font-family: 'B612', system-ui, sans-serif; transform: rotate(-3deg); }
+.cjcs-card strong { font-size: 12px; line-height: 13px; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.cjcs-card[data-bay='row1'] { transform: rotate(-2deg); justify-content: flex-start; padding-top: 10px; }
+.cjcs-card[data-bay='head'] { transform: rotate(-1deg); padding-block: 4px; gap: 0; }
+.cjcs-card[data-bay='head'] strong { line-height: 12px; }
+.cjcs-card small { font-size: 11px; line-height: 12px; color: #3f4549; }
+.cjcs-card:focus-visible { outline: 2px solid #8dffad; outline-offset: 2px; }
+.cjcs-shelf > .cjcs-pamph { position: absolute; inset: 12px; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: rgb(4 8 10 / 0.55); border-radius: 8px; perspective: 900px; }
+.cjcs-cover, .cjcs-pages { background: linear-gradient(160deg, #f5f0e2, #e6dfcc); color: #1d2022; border-radius: 3px; box-shadow: 2px 4px 10px rgb(0 0 0 / 0.6); font-family: 'B612', system-ui, sans-serif; }
+.cjcs-cover { width: min(260px, 60%); height: 86%; display: flex; flex-direction: column; justify-content: space-between; padding: 14px; }
+.cjcs-cover strong { font-size: 18px; line-height: 1.15; }
+.cjcs-cover small { font-size: 11px; letter-spacing: 0.08em; }
+.cjcs-pamph[data-phase='lift'] .cjcs-cover { animation: cjcs-lift 400ms ease-out both; transform-origin: 50% 100%; }
+@keyframes cjcs-lift { from { transform: rotateX(62deg) scale(0.8); } to { transform: none; } }
+.cjcs-shelf[data-motion='static'] .cjcs-cover { animation: none; }
+@media (prefers-reduced-motion: reduce) { .cjcs-pamph .cjcs-cover { animation: none; } }
+.cjcs-pages { position: relative; width: calc(100% - 8px); height: calc(100% - 8px); display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 12px 56px 12px 16px; overflow: auto; box-sizing: border-box; }
+.cjcs-pages h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: 0.1em; border-bottom: 2px solid #1d2022; padding-bottom: 4px; }
+.cjcs-pages ol { margin: 0; padding-left: 22px; font-size: 12px; line-height: 15px; }
+.cjcs-pages li[aria-current='step'] { background: #ffd46a; outline: 1px solid #a37200; }
+.cjcs-pages p { margin: 6px 0 0; font-size: 11px; line-height: 14px; }
+.cjcs-pages .cjcs-foot { color: #4a5055; }
+.cjcs-pamph .cjcs-pclose { position: absolute; opacity: 1 !important; color: #1d2022 !important; border-color: #1d2022 !important; background: #e6dfcc !important; top: 8px; right: 8px; width: 44px; height: 44px; border: 1px solid #1d2022; border-radius: 6px; background: #e6dfcc; color: #1d2022; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+.cjcs-pclose:focus-visible { outline: 2px solid #1f6b3a; outline-offset: 2px; }
+.cjm > .cjcs-say { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); margin: 0; z-index: 7; pointer-events: none; font: 700 12px/16px 'B612', system-ui, sans-serif; padding: 0 8px; background: #041009; color: #ffc35a; max-width: 90%; }
+.cjm > .cjcs-say:empty { display: none; }

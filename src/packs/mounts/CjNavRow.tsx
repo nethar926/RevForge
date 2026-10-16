@@ -48,7 +48,29 @@ const subscribeCjNavSlot = (f: () => void) => {
   return () => void slotSubs.delete(f);
 };
 
-export function CjNavRow({ current, muted, labPanel = 'studio', onAction }: CjNavRowProps) {
+/*
+ * CJ v3 NAV → SPDS (Tesla board / drive window, preview only): while the mount publishes `true` the switch row is not
+ * rendered at all; DRIVE / MORE are right-bank edge keys, OPTIONS = CONFIG › OPT, MUTE = CONFIG › SND (CjV2Layer).
+ */
+let spds = false;
+const spdsSubs = new Set<() => void>();
+export function setCjNavSpds(on: boolean) {
+  if (spds === on) return;
+  spds = on;
+  for (const f of spdsSubs) f();
+}
+export const getCjNavSpds = () => spds;
+const subscribeCjNavSpds = (f: () => void) => {
+  spdsSubs.add(f);
+  return () => void spdsSubs.delete(f);
+};
+
+export function CjNavRow(props: CjNavRowProps) {
+  const hidden = useSyncExternalStore(subscribeCjNavSpds, getCjNavSpds, () => false);
+  return hidden ? null : <CjNavRowInner {...props} />;
+}
+
+function CjNavRowInner({ current, muted, labPanel = 'studio', onAction }: CjNavRowProps) {
   const layout = useRfLayout(false);
   const compass = useSyncExternalStore(subscribeCompass, getCompassSnapshot, getCompassSnapshot);
   const showCompass = compassFlowAvailable(layout);

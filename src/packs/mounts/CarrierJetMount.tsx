@@ -8,7 +8,8 @@ import type { PackHudProps } from '../types';
 import { useFitBox } from './useFitBox';
 import { useRfLayout } from '../layout';
 import { useHeading } from '../heading';
-import { setCjNavSlot } from './CjNavRow';
+import { setCjNavSlot, setCjNavSpds } from './CjNavRow';
+import { CjHeadingEase } from './CjHeadingEase';
 import './pack-fit.css';
 import './carrier-jet-mount.css';
 import './carrier-jet-controls.css';
@@ -18,7 +19,8 @@ import { GpsRadarPlate } from '../../skins/carrier-jet/parts/index';
 import { getGpsStatus, subscribeGpsStatus } from '../../hooks/gpsFixes';
 import { cjGps, plateAria } from '../carrier-jet/plate';
 import { getMapView, setRadar, subscribeMapView } from '../carrier-jet/mapView';
-import { getCjPrefs } from '../carrier-jet/cjPrefs';
+import { getCjPrefs, reducedMotion, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
+import { useCjPark, useColdStart } from './CjColdStart';
 import { CjV2Layer } from './CjV2Layer';
 
 /**
@@ -63,6 +65,14 @@ import { CjV2Layer } from './CjV2Layer';
  * under it (carrier-jet-v2.css grid); Hold to rev and Shutdown to the right;
  * Board 2 re-grids the MATRIX look and CjV2Layer adds ACCEL (GPS), MAP / radar scope, edge keys and CONFIG.
  */
+const readSysReduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const subSysReduced = (f: () => void) => {
+  if (typeof matchMedia === 'undefined') return () => undefined;
+  const m = matchMedia('(prefers-reduced-motion: reduce)');
+  m.addEventListener?.('change', f);
+  return () => m.removeEventListener?.('change', f);
+};
+
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
   const abZone = useSyncExternalStore(subscribePackAbZone, readPackAbZone, () => undefined);
@@ -109,11 +119,18 @@ export function CarrierJetMount(props: PackHudProps) {
   // The row joins the bank only once the dock exists (after IGNITION), wherever the bank sits.
   const [navSlot, setNavSlot] = useState<HTMLDivElement | null>(null);
   const docked = !!vp.dock;
+  // CJ v3 NAV → SPDS (Tesla, preview): no NAV panel in the bank; DRIVE / MORE are right-bank edge keys (CjV2Layer).
+  const spds = FEATURES.cjV2 && tesla;
   useLayoutEffect(() => {
-    if (!docked || !navSlot) return;
+    if (!docked || !navSlot || spds) return;
     setCjNavSlot(navSlot);
     return () => setCjNavSlot(null, navSlot);
-  }, [docked, navSlot]);
+  }, [docked, navSlot, spds]);
+  useLayoutEffect(() => {
+    if (!spds || !docked) return;
+    setCjNavSpds(true);
+    return () => setCjNavSpds(false);
+  }, [spds, docked]);
   // Drive window: the row tier above the guard must stay left of the demo throttle card (--cjm-nav-w).
   const bankRef = useRef<HTMLDivElement>(null);
   const viewport = vp.viewport;
@@ -157,6 +174,33 @@ export function CarrierJetMount(props: PackHudProps) {
     mo.observe(dock, { childList: true });
     return () => mo.disconnect();
   });
+  // CJ v3 cold start: one Park for the shelf and CONFIG's Park-only tiles (≤ 0.5 mph for 1.5 s; leaves above 2).
+  const speedMph = props.unit === 'kph' ? props.speed / 1.609344 : props.speed;
+  const park = useCjPark(speedMph);
+  const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
+  const sysReduced = useSyncExternalStore(subSysReduced, readSysReduced, () => false);
+  const reduced = reducedMotion(prefs, sysReduced || !props.motion);
+  const cold = useColdStart({ park, mode: prefs.startMode, reduced });
+  const coldOn = v2 && cold.on;
+  // Phones (no shelf / PULL / QUICK START placement yet): skip the cold start, so the engine is never locked out.
+  const coldPhone = coldOn && !tesla && !cold.live;
+  useLayoutEffect(() => {
+    if (coldPhone) cold.quickStart();
+  }, [coldPhone]); // eslint-disable-line react-hooks/exhaustive-deps
+  // EMER STOP PULL + QUICK START: a second dock group AFTER Shutdown (Hold to rev must stay directly before Shutdown,
+  // whose pair styling is the skin's). Kept last in the dock's DOM, like the bank is kept first.
+  const bankBRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = bankBRef.current;
+    const dock = vp.dock;
+    if (!el || !dock || el.parentElement !== dock) return;
+    const last = () => { if (dock.lastElementChild !== el) dock.append(el); };
+    last();
+    if (typeof MutationObserver === 'undefined') return;
+    const mo = new MutationObserver(last);
+    mo.observe(dock, { childList: true });
+    return () => mo.disconnect();
+  });
   const gpsStatus = useSyncExternalStore(subscribeGpsStatus, getGpsStatus, getGpsStatus);
   const mapView = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
   const onRadar = (on: boolean) => {
@@ -173,9 +217,14 @@ export function CarrierJetMount(props: PackHudProps) {
     <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined}>
       {plate}
       <div className="cjm-bank-ab">{guard}</div>
-      <div className="cjm-bank-nav" ref={setNavSlot} />
+      {spds ? coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div> : <div className="cjm-bank-nav" ref={setNavSlot} />}
     </div>
   );
+  const bankB = spds && coldOn && vp.dock ? (
+    <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} role="group" aria-label="Engine start and stop">
+      {cold.render.pullQs(layout === 'board' ? 'wide' : 'narrow')}
+    </div>
+  ) : null;
   return (
     <div
       ref={ref}
@@ -186,10 +235,20 @@ export function CarrierJetMount(props: PackHudProps) {
       data-cjm-v2={v2 || undefined}
       style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}
     >
-      <div className="cjm-fill">
-        <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} headingStale={headingStale} />
-      </div>
-      {v2 && <CjV2Layer layout={layout} speedMph={props.unit === 'kph' ? props.speed / 1.609344 : props.speed} demo={props.demo} motion={props.motion} heading={heading} headingStale={headingStale} />}
+      {/* CJ v3: GPS-only heading (~1 Hz in the car) eased on the shortest arc between fixes; Reduce Motion snaps. */}
+      <CjHeadingEase heading={heading} ease={v2 && !reduced}>
+        {(h) => (
+          <>
+            <div className="cjm-fill">
+              <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} />
+            </div>
+            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} />}
+          </>
+        )}
+      </CjHeadingEase>
+      {spds && coldOn && cold.render.shelf()}
+      {coldOn && <p className="cjcs-say" role="status" aria-live="polite">{cold.say}</p>}
+      {bankB && vp.dock && createPortal(bankB, vp.dock)}
       {bankHost ? createPortal(layout === 'portrait' ? <div className="cjm-below">{bank}</div> : bank, bankHost) : layout !== 'portrait' && <div className="cjm-ab">{bank}</div>}
     </div>
   );

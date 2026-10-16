@@ -10,6 +10,14 @@ import type {
 import { createEngineSynth, getBuiltin, resolveLegacyPackId } from "../audio";
 import { storageKey } from "../lib/storageKey";
 import { FALLBACK_ENGINE_ID } from "../themes/visibility";
+import { FEATURES } from "../features";
+
+/** CJ v3 (Carrier Jet preview only): Tomcat cold start on from creation, so IGNITION's start() + playStarter leave the
+ * engines dark until the shelf / QUICK START. No-op on other packs (the engine ignores it without the Tomcat voice). */
+const coldOnCreate = <T,>(e: T): T => {
+  if (FEATURES.cjV2) (e as { setJetColdStart?: (on: boolean) => void }).setJetColdStart?.(true);
+  return e;
+};
 
 export function useAudioEngine(
   initialId = FALLBACK_ENGINE_ID,
@@ -61,7 +69,7 @@ export function useAudioEngine(
         getBuiltin(FALLBACK_ENGINE_ID) ??
         getBuiltin("v8-rumble")!;
       pendingPatchRef.current = null;
-      engineRef.current = createEngineSynth(ctxRef.current, patch);
+      engineRef.current = coldOnCreate(createEngineSynth(ctxRef.current, patch));
       mediaRef.current?.attach(engineRef.current.output);
       setEngineId(patch.id);
       setPatchName(patch.name);
@@ -122,7 +130,7 @@ export function useAudioEngine(
     if (!!engineRef.current.toPatch().revforge !== !!patch.revforge) {
       const version = ++startVersion.current;
       engineRef.current.dispose();
-      const next = createEngineSynth(ctxRef.current!, patch);
+      const next = coldOnCreate(createEngineSynth(ctxRef.current!, patch));
       engineRef.current = next;
       mediaRef.current?.attach(next.output);
       setRunning(false);

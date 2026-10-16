@@ -41,12 +41,16 @@ export const TC_MIL_THROTTLE = 0.8;
 /** Normalised drive speed 1.0 ≙ 120 mph (mphToSpeed default; setDriving clamps speed to 0..1). */
 export const TC_SPEED_FULL_MPH = 120;
 /**
- * The afterburner engages by speed: on at ≥ 75 mph, off again below 72 mph (3 mph hysteresis, so
- * it never chatters around one speed). Below the engaged state the lit zone is 0 at any throttle.
- * 75 mph = 120.7 km/h = 33.53 m/s → 0.625 normalised; 72 mph → 0.6.
+ * The afterburner engages by speed (when armed): on at ≥ 80 mph, off again below 77 mph (3 mph
+ * hysteresis, so it never chatters around one speed). Below the engaged state the lit zone is 0 at
+ * any throttle — unless Frontend flags a launch (tomcatSetAfterburnerLaunch). Configurable per
+ * state (tomcatSetAbSpeeds); the previous 75 / 72 mph pair is TC_AB_LEGACY_MPH (compat path).
+ * 80 mph = 128.75 km/h = 35.76 m/s → 0.6667 normalised; 77 mph → 0.6417.
  */
-export const TC_AB_ENGAGE_MPH = 75;
-export const TC_AB_DISENGAGE_MPH = 72;
+export const TC_AB_ENGAGE_MPH = 80;
+export const TC_AB_DISENGAGE_MPH = 77;
+/** The original fixed engage pair (pass to tomcatSetAbSpeeds / setAudioSpeedConfig for the old feel). */
+export const TC_AB_LEGACY_MPH = Object.freeze({ abEngageMph: 75, abDisengageMph: 72 });
 export const TC_AB_ENGAGE_SPEED = TC_AB_ENGAGE_MPH / TC_SPEED_FULL_MPH;
 export const TC_AB_DISENGAGE_SPEED = TC_AB_DISENGAGE_MPH / TC_SPEED_FULL_MPH;
 /** Afterburner demand needed to light zone k (index k-1) once engaged. Demand = load if supplied,
@@ -99,6 +103,21 @@ export const TC_LOW = {
   duckSpool: 0.32, // whine / fan duck at full spool
   duckAb: 0.25, // extra duck at zone 5
 };
+
+/**
+ * Wind / air-rush trims (linear, on top of the layer gains). The car moving supplies real wind,
+ * so the broadband air layers stay a faint touch: speed ram wind + buffet, the idle / spool
+ * airflow bed, the thrust² hot band and the roar body band's upper skirt. Not touched: turbine whine, the low end (deep / body /
+ * heavy / rumble), the afterburner core roar, starter air. 1 = the ef4021e mix.
+ */
+export const TC_AIR = Object.freeze({
+  ramWind: 0.25, // speed wind (BP 600–1500 Hz) −12 dB
+  ramBuffet: 0.25, // speed buffet −12 dB
+  hot: 0.3, // thrust² hot band (white BP 650–1100 Hz) −10.5 dB
+  bed: 0.9, // idle / spool airflow bed level (−0.9 dB) …
+  bedLpHz: 380, // … plus an LP ahead of its BP (≈ −13 dB at 800 Hz, −22 dB at 1.3 kHz); low skirt kept
+  bodyLpHz: 480, // deep + body roar bands share an LP: the body's 6 dB/oct upper skirt (0.4–4 kHz whoosh) drops
+});
 
 /**
  * Heavy bass (full power + afterburner lift). The extra level at full throttle and in the zones
@@ -208,6 +227,145 @@ export function tomcatBeginShutdown(s) {
   return true;
 }
 
+/* ── cold start (opt-in): per-engine fuel / start control. state.cold is absent by default, so the
+ *  default drive path (both engines together via tomcatBeginStart / tomcatBeginShutdown) is untouched. */
+
+/** Cold-start light-off is slower and more deliberate than the quick start (seconds-scale). */
+export const TC_COLD = {
+  crankTc: 4, // starter spin-up time constant (N2 → 30 %), light-off at 16 % N2 ≈ 3 s
+  crankTo: 0.3,
+  igniteN2: 0.08, // igniters start ticking above this N2
+  tickEvery: 0.3, // igniter tick spacing (s)
+  tickAfterLit: 0.9, // igniters keep ticking this long after light-off
+  accelScale: 0.55, // light-off → idle acceleration vs the quick start
+  rundownTc: 2.2, // fuel-cut N2 rundown time constant (s)
+  soloTrim: 0.72, // per-engine bus level while the other engine is dark (one engine ≈ half the jet)
+};
+
+/**
+ * Enter / leave the cold-start mode. On enter each engine keeps its current state (running engines
+ * stay running). On leave the legacy phases take over: both lit → 'run', none → rundown, one lit →
+ * the legacy start sequence brings the other one up without disturbing the lit one.
+ */
+export function tomcatSetColdMode(s, on) {
+  const v = !!on;
+  if (!!s.cold === v) return false;
+  if (v) {
+    s.cold = true;
+    for (const e of [s.a, s.b]) {
+      e.cold = s.phase === 'run' || (s.phase === 'starting' && e.lit) ? 'run' : s.phase === 'starting' ? 'starting' : e.n2 > 0.004 ? 'shutdown' : 'off';
+      e.coldT = 0;
+      e.coldTick = 0;
+    }
+    return true;
+  }
+  const lit = [s.a, s.b].filter((e) => e.cold === 'run' || (e.cold === 'starting' && e.lit));
+  s.cold = false;
+  for (const e of [s.a, s.b]) {
+    delete e.cold;
+    delete e.coldT;
+    delete e.coldTick;
+    delete e.coldFuel;
+    delete e.coldIgn;
+  }
+  if (lit.length === 2) s.phase = 'run';
+  else if (lit.length === 0) s.phase = [s.a, s.b].some((e) => e.n2 > 0.004) ? 'shutdown' : 'off';
+  else {
+    s.phase = 'starting';
+    s.phaseTime = TC_ENGINE_B_START_OFFSET + 0.05; // both engines past their start offset
+    for (const e of [s.a, s.b]) if (!lit.includes(e)) e.lit = false;
+  }
+  if (s.phase !== 'starting') s.phaseTime = 0;
+  return true;
+}
+
+/** Cold mode: fuel on (start sequence) / fuel cut (rundown) for engine 0 (left) or 1 (right). */
+export function tomcatColdEngine(s, idx, on) {
+  if (!s.cold) return false;
+  const e = idx ? s.b : s.a;
+  if (on) {
+    if (e.cold === 'starting' || e.cold === 'run') return false;
+    e.cold = 'starting';
+    e.lit = false;
+    e.coldT = 0;
+    e.coldTick = 0;
+    return true;
+  }
+  if (e.cold === 'off' || e.cold === 'shutdown') return false;
+  e.cold = 'shutdown';
+  e.coldT = 0;
+  return true;
+}
+
+/**
+ * Cold mode light-off gates for engine 0 / 1: `fuel` (throttle at idle) and `ign` (igniters armed).
+ * Undefined = not gated (a Frontend that never wires those switches gets the permissive start).
+ * fuel false: a cranking engine keeps motoring without light-off; a lit engine gets a fuel cut.
+ * ign false: no igniter ticks and no light-off while cranking (a lit engine keeps running).
+ */
+export function tomcatColdGate(s, idx, gate = {}) {
+  const e = idx ? s.b : s.a;
+  if ('fuel' in gate) e.coldFuel = gate.fuel === undefined ? undefined : !!gate.fuel;
+  if ('ign' in gate) e.coldIgn = gate.ign === undefined ? undefined : !!gate.ign;
+  if (s.cold && e.coldFuel === false && (e.cold === 'run' || (e.cold === 'starting' && e.lit))) {
+    e.cold = 'shutdown';
+    e.coldT = 0;
+  }
+}
+
+/** Cold mode, one engine: returns its N2 target (same spool laws as the legacy phases). */
+function coldEngineStep(e, i, step, ts, det, sCmd, slow, events) {
+  e.coldT += step;
+  if (e.cold === 'starting') {
+    e.starter = e.n2 < 0.45 ? lag(e.starter, 1, step, 0.25) : lag(e.starter, 0, step, 0.45);
+    if (!e.lit) {
+      e.n2 = lag(e.n2, TC_COLD.crankTo, step, TC_COLD.crankTc * ts);
+      if (e.n2 >= 0.16 && e.coldFuel !== false && e.coldIgn !== false) {
+        e.lit = true;
+        e.litAt = e.coldT;
+        events.push({ type: 'lightoff', engine: i });
+      }
+    } else {
+      const acc = (TC_COLD.accelScale * (0.16 + 0.24 * sstep((e.n2 - 0.15) / 0.45))) / ts;
+      e.n2 = spoolStep(e.n2, TC_IDLE_N2 * (1 + (i ? det : 0)), step, acc, 1, 0.3 * ts);
+    }
+    e.comb = e.lit ? lag(e.comb, 1, step, 0.5) : 0;
+    const ign = e.coldIgn !== false && e.n2 >= TC_COLD.igniteN2 && (!e.lit || e.coldT - e.litAt < TC_COLD.tickAfterLit);
+    if (ign && e.coldT >= e.coldTick) {
+      events.push({ type: 'igniter', engine: i });
+      e.coldTick = e.coldT + TC_COLD.tickEvery;
+    }
+    if (e.lit && e.n2 >= TC_IDLE_N2 * (1 + (i ? det : 0)) - 0.004) {
+      e.cold = 'run';
+      e.coldT = 0;
+      events.push({ type: 'engineRun', engine: i });
+    }
+    return TC_IDLE_N2;
+  }
+  if (e.cold === 'run') {
+    const n2Target = (TC_IDLE_N2 + (1 - TC_IDLE_N2) * sCmd) * (1 + (i ? det : 0) + e.wander);
+    const s = tomcatSpoolNorm(e.n2);
+    const accel = ((0.14 + 0.3 * sstep(s / 0.7)) * (1 - TC_IDLE_N2)) / (ts * slow);
+    const decel = (0.55 * (1 - TC_IDLE_N2)) / (ts * slow);
+    e.n2 = spoolStep(e.n2, n2Target, step, accel, decel, (n2Target > e.n2 ? 0.4 : 0.55) * ts * slow);
+    e.comb = lag(e.comb, 1, step, 0.3);
+    e.lit = true;
+    e.starter = lag(e.starter, 0, step, 0.3);
+    return n2Target;
+  }
+  // shutdown / off: fuel cut → natural rundown (no step anywhere; slower than the quick shutoff)
+  e.lit = false;
+  e.comb = lag(e.comb, 0, step, 0.3);
+  e.n2 = Math.max(0, e.n2 - (e.n2 / TC_COLD.rundownTc + 0.006) * step);
+  e.starter = lag(e.starter, 0, step, 0.2);
+  if (e.cold === 'shutdown' && e.n2 < 0.004 && e.comb < 0.01) {
+    e.cold = 'off';
+    e.coldT = 0;
+    events.push({ type: 'engineOff', engine: i });
+  }
+  return 0;
+}
+
 /** Afterburner demand: `load` when the caller supplied it (finite), otherwise throttle. */
 export function tomcatAbDemand(input) {
   const d = input || {};
@@ -220,10 +378,85 @@ export function tomcatAbDemand(input) {
  * Speed engage state with hysteresis: engages at ≥ TC_AB_ENGAGE_SPEED (75 mph), stays engaged down
  * to TC_AB_DISENGAGE_SPEED (72 mph) and drops below it. `speed` is the normalised setDriving speed.
  */
-export function tomcatAbEngaged(speed, engaged) {
+export function tomcatAbEngaged(speed, engaged, on = TC_AB_ENGAGE_SPEED, off = TC_AB_DISENGAGE_SPEED) {
   const v = clip(num(speed, 0));
   const eps = 1e-9; // float noise from mph / km/h / m/s conversions never flips the edge
-  return engaged ? v >= TC_AB_DISENGAGE_SPEED - eps : v >= TC_AB_ENGAGE_SPEED - eps;
+  return engaged ? v >= off - eps : v >= on - eps;
+}
+
+/**
+ * Per-state AB engage speeds in mph (normalised by TC_SPEED_FULL_MPH). disengage < engage is
+ * enforced (≥ 0.5 mph band). Returns the applied { abEngageMph, abDisengageMph }.
+ */
+export function tomcatSetAbSpeeds(state, engageMph = TC_AB_ENGAGE_MPH, disengageMph = TC_AB_DISENGAGE_MPH) {
+  const on = Math.max(1, Math.min(TC_SPEED_FULL_MPH, num(engageMph, TC_AB_ENGAGE_MPH)));
+  const off = Math.max(0, Math.min(on - 0.5, num(disengageMph, on - 3)));
+  state.abOnSpeed = on / TC_SPEED_FULL_MPH;
+  state.abOffSpeed = off / TC_SPEED_FULL_MPH;
+  return { abEngageMph: on, abDisengageMph: off };
+}
+
+/** Frontend launch flag: while true and armed, the afterburner is engaged at any speed. */
+export function tomcatSetAfterburnerLaunch(state, launch) {
+  const v = !!launch;
+  if (!!state.abLaunch === v) return false;
+  state.abLaunch = v;
+  return true;
+}
+
+/* ── flight phases (Frontend detects them; audio only shapes the thrust it hears) ── */
+
+export const TC_FLIGHT_PHASES = ['TAXI', 'TAKEOFF_ROLL', 'AIRBORNE', 'APPROACH', 'ROLLOUT', 'TOUCH_AND_GO'];
+/** Per-phase thrust shaping (throttle 0..1 in, shaped command out). */
+export const TC_PHASE_SHAPE = {
+  taxiMax: 0.36, // TAXI: low thrust, pedal scaled into 0..taxiMax
+  cruiseBase: 0.5, // AIRBORNE: cruise base + pedal share (never below cruise, MIL at full pedal)
+  cruiseSpan: 0.3,
+  approachMax: 0.3, // APPROACH: spooling down, capped
+  rolloutMax: 0, // ROLLOUT: idle
+};
+/**
+ * Shape a DrivingInput for a flight phase. TAKEOFF_ROLL / TOUCH_AND_GO: full MIL push (more if the
+ * pedal asks). TOUCH_AND_GO also returns fast: true (quick re-spool). Unknown / null phase → input
+ * unchanged (compat).
+ */
+export function tomcatPhaseInput(phase, input) {
+  const d = input || {};
+  const thr = clip(num(d.throttle, 0));
+  const hasLoad = d.load !== undefined && d.load !== null && Number.isFinite(Number(d.load));
+  const S = TC_PHASE_SHAPE;
+  let t = thr;
+  let cap = null;
+  let fast = false;
+  switch (phase) {
+    case 'TAXI':
+      t = S.taxiMax * thr;
+      cap = S.taxiMax;
+      break;
+    case 'TAKEOFF_ROLL':
+      t = Math.max(thr, TC_MIL_THROTTLE);
+      break;
+    case 'TOUCH_AND_GO':
+      t = Math.max(thr, TC_MIL_THROTTLE);
+      fast = true;
+      break;
+    case 'AIRBORNE':
+      t = S.cruiseBase + S.cruiseSpan * thr + (thr > TC_MIL_THROTTLE ? thr - TC_MIL_THROTTLE : 0);
+      break;
+    case 'APPROACH':
+      t = Math.min(thr, S.approachMax);
+      cap = S.approachMax;
+      break;
+    case 'ROLLOUT':
+      t = S.rolloutMax;
+      cap = S.rolloutMax;
+      break;
+    default:
+      return { input: d, fast: false };
+  }
+  const out = { ...d, throttle: clip(t) };
+  if (hasLoad) out.load = cap === null ? Math.max(clip(Number(d.load)), phase === 'TAKEOFF_ROLL' || phase === 'TOUCH_AND_GO' ? TC_MIL_THROTTLE : 0) : Math.min(clip(Number(d.load)), cap);
+  return { input: out, fast };
 }
 
 /**
@@ -301,7 +534,9 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
   const speedIn = clip(num(d.speed, 0));
   state.speed = lag(state.speed, speedIn, step, 0.8);
   // armed gate: while disarmed the engage latch stays clear (re-arm in 72–75 mph needs a fresh ≥75)
-  state.abEngaged = state.abArmed ? tomcatAbEngaged(speedIn, state.abEngaged) : false;
+  state.abEngaged = state.abArmed
+    ? !!state.abLaunch || tomcatAbEngaged(speedIn, state.abEngaged, state.abOnSpeed ?? TC_AB_ENGAGE_SPEED, state.abOffSpeed ?? TC_AB_DISENGAGE_SPEED)
+    : false;
 
   const x = clip(state.thrCmd / TC_MIL_THROTTLE);
   const sCmd = clip(Math.pow(x, 0.75) + state.speed * 0.03);
@@ -315,7 +550,9 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
     // slow random wander (keeps the twin beat drifting)
     e.wander = clip((e.wander + (Math.random() * 2 - 1) * Math.sqrt(step) * 0.0012) * Math.exp(-step / 4), -0.003, 0.003);
     let n2Target = 0;
-    if (state.phase === 'starting') {
+    if (state.cold) {
+      n2Target = coldEngineStep(e, i, step, ts, det, sCmd, slow, events);
+    } else if (state.phase === 'starting') {
       const te = state.phaseTime - (i === 1 ? TC_ENGINE_B_START_OFFSET : 0);
       if (te >= 0) {
         e.starter = e.n2 < 0.45 ? lag(e.starter, 1, step, 0.12) : lag(e.starter, 0, step, 0.3);
@@ -365,7 +602,15 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
   }
 
   // phase transitions
-  if (state.phase === 'starting') {
+  if (state.cold) {
+    // cold start: the shared phase follows the two independent engines
+    const ph = engines.map((e) => e.cold);
+    const next = ph.includes('starting') ? 'starting' : ph.includes('run') ? 'run' : ph.includes('shutdown') ? 'shutdown' : 'off';
+    if (next !== state.phase) {
+      state.phase = next;
+      state.phaseTime = 0;
+    }
+  } else if (state.phase === 'starting') {
     const done = engines.every((e) => e.lit && e.n2 >= TC_IDLE_N2 - 0.004);
     if (done || state.phaseTime > 8) {
       if (!done) tomcatSetRunning(state);
@@ -436,7 +681,7 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
       Math.abs(state.speed - clip(num(d.speed, 0))) < 0.003;
   else settled = false;
 
-  return {
+  const out = {
     phase: state.phase,
     n2a: state.a.n2,
     n2b: state.b.n2,
@@ -464,6 +709,12 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
     events,
     settled,
   };
+  if (state.cold) {
+    out.cold = true;
+    out.coldA = state.a.cold;
+    out.coldB = state.b.cold;
+  }
+  return out;
 }
 
 /* ───────────────────────────── targets ───────────────────────────── */
@@ -509,7 +760,7 @@ function engineTargets(L, n2, n1, s, comb, starter, rate, pitch, ab) {
     fanTone: L.fan * 0.03 * Math.pow(clip(n1 / 0.35), 1.2) * (0.6 + 0.4 * s) * duck,
     buzz: L.fan * 0.05 * sstep((n1 - 0.62) / 0.33) * duck,
     buzzDrive: 1 + 6 * sstep((n1 - 0.8) / 0.2),
-    idleBed: L.idle * presence * (0.4 * (1 - 0.55 * s) * (0.3 + 0.7 * comb) + 0.2 * clip(Math.abs(rate) * 1.5)),
+    idleBed: TC_AIR.bed * L.idle * presence * (0.4 * (1 - 0.55 * s) * (0.3 + 0.7 * comb) + 0.2 * clip(Math.abs(rate) * 1.5)),
     idleHz: 420 + 900 * s,
     roarLow: L.roar * TC_LOW.deep * lowT,
     heavy: L.roar * TC_HEAVY.sub * hv + L.ab * TC_HEAVY.abSub * Math.pow(clip(ab), 1.2) * comb,
@@ -517,7 +768,7 @@ function engineTargets(L, n2, n1, s, comb, starter, rate, pitch, ab) {
     roarLowHz: 90 + 60 * thrust,
     roarBody: L.roar * TC_LOW.body * lowT,
     roarBodyHz: 130 + 120 * s + 30 * ab,
-    roarHot: L.roar * TC_LOW.hot * thrust * thrust,
+    roarHot: TC_AIR.hot * L.roar * TC_LOW.hot * thrust * thrust,
     roarHotHz: 650 + 450 * s,
     roarAm: TC_LOW.am * (0.35 + 0.65 * thrust),
     starterHz: 1500 + 5200 * clip(n2 / 0.45),
@@ -541,6 +792,8 @@ export function tomcatTargets(params = {}, drv = {}) {
   const n1 = clip(num(drv.n1, 0));
   const sp = clip(num(drv.speed, 0));
   const abOn = L.ab;
+  // cold start (one engine may be stopped): each mechanical tone follows the engine that drives it
+  const mp = drv.cold ? [a.presence, b.presence, clip(num(drv.n1a, 0) / 0.3)] : [presence, presence, clip(n1 / 0.3)];
   return {
     a,
     b,
@@ -560,17 +813,17 @@ export function tomcatTargets(params = {}, drv = {}) {
     crackle: abOn * L.crackle * TC_LOW.crackle * sstep(ab * 1.25),
     abHiss: abOn * L.crackle * TC_LOW.hiss * ab,
     gearHz: a.n2Hz * TC_RATIOS.gear,
-    gear: L.mech * 0.011 * presence * (0.6 + 0.4 * s),
-    mesh: L.mech * 0.009 * presence,
-    shaftN2: L.mech * 0.0065 * presence,
-    shaftN1: L.mech * 0.005 * clip(n1 / 0.3),
+    gear: L.mech * 0.011 * mp[0] * (0.6 + 0.4 * s),
+    mesh: L.mech * 0.009 * mp[0],
+    shaftN2: L.mech * 0.0065 * mp[1],
+    shaftN1: L.mech * 0.005 * mp[2],
     tickDrive: 0.45 + 0.75 * presence * (1 - 0.8 * s),
     ticks: L.mech * 0.16 * presence * (1 - 0.75 * s),
     intake: L.mech * (0.07 * n1 + 0.08 * sp),
     intakeHz: 45 + 30 * n1,
-    ramWind: L.ram * 0.14 * sp * sp,
+    ramWind: TC_AIR.ramWind * L.ram * 0.14 * sp * sp,
     ramHz: 600 + 900 * sp,
-    ramBuffet: L.ram * 0.12 * Math.pow(sp, 1.5),
+    ramBuffet: TC_AIR.ramBuffet * L.ram * 0.12 * Math.pow(sp, 1.5),
     width: clip(num(p.stereoWidth, 0.62)),
     level: clip(num(p.tcLevel, 0.5), 0, 1) * 2 * TC_OUT_TRIM,
     whumpScale: abOn,
@@ -803,17 +1056,22 @@ export class TomcatVoice {
       const whiteE = i ? this.whiteB : this.whiteA;
       e.idleBed = gain(0, e.bus);
       e.idleBp = filt('bandpass', 500, 0.9, e.idleBed);
-      pinkE.connect(e.idleBp);
+      e.idleAir = filt('lowpass', TC_AIR.bedLpHz, -3, e.idleBp); // air trim (Q in dB: −3 ≈ Butterworth)
+      pinkE.connect(e.idleAir);
       // core roar: low (LP), body (BP), hot (white BP)
       e.roarAm = gain(1, e.bus);
       e.roarAmDepth = gain(0, e.roarAm.gain);
       roll[i].connect(e.roarAmDepth);
+      // core-roar air trim: one LP shared by the deep and body bands (same phase on both, so their
+      // low-end sum is unchanged) steepens the body band's 6 dB/oct upper skirt — the 0.4–4 kHz whoosh
+      e.roarAir = filt('lowpass', TC_AIR.bodyLpHz, -3, null); // Q in dB: −3 ≈ Butterworth, no bump
+      pinkE.connect(e.roarAir);
       e.roarLow = gain(0, e.roarAm);
       e.roarLowLp = filt('lowpass', 90, 0.75, e.roarLow);
-      pinkE.connect(e.roarLowLp);
+      e.roarAir.connect(e.roarLowLp);
       e.roarBody = gain(0, e.roarAm);
       e.roarBodyBp = filt('bandpass', 180, 0.75, e.roarBody);
-      pinkE.connect(e.roarBodyBp);
+      e.roarAir.connect(e.roarBodyBp);
       e.roarHot = gain(0, e.bus);
       e.roarHotBp = filt('bandpass', 800, 0.7, e.roarHot);
       whiteE.connect(e.roarHotBp);
@@ -939,6 +1197,7 @@ export class TomcatVoice {
 
     this.jit = [0, 0];
     this.lastTargets = null;
+    this.coldBus = false;
   }
 
   n(node) {
@@ -969,6 +1228,12 @@ export class TomcatVoice {
       setT(e.csN2.offset, E.n2Hz * (1 + this.jit[i]), t, gp);
       setT(e.csN1.offset, E.n1Hz * (1 + this.jit[i] * 0.6), t, gp);
       setT(e.pan.pan, pans[i], t, 0.2);
+      if (drv && drv.cold) {
+        // cold start: an engine on its own is about half the jet (the other side is dark)
+        const other = (i ? T.a : T.b).presence;
+        setT(e.bus.gain, TC_COLD.soloTrim + (1 - TC_COLD.soloTrim) * clip(other), t, 0.3);
+        this.coldBus = true;
+      } else if (this.coldBus) setT(e.bus.gain, 1, t, 0.3);
       setT(e.whine1.gain, E.whine, t, g);
       setT(e.whine1h.gain, E.whineH, t, g);
       setT(e.whine2.gain, E.whine2, t, g);

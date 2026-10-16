@@ -5,12 +5,16 @@
  * readout, the AB guard and SHUTDOWN are never on an edge key.
  *   Board:  SPEED K1 = CONFIG · MAP keys follow RADAR (ZM+ ZM− N/TRK-UP ↔ RNG+ RNG− MODE) · others inert.
  *   CONFIG: SPEED K1 = RTN, K2/K3 = ◄ ► when the page has more tiles than cells · each tile cell K1 = SEL.
+ *   NAV → SPDS (Meghan, Oct 16; CJ v3): the bottom-row NAV panel is gone. Right bank (the keys under COMPASS, board
+ *   and CONFIG): K1 DRIVE (legend lit on the board, unlit inside CONFIG; press = RTN to the board), K2 MORE (the MORE
+ *   sheet), K3 inert spare (data-reason=spare). OPTIONS = CONFIG › OPT, MUTE = CONFIG › SND › AUDIO MUTE. The COMPASS
+ *   tile in CONFIG is tapped directly (its K1 is DRIVE).
  */
 import { CELL_ORDER } from './configCells.ts';
 import type { CellId } from './geometry.ts';
 import { mapKeys, type MapKeyId, type MapView } from './mapView.ts';
 
-export type EdgeKeyId = 'config' | 'rtn' | 'prev' | 'next' | 'sel' | MapKeyId;
+export type EdgeKeyId = 'config' | 'rtn' | 'prev' | 'next' | 'sel' | 'drive' | 'more' | MapKeyId;
 export interface EdgeKey {
   id: EdgeKeyId;
   legend: string;
@@ -21,13 +25,20 @@ export interface EdgeKey {
 }
 export interface EdgeCtx {
   map: MapView;
+  /** MORE sheet open (MORE key boxed). */
+  moreOpen?: boolean;
   /** null = board; else the open CONFIG page's tiles per cell (label or null) and its sub-page count. */
   config: null | { tiles: Partial<Record<CellId, { label: string; reason?: string } | null>>; subs: number };
 }
 
 export function cellKeys(cell: CellId, n: number, c: EdgeCtx): (EdgeKey | null)[] {
   const keys: (EdgeKey | null)[] = [];
-  if (!c.config) {
+  if (cell === RIGHT_BANK) {
+    keys.push(
+      { id: 'drive', legend: 'DRIVE', ariaLabel: c.config ? 'Drive, return to the board' : 'Drive, board showing', active: !c.config },
+      { id: 'more', legend: 'MORE', ariaLabel: c.moreOpen ? 'More, open' : 'More', active: !!c.moreOpen },
+    );
+  } else if (!c.config) {
     if (cell === 'speed') keys.push({ id: 'config', legend: 'CONFIG', ariaLabel: 'Open config' });
     if (cell === 'map') for (const k of mapKeys(c.map)) keys.push({ id: k.id, legend: k.legend, ariaLabel: k.disabledReason ? `${k.ariaLabel}. ${k.disabledReason}` : k.ariaLabel, reason: k.disabledReason, active: k.id === 'mode' ? c.map.mode === 'terr' : k.id === 'orient' ? !c.map.northUp : false });
   } else if (cell === 'speed') {
@@ -43,6 +54,17 @@ export function cellKeys(cell: CellId, n: number, c: EdgeCtx): (EdgeKey | null)[
   while (out.length < n) out.push(null);
   return out;
 }
+
+/** The right bank (NAV → SPDS): the keys under COMPASS; K3 is the inert spare. */
+export const RIGHT_BANK: CellId = 'compass';
+export const SPARE_INDEX = 2;
+/** Old NAV switch → where it lives now (every function stays reachable; tests check each one). */
+export const NAV_HOMES = {
+  drive: { key: 'drive', cell: RIGHT_BANK },
+  more: { key: 'more', cell: RIGHT_BANK },
+  options: { page: 'options' },
+  mute: { page: 'sound', item: 'mute' },
+} as const;
 
 /** Every cell that gets a strip, in reading order. */
 export const KEY_CELLS: readonly CellId[] = ['speed', ...CELL_ORDER];

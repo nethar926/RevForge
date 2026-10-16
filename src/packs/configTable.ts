@@ -15,7 +15,7 @@
  * Nothing is dead: every tile does something or says why not (disabledReason).
  */
 import type { CjNavAction } from './carrier-jet.nav.ts';
-import type { CjPrefs } from './carrier-jet/cjPrefs.ts';
+import { abUnarmedReason, type CjPrefs } from './carrier-jet/cjPrefs.ts';
 import { applyMapKey, stepRange, type MapView } from './carrier-jet/mapView.ts';
 import type { PackShellUi } from './runtime.ts';
 
@@ -56,6 +56,8 @@ export interface ConfigItem {
   note?: string;
   aria?: (c: ConfigCtx) => string;
   parkOnly?: boolean;
+  /** Context-dependent lock (shown disabled with this reason; e.g. AB UNARMED CALL while callouts are off). */
+  reason?: (c: ConfigCtx) => string | undefined;
   on?: (c: ConfigCtx) => boolean;
   /** Needs the Drive shell's settings. */
   needsUi?: boolean;
@@ -110,7 +112,7 @@ export function buildConfig(spec: PackConfigSpec): Record<PageId, ConfigPage> {
   const alerts: ConfigItem[] = [
     {
       id: 'calls', group: 'ALERTS', label: 'CALLS', value: (c) => UP(c.prefs.calloutMode), note: 'Voice falls back to TTS, then tone',
-      aria: (c) => `Callouts, ${c.prefs.calloutMode}. Voice falls back to text to speech, then tone`, flag: 'NEW: stored + guarded engine call (setJetPrefs); no callout code at 51beec9',
+      aria: (c) => `Callouts, ${c.prefs.calloutMode}. Voice falls back to text to speech, then tone`, 
       effect: (c) => ({ type: 'prefs', partial: { calloutMode: cycle(['voice', 'tone', 'off'] as const, c.prefs.calloutMode) } }),
     },
     {
@@ -119,8 +121,9 @@ export function buildConfig(spec: PackConfigSpec): Record<PageId, ConfigPage> {
       effect: (c) => ({ type: 'prefs', partial: { highSpeedCallouts: !c.prefs.highSpeedCallouts } }),
     },
     {
-      id: 'abUnarm', group: 'ALERTS', label: 'AB UNARM', value: (c) => UP(c.prefs.abUnarmedCall), aria: (c) => `AB unarmed call, ${c.prefs.abUnarmedCall}`,
-      flag: 'NEW: stored + guarded engine call', effect: (c) => ({ type: 'prefs', partial: { abUnarmedCall: cycle(['silent', 'tone', 'voice'] as const, c.prefs.abUnarmedCall) } }),
+      // Silent › Tone › Voice (default Silent); engine setAbUnarmedCall on change + on load (cjPrefs.applyCjPrefsToEngine)
+      id: 'abUnarm', group: 'ALERTS', label: 'AB UNARMED CALL', value: (c) => UP(c.prefs.abUnarmedCall), aria: (c) => `AB unarmed call, ${c.prefs.abUnarmedCall}`,
+      reason: (c) => abUnarmedReason(c.prefs), effect: (c) => ({ type: 'prefs', partial: { abUnarmedCall: cycle(['silent', 'tone', 'voice'] as const, c.prefs.abUnarmedCall) } }),
     },
   ];
   const looks: ConfigItem[] = spec.looks.length > 1
@@ -199,7 +202,7 @@ export function buildConfig(spec: PackConfigSpec): Record<PageId, ConfigPage> {
       id: 'options', title: 'OPTIONS',
       items: [
         RTN,
-        { id: 'start', label: 'ENGINE STARTUP', parkOnly: true, flag: 'stored only (cold start parked on frontend/cj-cold-start); stored values apu | gndAir unchanged', value: (c) => (c.prefs.startMode === 'apu' ? 'APU' : 'STANDARD'), aria: (c) => `Engine startup, ${c.prefs.startMode === 'apu' ? 'A P U' : 'standard, ground air cross-bleed'}`, effect: (c) => ({ type: 'prefs', partial: { startMode: c.prefs.startMode === 'apu' ? 'gndAir' : 'apu' } }) },
+        { id: 'start', label: 'ENGINE STARTUP', parkOnly: true, value: (c) => (c.prefs.startMode === 'apu' ? 'APU' : 'STANDARD'), aria: (c) => `Engine startup, ${c.prefs.startMode === 'apu' ? 'A P U' : 'standard, ground air cross-bleed'}`, effect: (c) => ({ type: 'prefs', partial: { startMode: c.prefs.startMode === 'apu' ? 'gndAir' : 'apu' } }) },
         { id: 'motion', label: 'MOTION', value: (c) => UP(c.prefs.motion), aria: (c) => `Motion, ${c.prefs.motion === 'auto' ? 'follows system' : c.prefs.motion}`, effect: (c) => ({ type: 'prefs', partial: { motion: cycle(['auto', 'reduced', 'full'] as const, c.prefs.motion) } }) },
         { id: 'alerts', label: 'ALERTS ▸', value: () => 'Calls · hi-spd · AB', aria: () => 'Alerts, opens the sound page', effect: () => ({ type: 'page', page: 'sound' }) },
         { id: 'tip', label: 'TIP', needsUi: true, value: (c) => onOff(c.ui!.showKeepAliveTip), on: (c) => !!c.ui?.showKeepAliveTip, aria: (c) => `Keep-tab-open tip, ${c.ui!.showKeepAliveTip ? 'on' : 'off'}`, effect: (c) => ({ type: 'ui', partial: { showKeepAliveTip: !c.ui!.showKeepAliveTip } }) },
@@ -220,6 +223,8 @@ export function disabledReason(it: ConfigItem, c: ConfigCtx): string | undefined
   if (it.readOnly) return it.readOnly;
   if (it.needsUi && !c.ui) return DRIVE_REASON;
   if (it.parkOnly && !c.park) return PARK_REASON;
+  const r = it.reason?.(c);
+  if (r) return r;
   return undefined;
 }
 export function itemValue(it: ConfigItem, c: ConfigCtx): string {

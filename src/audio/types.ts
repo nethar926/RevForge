@@ -390,6 +390,62 @@ export interface EngineSynth {
   setAfterburnerArmed?(armed: boolean): void;
   /** Tomcat: whether the afterburner is armed (default true). true on other packs. */
   getAfterburnerArmed?(): boolean;
+  /**
+   * Tomcat cold start (opt-in, default OFF — when off the quick Start is unchanged). While on,
+   * start() only unlocks audio: the engines stay dark until switched on with setJetSystem.
+   */
+  setJetColdStart?(enabled: boolean): void;
+  getJetColdStart?(): boolean;
+  /** Which recommended sequence jetAutoStart() runs (default 'apu'). Does not gate anything. */
+  setJetStartMode?(mode: JetStartMode): void;
+  getJetStartMode?(): JetStartMode;
+  /**
+   * Permissive: does exactly what it is called with (any order, no interlocks) and returns true
+   * while cold start is on (false: cold start off / other pack / unknown id). Plays the switch
+   * foley on a change (default per JET_DEFAULT_FOLEY; opts.foley overrides, false = silent).
+   */
+  setJetSystem?(system: JetSystem, on: boolean, opts?: { foley?: JetSwitchFoley | false }): boolean;
+  getJetSystems?(): JetSystemsState;
+  /** Switch sound (setJetSystem foley) on / off; default true. System sounds keep playing. */
+  setJetSwitchSound?(enabled: boolean): void;
+  getJetSwitchSound?(): boolean;
+  /** Panel description (labels, groups, kinds, advisory requires, order). */
+  getJetSystemList?(variant?: JetVariant): JetSystemEntry[];
+  /** Our own short plain-words startup / shutdown checklist. */
+  getJetChecklist?(variant?: JetVariant): JetChecklist;
+  /** Fires on every switch change and engine phase change; returns an unsubscribe function. */
+  onJetSystemChange?(cb: (state: JetSystemsState, change: JetSystemChange) => void): () => void;
+  /** PULL: handle foley + short warning tone, then fuel cut / everything off and spools down. */
+  jetEmergencyStop?(): boolean;
+  /** Runs the recommended sequence for `mode` (default getJetStartMode()). */
+  jetAutoStart?(mode?: JetStartMode): boolean;
+  /** Convenience: BATT → L ENG → R ENG straight away (no APU / cart). */
+  jetQuickStart?(): boolean;
+  /** One-shot switch foley / cue (works on the Tomcat pack with cold start on or off). */
+  playJetCue?(cue: JetCue, opts?: { pan?: number; level?: number }): boolean;
+  /** Tomcat flight phase from Frontend's detector (null = no shaping, compat). Shapes thrust; gear info runs gear cues. */
+  setFlightPhase?(phase: JetFlightPhase | null, info?: JetFlightInfo): void;
+  getFlightPhase?(): JetFlightPhase | null;
+  /** Frontend's afterburnerLit: while true and armed, the afterburner is live at any speed. */
+  setAfterburnerLaunch?(lit: boolean): void;
+  getAfterburnerLaunch?(): boolean;
+  /** Callout: voice (speechSynthesis) / tone / mechanical (gear); per-id cooldown, never stacked. */
+  playFlightCallout?(id: JetCalloutId): JetCalloutResult;
+  /** String: 'voice' (warnings speak, cautions tone unless setCautionVoice(true)) | 'tone' | 'off'; or per level. */
+  setCalloutMode?(mode: JetCalloutMode | Partial<JetCalloutModes>): void;
+  getCalloutMode?(): JetCalloutModes;
+  setCautionVoice?(on: boolean): void;
+  /** Speed callouts (overspeedCaution / overspeedWarning). Default off — mirror Frontend's highSpeedCallouts. */
+  setHighSpeedCallouts?(on: boolean): void;
+  getHighSpeedCallouts?(): boolean;
+  /** AB UNARMED call: 'voice' | 'tone' | 'silent'. Default 'silent' (v2 NOTES #91). */
+  setAbUnarmedCall?(mode: JetAbUnarmedCall): void;
+  getAbUnarmedCall?(): JetAbUnarmedCall;
+  getCautionVoice?(): boolean;
+  /** Original alert tone; 'note' is a silent no-op (returns false). */
+  playAlertTone?(level: JetAlertLevel): boolean;
+  getAudioSpeedConfig?(): AudioSpeedConfig;
+  setAudioSpeedConfig?(partial: Partial<AudioSpeedConfig>): AudioSpeedConfig;
   /** Optional cabin low-pass hint (Hz) for the CharacterEngine wrapper; undefined = default mapping. */
   getAcousticCutoffHint?(): number | undefined;
   /** Night Pursuit: soft original electronic tick at a scanner sweep edge (level = params.scannerTick). */
@@ -413,4 +469,135 @@ export interface ParamMeta {
   options?: number[];
   /** Pro Builder group label (Ion Twin layers, etc.) */
   group?: string;
+}
+
+/* ── Tomcat cold start (see docs/cj-cold-start.md) ── */
+/** Switchable systems: battery, seat-belt sign, APU, external ground air cart, crossbleed valve, engines. */
+export type JetSystem =
+  | 'batt'
+  | 'seatbelt'
+  | 'apu'
+  | 'aircart'
+  | 'crossbleed'
+  | 'engL'
+  | 'engR'
+  | 'fuelPumpL'
+  | 'fuelPumpR'
+  | 'ignL'
+  | 'ignR'
+  /** true = idle, false = cutoff */
+  | 'throttleL'
+  | 'throttleR'
+  | 'avionics'
+  | 'anticollision'
+  | 'navLights'
+  | 'hydraulics'
+  /** true = closed */
+  | 'canopy'
+  | 'oxygen'
+  | 'inertialNav'
+  /** momentary (fires on true, state stays false) */
+  | 'masterCaution'
+  | 'quickStartGuard'
+  /** momentary; runs jetQuickStart only while quickStartGuard is open */
+  | 'quickStart'
+  /** momentary; same as jetEmergencyStop() */
+  | 'emergencyStop';
+/** getJetSystemList / getJetChecklist variant ('groundcart' accepted as an alias of 'aircart'). */
+export type JetVariant = 'apu' | 'aircart' | 'groundcart';
+export interface JetSystemEntry {
+  id: JetSystem;
+  /** Neutral panel label. */
+  label: string;
+  group: 'POWER' | 'FUEL' | 'ENGINES' | 'SYSTEMS' | 'LIGHTS';
+  kind: 'toggle' | 'guarded' | 'hold' | 'pull';
+  /** Advisory only — the audio layer never refuses a call. */
+  requires: string[];
+  side?: 'L' | 'R';
+  /** 1-based startup order on the panel. */
+  order: number;
+  /** Part of the minimum start. */
+  required: boolean;
+}
+export interface JetChecklist {
+  startup: string[];
+  shutdown: string[];
+}
+/** Recommended start sequence for jetAutoStart. */
+export type JetStartMode = 'apu' | 'groundcart';
+/** Switch foley kinds. */
+export type JetSwitchFoley = 'toggle' | 'guardOpen' | 'guardClose' | 'hold' | 'pull' | 'detent';
+/** playJetCue cues: switch foley + afterburner guard cover + chime + warning tone. */
+export type JetCue =
+  | JetSwitchFoley
+  /** landing gear lever: full retract / extend sequence */
+  | 'gearUp'
+  | 'gearDown'
+  /** RADAR switch on: quiet warm-up hum, no sweep ping */
+  | 'radarOn'
+  | 'abGuardOpen'
+  | 'abGuardClose'
+  | 'chime'
+  | 'warning'
+  /** cockpit display config menu (bezel buttons) */
+  | 'bezelPress'
+  | 'cursorStep'
+  | 'selectConfirm'
+  | 'pageChange'
+  | 'pamphletLift'
+  | 'pamphletOpen'
+  | 'pamphletClose';
+/** Engine phase in cold start. */
+export type JetEnginePhase = 'off' | 'starting' | 'run' | 'shutdown';
+export interface JetSystemsState extends Record<JetSystem, boolean> {
+  coldStart: boolean;
+  mode: JetStartMode;
+  engines: { L: JetEnginePhase; R: JetEnginePhase };
+  /** APU spool 0..1 / ready (≥ 95 %). */
+  apuSpool: number;
+  apuReady: boolean;
+  /** Air cart spool 0..1 / ready. */
+  cartSpool: number;
+  cartReady: boolean;
+  /** jetAutoStart / jetQuickStart sequence in progress. */
+  autoRunning: boolean;
+  /** Emergency stop pending (warning tone playing, fuel cut follows). */
+  emergency: boolean;
+  /** Hydraulic pressure 0..1 (engine-driven). */
+  hydPressure: number;
+  /** setJetSwitchSound state. */
+  switchSound: boolean;
+}
+export interface JetSystemChange {
+  /** null for mode / reset changes. */
+  system: JetSystem | null;
+  on: boolean;
+  source: 'api' | 'auto' | 'emergency' | 'engine' | 'mode' | 'stop' | 'shutdown';
+}
+
+/* ── Tomcat flight phases (Frontend detects; audio consumes) — see docs/cj-cold-start.md ── */
+/** Frontend's regime strings, unchanged. 'TOUCH_AND_GO' is an optional extra (fast re-spool). */
+export type JetFlightPhase = 'TAXI' | 'TAKEOFF_ROLL' | 'AIRBORNE' | 'APPROACH' | 'ROLLOUT' | 'TOUCH_AND_GO';
+export interface JetFlightInfo {
+  /** Gear position. A transition INTO 'up' / 'down' plays the gearUp / gearDown cue; 'transit' plays nothing. */
+  gear?: 'down' | 'up' | 'transit';
+  /** Frontend's hard-launch flag: while true and armed the AB is live (adds to afterburnerLit, never clears it). */
+  launch?: boolean;
+}
+/** 'touchAndGo' / 'goAround' / 'launch' are accepted as a harmless no-op (touch-and-go / go-around / launch have no callout). */
+export type JetAbUnarmedCall = 'voice' | 'tone' | 'silent';
+export type JetCalloutId = 'abUnarmed' | 'overspeedCaution' | 'overspeedWarning' | 'gpsFail' | 'gearUp' | 'gearDown' | 'touchAndGo' | 'goAround' | 'launch';
+export type JetCalloutMode = 'voice' | 'tone' | 'off';
+export interface JetCalloutModes {
+  warning: JetCalloutMode;
+  caution: JetCalloutMode;
+}
+/** 'note' is silent (kept for the API); caution / warning have original tones. */
+export type JetAlertLevel = 'note' | 'caution' | 'warning';
+export type JetCalloutResult = 'voice' | 'tone' | 'mechanical' | 'suppressed';
+export interface AudioSpeedConfig {
+  /** AB auto-engage (armed) at ≥ this speed; default 80. */
+  abEngageMph: number;
+  /** …and out again below this; default 77. */
+  abDisengageMph: number;
 }

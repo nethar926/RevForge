@@ -124,3 +124,10 @@ export const setRadar = (on: boolean) => setMapView({ ...getMapView(), radar: on
 export const resetMapViewCache = () => {
   cur = null;
 };
+
+/**
+ * RADAR warm-up hum (Dan's playJetCue('radarOn')): once per OFF → ON flip of the switch. Never on OFF, never on mount
+ * or a restore of a saved ON (prev undefined = first render), never while muted.
+ */
+export const radarCue = (prev: boolean | undefined, next: boolean, muted: boolean): 'radarOn' | null =>
+  prev === false && next && !muted ? 'radarOn' : null;
