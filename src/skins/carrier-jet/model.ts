@@ -85,11 +85,11 @@ export function resolveAbZone(abZone: number | undefined): number {
 }
 
 // ---------------------------------------------------------------- Mach readout
-/** Display Mach band (the old gear slot): M 1.00 at 75 mph (where Audio engages the burner), M 2.30 cap at 120 mph. */
-export const MACH_ONE_MPH = 75;
+/** Display Mach band (the old gear slot): M 1.00 at 80 mph (where Audio engages the burner), M 2.30 cap at 120 mph. */
+export const MACH_ONE_MPH = 80;
 export const MACH_CAP_MPH = 120;
 export const MACH_MAX = 2.3;
-/** Piecewise linear: 0..75 mph → M = mph / 75; 75..120 mph → M 1.00..2.30; clamped at 2.30 (and at 0). Number only; the SUPERSONIC tag follows abZone. */
+/** Piecewise linear: 0..80 mph → M = mph / 80; 80..120 mph → M 1.00..2.30; clamped at 2.30 (and at 0). Number only; the SUPERSONIC tag follows abZone. */
 export function mphToMach(mph: number): number {
   const v = finite(mph) ? Math.max(0, mph) : 0;
   if (v <= MACH_ONE_MPH) return v / MACH_ONE_MPH;

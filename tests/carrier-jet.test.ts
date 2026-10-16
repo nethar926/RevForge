@@ -83,19 +83,20 @@ test('AB zone: follows abZone only (rounded, clamped, same render); no skin-side
   assert.equal(statusText(true, 0), 'ON DECK · WINGS 75°');
 });
 
-test('Mach: piecewise linear mph → Mach (0..75 → 0..1.00, 75..120 → 1.00..2.30, clamped), `M 0.85` text', () => {
+test('Mach: piecewise linear mph → Mach (0..80 → 0..1.00, 80..120 → 1.00..2.30, clamped), `M 0.85` text', () => {
   const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≈ ${b}`);
   assert.equal(mphToMach(0), 0);
-  near(mphToMach(37.5), 0.5);
-  near(mphToMach(75), 1);
+  near(mphToMach(40), 0.5);
+  near(mphToMach(75), 0.9375);
+  near(mphToMach(80), 1);
   near(mphToMach(120), 2.3);
   near(mphToMach(150), 2.3);
   assert.equal(MACH_MAX, 2.3);
-  near(mphToMach(97.5), 1.65);
-  near(mphToMach(63.75), 0.85);
+  near(mphToMach(100), 1.65);
+  near(mphToMach(68), 0.85);
   assert.equal(mphToMach(-5), 0);
   assert.equal(mphToMach(NaN), 0);
-  assert.equal(machText(mphToMach(63.75)), 'M 0.85');
+  assert.equal(machText(mphToMach(68)), 'M 0.85');
   assert.equal(machText(mphToMach(150)), 'M 2.30');
   assert.equal(machText(0), 'M 0.00');
   assert.equal(machLabel(0.85, false), 'Mach 0.85');
@@ -210,19 +211,19 @@ test('rendered: MACH slot in every look and layout; SUPERSONIC tag + vapor cone 
     const m = machOf(html[k]);
     assert.ok(m, `${k}: MACH block`);
     assert.equal(m.n, 1, `${k}: one MACH block`);
-    assert.equal(m.text, 'M 0.60', `${k}: 45 mph = M 0.60`);
-    assert.equal(m.label, 'Mach 0.60');
+    assert.equal(m.text, 'M 0.56', `${k}: 45 mph = M 0.56`);
+    assert.equal(m.label, 'Mach 0.56');
     assert.equal(m.sup, false); assert.equal(m.tag, 'false'); assert.equal(m.cone, false);
     assert.match(html[k], /data-cj-el="mach-barrier"/, `${k}: fixed M 1.0 barrier mark`);
   }
   const on = machOf(html.dw)!;
-  assert.deepEqual([on.text, on.label, on.sup, on.tag, on.cone], ['M 1.43', 'Mach 1.43, supersonic', true, 'true', true], '90 mph + zone 4');
+  assert.deepEqual([on.text, on.label, on.sup, on.tag, on.cone], ['M 1.32', 'Mach 1.32, supersonic', true, 'true', true], '90 mph + zone 4');
   const fast = machOf(html.loadNoZone)!;
-  assert.deepEqual([fast.text, fast.label, fast.sup, fast.tag, fast.cone], ['M 1.43', 'Mach 1.43', false, 'false', false], '90 mph without an AB zone: number only, no tag');
+  assert.deepEqual([fast.text, fast.label, fast.sup, fast.tag, fast.cone], ['M 1.32', 'Mach 1.32', false, 'false', false], '90 mph without an AB zone: number only, no tag');
   const slow = machOf(html.zoneSlow)!;
-  assert.deepEqual([slow.text, slow.label, slow.sup, slow.tag, slow.cone], ['M 0.67', 'Mach 0.67, supersonic', true, 'true', true], 'zone on at 50 mph: tag follows the zone');
+  assert.deepEqual([slow.text, slow.label, slow.sup, slow.tag, slow.cone], ['M 0.63', 'Mach 0.63, supersonic', true, 'true', true], 'zone on at 50 mph: tag follows the zone');
   const z5 = machOf(html.zoneLowLoad)!;
-  assert.deepEqual([z5.text, z5.sup], ['M 1.14', true], 'compact 80 mph + zone 5');
+  assert.deepEqual([z5.text, z5.sup], ['M 1.00', true], 'compact 80 mph + zone 5');
   // static: no animation or transition anywhere on the MACH slot
   const css = readFileSync(join(SKIN, 'carrier-jet.css'), 'utf8');
   for (const m of css.matchAll(/[^{}]*cj-mach[^{]*\{([^}]*)\}/g)) assert.doesNotMatch(m[1], /animation|transition/, 'MACH slot is static');
