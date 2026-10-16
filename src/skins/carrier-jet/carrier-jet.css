@@ -292,6 +292,28 @@
 .cj-c-lh > .cj-svg { height: auto; flex: none; }
 .cj-c-lh > .cj-c-lad { flex: 0 1 auto; min-height: 0; }
 
+/* ---------------- stale heading (headingStale): NEEDS MOTION chip by the heading readout of each look.
+   Rendered only when stale, so a live heading keeps every cell where it was. HTML text (no viewBox shrink),
+   >= 11px everywhere; colours come from the palette (dim text on the box ground). Static: no animation. */
+.cj-hstale { box-sizing: border-box; display: block; padding: 0 4px; border: 1px solid; border-radius: 2px; font-size: max(12px, calc(13 * var(--k))); font-weight: 700; line-height: 1.25; letter-spacing: 0.06em; white-space: nowrap; pointer-events: none; z-index: 1; }
+.cj[data-layout='reflow'] .cj-hstale { font-size: max(11px, calc(12 * var(--k))); line-height: 14px; }
+.cj[data-variant='carrier-jet'] .cj-hstale { font-family: 'VT323', ui-monospace, monospace; font-weight: 400; font-size: max(13px, calc(15 * var(--k))); line-height: 1; letter-spacing: 0; padding: 1px 3px 0; }
+/* A: in the HSD label strip, right of the HSD label (directly over the HSD screen and its heading box) */
+.cj-plab-2:has(> .cj-hstale) { position: relative; }
+.cj-plab-2 > .cj-hstale { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); }
+/* B: over the ladder's top-left corner, just under the heading tape (the cells keep their rows) */
+.cj-b-mid:has(> .cj-hstale) > :nth-child(1) { grid-row: 1; grid-column: 1; }
+.cj-b-mid:has(> .cj-hstale) > :nth-child(2) { grid-row: 2; grid-column: 1; }
+.cj-b-mid:has(> .cj-hstale) > :nth-child(3) { grid-row: 3; grid-column: 1; }
+.cj-b-mid > .cj-hstale { grid-row: 2; grid-column: 1; align-self: start; justify-self: start; margin: 2px 0 0 2px; }
+/* C full: over the ladder's bottom-left corner, just above the heading tape */
+.cj-c-right:has(> .cj-hstale) > :nth-child(1) { grid-row: 1; grid-column: 1; }
+.cj-c-right:has(> .cj-hstale) > :nth-child(2) { grid-row: 2; grid-column: 1; }
+.cj-c-right:has(> .cj-hstale) > :nth-child(3) { grid-row: 3; grid-column: 1; }
+.cj-c-right > .cj-hstale { grid-row: 1; grid-column: 1; align-self: end; justify-self: start; margin: 0 0 2px 2px; }
+/* C reflow: between ladder and tape in the column; the negative margin cancels its height + one gap (layout unchanged) */
+.cj-c-lh > .cj-hstale { position: relative; flex: none; align-self: flex-start; height: 16px; margin: -20px 0 0 2px; }
+
 /* ---------------- phones (Frontend's layout picker: data-rf-layout on the pack mount root). Every rule below is
    scoped under [data-rf-layout="phone-landscape"] or [data-rf-layout="portrait"]; the HUD also turns compact on there.
    phone-landscape: the reflowed board laid out natively at 16:9 (about 656x369 inside a 750x369 safe area), centred

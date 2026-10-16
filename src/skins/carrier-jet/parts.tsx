@@ -249,27 +249,35 @@ export function Ladder({ x, y, w, h, P, pitch = 0, bank = 0 }: { x: number; y: n
 // ------------------------------------------------------------------ compass rose (HSD-style arc)
 const card = (d: number) => ({ 0: 'N', 90: 'E', 180: 'S', 270: 'W' } as Record<number, string>)[d] ?? String(d / 10);
 const hdgText = (heading: number | undefined) => (heading === undefined ? '---' : String(Math.round(heading) % 360).padStart(3, '0'));
-export function Rose({ x, y, w, h, P, heading }: { x: number; y: number; w: number; h: number; P: CjPalette; heading?: number }) {
+/**
+ * Stale heading (`stale` with a heading): the scale and digits are drawn in the palette's dim tones, never
+ * flashing. Ticks drop to P.ghost (still >= 3:1 on the CRT ground), digits and scale labels to P.winText
+ * (>= 4.5:1 on P.boxBg), so the ticks are dimmed more than the digits. Undefined heading keeps '---' as is.
+ */
+const staleTones = (P: CjPalette, dim: boolean) => (dim ? { line: P.ghost, text: P.winText } : { line: P.sym, text: P.symText });
+export function Rose({ x, y, w, h, P, heading, stale = false }: { x: number; y: number; w: number; h: number; P: CjPalette; heading?: number; stale?: boolean }) {
   const id = useId().replace(/:/g, '');
   const hd = heading ?? 0;
+  const dim = stale && heading !== undefined;
+  const tone = staleTones(P, dim);
   const cx = x + w / 2, R = Math.min(w * 0.46, h * 0.9), cy = y + R + 34;
   return (
-    <g data-cj-el="heading">
+    <g data-cj-el="heading" data-stale={dim ? 'true' : undefined}>
       <defs>
         <clipPath id={`${id}c`}>
           <rect x={x} y={y + 30} width={w} height={h - 30} />
         </clipPath>
       </defs>
       <g clipPath={`url(#${id}c)`}>
-        <circle cx={f1(cx)} cy={f1(cy)} r={f1(R)} fill="none" stroke={P.sym} strokeWidth="2" />
+        <circle cx={f1(cx)} cy={f1(cy)} r={f1(R)} fill="none" stroke={tone.line} strokeWidth="2" />
         {Array.from({ length: 72 }, (_, i) => i * 5).map((d) => {
           const t = ((d - hd - 90) * Math.PI) / 180, l = d % 30 === 0 ? 14 : d % 10 === 0 ? 9 : 5;
           const ty = cy + (R - 34) * Math.sin(t);
           return (
             <g key={d}>
-              <line x1={f1(cx + R * Math.cos(t))} y1={f1(cy + R * Math.sin(t))} x2={f1(cx + (R - l) * Math.cos(t))} y2={f1(cy + (R - l) * Math.sin(t))} stroke={P.sym} strokeWidth={d % 30 === 0 ? 2.5 : 1.5} />
+              <line x1={f1(cx + R * Math.cos(t))} y1={f1(cy + R * Math.sin(t))} x2={f1(cx + (R - l) * Math.cos(t))} y2={f1(cy + (R - l) * Math.sin(t))} stroke={tone.line} strokeWidth={d % 30 === 0 ? 2.5 : 1.5} />
               {d % 30 === 0 && ty < y + h - 14 && (
-                <T x={cx + (R - 34) * Math.cos(t)} y={ty + 5} size={15} fill={P.symText} weight={700}>
+                <T x={cx + (R - 34) * Math.cos(t)} y={ty + 5} size={15} fill={tone.text} weight={700}>
                   {card(d)}
                 </T>
               )}
@@ -280,41 +288,43 @@ export function Rose({ x, y, w, h, P, heading }: { x: number; y: number; w: numb
       </g>
       <path d={`M${f1(cx)} ${f1(y + 36)} l-8 -8 h16 z`} fill={P.ref} />
       <rect x={f1(cx - 40)} y={y - 2} width="80" height="30" fill={P.boxBg} stroke={P.sym} strokeWidth="1.5" />
-      <T x={cx} y={y + 19} size={16} fill={P.symText} weight={700} ls={0.1}>{hdgText(heading)}</T>
+      <T x={cx} y={y + 19} size={16} fill={tone.text} weight={700} ls={0.1}>{hdgText(heading)}</T>
     </g>
   );
 }
 
 // ------------------------------------------------------------------ heading tape
-export function HeadingTape({ x, y, w, P, heading, span = 60 }: { x: number; y: number; w: number; P: CjPalette; heading?: number; span?: number }) {
+export function HeadingTape({ x, y, w, P, heading, span = 60, stale = false }: { x: number; y: number; w: number; P: CjPalette; heading?: number; span?: number; stale?: boolean }) {
   const id = useId().replace(/:/g, '');
   const hd = heading ?? 0;
+  const dim = stale && heading !== undefined;
+  const tone = staleTones(P, dim);
   const cx = x + w / 2, ppd = w / span;
   const ticks: number[] = [];
   for (let d = Math.floor((hd - span) / 5) * 5; d <= hd + span; d += 5) ticks.push(d);
   return (
-    <g data-cj-el="heading">
+    <g data-cj-el="heading" data-stale={dim ? 'true' : undefined}>
       <defs>
         <clipPath id={`${id}c`}>
           <rect x={x} y={y} width={w} height="50" />
         </clipPath>
       </defs>
       <g clipPath={`url(#${id}c)`}>
-        <line x1={x} y1={y + 36} x2={x + w} y2={y + 36} stroke={P.sym} strokeWidth="1.5" />
+        <line x1={x} y1={y + 36} x2={x + w} y2={y + 36} stroke={tone.line} strokeWidth="1.5" />
         {ticks.map((d) => {
           const xx = cx + (d - hd) * ppd, dd = ((d % 360) + 360) % 360;
           return (
             <g key={d}>
-              <line x1={f1(xx)} y1={y + 36} x2={f1(xx)} y2={y + (dd % 10 === 0 ? 24 : 30)} stroke={P.sym} strokeWidth="1.5" />
+              <line x1={f1(xx)} y1={y + 36} x2={f1(xx)} y2={y + (dd % 10 === 0 ? 24 : 30)} stroke={tone.line} strokeWidth="1.5" />
               {dd % 10 === 0 && Math.abs(d - hd) > 8 && xx > x + 18 && xx < x + w - 18 && (
-                <T x={xx} y={y + 13} fill={P.symText}>{String(dd).padStart(3, '0')}</T>
+                <T x={xx} y={y + 13} fill={tone.text}>{String(dd).padStart(3, '0')}</T>
               )}
             </g>
           );
         })}
       </g>
       <rect x={f1(cx - 36)} y={y - 6} width="72" height="30" fill={P.boxBg} stroke={P.sym} strokeWidth="1.5" />
-      <T x={cx} y={y + 15} size={15} fill={P.symText} weight={700} ls={0.1}>{hdgText(heading)}</T>
+      <T x={cx} y={y + 15} size={15} fill={tone.text} weight={700} ls={0.1}>{hdgText(heading)}</T>
       <path d={`M${f1(cx)} ${y + 38} l-6 9 h12 z`} fill={P.ref} />
     </g>
   );
