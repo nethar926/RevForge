@@ -1,15 +1,8 @@
 import { useEffect, useId, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { navLinks } from './navLinks';
 
-/** RevForge IA — labels differ from path segments where product renamed surfaces. */
-const links = [
-  { to: '/drive', label: 'Drive' },
-  { to: '/engines', label: 'Garage' },
-  { to: '/customize', label: 'Interface Options' },
-  { to: '/builder', label: 'Pro Builder' },
-  { to: '/sound-builder', label: 'Sound Builder' },
-  { to: '/diag', label: 'Diagnostics' },
-] as const;
+const links = navLinks();
 
 interface Props {
   open: boolean;

@@ -18,6 +18,7 @@ import { skinIdForEngine } from "../skins/DriveSkinSlot";
 import { packForEngineId, packForThemeId, resolveVisibleEnginePatch } from "../packs/registry";
 import CARRIER_JET from "../packs/carrier-jet.identity";
 import { FALLBACK_ENGINE_ID } from "../themes/visibility";
+import { FEATURES } from "../features";
 
 export default function App() {
   const { prefs, update, reset } = useUiPrefs();
@@ -105,7 +106,8 @@ export default function App() {
       ))}
       {/* Legacy Cockpit → Drive (ForgePage); never show DriveSynth chrome */}
       <Route path="/cockpit" element={<Navigate to="/drive" replace />} />
-      <Route path="/builder" element={<ExperienceBuilder themes={themes} audio={audio} userPatches={userPatches} onSelect={onSelectEngine} onLoadCombination={(skinId,patch,atmosphereId)=>{themes.selectSkin(skinId);if(atmosphereId)themes.selectAtmosphere(atmosphereId);onSavePatch(resolveVisibleEnginePatch(patch));}}/>}/>
+      {/* Hidden features (src/features.ts, CJ preview only): old bookmarks / deep links land on Drive. */}
+      <Route path="/builder/*" element={!FEATURES.proBuilder?<Navigate to="/drive" replace />:<ExperienceBuilder themes={themes} audio={audio} userPatches={userPatches} onSelect={onSelectEngine} onLoadCombination={(skinId,patch,atmosphereId)=>{themes.selectSkin(skinId);if(atmosphereId)themes.selectAtmosphere(atmosphereId);onSavePatch(resolveVisibleEnginePatch(patch));}}/>}/>
       <Route
         element={
           <AppShell
@@ -121,7 +123,7 @@ export default function App() {
         <Route
           path="/engines"
           element={
-            <EnginesPage
+            !FEATURES.garage ? <Navigate to="/drive" replace /> : <EnginesPage
               selectedId={audio.engineId}
               userPatches={userPatches}
               onSelect={onSelectEngine}
@@ -139,9 +141,9 @@ export default function App() {
           }
         />
         <Route
-          path="/sound-builder"
+          path="/sound-builder/*"
           element={
-            <BuilderPage
+            !FEATURES.soundBuilder ? <Navigate to="/drive" replace /> : <BuilderPage
               audio={audio}
               onSave={onSavePatch}
               userPatches={userPatches}

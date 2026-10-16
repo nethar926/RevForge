@@ -11,6 +11,24 @@
  *     stay one tap away from VISUALS / LAB / ACCOUNT.
  */
 import type { CjSwitchItem, CjSwitchState } from '../skins/carrier-jet/switches.ts';
+import { FEATURES, type Features } from '../features.ts';
+
+/** Switch ids owned by a hidden feature (src/features.ts; CJ preview only): no switch, no tray item, no VO node. */
+export function hiddenCjPages(f: Features = FEATURES): Set<string> {
+  const h = new Set<string>();
+  if (!f.soundBuilder) h.add('sound-builder');
+  if (!f.proBuilder) h.add('pro-builder');
+  if (!f.lab) h.add('lab');
+  if (!f.account) h.add('account');
+  if (!f.garage) h.add('garage');
+  // CJ v2 (Meghan's map #3/#11): VISUALS and Diagnostics live in CONFIG (OPTIONS opens it); row = DRIVE · OPTIONS ·
+  // MUTE · (COMPASS) · MORE.
+  if (f.cjV2) {
+    h.add('visuals');
+    h.add('diagnostics');
+  }
+  return h;
+}
 
 export type DrivePanel = 'tuner' | 'themes' | 'scenes' | 'garage' | 'tune' | 'studio' | 'dashlab' | 'account';
 export type CjNavAction =
@@ -31,7 +49,8 @@ const LABELS: Record<string, string> = {
 };
 
 /** id → action. `labPanel` mirrors the Tuner's Lab item (DashLab when listed, else EngineForge). */
-export function cjNavAction(id: string, labPanel: 'dashlab' | 'studio' = 'studio'): CjNavAction | null {
+export function cjNavAction(id: string, labPanel: 'dashlab' | 'studio' = 'studio', features: Features = FEATURES): CjNavAction | null {
+  if (hiddenCjPages(features).has(id)) return null;
   switch (id) {
     case 'drive': return { type: 'drive' };
     case 'garage': return { type: 'route', to: '/engines' };
@@ -81,13 +100,16 @@ export interface CjNavInput {
   compass?: CjSwitchState;
   /** How many row switches (by CJ_DEMOTE_ORDER) move into MORE to fit the width. */
   demote?: number;
+  /** Build flags (default: this build's FEATURES). */
+  features?: Features;
 }
 
 /** Items for CarrierJetSwitchPanel: row (MORE last) + overflow tray. */
-export function cjNavItems({ current, muted, moreOpen, compass, demote = 0 }: CjNavInput): { items: CjSwitchItem[]; overflow: CjSwitchItem[] } {
+export function cjNavItems({ current, muted, moreOpen, compass, demote = 0, features = FEATURES }: CjNavInput): { items: CjSwitchItem[]; overflow: CjSwitchItem[] } {
   const page = (id: string): CjSwitchItem => ({ id, label: LABELS[id], kind: 'page', on: current === id });
+  const hidden = hiddenCjPages(features);
   const all: CjSwitchItem[] = [
-    ...CJ_ROW_PAGES.map(page),
+    ...CJ_ROW_PAGES.filter((id) => !hidden.has(id)).map(page),
     ...(compass ? [{ id: 'compass', label: LABELS.compass, kind: 'toggle' as const, state: compass }] : []),
     { id: 'mute', label: LABELS.mute, kind: 'toggle', on: muted },
   ];
@@ -95,7 +117,8 @@ export function cjNavItems({ current, muted, moreOpen, compass, demote = 0 }: Cj
   const gone = new Set<string>(present.slice(0, Math.max(0, Math.min(demote, present.length))));
   const row = all.filter((i) => !gone.has(i.id));
   const moved = all.filter((i) => gone.has(i.id));
-  return { items: [...row, { id: 'more', label: LABELS.more, kind: 'more', on: moreOpen }], overflow: [...moved, ...CJ_TRAY_PAGES.map(page)] };
+  return { items: [...row, { id: 'more', label: LABELS.more, kind: 'more', on: moreOpen }], overflow: [...moved, ...CJ_TRAY_PAGES.filter((id) => !hidden.has(id)).map(page)] };
 }
 
-export const cjMaxDemote = (hasCompass: boolean) => CJ_DEMOTE_ORDER.length - (hasCompass ? 0 : 1);
+export const cjMaxDemote = (hasCompass: boolean, features: Features = FEATURES) =>
+  CJ_DEMOTE_ORDER.length - (hasCompass ? 0 : 1) - CJ_DEMOTE_ORDER.filter((id) => hiddenCjPages(features).has(id)).length;

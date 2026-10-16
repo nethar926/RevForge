@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FEATURES } from '../features';
 import type { EngineKind, EngineParams, EnginePatch } from '../audio';
 import { BUILTIN_PATCHES, CHRONO_COUPE, STELLAR_HELM_PACK } from '../audio';
 import { isEngineIdVisible } from '../packs/registry';
@@ -278,9 +279,11 @@ export function EnginesPage({
         </section>
       )}
 
-      <Link to="/builder" className="cta-link">
-        Open Synth Builder →
-      </Link>
+      {FEATURES.proBuilder && (
+        <Link to="/builder" className="cta-link">
+          Open Synth Builder →
+        </Link>
+      )}
     </div>
   );
 }
