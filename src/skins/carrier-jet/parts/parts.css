@@ -1,0 +1,168 @@
+/*
+ * Carrier Jet cold-start hardware (parts/*.tsx). Original art after the v2 concept sheet.
+ * Matte gunmetal wrinkle paint (static SVG feTurbulence + feDiffuseLighting tiles, az 225°), machined bevel
+ * (1px highlight top-left, 1px shade bottom-right), bare-metal edge wear, small down-right cast shadows.
+ * One key light, top-left. No gloss, no blur, no backdrop-filter, no per-frame filters.
+ * Motion: the guard flip (160ms), the shelf slide (300ms), the PULL spring-back (140ms) and the GPS ~1 Hz fade.
+ * All of it is off under @media (prefers-reduced-motion: reduce) and under any [data-rf-reduce-motion] ancestor.
+ * Text >= 11px and targets >= 44px hold at or above each part's *_MIN size (tokens.ts).
+ */
+@font-face { font-family: 'B612'; src: url('../fonts/B612-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+
+/* shelf cell size, computed once on the shelf panel and inherited as px */
+@property --cjp-cell { syntax: '<length>'; inherits: true; initial-value: 60px; }
+
+.cjp, .cjp-shelf { box-sizing: border-box; font-family: 'B612', 'Barlow Semi Condensed', system-ui, sans-serif; font-weight: 700; line-height: 1; color: #f3f1e8; -webkit-font-smoothing: antialiased; }
+.cjp *, .cjp *::before, .cjp *::after, .cjp-shelf *, .cjp-shelf *::before, .cjp-shelf *::after { box-sizing: border-box; }
+.cjp { position: relative; display: block; width: 100%; margin: 0; }
+.cjp-svg { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.cjp-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* real buttons, reset; focus ring amber like the bottom row */
+/* :where() keeps the reset at zero specificity so materials (.cjp-metal) win */
+:where(button.cjp, .cjp button) { appearance: none; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: none; }
+:where(button.cjp, .cjp button):focus-visible { outline: 3px solid #ffb54a; outline-offset: 1px; border-radius: 4px; }
+button.cjp[aria-disabled='true'], .cjp button[aria-disabled='true'] { cursor: not-allowed; }
+:where(button.cjp):active:not([aria-disabled='true']):not([disabled]) { background: rgba(0, 0, 0, 0.12); border-radius: 3px; }
+
+/* ---------------- material: matte gunmetal wrinkle paint + machined bevel + worn edges */
+.cjp-metal {
+  border-radius: 4px; background-color: #4a5055;
+  background-image: url('./assets/grain.svg'), url('./assets/wrinkle.svg'), linear-gradient(135deg, #51585d 0%, #4a5055 45%, #43494e 100%);
+  background-blend-mode: overlay, soft-light, normal; background-size: 160px, 240px, 100% 100%;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.2), inset -1px -1px 0 rgba(0, 0, 0, 0.55), 0 0 0 1px #1c1f21, 1px 2px 3px rgba(0, 0, 0, 0.45);
+}
+.cjp-metal::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; border: 2px solid #a7adb1; opacity: 0.55;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22300%22%20height%3D%22300%22%3E%3Cfilter%20id%3D%22w%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%220.07%200.11%22%20numOctaves%3D%224%22%20seed%3D%225%22%20stitchTiles%3D%22stitch%22/%3E%3CfeColorMatrix%20values%3D%220%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%20-2.6%201.55%22/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type%3D%22discrete%22%20tableValues%3D%220%200%200.35%200.8%201%22/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width%3D%22300%22%20height%3D%22300%22%20filter%3D%22url%28%23w%29%22/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22300%22%20height%3D%22300%22%3E%3Cfilter%20id%3D%22w%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%220.07%200.11%22%20numOctaves%3D%224%22%20seed%3D%225%22%20stitchTiles%3D%22stitch%22/%3E%3CfeColorMatrix%20values%3D%220%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%20-2.6%201.55%22/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type%3D%22discrete%22%20tableValues%3D%220%200%200.35%200.8%201%22/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width%3D%22300%22%20height%3D%22300%22%20filter%3D%22url%28%23w%29%22/%3E%3C/svg%3E"); -webkit-mask-size: 300px; mask-size: 300px;
+}
+.cjp-metal--red { background-color: #3a1715; background-image: url('./assets/grain.svg'), url('./assets/wrinkle.svg'), linear-gradient(135deg, #4a1d1a, #331412); }
+
+/* ---------------- bat toggle (60×96 viewBox) */
+.cjp-toggle { aspect-ratio: 60 / 96; }
+
+/* ---------------- guarded cover: band (name + hinge) over the child; lid / underside / cover button in % */
+.cjp-guarded { aspect-ratio: var(--vbw) / var(--vbh); }
+.cjp-guarded > * { position: absolute; }
+.cjp-guarded-name { left: 0; top: 0; width: 100%; height: calc(var(--band) / var(--vbh) * 100%); }
+/* open: the child's own label takes over (APU keeps its name) */
+.cjp-guarded[data-open='true']:not([data-keep-name]) .cjp-guarded-name { visibility: hidden; }
+.cjp-guarded-child { left: 0; right: 0; bottom: 0; top: calc(var(--band) / var(--vbh) * 100%); }
+.cjp-hinge {
+  left: 0; right: 0; top: calc(var(--hinge-y) / var(--vbh) * 100%); height: calc(var(--hinge-h) / var(--vbh) * 100%); border-radius: 999px; pointer-events: none;
+  background: linear-gradient(180deg, #eef1f2 0%, #a3aaae 35%, #5b6266 75%, #2f3437 100%); box-shadow: 1px 2px 2px rgba(0, 0, 0, 0.55);
+}
+.cjp-hinge::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: repeating-linear-gradient(90deg, transparent 0 calc(10 / var(--vbw) * 100%), rgba(0, 0, 0, 0.45) calc(10 / var(--vbw) * 100%) calc(11 / var(--vbw) * 100%)); }
+.cjp-lid {
+  left: calc(2 / var(--vbw) * 100%); right: calc(2 / var(--vbw) * 100%); top: calc(var(--lid-top) / var(--vbh) * 100%); height: calc(var(--lid-h) / var(--vbh) * 100%);
+  border-radius: 3px; pointer-events: none; transform-origin: 50% 0;
+  background: repeating-linear-gradient(-45deg, #c8261b 0 calc(var(--stripe) / 2), #e8b917 calc(var(--stripe) / 2) var(--stripe));
+  box-shadow: inset 0 0 0 2px #8e959a, inset 1px 1px 0 2px #d4d9dc, inset -1px -1px 0 2px #3d4246, inset 0 0 6px 3px rgba(0, 0, 0, 0.25), 2px 3px 3px rgba(0, 0, 0, 0.5);
+  transition: transform 160ms ease-out, opacity 160ms ease-out;
+}
+.cjp-guarded[data-stripe='yellow-black'] .cjp-lid { background: repeating-linear-gradient(-45deg, #e8b917 0 calc(var(--stripe) / 2), #17191a calc(var(--stripe) / 2) var(--stripe)); }
+.cjp-guarded[data-disabled] .cjp-lid { background: repeating-linear-gradient(-45deg, #6a3a35 0 calc(var(--stripe) / 2), #6e6233 calc(var(--stripe) / 2) var(--stripe)); }
+.cjp-under {
+  left: calc(2 / var(--vbw) * 100%); right: calc(2 / var(--vbw) * 100%); top: calc((var(--hinge-y) - 9) / var(--vbh) * 100%); height: calc(10 / var(--vbh) * 100%);
+  border-radius: 2px 2px 0 0; pointer-events: none; opacity: 0; transition: opacity 160ms ease-out;
+  background: linear-gradient(180deg, #2a2d2f, #4b5054); box-shadow: inset 0 0 0 1.5px #7d8489, 1px -1px 2px rgba(0, 0, 0, 0.4);
+}
+.cjp-under::after { content: ''; position: absolute; left: 3px; right: 3px; top: 25%; height: 35%; opacity: 0.7; background: repeating-linear-gradient(-45deg, #8f1b13 0 4px, #a8891a 4px 8px); }
+.cjp-guarded[data-open='true'] .cjp-lid { opacity: 0; transform: perspective(300px) rotateX(-80deg); }
+.cjp-guarded[data-open='true'] .cjp-under { opacity: 1; }
+.cjp-guarded .cjp-cover { left: 0; right: 0; top: 0; height: 100%; }
+.cjp-guarded[data-open='true'] .cjp-cover { height: calc(var(--band) / var(--vbh) * 100%); }
+.cjp-guarded .cjp-cover:active:not([aria-disabled='true']) { background: rgba(0, 0, 0, 0.1); }
+
+/* ---------------- start blocks */
+.cjp-apu, .cjp-gndair { display: flex; align-items: flex-end; justify-content: space-between; }
+.cjp-apu-start, .cjp-apu-ready { flex: none; }
+
+/* ---------------- PULL */
+.cjp-pull { aspect-ratio: var(--vbw) / var(--vbh); border-radius: 4px; }
+.cjp-pull-fill {
+  position: absolute; left: calc((var(--vbw) / 2 - 2) / var(--vbw) * 100%); width: calc(4 / var(--vbw) * 100%);
+  top: calc((var(--slot-top) + 8) / var(--vbh) * 100%); height: calc(40 / var(--vbh) * 100%);
+  border-radius: 2px; background: #ffb54a; box-shadow: 0 0 4px rgba(255, 181, 74, 0.8); transform-origin: 50% 0; transform: scaleY(var(--fill)); pointer-events: none;
+}
+.cjp-pull[data-phase='rest'] .cjp-pull-fill { opacity: 0; }
+.cjp .cjp-pull-grip { position: absolute; touch-action: none; transform: translateY(calc(var(--travel) / 44 * 100%)); }
+/* spring-back to rest only; while pulling the handle follows the finger 1:1 */
+.cjp-pull[data-phase='rest'] .cjp-pull-grip { transition: transform 140ms ease-out; }
+
+/* ---------------- QUICK START */
+.cjp-qs { border-radius: 4px; }
+.cjp-qs-guard { position: absolute; }
+.cjp-key { width: 100%; }
+
+/* ---------------- GPS: green bulb ~1 Hz soft cosine fade 35→100%, ACQ 50→100% lit in step. Never a strobe. */
+.cjp-gps-pulse { animation: cjp-gps-bulb 500ms cubic-bezier(0.37, 0, 0.63, 1) infinite alternate; }
+.cjp-acq-fill { fill: #8dffad; animation: cjp-gps-acq 500ms cubic-bezier(0.37, 0, 0.63, 1) infinite alternate; }
+.cjp-acq-halo { animation: cjp-gps-halo 500ms cubic-bezier(0.37, 0, 0.63, 1) infinite alternate; }
+@keyframes cjp-gps-bulb { from { opacity: 0.35; } to { opacity: 1; } }
+@keyframes cjp-gps-acq { from { fill: #88d99e; } to { fill: #8dffad; } }
+@keyframes cjp-gps-halo { from { opacity: 0.4; } to { opacity: 1; } }
+
+/* ---------------- RADAR + shared plate */
+.cjp-radar { border-radius: 4px; }
+.cjp-gpsradar { display: flex; align-items: stretch; }
+.cjp-gpsradar > div { flex: none; }
+.cjp-divider { flex: none; margin: 10% 0; background: #2a2e31; box-shadow: 1px 0 0 rgba(255, 255, 255, 0.12); }
+
+/* ---------------- bezel key */
+.cjp-bezel[data-inert] { cursor: default; }
+
+/* ---------------- switch shelf (fills the reflow board box) */
+.cjp-shelf { position: relative; display: block; width: 100%; height: 100%; container-type: size; container-name: cjp-shelf; }
+.cjp-shelf-panel {
+  position: absolute; inset: 0; display: flex; flex-direction: column; padding: var(--pad-top) var(--pad-x) var(--pad-bottom);
+  border-radius: 6px 6px 0 0; overflow: hidden;
+}
+.cjp-shelf[data-open='closed'] { visibility: hidden; transform: translateY(100%); }
+.cjp-shelf[data-open='opening'] { animation: cjp-shelf-up 300ms ease-out both; }
+@keyframes cjp-shelf-up { from { transform: translateY(100%); } to { transform: none; } }
+.cjp-shelf-hinge { position: absolute; left: 40px; right: 40px; top: 0; height: 6px; border-radius: 0 0 3px 3px; background: linear-gradient(180deg, #eef1f2 0%, #a3aaae 35%, #5b6266 75%, #2f3437 100%); box-shadow: 1px 2px 2px rgba(0, 0, 0, 0.55); }
+.cjp-shelf-hinge::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 10px, rgba(0, 0, 0, 0.45) 10px 11px); }
+.cjp-screw { position: absolute; width: 11px; height: 11px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e6e9eb, #8d9499 55%, #4a5054); box-shadow: 0 0 0 0.6px #2a2e31, 0.5px 0.8px 0 0.6px rgba(0, 0, 0, 0.45); }
+.cjp-screw::before, .cjp-screw::after { content: ''; position: absolute; left: 2.6px; right: 2.6px; top: 4.85px; height: 1.3px; border-radius: 1px; background: #2b3033; transform: rotate(20deg); }
+.cjp-screw::after { transform: rotate(110deg); }
+.cjp-screw[data-pos='tl'] { left: 6px; top: 10px; }
+.cjp-screw[data-pos='tr'] { right: 6px; top: 10px; }
+.cjp-screw[data-pos='bl'] { left: 6px; bottom: 6px; }
+.cjp-screw[data-pos='br'] { right: 6px; bottom: 6px; }
+.cjp-shelf-head { position: absolute; left: 24px; right: 24px; top: 9px; display: flex; align-items: center; gap: 12px; min-width: 0; white-space: nowrap; }
+.cjp-shelf-title { font-size: 12px; letter-spacing: 0.2em; }
+.cjp-anns { display: flex; gap: 8px; margin-left: 4px; overflow: hidden; }
+.cjp-shelf-rows { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: var(--row-gap); min-height: 0; }
+.cjp-shelf-row { display: flex; justify-content: center; align-items: flex-end; gap: var(--g-gap); }
+.cjp-group { position: relative; flex: none; padding: var(--g-pad-top) var(--g-pad-x) var(--g-pad-bottom); border-radius: 3px; box-shadow: inset 0 0 0 1.5px rgba(243, 241, 232, 0.75), inset 1px 1px 0 1.5px rgba(0, 0, 0, 0.45); }
+.cjp-group-title { position: absolute; left: 8px; top: -6px; padding: 0 5px; font-size: 11px; letter-spacing: 0.16em; background: #4a5055; }
+.cjp-group-cells { display: flex; align-items: flex-end; gap: var(--cell-gap); }
+.cjp-cell { flex: none; }
+
+/* engraved HTML legends (shelf header): recess shadow + faint warm backlight */
+.cjp-eng { color: #f3f1e8; text-shadow: -0.5px -0.5px 0 rgba(0, 0, 0, 0.7), 0 0 3px rgba(255, 246, 220, 0.3); letter-spacing: 0.06em; }
+.cjp-eng--amber { font-size: 11px; color: #ffc46a; text-shadow: -0.5px -0.5px 0 rgba(0, 0, 0, 0.7), 0 0 5px rgba(255, 181, 74, 0.5); }
+/* annunciator push-lights: square, metal rim, lit = steady */
+.cjp-ann {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 7px; border-radius: 2px; font-size: 11px; letter-spacing: 0.06em; white-space: nowrap;
+  background: linear-gradient(160deg, #23292b, #15191b); background-color: #1c2123; color: #aab4ba; box-shadow: 0 0 0 1.5px #101213, 0 0 0 3px #6f767b, inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.cjp-ann[data-tone='green'] { background: linear-gradient(160deg, #a6ffbf, #6ae58f); background-color: #88f2a7; color: #03100a; box-shadow: 0 0 0 1.5px #101213, 0 0 0 3px #6f767b, 0 0 10px 2px rgba(126, 247, 161, 0.45); }
+.cjp-ann[data-tone='amber'] { background: linear-gradient(160deg, #ffd08a, #f5a83a); background-color: #fabc62; color: #1a0e00; box-shadow: 0 0 0 1.5px #101213, 0 0 0 3px #6f767b, 0 0 10px 2px rgba(255, 181, 74, 0.45); }
+.cjp-ann[data-tone='white'] { background: linear-gradient(160deg, #fffdf6, #e9e4d6); background-color: #f4f0e6; color: #111; box-shadow: 0 0 0 1.5px #101213, 0 0 0 3px #6f767b, 0 0 10px 2px rgba(255, 250, 235, 0.4); }
+.cjp-ann[data-tone='red'] { background: linear-gradient(160deg, #ff8070, #d8372a); background-color: #ea5a4b; color: #1a0200; box-shadow: 0 0 0 1.5px #101213, 0 0 0 3px #6f767b, 0 0 10px 2px rgba(255, 90, 70, 0.45); }
+
+/* ---------------- Reduce Motion: everything static. GPS: green steady at half, ACQ steady lit. Shelf just appears. */
+@media (prefers-reduced-motion: reduce) {
+  .cjp-lid, .cjp-under, .cjp .cjp-pull-grip, .cjp-pull[data-phase='rest'] .cjp-pull-grip { transition: none; }
+  .cjp-shelf[data-open='opening'] { animation: none; transform: none; }
+  .cjp-gps-pulse { animation: none; opacity: 0.5; }
+  .cjp-acq-fill { animation: none; fill: #8dffad; }
+  .cjp-acq-halo { animation: none; opacity: 1; }
+}
+[data-rf-reduce-motion] .cjp-lid, [data-rf-reduce-motion] .cjp-under, [data-rf-reduce-motion] .cjp .cjp-pull-grip, [data-rf-reduce-motion] .cjp-pull[data-phase='rest'] .cjp-pull-grip { transition: none; }
+[data-rf-reduce-motion] .cjp-shelf[data-open='opening'] { animation: none; transform: none; }
+[data-rf-reduce-motion] .cjp-gps-pulse { animation: none; opacity: 0.5; }
+[data-rf-reduce-motion] .cjp-acq-fill { animation: none; fill: #8dffad; }
+[data-rf-reduce-motion] .cjp-acq-halo { animation: none; opacity: 1; }

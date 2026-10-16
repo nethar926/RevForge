@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carrier Jet · cold-start parts gallery (dev only)</title>
+    <style>
+      html, body { margin: 0; background: #0d0f10; color: #c7cec9; font: 600 14px 'Barlow Semi Condensed', system-ui, sans-serif; }
+      #root { display: inline-block; padding: 24px; }
+      .gal-h1 { margin: 0 0 4px; font: 700 26px 'B612', system-ui, sans-serif; letter-spacing: .14em; color: #f3f5f2; }
+      .gal-sub { margin: 0 0 18px; max-width: 1400px; }
+      .gal-sec { margin: 0 0 22px; padding: 14px 18px 18px; border: 1px solid #2a2f33; border-radius: 6px; background: #131618; }
+      .gal-sec > h2 { margin: 0 0 12px; font: 700 16px 'B612', system-ui, sans-serif; letter-spacing: .14em; color: #7ef7a1; }
+      .gal-row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; }
+      .gal-item { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+      .gal-cap { font: 700 12px 'B612', system-ui, sans-serif; letter-spacing: .08em; color: #c7cec9; white-space: nowrap; }
+      .gal-panel { position: relative; padding: 10px; border-radius: 4px; }
+      .gal-bank { display: flex; gap: 6px; align-items: stretch; padding: 6px 8px; background: #191c1e; border-top: 1px solid #000; box-shadow: inset 0 1px 0 #3b4247; }
+      .gal-slot { position: relative; outline: 1px dashed #3b4247; overflow: hidden; background: #0a0c0d; }
+      .gal-freeze-dim .cjp-gps-pulse, .gal-freeze-dim .cjp-acq-fill, .gal-freeze-dim .cjp-acq-halo { animation-play-state: paused; animation-delay: 0s; }
+      .gal-freeze-bright .cjp-gps-pulse, .gal-freeze-bright .cjp-acq-fill, .gal-freeze-bright .cjp-acq-halo { animation-play-state: paused; animation-delay: -499ms; }
+      .gal-freeze-mid .cjp-shelf[data-open='opening'] { animation-play-state: paused; animation-delay: -110ms; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./gallery.tsx"></script>
+  </body>
+</html>
