@@ -186,10 +186,10 @@ Our own short plain-words lists (not taken from any manual).
 4. Position lights and beacon on
 5. APU on, wait for steady hum
 6. Left fuel pump on, left ignition on
-7. Hold left engine start, throttle to idle when it turns
+7. Tap left engine start, throttle to idle when it turns
 8. Wait for left engine idle
 9. Right fuel pump on, right ignition on
-10. Hold right engine start, throttle to idle when it turns
+10. Tap right engine start, throttle to idle when it turns
 11. Wait for right engine idle
 12. APU off
 13. Hydraulics on, wait for pressure
@@ -217,11 +217,11 @@ Our own short plain-words lists (not taken from any manual).
 4. Position lights and beacon on
 5. Ground air on, wait for steady hiss
 6. Right fuel pump on, right ignition on
-7. Hold right engine start, throttle to idle when it turns
+7. Tap right engine start, throttle to idle when it turns
 8. Wait for right engine idle
 9. Crossbleed open
 10. Left fuel pump on, left ignition on
-11. Hold left engine start, throttle to idle when it turns
+11. Tap left engine start, throttle to idle when it turns
 12. Wait for left engine idle
 13. Crossbleed closed, ground air off
 14. Hydraulics on, wait for pressure
