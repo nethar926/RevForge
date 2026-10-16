@@ -51,6 +51,9 @@ export class CharacterEngine implements EngineSynth {
  getFlightPhase():JetFlightPhase|null{return this.base.getFlightPhase?.()??null;}
  setAfterburnerLaunch(launch:boolean):void{if(!this.disposed)this.base.setAfterburnerLaunch?.(launch);}
  getAfterburnerLaunch():boolean{return this.base.getAfterburnerLaunch?.()??false;}
+ setAutoLaunch(enabled:boolean):void{if(!this.disposed)this.base.setAutoLaunch?.(enabled);}
+ getAutoLaunch():boolean{return this.base.getAutoLaunch?.()??false;}
+ getLaunchActive():boolean{return this.base.getLaunchActive?.()??false;}
  playFlightCallout(id:JetCalloutId):JetCalloutResult{return this.disposed?'suppressed':(this.base.playFlightCallout?.(id)??'suppressed');}
  setCalloutMode(mode:JetCalloutMode|Partial<JetCalloutModes>):void{this.base.setCalloutMode?.(mode);}
  getCalloutMode():JetCalloutModes{return this.base.getCalloutMode?.()??{warning:'voice',caution:'tone'};}

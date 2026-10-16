@@ -429,6 +429,11 @@ export interface EngineSynth {
   /** Frontend's afterburnerLit: while true and armed, the afterburner is live at any speed. */
   setAfterburnerLaunch?(lit: boolean): void;
   getAfterburnerLaunch?(): boolean;
+  /** Built-in GPS-speed launch detector (~0.3 g over ~1 s while armed). Default on. */
+  setAutoLaunch?(enabled: boolean): void;
+  getAutoLaunch?(): boolean;
+  /** True while a launch is lighting the AB (armed only). */
+  getLaunchActive?(): boolean;
   /** Callout: voice (speechSynthesis) / tone / mechanical (gear); per-id cooldown, never stacked. */
   playFlightCallout?(id: JetCalloutId): JetCalloutResult;
   /** String: 'voice' (warnings speak, cautions tone unless setCautionVoice(true)) | 'tone' | 'off'; or per level. */

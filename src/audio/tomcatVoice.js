@@ -404,6 +404,61 @@ export function tomcatSetAfterburnerLaunch(state, launch) {
   return true;
 }
 
+/* ── carrier-launch detector (GPS speed only; the Tesla browser has no accelerometer) ── */
+
+/** ≈0.3 g (mph gained per second) held ≥ TC_LAUNCH_HOLD_S → launch; < ≈0.15 g for TC_LAUNCH_DROP_S → off. */
+export const TC_LAUNCH_ON_MPHS = 6.7;
+export const TC_LAUNCH_OFF_MPHS = 3.4;
+export const TC_LAUNCH_HOLD_S = 1.0;
+export const TC_LAUNCH_DROP_S = 2.0;
+/** Look-back window for the speed slope; ~1 s matches the car's ~1 Hz GPS fixes. */
+export const TC_LAUNCH_WINDOW_S = 1.0;
+
+export function createLaunchDetector() {
+  return { t: 0, hist: [], on: false, holdFrom: -1, dropFrom: -1, accel: 0 };
+}
+
+/** Clear the detector (disarm, disable, pack change). */
+export function resetLaunchDetector(det) {
+  det.t = 0; det.hist.length = 0; det.on = false; det.holdFrom = -1; det.dropFrom = -1; det.accel = 0;
+}
+
+/**
+ * One step at absolute time nowS (seconds, monotonic). speedNorm is DrivingInput.speed
+ * (0..1 of TC_SPEED_FULL_MPH). Works whether the caller sends raw ~1 Hz fixes or eased speed
+ * every frame, and however often it is stepped. Returns whether a launch is active.
+ */
+export function stepLaunchDetector(det, speedNorm, nowS) {
+  const t = num(nowS, det.t);
+  if (t < det.t) resetLaunchDetector(det);
+  det.t = t;
+  const mph = clip(num(speedNorm, 0)) * TC_SPEED_FULL_MPH;
+  const last = det.hist[det.hist.length - 1];
+  if (!last || last[1] !== mph || t - last[0] >= 0.04) det.hist.push([t, mph]);
+  while (det.hist.length > 2 && det.hist[1][0] <= t - TC_LAUNCH_WINDOW_S) det.hist.shift();
+  if (det.hist.length > 1 && t - det.hist[0][0] > 3) det.hist.splice(0, det.hist.length - 1);
+  const W = TC_LAUNCH_WINDOW_S;
+  const [t0, v0] = det.hist[0];
+  let vBack = v0;
+  if (det.hist.length > 1 && t0 < t - W) {
+    // speed exactly one window ago (between the two oldest samples), so step cadence adds no jitter
+    const [t1, v1] = det.hist[1];
+    vBack = v0 + (v1 - v0) * Math.min(1, (t - W - t0) / Math.max(1e-6, t1 - t0));
+  }
+  const span = t - t0;
+  det.accel = span >= W * 0.5 ? (mph - vBack) / Math.min(span, W) : 0;
+  if (!det.on) {
+    if (det.accel >= TC_LAUNCH_ON_MPHS) {
+      if (det.holdFrom < 0) det.holdFrom = t;
+      if (t - det.holdFrom >= TC_LAUNCH_HOLD_S) { det.on = true; det.dropFrom = -1; }
+    } else det.holdFrom = -1;
+  } else if (det.accel < TC_LAUNCH_OFF_MPHS) {
+    if (det.dropFrom < 0) det.dropFrom = t;
+    if (t - det.dropFrom >= TC_LAUNCH_DROP_S) { det.on = false; det.holdFrom = -1; }
+  } else det.dropFrom = -1;
+  return det.on;
+}
+
 /* ── flight phases (Frontend detects them; audio only shapes the thrust it hears) ── */
 
 export const TC_FLIGHT_PHASES = ['TAXI', 'TAKEOFF_ROLL', 'AIRBORNE', 'APPROACH', 'ROLLOUT', 'TOUCH_AND_GO'];

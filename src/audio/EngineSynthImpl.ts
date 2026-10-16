@@ -97,6 +97,9 @@ import {
   tomcatPhaseInput,
   tomcatSetAbSpeeds,
   tomcatSetAfterburnerLaunch,
+  createLaunchDetector,
+  resetLaunchDetector,
+  stepLaunchDetector,
   TC_AB_DISENGAGE_MPH,
   TC_AB_ENGAGE_MPH,
   TC_FLIGHT_PHASES,
@@ -390,6 +393,10 @@ export class EngineSynthImpl implements EngineSynth {
   /** setAfterburnerLaunch(afterburnerLit) and setFlightPhase info.launch, kept apart (OR'd into the drive). */
   private abLaunch = false;
   private flightLaunch = false;
+  /** Built-in carrier-launch detector from GPS speed (on by default; only acts while AB is armed). */
+  private autoLaunchEnabled = true;
+  private autoLaunch = false;
+  private launchDet = createLaunchDetector();
   private speedCfg: AudioSpeedConfig = { abEngageMph: TC_AB_ENGAGE_MPH, abDisengageMph: TC_AB_DISENGAGE_MPH };
   private callouts = new FlightCallouts({
     now: () => this.context.currentTime,
@@ -2434,7 +2441,13 @@ export class EngineSynthImpl implements EngineSynth {
       if (shaped.fast) stepParams = { ...this.params, tcSpoolTime: 0, spoolInertia: 0 };
     }
     tomcatSetAbSpeeds(this.tcState, this.speedCfg.abEngageMph, this.speedCfg.abDisengageMph);
-    tomcatSetAfterburnerLaunch(this.tcState, this.abLaunch || this.flightLaunch);
+    if (this.autoLaunchEnabled && this.tcState.abArmed) {
+      this.autoLaunch = stepLaunchDetector(this.launchDet, input.speed, nowMs / 1000);
+    } else if (this.autoLaunch || this.launchDet.t) {
+      resetLaunchDetector(this.launchDet);
+      this.autoLaunch = false;
+    }
+    tomcatSetAfterburnerLaunch(this.tcState, this.abLaunch || this.flightLaunch || this.autoLaunch);
     const jv = this.g.jetVoice;
     const cold = !!jv && (this.jetColdEnabled || this.jetActive());
     if (cold) this.advanceJetQueue(dt);
@@ -2486,7 +2499,8 @@ export class EngineSynthImpl implements EngineSynth {
     if (this.tcSettleTimer) clearTimeout(this.tcSettleTimer);
     this.tcSettleTimer = null;
     const live = this.started || drv.phase === 'shutdown' || drv.phase === 'starting' || (cold && this.jetActive());
-    if (!drv.settled && live && !this.disposed) {
+    // an active launch keeps stepping so the detector can time its drop-out even if speed stops updating
+    if ((!drv.settled || (this.autoLaunch && this.started)) && live && !this.disposed) {
       this.tcSettleTimer = setTimeout(() => {
         this.tcSettleTimer = null;
         if (!this.disposed && this.g.tcVoice) this.applyTomcatDriving(this.driving, false);
@@ -2621,6 +2635,23 @@ export class EngineSynthImpl implements EngineSynth {
 
   getAfterburnerLaunch(): boolean {
     return this.abLaunch;
+  }
+
+  /** Built-in launch detector (hard GPS acceleration while armed lights thrust + AB at any speed). Default on. */
+  setAutoLaunch(enabled: boolean): void {
+    if (this.disposed || this.autoLaunchEnabled === !!enabled) return;
+    this.autoLaunchEnabled = !!enabled;
+    if (!enabled) { resetLaunchDetector(this.launchDet); this.autoLaunch = false; }
+    this.kickJet();
+  }
+
+  getAutoLaunch(): boolean {
+    return this.autoLaunchEnabled;
+  }
+
+  /** True while any launch (detected, setAfterburnerLaunch, or flight-phase) is lighting the AB. For the AB lamp. */
+  getLaunchActive(): boolean {
+    return !!this.tcState.abArmed && (this.abLaunch || this.flightLaunch || this.autoLaunch);
   }
 
   playFlightCallout(id: JetCalloutId): JetCalloutResult {
