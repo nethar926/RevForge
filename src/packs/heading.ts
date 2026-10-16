@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { latestGpsFix, subscribeGpsFixes, type GpsFix } from '../hooks/gpsFixes.ts';
 import { storageKey } from '../lib/storageKey.ts';
 import type { RfLayout } from './layout.ts';
@@ -148,19 +148,28 @@ export function shouldEmit(shown: number | undefined, next: number | undefined):
   return Math.round(normDeg(next)) % 360 !== Math.round(normDeg(shown)) % 360;
 }
 
-// ------------------------------------------------------------------ React hook
+// ------------------------------------------------------------------ device compass permission (iOS)
 
 export const COMPASS_PREF_KEY = 'revforge.compass';
-type CompassPref = 'granted' | 'denied' | null;
+/** Saved user choice: granted (use it), denied (iOS refused; tap retries), off (user switched it off). */
+export type CompassPref = 'granted' | 'denied' | 'off' | null;
+export type CompassSwitchState = 'off' | 'on' | 'denied';
+
+/** COMPASS switch state from the saved choice + whether iOS granted it this session (pure). */
+export function compassSwitchState(pref: CompassPref, granted: boolean): CompassSwitchState {
+  if (pref === 'denied') return 'denied';
+  return pref === 'granted' && granted ? 'on' : 'off';
+}
+
 function readPref(): CompassPref {
   try {
     const v = localStorage.getItem(storageKey(COMPASS_PREF_KEY));
-    return v === 'granted' || v === 'denied' ? v : null;
+    return v === 'granted' || v === 'denied' || v === 'off' ? v : null;
   } catch {
     return null;
   }
 }
-function writePref(v: 'granted' | 'denied') {
+function writePref(v: Exclude<CompassPref, null>) {
   try {
     localStorage.setItem(storageKey(COMPASS_PREF_KEY), v);
   } catch {
@@ -173,7 +182,7 @@ type PermissionFn = () => Promise<'granted' | 'denied' | 'default' | string>;
  * iOS 13+: DeviceOrientationEvent.requestPermission. Chromium (153+, so Android Chrome too) now
  * also exposes requestPermission, so iOS is identified by requestPermission AND WebKit's
  * webkitCompassHeading attribute on the event prototype; Android keeps the absolute-alpha path
- * and never sees the button.
+ * and never sees the switch.
  */
 function iosPermissionFn(): PermissionFn | null {
   if (typeof window === 'undefined' || typeof DeviceOrientationEvent === 'undefined') return null;
@@ -181,7 +190,80 @@ function iosPermissionFn(): PermissionFn | null {
   if (typeof fn !== 'function' || !('webkitCompassHeading' in DeviceOrientationEvent.prototype)) return null;
   return fn.bind(DeviceOrientationEvent);
 }
-const isPhoneLayout = (l: RfLayout) => l === 'portrait' || l === 'phone-landscape';
+export const isPhoneLayout = (l: RfLayout) => l === 'portrait' || l === 'phone-landscape';
+/** The COMPASS switch exists only where the iOS permission flow exists, in the phone layouts (as 81f7c40). */
+export const compassFlowAvailable = (layout: RfLayout) => isPhoneLayout(layout) && iosPermissionFn() !== null;
+
+/**
+ * Shared compass permission store: the CJ switch row (COMPASS) and useHeading read the same state.
+ * Taps run requestPermission from the user gesture; a saved 'granted' is re-requested silently
+ * once (iOS may want a fresh gesture: then the switch shows off until tapped).
+ */
+interface CompassSnap { pref: CompassPref; granted: boolean; state: CompassSwitchState }
+let cPref: CompassPref | undefined;
+let cGranted = false;
+let cSnap: CompassSnap | null = null;
+let silentTried = false;
+const cListeners = new Set<() => void>();
+function cPublish() {
+  cSnap = null;
+  for (const l of [...cListeners]) l();
+}
+export function getCompassSnapshot(): CompassSnap {
+  if (cPref === undefined) cPref = readPref();
+  if (!cSnap) cSnap = { pref: cPref, granted: cGranted, state: compassSwitchState(cPref, cGranted) };
+  return cSnap;
+}
+export function subscribeCompass(l: () => void): () => void {
+  cListeners.add(l);
+  getCompassSnapshot();
+  if (!silentTried && cPref === 'granted' && !cGranted) {
+    const fn = iosPermissionFn();
+    if (fn) {
+      silentTried = true;
+      fn().then(
+        (r) => {
+          if (r === 'granted' && cPref === 'granted') {
+            cGranted = true;
+            cPublish();
+          }
+        },
+        () => {
+          /* needs a gesture: stays off until tapped */
+        },
+      );
+    }
+  }
+  return () => {
+    cListeners.delete(l);
+  };
+}
+/** COMPASS switch tap (user gesture). on → off; off / denied → requestPermission (retry allowed). */
+export function toggleCompass(): void {
+  getCompassSnapshot();
+  if (cPref === 'granted' && cGranted) {
+    cPref = 'off';
+    cGranted = false;
+    writePref('off');
+    cPublish();
+    return;
+  }
+  const fn = iosPermissionFn();
+  if (!fn) return;
+  fn().then(
+    (r) => {
+      const next = r === 'granted' ? 'granted' : 'denied';
+      cPref = next;
+      cGranted = next === 'granted';
+      writePref(next);
+      cPublish();
+    },
+    () => {
+      /* no gesture / error: state unchanged, the user can tap again */
+    },
+  );
+}
+
 /** Screen rotation (deg) so the heading is that of the screen's "up" in landscape. */
 function screenAngle(): number {
   try {
@@ -194,20 +276,14 @@ function screenAngle(): number {
   return finite(w) ? w : 0;
 }
 
-export interface HeadingState {
-  /** Degrees [0, 360) or undefined until the first value (then held). */
-  heading: number | undefined;
-  /** Show the "Allow compass" button (iOS requestPermission exists, phone layout, not yet decided). */
-  compassPrompt: boolean;
-  /** Ask iOS for compass access (must run from a user gesture). */
-  allowCompass: () => void;
-}
+// ------------------------------------------------------------------ React hook
 
 /**
  * Heading for a pack mount. GPS fixes come from the app's existing watch (no second watch);
- * the device compass is only touched in the phone layouts.
+ * the device compass is only touched in the phone layouts (iOS once the COMPASS switch granted it,
+ * Android when absolute-orientation events really carry alpha).
  */
-export function useHeading(layout: RfLayout): HeadingState {
+export function useHeading(layout: RfLayout): { heading: number | undefined } {
   const fusion = useRef<HeadingFusion | null>(null);
   if (!fusion.current) fusion.current = new HeadingFusion();
   const [heading, setHeading] = useState<number | undefined>(undefined);
@@ -247,9 +323,9 @@ export function useHeading(layout: RfLayout): HeadingState {
 
   // Compass (phones only).
   const phone = isPhoneLayout(layout);
-  const [pref, setPref] = useState<CompassPref>(readPref);
-  const [iosOn, setIosOn] = useState(false);
   const hasPerm = phone && iosPermissionFn() !== null;
+  const compass = useSyncExternalStore(subscribeCompass, getCompassSnapshot, getCompassSnapshot);
+  const iosOn = hasPerm && compass.state === 'on';
 
   const onReading = useCallback(
     (deg: number) => {
@@ -277,54 +353,16 @@ export function useHeading(layout: RfLayout): HeadingState {
     return () => window.removeEventListener('deviceorientationabsolute', on);
   }, [phone, hasPerm, onReading]);
 
-  // iOS: webkitCompassHeading once permission is granted.
+  // iOS: webkitCompassHeading while the COMPASS switch is on.
   useEffect(() => {
-    if (!phone || !iosOn) return;
+    if (!iosOn) return;
     const on = (e: Event) => {
       const ev = e as DeviceOrientationEvent & { webkitCompassHeading?: number; webkitCompassAccuracy?: number };
       if (finite(ev.webkitCompassHeading) && !(finite(ev.webkitCompassAccuracy) && ev.webkitCompassAccuracy < 0)) onReading(ev.webkitCompassHeading);
     };
     window.addEventListener('deviceorientation', on);
     return () => window.removeEventListener('deviceorientation', on);
-  }, [phone, iosOn, onReading]);
-
-  // Previously granted: re-request silently; if iOS wants a fresh gesture, the button returns.
-  const [retry, setRetry] = useState(false);
-  useEffect(() => {
-    const fn = hasPerm ? iosPermissionFn() : null;
-    if (!fn || pref !== 'granted' || iosOn) return;
-    let live = true;
-    fn().then(
-      (r) => {
-        if (!live) return;
-        if (r === 'granted') setIosOn(true);
-        else setRetry(true);
-      },
-      () => {
-        if (live) setRetry(true);
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [hasPerm, pref, iosOn]);
-
-  const allowCompass = useCallback(() => {
-    const fn = iosPermissionFn();
-    if (!fn) return;
-    fn().then(
-      (r) => {
-        const next = r === 'granted' ? 'granted' : 'denied';
-        writePref(next);
-        setPref(next);
-        setRetry(false);
-        if (next === 'granted') setIosOn(true);
-      },
-      () => {
-        /* no gesture / error: keep the button so the user can try again */
-      },
-    );
-  }, []);
+  }, [iosOn, onReading]);
 
   useEffect(
     () => () => {
@@ -334,6 +372,5 @@ export function useHeading(layout: RfLayout): HeadingState {
     [],
   );
 
-  const compassPrompt = hasPerm && !iosOn && (pref === null || (pref === 'granted' && retry));
-  return { heading, compassPrompt, allowCompass };
+  return { heading };
 }

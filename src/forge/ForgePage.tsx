@@ -14,6 +14,9 @@ import {
   type PointerEvent,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { CjNavRow } from "../packs/mounts/CjNavRow";
+import { currentCjPage, isDrivePanel, type CjNavAction, type DrivePanel } from "../packs/carrier-jet.nav";
+import CARRIER_JET_IDENTITY from "../packs/carrier-jet.identity";
 import { BUILTIN_PATCHES, getBuiltin } from "../audio";
 import { isEngineIdVisible, packForThemeId, resolveVisibleEnginePatch } from "../packs/registry";
 import { connectPackAudio } from "../packs/audioBridge";
@@ -120,7 +123,7 @@ export function ForgePage({
   const theme = themeForId(themes.skinId);
   const [panel, setPanel] = useState<
     "tuner" | "themes" | "scenes" | "garage" | "tune" | "studio" | "dashlab" | "account" | null
-  >(() => (searchParams.get("account") === "1" || new URLSearchParams(window.location.search).get("account") === "1") ? "account" : searchParams.get("studio") === "1" ? "studio" : null);
+  >(() => (searchParams.get("account") === "1" || new URLSearchParams(window.location.search).get("account") === "1") ? "account" : searchParams.get("studio") === "1" ? "studio" : isDrivePanel(searchParams.get("panel")) ? searchParams.get("panel") as DrivePanel : null);
   const [ignited,setIgnited]=useState(false);
   const [scale,setScale]=useState(()=>{try{return Math.max(.65,Math.min(1.35,Number(localStorage.getItem(storageKey("revforge.hudScale"))??1)));}catch{return 1;}});
   const opacity = prefs.hudOpacity;
@@ -311,6 +314,9 @@ export function ForgePage({
   // Catalogue trim: RoadView scenes and the DashLab custom grid are hidden unless allowlisted.
   const atmospheresListed=LISTED_THEMES.some(t=>t.family==='RoadView');
   const dashLabListed=isThemeListed('custom-grid');
+  // Carrier Jet pack (after IGNITION; the splash keeps Tuner): Visual Skins' switch row replaces the Tuner button.
+  const cjNav=ignited&&packForThemeId(theme.id)?.id===CARRIER_JET_IDENTITY.id;
+  const onCjNav=(a:CjNavAction)=>{if(a.type==='route')navigate(a.to);else if(a.type==='panel')setPanel(a.panel);else if(a.type==='drive')setPanel(null);else if(a.type==='mute')update({masterMuted:!prefs.masterMuted});};
   const panelTitle=panel==='tuner'?'TUNE':panel==='tune'?'Options':panel==='themes'||panel==='scenes'?'Visuals':panel==='garage'?'Revs':panel==='account'?'Account':'Lab';
   return (
     <div
@@ -321,7 +327,7 @@ export function ForgePage({
         <section className="rev-scene" aria-label="Full-screen dashboard">
           <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={()=>audio.triggerUiCue('time-jump')} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
         </section>
-        <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{garage.active?.name??theme.name}</small>}</div><button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button></header>
+        <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{garage.active?.name??theme.name}</small>}</div>{cjNav?<CjNavRow current={currentCjPage('/drive',panel)} muted={prefs.masterMuted} labPanel={dashLabListed?'dashlab':'studio'} onAction={onCjNav}/>:<button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button>}</header>
         {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>
           {source==='demo'&&<label className="rev-throttle">Throttle <span>{Math.round(pedal*100)}%</span><input aria-label="Throttle" type="range" min="0" max="1" step=".01" disabled={!revReady} value={pedal} onChange={e=>setPedal(Number(e.target.value))}/></label>}
           <footer className="rev-dock" aria-label="Drive controls">

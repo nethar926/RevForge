@@ -137,7 +137,11 @@ export function readPackEnvelope(): number | undefined {
  * audioBridge forwards them to the live engine with optional chaining, so a
  * stock engine without the hooks simply ignores them.
  * ------------------------------------------------------------------------ */
-export type PackEngineCommand = { type: 'charge'; level: number } | { type: 'discharge' };
+export type PackEngineCommand =
+  | { type: 'charge'; level: number }
+  | { type: 'discharge' }
+  /** Carrier Jet ARM switch → engine.setAfterburnerArmed (Tomcat; no-op elsewhere). */
+  | { type: 'ab-armed'; armed: boolean };
 type EngineCommandListener = (packId: string, cmd: PackEngineCommand) => void;
 const engineCommandListeners = new Set<EngineCommandListener>();
 

@@ -1,6 +1,7 @@
 import type { EngineParams, EngineSynth } from '../audio/types';
 import { NIGHT_PURSUIT_ID } from './migrations';
 import type { PackIdentity } from './types';
+import { applySavedAbArmed } from './abArmed';
 import { getPackMode, onPackEngineCommand, onPackMode, onScannerPass, setPackAbZoneSource, setPackEnvelopeSource, type PackMode, type ScannerEdge } from './runtime';
 
 /**
@@ -23,6 +24,8 @@ export interface PackAudioHooks {
   getAfterburnerZone?(): number;
   /** Jet engines: zone change subscription; returns an unsubscribe. */
   onAfterburnerZoneChange?(listener: () => void): (() => void) | void;
+  /** Tomcat: Frontend ARM switch (default armed; engine stores nothing). */
+  setAfterburnerArmed?(armed: boolean): void;
 }
 
 type PackEngine = EngineSynth & PackAudioHooks;
@@ -71,12 +74,19 @@ export function connectPackAudio(getEngine: () => EngineSynth | null, engineId: 
       if (!e) return;
       if (cmd.type === 'charge') e.setChargeLevel?.(Math.max(0, Math.min(1, cmd.level)));
       else if (cmd.type === 'discharge' && e.getDiag().running) e.triggerDischarge?.();
+      else if (cmd.type === 'ab-armed') e.setAfterburnerArmed?.(cmd.armed);
     } catch {
       /* engine not ready */
     }
   });
   // Afterburner zone (any engine that has both methods; feature-detected, else HUDs derive it).
   const live = eng();
+  // Carrier Jet ARM switch: re-apply the saved choice to each live engine; no saved value → no call.
+  try {
+    applySavedAbArmed(live);
+  } catch {
+    /* engine not ready */
+  }
   if (live && typeof live.getAfterburnerZone === 'function' && typeof live.onAfterburnerZoneChange === 'function') {
     setPackAbZoneSource({ get: () => live.getAfterburnerZone?.(), subscribe: (cb) => live.onAfterburnerZoneChange?.(cb) });
   } else {

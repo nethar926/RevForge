@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { HamburgerMenu } from './NavBar';
+import { CjNavRow } from '../packs/mounts/CjNavRow';
+import { currentCjPage, type CjNavAction } from '../packs/carrier-jet.nav';
 import type { UiPrefs } from '../hooks/useUiPrefs';
 
 interface Props {
@@ -9,9 +11,20 @@ interface Props {
   running: boolean;
   onMuteToggle: () => void;
   skinId?: string;
+  /** Carrier Jet pack active: its switch row replaces the ☰ button (same destinations, same mute state). */
+  cjNav?: boolean;
 }
 
-export function AppShell({ prefs, engineName, running, onMuteToggle, skinId = 'default' }: Props) {
+export function AppShell({ prefs, engineName, running, onMuteToggle, skinId = 'default', cjNav = false }: Props) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Drive-only destinations (Tuner panels) open on arrival via /drive?panel=<id>.
+  const onCjNav = (a: CjNavAction) => {
+    if (a.type === 'route') navigate(a.to);
+    else if (a.type === 'panel') navigate(`/drive?panel=${a.panel}`);
+    else if (a.type === 'drive') navigate('/drive');
+    else if (a.type === 'mute') onMuteToggle();
+  };
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const speedScript = skinId === 'ion-twin' ? prefs.ionTwinSpeedScript : undefined;
@@ -24,18 +37,20 @@ export function AppShell({ prefs, engineName, running, onMuteToggle, skinId = 'd
     >
       <header className="top-chrome">
         <div className="chrome-leading">
-          <button
-            type="button"
-            className="hamburger-btn"
-            aria-label="Open menu"
-            aria-expanded={menuOpen}
-            aria-controls="revforge-menu"
-            onClick={() => setMenuOpen(true)}
-          >
-            <span className="hamburger-glyph" aria-hidden="true">
-              ☰
-            </span>
-          </button>
+          {!cjNav && (
+            <button
+              type="button"
+              className="hamburger-btn"
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+              aria-controls="revforge-menu"
+              onClick={() => setMenuOpen(true)}
+            >
+              <span className="hamburger-glyph" aria-hidden="true">
+                ☰
+              </span>
+            </button>
+          )}
           <div className="brand">
             <span className="brand-mark">RF</span>
             <div>
@@ -53,6 +68,7 @@ export function AppShell({ prefs, engineName, running, onMuteToggle, skinId = 'd
             </div>
           </div>
         </div>
+        {cjNav && <CjNavRow current={currentCjPage(location.pathname, null)} muted={prefs.masterMuted} onAction={onCjNav} />}
         <div className="chrome-actions">
           <button
             type="button"

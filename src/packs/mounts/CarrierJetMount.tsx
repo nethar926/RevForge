@@ -1,13 +1,15 @@
-import { useSyncExternalStore, type CSSProperties } from 'react';
-import { CarrierJetHud } from '../../skins/carrier-jet';
+import { useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { CarrierJetAfterburnerGuard, CarrierJetHud } from '../../skins/carrier-jet';
 import ID from '../carrier-jet.identity';
-import { readPackAbZone, subscribePackAbZone } from '../runtime';
+import { readPackAbZone, sendPackEngineCommand, subscribePackAbZone } from '../runtime';
+import { getAbArmed, setAbArmed, subscribeAbArmed } from '../abArmed';
 import type { PackHudProps } from '../types';
 import { useFitBox } from './useFitBox';
 import { useRfLayout } from '../layout';
 import { useHeading } from '../heading';
 import './pack-fit.css';
 import './carrier-jet-mount.css';
+import './carrier-jet-controls.css';
 
 /**
  * Framework adapter: ThemeStage telemetry → Visual Skins' Carrier Jet HUD.
@@ -31,8 +33,11 @@ import './carrier-jet-mount.css';
  * derives the zone from load, then throttle.
  * heading (packs/heading.ts): GPS course from the app's one geolocation watch (coords.heading, else
  * the two-fix bearing), or the phone compass while it reports fresh data; held once known, throttled
- * (≤ 4 Hz, ≥ 1°). The iOS-only "Allow compass" button appears in the phone layouts only — Tesla /
- * desktop render nothing new (no sensors, no requestPermission) and keep '---' until a GPS fix.
+ * (≤ 4 Hz, ≥ 1°). iOS compass permission is the COMPASS switch in the CJ switch row (CjNavRow).
+ * Afterburner guard (Visual Skins' CarrierJetAfterburnerGuard): guardOpen is UI state (closed on load);
+ * ARM persists (packs/abArmed.ts) and goes to the engine as an 'ab-armed' pack engine command, the same
+ * runtime bus the AB zone comes back on. Sits under the FLIGHT column (Tesla / desktop) or in a strip
+ * at the bottom of the board's box (phones) — carrier-jet-controls.css.
  */
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
@@ -44,7 +49,14 @@ export function CarrierJetMount(props: PackHudProps) {
   // the skin's 'auto' size threshold swaps in the essential layout). Elsewhere an explicit host
   // request forces compact, otherwise the skin decides from its own size (full at 1280×800).
   const compact: boolean | 'auto' = fullBoard ? false : props.compact === true ? true : 'auto';
-  const { heading, compassPrompt, allowCompass } = useHeading(layout);
+  const { heading } = useHeading(layout);
+  const armed = useSyncExternalStore(subscribeAbArmed, getAbArmed, getAbArmed);
+  const [guardOpen, setGuardOpen] = useState(false);
+  const onArm = () => {
+    const next = !armed;
+    setAbArmed(next);
+    sendPackEngineCommand(ID.id, { type: 'ab-armed', armed: next });
+  };
   return (
     <div
       ref={ref}
@@ -57,11 +69,9 @@ export function CarrierJetMount(props: PackHudProps) {
       <div className="cjm-fill">
         <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={heading} />
       </div>
-      {compassPrompt && (
-        <button type="button" className="cjm-compass" aria-label="Allow compass for heading" onClick={allowCompass}>
-          Allow compass
-        </button>
-      )}
+      <div className="cjm-ab">
+        <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} />
+      </div>
     </div>
   );
 }

@@ -15,7 +15,8 @@ import { EnginesPage } from "../pages/EnginesPage";
 import type { EnginePatch } from "../audio";
 import { getBuiltin } from "../audio";
 import { skinIdForEngine } from "../skins/DriveSkinSlot";
-import { packForEngineId, resolveVisibleEnginePatch } from "../packs/registry";
+import { packForEngineId, packForThemeId, resolveVisibleEnginePatch } from "../packs/registry";
+import CARRIER_JET from "../packs/carrier-jet.identity";
 import { FALLBACK_ENGINE_ID } from "../themes/visibility";
 
 export default function App() {
@@ -113,6 +114,7 @@ export default function App() {
             running={audio.running}
             onMuteToggle={onMuteToggle}
             skinId={skinIdForEngine(audio.engineId || prefs.selectedEngineId)}
+            cjNav={packForThemeId(themes.skinId)?.id === CARRIER_JET.id}
           />
         }
       >

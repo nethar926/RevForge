@@ -148,7 +148,7 @@ test('wiring: CJ mount passes heading; useGeolocation calls getCurrentPosition b
   const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
   assert.match(mount, /useHeading\(layout\)/);
   assert.match(mount, /<CarrierJetHud[^>]*heading=\{heading\}/);
-  assert.match(mount, /aria-label="Allow compass/);
+  assert.doesNotMatch(mount, /Allow compass/, "the overlay button is gone: iOS permission is the COMPASS switch (CjNavRow)");
   const geo = readFileSync(new URL('../src/hooks/useGeolocation.ts', import.meta.url), 'utf8');
   assert.match(geo, /startGeolocation\(geo, onFix, onError, options\)/, 'start sequence lives in geoStart.ts (tests/geo-start.test.ts)');
   assert.doesNotMatch(geo, /watchPosition\(|getCurrentPosition\(/, 'no direct geolocation calls besides geoStart');
