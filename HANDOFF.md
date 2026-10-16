@@ -1,0 +1,3 @@
+CJ v2 board (preview build only, FEATURES.cjV2 via VITE_PREVIEW_PACK=carrier-jet): Board 2 + guard-left bank + GPS/RADAR plate + ACCEL/MAP/radar + edge keys + table-driven CONFIG (src/packs/configTable.ts, Meghan's MAP.md); root build behaviour unchanged.
+Hidden in the CJ preview: Sound Builder, Pro Builder, Lab, Account, GARAGE (src/features.ts; menus/routes/deep links → Drive; data untouched). Gates/shots/config-map: /workspace/frontend-handoff/cj-v2-board/.
+Open: map data/returns (empty scope, no tile fetching), engine hooks for callouts/prefs/start mode (guarded no-ops until Dan's audio), phone extras, Meghan's gallery.tsx 'CARRIER JET' string fails her renames test.
