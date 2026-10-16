@@ -29,6 +29,10 @@ export class CharacterEngine implements EngineSynth {
  getAfterburnerZone():number{return this.disposed?0:(this.base.getAfterburnerZone?.()??0);}
  /** Tomcat: subscribe to AB zone changes; returns an unsubscribe. Safe no-op subscription on other packs. */
  onAfterburnerZoneChange(cb:(zone:number)=>void):()=>void{return this.base.onAfterburnerZoneChange?.(cb)??(()=>undefined);}
+ /** Tomcat: arm / disarm AB (Frontend switch). Default armed; no-op on other packs / disposed. */
+ setAfterburnerArmed(armed:boolean):void{if(!this.disposed)this.base.setAfterburnerArmed?.(armed);}
+ /** Tomcat: whether AB is armed (default true). true on other packs / disposed. */
+ getAfterburnerArmed():boolean{return this.disposed?true:(this.base.getAfterburnerArmed?.()??true);}
  scannerTick(edge:ScannerEdge='right'):void{if(!this.disposed&&this.running)this.base.scannerTick?.(edge);}
  setPursuitBoost(amount:number):void{const v=Math.max(0,Math.min(1,Number.isFinite(amount)?amount:0));if(typeof this.base.setPursuitBoost==='function')this.base.setPursuitBoost(v);else this.base.setParams({pursuitBoost:v});}
  /** Chrono Coupe charge 0..1 — forwarded (base ignores it on other packs). Safe when stopped. */

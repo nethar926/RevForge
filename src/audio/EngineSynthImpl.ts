@@ -71,6 +71,7 @@ import {
   stepTomcatDrive,
   tomcatBeginShutdown,
   tomcatBeginStart,
+  tomcatSetAfterburnerArmed,
   tomcatSetRunning,
   type TomcatDrive,
 } from './tomcatVoice';
@@ -2328,12 +2329,16 @@ export class EngineSynthImpl implements EngineSynth {
     else if (drv.phase === 'starting' || Math.abs(drv.rate) > 0.06) this.driveMood = 'spooling';
     else if (drv.spool < 0.08 && drv.speed < 0.04) this.driveMood = 'idle';
     else this.driveMood = 'cruise';
-    // One notification per zone step, even when a long frame moved several zones at once
-    for (const ev of drv.events) {
-      if (ev.type === 'abLight') this.notifyTomcatZone(ev.zone);
-      else if (ev.type === 'abDestage') this.notifyTomcatZone(ev.zone - 1);
+    // One notification per zone step, even when a long frame moved several zones at once.
+    // While disarmed the getter already reports 0 (notified once on setAfterburnerArmed(false));
+    // skip destage chatter so the callback fires exactly once for a disarm.
+    if (this.tcState.abArmed) {
+      for (const ev of drv.events) {
+        if (ev.type === 'abLight') this.notifyTomcatZone(ev.zone);
+        else if (ev.type === 'abDestage') this.notifyTomcatZone(ev.zone - 1);
+      }
+      this.notifyTomcatZone(drv.abZone);
     }
-    this.notifyTomcatZone(drv.abZone);
     if (this.tcSettleTimer) clearTimeout(this.tcSettleTimer);
     this.tcSettleTimer = null;
     const live = this.started || drv.phase === 'shutdown' || drv.phase === 'starting';
@@ -2362,7 +2367,8 @@ export class EngineSynthImpl implements EngineSynth {
    * drives the afterburner sound, so a HUD reading it lights exactly with the audio. 0 on other packs.
    */
   getAfterburnerZone(): number {
-    return this.g.tcVoice ? this.tcState.abZone : 0;
+    // Disarmed → 0 immediately (internal zone may still be destaging for the audio release fade).
+    return this.g.tcVoice && this.tcState.abArmed ? this.tcState.abZone : 0;
   }
 
   /** Tomcat: subscribe to lit-zone changes (0..5). Returns an unsubscribe function. */
@@ -2372,6 +2378,26 @@ export class EngineSynthImpl implements EngineSynth {
     return () => {
       this.tcZoneListeners.delete(cb);
     };
+  }
+
+  /**
+   * Tomcat: arm / disarm the afterburner (Frontend persists the switch and passes it in). Default
+   * armed so never calling this is byte-identical. Disarm: zone reports 0 and the callback fires
+   * once; the sound releases via the same destage fade as a below-72 mph drop. Re-arm below 75 mph
+   * stays out until speed reaches 75. No-op on other packs / same-value calls.
+   */
+  setAfterburnerArmed(armed: boolean): void {
+    if (!this.g.tcVoice || this.disposed) return;
+    if (!tomcatSetAfterburnerArmed(this.tcState, armed)) return;
+    if (!this.tcState.abArmed) this.notifyTomcatZone(0);
+    if (this.started || this.tcState.phase === 'run' || this.tcState.phase === 'starting') {
+      this.applyTomcatDriving(this.driving, false);
+    }
+  }
+
+  /** Tomcat: whether the afterburner is armed (default true). true on other packs. */
+  getAfterburnerArmed(): boolean {
+    return this.g.tcVoice ? !!this.tcState.abArmed : true;
   }
 
   /**

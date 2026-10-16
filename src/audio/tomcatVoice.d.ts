@@ -23,6 +23,8 @@ export interface TomcatDriveState {
   abDemand: number;
   /** Speed engage state (on at ≥ 75 mph, off below 72 mph). */
   abEngaged: boolean;
+  /** Frontend arm switch; default true. */
+  abArmed: boolean;
   /** Lit afterburner zone 0..5 (0 = off). */
   abZone: number;
   abTimer: number;
@@ -56,6 +58,7 @@ export interface TomcatDrive {
   speed: number;
   thr: number;
   demand: number;
+  abArmed: boolean;
   abEngaged: boolean;
   abZone: number;
   abTarget: number;
@@ -96,6 +99,8 @@ export function tomcatBeginStart(s: TomcatDriveState): boolean;
 export function tomcatBeginShutdown(s: TomcatDriveState): boolean;
 export function tomcatAbDemand(input: Partial<DrivingInput> | null | undefined): number;
 export function tomcatAbEngaged(speed: number, engaged: boolean): boolean;
+/** Arm / disarm AB. Returns true when the value changed. Same-value calls are no-ops. */
+export function tomcatSetAfterburnerArmed(state: TomcatDriveState, armed: boolean): boolean;
 /** Heavy-bass lift (full power + afterburner): sub layer gains, low-pass corners, saturator drive. */
 export const TC_HEAVY: {
   readonly sub: number;
