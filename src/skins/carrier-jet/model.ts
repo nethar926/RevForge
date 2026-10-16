@@ -25,8 +25,6 @@ export const CARRIER_JET_VARIANTS: readonly { readonly id: CarrierJetVariant; re
 ];
 /** Fresh-profile default. */
 export const CARRIER_JET_DEFAULT_VARIANT: CarrierJetVariant = 'swing-wing';
-/** Small designation chip shown next to every header label (neutral legend, no airframe designation). */
-export const CARRIER_JET_DESIGNATION = 'HUD';
 /** Pack id used for the persisted variant key (matches Frontend's catalog id). */
 export const CARRIER_JET_ID = 'carrier-jet';
 /** Same shape as Stellar Helm's `revforge.pack.<id>.frame`; wrapped by storageKey() at runtime. */

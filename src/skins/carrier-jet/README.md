@@ -10,7 +10,7 @@ unchanged variant ids; ids, classes, data attributes and the persisted value are
 | `tomcat` | VECTOR | B · modern glass (Barlow Semi Condensed, HUD on black) |
 | `swing-wing` (**default**) | HOLO | C · carrier-deck night (Oswald numerals + Barlow Semi Condensed labels) |
 
-Every header also carries the small `HUD` chip (`CARRIER_JET_DESIGNATION`). `src/skins/aerospace-f14/` is untouched.
+`src/skins/aerospace-f14/` is untouched.
 
 ## API
 
@@ -40,7 +40,7 @@ import { CarrierJetHud, CARRIER_JET_VARIANTS } from '../skins/carrier-jet';
 
 ### Compact = the full board, reflowed (Wilson's rule)
 There is no separate compact design. `CockpitCompact` / `GlassCompact` / `DeckCompact` render every block of the full board
-for that look (header label, HUD chip, GPS + status pills, the Look tabs, speed, RPM + bar, wing sweep digits, planform,
+for that look (header label, GPS + status pills, the Look tabs, speed, RPM + bar, wing sweep digits, planform,
 tape + mode windows, pitch ladder, heading, AoA + indexer, accel ball, engine strips and AB ladder) and only rearrange them:
 dense SVG instruments get their own cells, the grid follows the container (container units, numeral cells are size containers).
 Text stays >= 11px after the SVG viewBox shrink (`--cj-sv` floor), the Look tabs stay >= 44px, no `transform: scale()`.

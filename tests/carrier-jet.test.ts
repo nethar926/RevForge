@@ -162,7 +162,6 @@ test('rendered: each tab label equals its variant header label; radiogroup seman
     assert.equal((h.match(/aria-checked="true"/g) ?? []).length, 1);
     assert.match(h, /role="meter" aria-label="Speed"[^>]*aria-valuetext="45 miles per hour"/);
     assert.match(h, /role="meter" aria-label="Wing sweep"[^>]*aria-valuetext="Wing sweep 30 degrees, auto schedule"/);
-    assert.match(h, /data-cj-el="designation">HUD</);
     assert.doesNotMatch(h, /F-?14/);
   }
 });
@@ -191,7 +190,7 @@ test('rendered: tabs in every layout (full, compact, drive window); compact keep
     for (const k of [`compact:${v.id}`, `dwc:${v.id}`]) {
       assert.match(html[k], /data-layout="reflow"/);
       assert.deepEqual(elements(html[k]), full, `${k}: same elements (and counts) as the full ${v.id} board`);
-      for (const el of ['speed', 'mach', 'mach-tape', 'mach-barrier', 'supersonic', 'rpm', 'rpm-bar', 'sweep-digits', 'planform', 'sweep-tape', 'mode-windows', 'ladder', 'heading', 'aoa', 'indexer', 'accel', 'engines', 'ab-ladder', 'tabs', 'label', 'designation', 'gps-pill', 'status-pill'])
+      for (const el of ['speed', 'mach', 'mach-tape', 'mach-barrier', 'supersonic', 'rpm', 'rpm-bar', 'sweep-digits', 'planform', 'sweep-tape', 'mode-windows', 'ladder', 'heading', 'aoa', 'indexer', 'accel', 'engines', 'ab-ladder', 'tabs', 'label', 'gps-pill', 'status-pill'])
         assert.ok(elements(html[k]).includes(el), `${k}: ${el}`);
       assert.equal((html[k].match(/class="cj-ab" data-lit="/g) ?? []).length, 5, `${k}: five AB lights`);
     }

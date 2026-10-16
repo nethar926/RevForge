@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { dirname, join, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { CARRIER_JET_DESIGNATION, CARRIER_JET_VARIANTS, LOOK_LABELS, variantLabel } from '../src/skins/carrier-jet/model.ts';
+import { CARRIER_JET_VARIANTS, LOOK_LABELS, variantLabel } from '../src/skins/carrier-jet/model.ts';
 
 // Look renames (Oct 16 2026): visible / spoken names MATRIX / VECTOR / HOLO, no F-14 text; ids unchanged.
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,7 +20,6 @@ test('LOOK_LABELS: exported map, keyed by the unchanged ids, drives every varian
     assert.equal(v.label, LOOK_LABELS[v.id]);
     assert.equal(variantLabel(v.id), LOOK_LABELS[v.id]);
   }
-  assert.doesNotMatch(CARRIER_JET_DESIGNATION, OLD_VISIBLE);
 });
 
 async function render(): Promise<Record<string, string>> {
@@ -70,7 +69,6 @@ test('rendered: no visible or spoken old look name / F-14 in any look, layout or
     assert.match(h, /role="radiogroup" aria-label="Look"/, `${k}:${v.id} LOOK group name`);
     const tabs = [...h.matchAll(/<button[^>]*data-variant-option="([^"]+)"[^>]*>([^<]*)<\/button>/g)].map((m) => [m[1], m[2]]);
     assert.deepEqual(tabs, [['carrier-jet', 'MATRIX'], ['tomcat', 'VECTOR'], ['swing-wing', 'HOLO']], `${k}:${v.id} LOOK keys`);
-    assert.match(h, new RegExp(`data-cj-el="designation">${CARRIER_JET_DESIGNATION}<`), `${k}:${v.id} neutral designation chip`);
     // internal ids / data attributes untouched
     assert.match(h, new RegExp(`data-skin="carrier-jet" data-variant="${v.id}"`));
   }
