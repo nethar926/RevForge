@@ -1,4 +1,4 @@
-import type { JetCue, JetStartMode, JetSwitchFoley, JetSystem } from './types';
+import type { JetChecklist, JetCue, JetStartMode, JetSwitchFoley, JetSystem, JetSystemEntry, JetVariant } from './types';
 
 export interface JetColdState {
   systems: Record<JetSystem, boolean>;
@@ -7,9 +7,19 @@ export interface JetColdState {
   apuLit: boolean;
   /** Ground air cart spool 0..1. */
   cartN: number;
+  /** Cart diesel run 0..1. */
+  cartEng: number;
   gyro: number;
   hum: number;
   xbFlow: number;
+  pumpL: number;
+  pumpR: number;
+  avion: number;
+  oxy: number;
+  ins: number;
+  /** Hydraulic pressure 0..1 (engine-driven). */
+  hyd: number;
+  strobeT: number;
   time: number;
 }
 export type JetAutoStep =
@@ -19,6 +29,10 @@ export type JetAutoStep =
 
 export const JET_SYSTEMS: readonly JetSystem[];
 export const JET_CUES: readonly JetCue[];
+export const JET_MOMENTARY: readonly JetSystem[];
+export const JET_POWERED: readonly JetSystem[];
+export function getJetSystemList(variant?: JetVariant): JetSystemEntry[];
+export function getJetChecklist(variant?: JetVariant): JetChecklist;
 export const JET_DEFAULT_FOLEY: Readonly<Record<JetSystem, JetSwitchFoley>>;
 export const JET_ENGINE_PAN: number;
 export const JET_CART_PAN: number;
@@ -28,7 +42,7 @@ export const JET_COLD_LEVEL: Readonly<Record<string, number>>;
 
 export function createJetColdState(): JetColdState;
 export function jetSystemsOf(st: JetColdState): Record<JetSystem, boolean>;
-export function stepJetCold(st: JetColdState, dt: number, eng?: { n2a?: number; n2b?: number }): { type: 'apuLightoff' }[];
+export function stepJetCold(st: JetColdState, dt: number, eng?: { n2a?: number; n2b?: number }): { type: 'apuLightoff' | 'strobe' }[];
 export function jetApuReady(st: JetColdState): boolean;
 export function jetCartReady(st: JetColdState): boolean;
 export function jetAutoStartSteps(mode?: JetStartMode): JetAutoStep[];

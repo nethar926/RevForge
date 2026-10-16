@@ -4,7 +4,8 @@ import type {SoundLayer} from './types';
 import {nextLockStage} from './lockStage';
 import {JetLayers} from './JetLayers';
 import {SignalGraph} from './SignalGraph';
-import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge,JetCue,JetStartMode,JetSwitchFoley,JetSystem,JetSystemChange,JetSystemsState} from './types';
+import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge,JetCue,JetStartMode,JetSwitchFoley,JetSystem,JetSystemChange,JetSystemsState,JetVariant,JetSystemEntry,JetChecklist} from './types';
+import {getJetSystemList,getJetChecklist} from './jetColdStart';
 import {EnvelopeMeter} from './envelopeMeter';
 import {ProceduralCharacter} from './ProceduralCharacter';
 import {gearlessDrivingInput,isGearlessPatch,tomcatHeadroomGain} from './tomcatPack';
@@ -39,8 +40,12 @@ export class CharacterEngine implements EngineSynth {
  setJetStartMode(mode:JetStartMode):void{if(!this.disposed)this.base.setJetStartMode?.(mode);}
  getJetStartMode():JetStartMode{return this.base.getJetStartMode?.()??'apu';}
  setJetSystem(system:JetSystem,on:boolean,opts?:{foley?:JetSwitchFoley|false}):boolean{return this.disposed?false:(this.base.setJetSystem?.(system,on,opts)??false);}
- getJetSystems():JetSystemsState{return this.base.getJetSystems?.()??{batt:false,seatbelt:false,apu:false,aircart:false,crossbleed:false,engL:false,engR:false,coldStart:false,mode:'apu',engines:{L:'off',R:'off'},apuSpool:0,apuReady:false,cartSpool:0,cartReady:false,autoRunning:false,emergency:false};}
+ getJetSystems():JetSystemsState{return this.base.getJetSystems?.()??{batt:false,seatbelt:false,apu:false,aircart:false,crossbleed:false,engL:false,engR:false,fuelPumpL:false,fuelPumpR:false,ignL:false,ignR:false,throttleL:false,throttleR:false,avionics:false,anticollision:false,navLights:false,hydraulics:false,canopy:false,oxygen:false,inertialNav:false,masterCaution:false,quickStartGuard:false,quickStart:false,emergencyStop:false,coldStart:false,mode:'apu',engines:{L:'off',R:'off'},apuSpool:0,apuReady:false,cartSpool:0,cartReady:false,autoRunning:false,emergency:false,hydPressure:0,switchSound:true};}
  onJetSystemChange(cb:(state:JetSystemsState,change:JetSystemChange)=>void):()=>void{return this.base.onJetSystemChange?.(cb)??(()=>undefined);}
+ setJetSwitchSound(enabled:boolean):void{if(!this.disposed)this.base.setJetSwitchSound?.(enabled);}
+ getJetSwitchSound():boolean{return this.base.getJetSwitchSound?.()??true;}
+ getJetSystemList(variant:JetVariant='apu'):JetSystemEntry[]{return this.base.getJetSystemList?.(variant)??(getJetSystemList(variant) as JetSystemEntry[]);}
+ getJetChecklist(variant:JetVariant='apu'):JetChecklist{return this.base.getJetChecklist?.(variant)??getJetChecklist(variant);}
  jetEmergencyStop():boolean{return this.disposed?false:(this.base.jetEmergencyStop?.()??false);}
  jetAutoStart(mode?:JetStartMode):boolean{return this.disposed?false:(this.base.jetAutoStart?.(mode)??false);}
  jetQuickStart():boolean{return this.disposed?false:(this.base.jetQuickStart?.()??false);}

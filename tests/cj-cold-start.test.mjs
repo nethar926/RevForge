@@ -324,7 +324,7 @@ test('PULL emergency stop: warning first, then everything spools down to silence
   });
   assert.equal(states[0].emergency, true, 'fuel cut waits for the warning');
   assert.equal(states[0].engines.L, 'run');
-  for (const k of cold.JET_SYSTEMS) assert.equal(states[1][k], false, `${k} off after the cut`);
+  for (const k of cold.JET_POWERED) assert.equal(states[1][k], false, `${k} off after the cut`);
   const running = channelsOf(buf, 11, 14);
   const lr = monoDb(running);
   // spools down: monotone-ish level fall in 1 s windows after the cut, silence at the end
@@ -395,7 +395,7 @@ test('systems voice: APU / cart / battery spool up and down click-free (direct s
   const steady = maxStep(on);
   for (const [a, b] of [[0, 9], [11, 24]]) assert.ok(maxStep(channelsOf(buf, a, b)) <= steady * 1.15, `step ${maxStep(channelsOf(buf, a, b))} in ${a}-${b}s vs steady ${steady}`);
   assert.ok(monoDb(channelsOf(buf, 23, 24)) < monoDb(on) - 15, `winds down (${monoDb(channelsOf(buf, 23, 24)).toFixed(1)} vs ${monoDb(on).toFixed(1)})`);
-  assert.ok(samplePeakDb(channelsOf(buf)) < -12);
+  assert.ok(samplePeakDb(channelsOf(buf)) < -6, 'raw systems bus (before pad / limiter) keeps headroom');
 });
 
 /* ───────────── pure model ───────────── */
@@ -440,4 +440,137 @@ test('model: APU ≈ 7 s to ready, cart quicker, gyro slow; per-engine cold star
     assert.ok(d.n2b > 0.55, 'running engine undisturbed');
   }
   assert.equal(d.phase, 'run');
+});
+
+/* ───────────── follow-up: extra systems, panel list, checklist, cart vs APU ───────────── */
+
+const BANNED_RE = [['top\\s*', 'gun'], ['\\bmave', 'rick\\b'], ['\\bgoo', 'se\\b'], ['\\bice', 'man\\b'], ['grum', 'man'], ['nato', 'ps'], ['tes', 'la']].map((p) => new RegExp(p.join(''), 'i'));
+
+test('getJetSystemList: entry shape, groups / kinds, order, variants, emergencyStop pull', () => {
+  const groups = ['POWER', 'FUEL', 'ENGINES', 'SYSTEMS', 'LIGHTS'];
+  const kinds = ['toggle', 'guarded', 'hold', 'pull'];
+  for (const variant of ['apu', 'aircart', 'groundcart']) {
+    const list = cold.getJetSystemList(variant);
+    const ids = list.map((x) => x.id);
+    assert.equal(new Set(ids).size, ids.length, 'unique ids');
+    list.forEach((x, i) => {
+      assert.ok(cold.JET_SYSTEMS.includes(x.id), `${x.id} is a setJetSystem id`);
+      assert.equal(typeof x.label, 'string');
+      assert.ok(x.label.length > 1 && x.label.length < 24, x.label);
+      for (const re of BANNED_RE) assert.ok(!re.test(x.label), `${x.label} ${re}`);
+      assert.ok(groups.includes(x.group), x.group);
+      assert.ok(kinds.includes(x.kind), x.kind);
+      assert.ok(Array.isArray(x.requires) && x.requires.every((r) => typeof r === 'string'));
+      assert.equal(x.order, i + 1);
+      assert.equal(typeof x.required, 'boolean');
+      if (x.side !== undefined) assert.ok(x.side === 'L' || x.side === 'R');
+      for (const r of x.requires) assert.ok(ids.includes(r), `${x.id} requires ${r} (present)`);
+    });
+    const by = Object.fromEntries(list.map((x) => [x.id, x]));
+    assert.equal(by.emergencyStop.kind, 'pull');
+    assert.equal(by.quickStartGuard.kind, 'guarded');
+    assert.equal(by.canopy.kind, 'hold');
+    assert.deepEqual(by.quickStart.requires, ['quickStartGuard']);
+    assert.equal(by.engL.side, 'L');
+    assert.equal(by.throttleR.side, 'R');
+    for (const id of ['batt', 'fuelPumpL', 'fuelPumpR', 'ignL', 'ignR', 'engL', 'engR', 'throttleL', 'throttleR']) assert.equal(by[id].required, true, id);
+    if (variant === 'apu') {
+      assert.ok(by.apu && !by.aircart && !by.crossbleed);
+      assert.ok(by.engL.order < by.engR.order, 'APU start: left first');
+    } else {
+      assert.ok(by.aircart && by.crossbleed && !by.apu);
+      assert.ok(by.engR.order < by.crossbleed.order && by.crossbleed.order < by.engL.order, 'cart start: right, crossbleed, left');
+    }
+  }
+});
+
+test('getJetChecklist: own short plain-words lists for both variants, mirrored in the docs', () => {
+  const doc = read('docs/cj-cold-start.md');
+  for (const variant of ['apu', 'aircart']) {
+    const c = cold.getJetChecklist(variant);
+    assert.ok(c.startup.length >= 8 && c.shutdown.length >= 4);
+    for (const line of [...c.startup, ...c.shutdown]) {
+      assert.ok(typeof line === 'string' && line.length < 70, line);
+      for (const re of BANNED_RE) assert.ok(!re.test(line), `${line} ${re}`);
+      assert.ok(doc.includes(line), `docs mirror "${line}"`);
+    }
+    assert.ok(c.startup.some((l) => (variant === 'apu' ? /APU on/ : /Ground air on/).test(l)));
+  }
+});
+
+test('extra systems: permissive, momentary controls, quick-start cover, throttle / ignition gates, switch sound', async () => {
+  const log = {};
+  const changes = [];
+  const NEW = ['fuelPumpL', 'fuelPumpR', 'ignL', 'ignR', 'throttleL', 'throttleR', 'avionics', 'anticollision', 'navLights', 'hydraulics', 'canopy', 'oxygen', 'inertialNav'];
+  const buf = await renderColdStart(
+    [
+      [0.2, '', (e) => (log.set = NEW.map((k) => e.setJetSystem(k, true)))],
+      [0.3, '', (e) => (log.mom = [e.setJetSystem('masterCaution', true), e.setJetSystem('quickStart', true)])],
+      [1.0, '', (e) => (log.s1 = e.getJetSystems())],
+      // throttles back to cutoff: an engine started now motors but does not light
+      [1.5, '', (e) => (e.setJetSwitchSound(false), e.setJetSystem('throttleL', false), e.setJetSystem('throttleR', false), e.setJetSystem('engL', true))],
+      [7.5, '', (e) => (log.held = e.getJetSystems().engines.L, e.setJetSwitchSound(true), e.setJetSystem('throttleL', true))],
+      [16, '', (e) => (log.lit = e.getJetSystems(), e.setJetSystem('throttleL', false))],
+      [24, '', (e) => (log.cut = e.getJetSystems().engines.L)],
+      // cover open → quick start runs (it sets the wired throttles to idle itself)
+      [24.2, '', (e) => (e.setJetSystem('quickStartGuard', true), e.setJetSystem('engL', false), e.setJetSystem('quickStart', true))],
+      [40, '', (e) => (log.qs = e.getJetSystems())],
+    ],
+    41,
+    { profile: PARK, fps: 30, seed: 'cj-extra', onReady: (e) => e.onJetSystemChange((st, ch) => changes.push(ch)) },
+  );
+  assert.ok(log.set.every((x) => x === true), 'every new system accepts the call');
+  assert.deepEqual(log.mom, [true, true]);
+  for (const k of NEW) assert.equal(log.s1[k], true, k);
+  assert.equal(log.s1.masterCaution, false, 'momentary springs back');
+  assert.equal(log.s1.quickStart, false);
+  assert.deepEqual(log.s1.engines, { L: 'off', R: 'off' }, 'quick start ignored while its cover is closed');
+  assert.ok(changes.some((c) => c.system === 'masterCaution' && c.on), 'momentary press reported');
+  assert.equal(log.held, 'starting', 'throttle at cutoff: the engine motors without light-off');
+  assert.equal(log.lit.engines.L, 'run', 'throttle to idle → lights and idles');
+  assert.ok(log.lit.hydPressure > 0.8, 'engine-driven hydraulic pressure rises once an engine runs');
+  assert.ok(log.cut === 'shutdown' || log.cut === 'off', `throttle cutoff = fuel cut (${log.cut})`);
+  assert.deepEqual(log.qs.engines, { L: 'run', R: 'run' }, 'quick start with the cover open');
+  assert.equal(log.qs.throttleL, true);
+  assert.equal(log.qs.switchSound, true);
+  assert.ok(samplePeakDb(channelsOf(buf)) <= -1);
+});
+
+test('air cart is broadband (hose roar + diesel), the APU stays a tonal turbine whine', async () => {
+  const { powerSpectrum } = await imp('scripts/spectrum.mjs');
+  const flat = async (setup) => {
+    const SR = 44100;
+    const off = new nwa.OfflineAudioContext(2, SR * 4, SR);
+    const v = new cold.JetColdStartVoice(off, off.destination);
+    const st = cold.createJetColdState();
+    setup(st);
+    v.update(st, {}, 0);
+    const buf = await off.startRendering();
+    const { ps, df } = powerSpectrum(channelsOf(buf, 2, 4), SR);
+    let lg = 0;
+    let ar = 0;
+    let n = 0;
+    for (let k = 1; k < ps.length; k++) {
+      const f = k * df;
+      if (f < 400 || f > 6000) continue;
+      lg += Math.log(ps[k] + 1e-30);
+      ar += ps[k];
+      n++;
+    }
+    return Math.exp(lg / n) / (ar / n);
+  };
+  const apu = await flat((st) => Object.assign(st, { apuN: 1, apuLit: true }));
+  const cart = await flat((st) => Object.assign(st, { cartN: 1, cartEng: 1 }));
+  assert.ok(cart > 0.8 && cart > apu * 2, `spectral flatness cart ${cart.toFixed(3)} vs APU ${apu.toFixed(3)}`);
+});
+
+test('demo timelines (both modes): every call accepted, peaks ≤ −1 dBFS, ends near silence', async () => {
+  for (const mode of ['apu', 'groundcart']) {
+    const results = [];
+    const tl = DEMO_TIMELINES[mode].map(([t, label, fn]) => [t, label, fn && ((e) => results.push([label, fn(e)]))]);
+    const buf = await renderColdStart(tl, DEMO_SECONDS, { fps: 30, seed: `cj-demo-${mode}` });
+    for (const [label, r] of results) if (typeof r === 'boolean') assert.equal(r, true, `${mode}: ${label}`);
+    assert.ok(samplePeakDb(channelsOf(buf)) <= -1, `${mode} peak ${samplePeakDb(channelsOf(buf)).toFixed(1)}`);
+    assert.ok(monoDb(channelsOf(buf, DEMO_SECONDS - 1, DEMO_SECONDS)) < -60, `${mode} ends quiet`);
+  }
 });

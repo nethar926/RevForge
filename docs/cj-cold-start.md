@@ -20,7 +20,7 @@ forwarded by `CharacterEngine`. Types: `src/audio/types.ts` (`JetSystem`, `JetCu
 |---|---|
 | `setJetColdStart(on)` / `getJetColdStart()` | On: `start()` only unlocks audio, the engines stay dark until switched on. Running engines keep running when it is turned on (switches follow). Off: legacy phases take over. |
 | `setJetStartMode('apu' \| 'groundcart')` / `getJetStartMode()` | Only picks which sequence `jetAutoStart()` runs. Gates nothing. |
-| `setJetSystem(system, on, opts?) → boolean` | `system`: `'batt' \| 'seatbelt' \| 'apu' \| 'aircart' \| 'crossbleed' \| 'engL' \| 'engR'`. **Permissive**: does exactly what it is told, in any order, no interlocks — an engine switched on with no battery / air source still starts. Returns `true` while cold start is on; `false` only when cold start is off, on another pack, or for an unknown id. A change plays the switch foley (`JET_DEFAULT_FOLEY`: toggles, engines `'hold'`); `opts.foley` picks another kind, `false` = silent (e.g. when Frontend plays its own cue). Same-value calls are silent no-ops. A manual call cancels a running auto sequence. |
+| `setJetSystem(system, on, opts?) → boolean` | `system`: `'batt' \| 'seatbelt' \| 'apu' \| 'aircart' \| 'crossbleed' \| 'engL' \| 'engR'` + the extra systems below. **Permissive**: does exactly what it is told, in any order, no interlocks — an engine switched on with no battery / air source still starts. Returns `true` while cold start is on; `false` only when cold start is off, on another pack, or for an unknown id. A change plays the switch foley (`JET_DEFAULT_FOLEY`: toggles, engines `'hold'`); `opts.foley` picks another kind, `false` = silent (e.g. when Frontend plays its own cue). Same-value calls are silent no-ops. A manual call cancels a running auto sequence. |
 | `getJetSystems() → JetSystemsState` | switch booleans + `engines: { L, R }` (`'off' \| 'starting' \| 'run' \| 'shutdown'`), `apuSpool`, `apuReady`, `cartSpool`, `cartReady`, `autoRunning`, `emergency`, `coldStart`, `mode`. |
 | `onJetSystemChange(cb) → unsubscribe` | `cb(state, change)`; `change = { system \| null, on, source }`, `source`: `'api' \| 'auto' \| 'emergency' \| 'engine' \| 'mode' \| 'stop' \| 'shutdown'`. Fires on every switch change and when an engine reaches idle / finishes its rundown (`'engine'`). |
 | `jetEmergencyStop() → boolean` | PULL: handle drag + latch foley, short original warning tone (3 soft pulses), then after 0.6 s fuel cut + every switch off. Engines, APU, cart and gyro spool down naturally — no pops. |
@@ -47,7 +47,7 @@ forwarded by `CharacterEngine`. Types: `src/audio/types.ts` (`JetSystem`, `JetCu
 * BATT: contactor clunk, 400 Hz avionics hum + cooling-fan air, gyro whir spinning up (≈ 10 s) / down.
 * SEAT BELT: original soft two-tone chime (rising fourth, mallet-like), once on; falling and softer once off. Well under the engine idle peak.
 * APU: crank, small light-off, two blade tones + shaft + combustion band rising to a steady hum; ≈ 8 s spool-down.
-* AIR CART (right side): duct hiss + cart turbine whine + low rumble; disconnect clunk on off.
+* AIR CART (right side, external): distant diesel chug + broadband hose roar / hiss (see "Ground air cart vs APU").
 * CROSSBLEED: valve thunk + air surge, then a steady rush while a source has pressure.
 * Engines (independent): starter whine + start-duct air, igniter ticks and light-off thump panned ±0.5 to that engine's side, then the TF30 voice spools to idle. One engine ≈ −6 dB vs both (the dark side is missing); both = the existing full sound. Fuel cut runs down slower than the quick shutoff.
 * All levels move on ramps / setTargetAtTime; every one-shot starts at 0 and ends on an exponential tail. The cold voice feeds the Tomcat headroom pad → engine master → limiter (same bus as the engine).
@@ -61,3 +61,179 @@ forwarded by `CharacterEngine`. Types: `src/audio/types.ts` (`JetSystem`, `JetCu
 ## Offline renders
 
 `node tests/cj-cold-start-render.mjs <outDir> [apu|groundcart]` renders the demo timelines. node-web-audio-api's HRTF `PannerNode` (CharacterEngine `mainSpatial`) downmixes stereo to mono, unlike Chromium's; the demo / tests switch that one node to `'equalpower'` offline (a centred equal-power panner passes stereo straight through) so the engine panning is audible. Production code is unchanged.
+
+## Extra systems (follow-up)
+
+All permissive (`setJetSystem` returns true, any order), each with its own procedural sound:
+
+| id | sound |
+|---|---|
+| `fuelPumpL` / `fuelPumpR` | boost pump motor whir + fuel flow band, on that side |
+| `ignL` / `ignR` | igniter arm: relay click + exciter charging whine |
+| `throttleL` / `throttleR` | `true` = idle, `false` = cutoff; detent click (heavier back to cutoff) |
+| `avionics` | cooling fan air + 1.2 kHz power hum + faint inverter tone (separate from BATT) |
+| `anticollision` | relay tick, then a faint flasher relay tick every 1.1 s |
+| `navLights` | soft relay tick |
+| `hydraulics` | valve click; pump whine + flow hiss as pressure rises once an engine runs (`hydPressure`) |
+| `canopy` | kind 'hold'; `true` = closed: actuator motor ≈ 3.2 s, latch thunk (open: softer end-stop knock) |
+| `oxygen` | soft regulator hiss with a slow breathing swell |
+| `inertialNav` | nav platform gyro whir spinning up (≈ 6 s time constant) / down |
+| `masterCaution` | momentary: original short reset tone |
+| `quickStartGuard` | guard cover lift / close foley |
+| `quickStart` | momentary: runs `jetQuickStart()` **only while `quickStartGuard` is open** (otherwise just the press foley) |
+| `emergencyStop` | momentary: same as `jetEmergencyStop()` |
+
+Momentary controls fire on `true`, report `{ system, on: true }` once and their state stays `false`.
+
+**Throttle / ignition gate (permissive design note).** An engine lights only when its throttle is at
+idle and its ignition is on — but those gates only engage once Frontend has used that switch
+(`setJetSystem('throttleL', …)` / `('ignL', …)`). A Frontend that never wires throttles or igniters
+gets the permissive start (the engine lights anyway). Throttle at cutoff while cranking: the engine
+keeps motoring with no light-off until the throttle goes to idle. Throttle to cutoff on a running
+engine: fuel cut (the `engL`/`engR` switch state is left as set; switch it off and on to restart).
+Ignition off after light-off: the engine keeps running (no igniter ticks). The emergency stop / the
+'shutdown' cue switch all powered systems off (`JET_POWERED`); throttles, canopy and guards stay put.
+`jetQuickStart` also brings wired throttles to idle and wired igniters on.
+
+`setJetSwitchSound(enabled)` / `getJetSwitchSound()` — default true. Off: `setJetSystem` plays no
+switch foley (system sounds — hum, pumps, APU, chime, canopy motor — still play).
+
+### Ground air cart vs APU
+
+The APU is a tonal small-turbine whine. The ground air cart is deliberately untonal and external: a
+distant diesel chug (pulsed low end, ≈ 10–14 Hz firing feel, low-passed) plus a loud broadband
+high-pressure hose roar / hiss on the right side; hose coupling clunk + pressure spit on connect,
+pressure-dump hiss then disconnect clunk on off. Crossbleed open: valve thunk and an obvious air rush
+swell, then a steady rush while a source has pressure.
+
+### Extra cues
+
+`'detent'`, `'pamphletLift'`, `'pamphletOpen'`, `'pamphletClose'` (subtle filtered-noise paper foley
+for the checklist card).
+
+## Panel list (`getJetSystemList(variant)`)
+
+Entries `{ id, label, group, kind, requires, side?, order, required }`; `variant` 'apu' | 'aircart'
+('groundcart' accepted). `requires` is advisory only.
+
+### 'apu'
+
+| order | id | label | group | kind | requires (advisory) | side | required |
+|---|---|---|---|---|---|---|---|
+| 1 | `batt` | Battery | POWER | toggle |  |  | yes |
+| 2 | `seatbelt` | Seat belt sign | SYSTEMS | toggle | batt |  |  |
+| 3 | `avionics` | Avionics | POWER | toggle | batt |  |  |
+| 4 | `inertialNav` | Nav platform | POWER | toggle | avionics |  |  |
+| 5 | `navLights` | Position lights | LIGHTS | toggle | batt |  |  |
+| 6 | `anticollision` | Beacon | LIGHTS | toggle | batt |  |  |
+| 7 | `apu` | APU | POWER | toggle | batt |  | yes |
+| 8 | `fuelPumpL` | L fuel pump | FUEL | toggle | batt | L | yes |
+| 9 | `ignL` | L ignition | ENGINES | toggle | batt | L | yes |
+| 10 | `engL` | L engine start | ENGINES | hold | batt, fuelPumpL, ignL, apu | L | yes |
+| 11 | `throttleL` | L throttle idle | ENGINES | toggle | engL | L | yes |
+| 12 | `fuelPumpR` | R fuel pump | FUEL | toggle | batt | R | yes |
+| 13 | `ignR` | R ignition | ENGINES | toggle | batt | R | yes |
+| 14 | `engR` | R engine start | ENGINES | hold | batt, fuelPumpR, ignR, apu | R | yes |
+| 15 | `throttleR` | R throttle idle | ENGINES | toggle | engR | R | yes |
+| 16 | `hydraulics` | Hydraulics | SYSTEMS | toggle | engL, engR |  |  |
+| 17 | `canopy` | Canopy | SYSTEMS | hold | batt |  |  |
+| 18 | `oxygen` | Oxygen | SYSTEMS | toggle |  |  |  |
+| 19 | `masterCaution` | Caution reset | SYSTEMS | hold | batt |  |  |
+| 20 | `quickStartGuard` | Quick start cover | ENGINES | guarded |  |  |  |
+| 21 | `quickStart` | Quick start | ENGINES | hold | quickStartGuard |  |  |
+| 22 | `emergencyStop` | Emergency stop | ENGINES | pull |  |  |  |
+
+### 'aircart'
+
+| order | id | label | group | kind | requires (advisory) | side | required |
+|---|---|---|---|---|---|---|---|
+| 1 | `batt` | Battery | POWER | toggle |  |  | yes |
+| 2 | `seatbelt` | Seat belt sign | SYSTEMS | toggle | batt |  |  |
+| 3 | `avionics` | Avionics | POWER | toggle | batt |  |  |
+| 4 | `inertialNav` | Nav platform | POWER | toggle | avionics |  |  |
+| 5 | `navLights` | Position lights | LIGHTS | toggle | batt |  |  |
+| 6 | `anticollision` | Beacon | LIGHTS | toggle | batt |  |  |
+| 7 | `aircart` | Ground air | POWER | toggle | batt |  | yes |
+| 8 | `fuelPumpR` | R fuel pump | FUEL | toggle | batt | R | yes |
+| 9 | `ignR` | R ignition | ENGINES | toggle | batt | R | yes |
+| 10 | `engR` | R engine start | ENGINES | hold | batt, fuelPumpR, ignR, aircart | R | yes |
+| 11 | `throttleR` | R throttle idle | ENGINES | toggle | engR | R | yes |
+| 12 | `crossbleed` | Crossbleed | FUEL | toggle | engR |  | yes |
+| 13 | `fuelPumpL` | L fuel pump | FUEL | toggle | batt | L | yes |
+| 14 | `ignL` | L ignition | ENGINES | toggle | batt | L | yes |
+| 15 | `engL` | L engine start | ENGINES | hold | batt, fuelPumpL, ignL, crossbleed | L | yes |
+| 16 | `throttleL` | L throttle idle | ENGINES | toggle | engL | L | yes |
+| 17 | `hydraulics` | Hydraulics | SYSTEMS | toggle | engL, engR |  |  |
+| 18 | `canopy` | Canopy | SYSTEMS | hold | batt |  |  |
+| 19 | `oxygen` | Oxygen | SYSTEMS | toggle |  |  |  |
+| 20 | `masterCaution` | Caution reset | SYSTEMS | hold | batt |  |  |
+| 21 | `quickStartGuard` | Quick start cover | ENGINES | guarded |  |  |  |
+| 22 | `quickStart` | Quick start | ENGINES | hold | quickStartGuard |  |  |
+| 23 | `emergencyStop` | Emergency stop | ENGINES | pull |  |  |  |
+
+## Checklist (`getJetChecklist(variant)`)
+
+Our own short plain-words lists (not taken from any manual).
+
+### 'apu'
+
+**Startup**
+
+1. Battery on
+2. Seat belt sign on
+3. Avionics on, nav platform on
+4. Position lights and beacon on
+5. APU on, wait for steady hum
+6. Left fuel pump on, left ignition on
+7. Hold left engine start, throttle to idle when it turns
+8. Wait for left engine idle
+9. Right fuel pump on, right ignition on
+10. Hold right engine start, throttle to idle when it turns
+11. Wait for right engine idle
+12. APU off
+13. Hydraulics on, wait for pressure
+14. Canopy closed, oxygen on
+15. Caution reset
+
+**Shutdown**
+
+1. Throttles to cutoff
+2. Ignition off, fuel pumps off
+3. Hydraulics off, oxygen off
+4. Canopy open
+5. Lights off
+6. Nav platform off, avionics off
+7. Seat belt sign off
+8. Battery off
+
+### 'aircart'
+
+**Startup**
+
+1. Battery on
+2. Seat belt sign on
+3. Avionics on, nav platform on
+4. Position lights and beacon on
+5. Ground air on, wait for steady hiss
+6. Right fuel pump on, right ignition on
+7. Hold right engine start, throttle to idle when it turns
+8. Wait for right engine idle
+9. Crossbleed open
+10. Left fuel pump on, left ignition on
+11. Hold left engine start, throttle to idle when it turns
+12. Wait for left engine idle
+13. Crossbleed closed, ground air off
+14. Hydraulics on, wait for pressure
+15. Canopy closed, oxygen on
+16. Caution reset
+
+**Shutdown**
+
+1. Throttles to cutoff
+2. Ignition off, fuel pumps off
+3. Hydraulics off, oxygen off
+4. Canopy open
+5. Lights off
+6. Nav platform off, avionics off
+7. Seat belt sign off
+8. Battery off

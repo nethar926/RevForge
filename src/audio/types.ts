@@ -406,6 +406,13 @@ export interface EngineSynth {
    */
   setJetSystem?(system: JetSystem, on: boolean, opts?: { foley?: JetSwitchFoley | false }): boolean;
   getJetSystems?(): JetSystemsState;
+  /** Switch sound (setJetSystem foley) on / off; default true. System sounds keep playing. */
+  setJetSwitchSound?(enabled: boolean): void;
+  getJetSwitchSound?(): boolean;
+  /** Panel description (labels, groups, kinds, advisory requires, order). */
+  getJetSystemList?(variant?: JetVariant): JetSystemEntry[];
+  /** Our own short plain-words startup / shutdown checklist. */
+  getJetChecklist?(variant?: JetVariant): JetChecklist;
   /** Fires on every switch change and engine phase change; returns an unsubscribe function. */
   onJetSystemChange?(cb: (state: JetSystemsState, change: JetSystemChange) => void): () => void;
   /** PULL: handle foley + short warning tone, then fuel cut / everything off and spools down. */
@@ -443,11 +450,60 @@ export interface ParamMeta {
 
 /* ── Tomcat cold start (see docs/cj-cold-start.md) ── */
 /** Switchable systems: battery, seat-belt sign, APU, external ground air cart, crossbleed valve, engines. */
-export type JetSystem = 'batt' | 'seatbelt' | 'apu' | 'aircart' | 'crossbleed' | 'engL' | 'engR';
+export type JetSystem =
+  | 'batt'
+  | 'seatbelt'
+  | 'apu'
+  | 'aircart'
+  | 'crossbleed'
+  | 'engL'
+  | 'engR'
+  | 'fuelPumpL'
+  | 'fuelPumpR'
+  | 'ignL'
+  | 'ignR'
+  /** true = idle, false = cutoff */
+  | 'throttleL'
+  | 'throttleR'
+  | 'avionics'
+  | 'anticollision'
+  | 'navLights'
+  | 'hydraulics'
+  /** true = closed */
+  | 'canopy'
+  | 'oxygen'
+  | 'inertialNav'
+  /** momentary (fires on true, state stays false) */
+  | 'masterCaution'
+  | 'quickStartGuard'
+  /** momentary; runs jetQuickStart only while quickStartGuard is open */
+  | 'quickStart'
+  /** momentary; same as jetEmergencyStop() */
+  | 'emergencyStop';
+/** getJetSystemList / getJetChecklist variant ('groundcart' accepted as an alias of 'aircart'). */
+export type JetVariant = 'apu' | 'aircart' | 'groundcart';
+export interface JetSystemEntry {
+  id: JetSystem;
+  /** Neutral panel label. */
+  label: string;
+  group: 'POWER' | 'FUEL' | 'ENGINES' | 'SYSTEMS' | 'LIGHTS';
+  kind: 'toggle' | 'guarded' | 'hold' | 'pull';
+  /** Advisory only — the audio layer never refuses a call. */
+  requires: string[];
+  side?: 'L' | 'R';
+  /** 1-based startup order on the panel. */
+  order: number;
+  /** Part of the minimum start. */
+  required: boolean;
+}
+export interface JetChecklist {
+  startup: string[];
+  shutdown: string[];
+}
 /** Recommended start sequence for jetAutoStart. */
 export type JetStartMode = 'apu' | 'groundcart';
 /** Switch foley kinds. */
-export type JetSwitchFoley = 'toggle' | 'guardOpen' | 'guardClose' | 'hold' | 'pull';
+export type JetSwitchFoley = 'toggle' | 'guardOpen' | 'guardClose' | 'hold' | 'pull' | 'detent';
 /** playJetCue cues: switch foley + afterburner guard cover + chime + warning tone. */
 export type JetCue =
   | JetSwitchFoley
@@ -459,7 +515,10 @@ export type JetCue =
   | 'bezelPress'
   | 'cursorStep'
   | 'selectConfirm'
-  | 'pageChange';
+  | 'pageChange'
+  | 'pamphletLift'
+  | 'pamphletOpen'
+  | 'pamphletClose';
 /** Engine phase in cold start. */
 export type JetEnginePhase = 'off' | 'starting' | 'run' | 'shutdown';
 export interface JetSystemsState extends Record<JetSystem, boolean> {
@@ -476,6 +535,10 @@ export interface JetSystemsState extends Record<JetSystem, boolean> {
   autoRunning: boolean;
   /** Emergency stop pending (warning tone playing, fuel cut follows). */
   emergency: boolean;
+  /** Hydraulic pressure 0..1 (engine-driven). */
+  hydPressure: number;
+  /** setJetSwitchSound state. */
+  switchSound: boolean;
 }
 export interface JetSystemChange {
   /** null for mode / reset changes. */

@@ -246,6 +246,8 @@ export function tomcatSetColdMode(s, on) {
     delete e.cold;
     delete e.coldT;
     delete e.coldTick;
+    delete e.coldFuel;
+    delete e.coldIgn;
   }
   if (lit.length === 2) s.phase = 'run';
   else if (lit.length === 0) s.phase = [s.a, s.b].some((e) => e.n2 > 0.004) ? 'shutdown' : 'off';
@@ -276,6 +278,22 @@ export function tomcatColdEngine(s, idx, on) {
   return true;
 }
 
+/**
+ * Cold mode light-off gates for engine 0 / 1: `fuel` (throttle at idle) and `ign` (igniters armed).
+ * Undefined = not gated (a Frontend that never wires those switches gets the permissive start).
+ * fuel false: a cranking engine keeps motoring without light-off; a lit engine gets a fuel cut.
+ * ign false: no igniter ticks and no light-off while cranking (a lit engine keeps running).
+ */
+export function tomcatColdGate(s, idx, gate = {}) {
+  const e = idx ? s.b : s.a;
+  if ('fuel' in gate) e.coldFuel = gate.fuel === undefined ? undefined : !!gate.fuel;
+  if ('ign' in gate) e.coldIgn = gate.ign === undefined ? undefined : !!gate.ign;
+  if (s.cold && e.coldFuel === false && (e.cold === 'run' || (e.cold === 'starting' && e.lit))) {
+    e.cold = 'shutdown';
+    e.coldT = 0;
+  }
+}
+
 /** Cold mode, one engine: returns its N2 target (same spool laws as the legacy phases). */
 function coldEngineStep(e, i, step, ts, det, sCmd, slow, events) {
   e.coldT += step;
@@ -283,7 +301,7 @@ function coldEngineStep(e, i, step, ts, det, sCmd, slow, events) {
     e.starter = e.n2 < 0.45 ? lag(e.starter, 1, step, 0.25) : lag(e.starter, 0, step, 0.45);
     if (!e.lit) {
       e.n2 = lag(e.n2, TC_COLD.crankTo, step, TC_COLD.crankTc * ts);
-      if (e.n2 >= 0.16) {
+      if (e.n2 >= 0.16 && e.coldFuel !== false && e.coldIgn !== false) {
         e.lit = true;
         e.litAt = e.coldT;
         events.push({ type: 'lightoff', engine: i });
@@ -293,7 +311,7 @@ function coldEngineStep(e, i, step, ts, det, sCmd, slow, events) {
       e.n2 = spoolStep(e.n2, TC_IDLE_N2 * (1 + (i ? det : 0)), step, acc, 1, 0.3 * ts);
     }
     e.comb = e.lit ? lag(e.comb, 1, step, 0.5) : 0;
-    const ign = e.n2 >= TC_COLD.igniteN2 && (!e.lit || e.coldT - e.litAt < TC_COLD.tickAfterLit);
+    const ign = e.coldIgn !== false && e.n2 >= TC_COLD.igniteN2 && (!e.lit || e.coldT - e.litAt < TC_COLD.tickAfterLit);
     if (ign && e.coldT >= e.coldTick) {
       events.push({ type: 'igniter', engine: i });
       e.coldTick = e.coldT + TC_COLD.tickEvery;

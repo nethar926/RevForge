@@ -15,6 +15,9 @@ export interface TomcatEngineState {
   cold?: TomcatPhase;
   coldT?: number;
   coldTick?: number;
+  /** Cold start light-off gates (undefined = not gated). */
+  coldFuel?: boolean;
+  coldIgn?: boolean;
 }
 export interface TomcatDriveState {
   phase: TomcatPhase;
@@ -135,6 +138,8 @@ export const TC_COLD: Readonly<{ crankTc: number; crankTo: number; igniteN2: num
 /** Enter / leave per-engine cold-start control. Returns true when the mode changed. */
 export function tomcatSetColdMode(state: TomcatDriveState, on: boolean): boolean;
 /** Cold mode: fuel on (start) / fuel cut (rundown) for engine 0 (left) / 1 (right). */
+/** Cold mode light-off gates (throttle at idle / igniters armed); undefined = not gated. */
+export function tomcatColdGate(state: TomcatDriveState, engine: 0 | 1, gate: { fuel?: boolean; ign?: boolean }): void;
 export function tomcatColdEngine(state: TomcatDriveState, engine: 0 | 1, on: boolean): boolean;
 export function stepTomcatDrive(
   state: TomcatDriveState,

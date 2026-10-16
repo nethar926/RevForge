@@ -8,54 +8,81 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { renderLive } from '../scripts/live-engine-render.mjs';
 
+const S = (id, on) => (e) => e.setJetSystem(id, on);
+const C = (cue) => (e) => e.playJetCue(cue);
+/** Shared opening: checklist card, battery, cabin, avionics, lights. Throttles start at cutoff. */
+const OPEN = [
+  [0.2, 'throttles at cutoff (arms the light-off gate; no sound, no change)', (e) => (e.setJetSystem('throttleL', false), e.setJetSystem('throttleR', false))],
+  [0.6, 'checklist card lifted', C('pamphletLift')],
+  [1.2, 'checklist card opened', C('pamphletOpen')],
+  [2.0, 'BATT on (relay clunk, hum, gyro)', S('batt', true)],
+  [3.5, 'SEAT BELT on (chime)', S('seatbelt', true)],
+  [5.0, 'AVIONICS on (fan + hum)', S('avionics', true)],
+  [6.0, 'NAV PLATFORM on (spin-up)', S('inertialNav', true)],
+  [7.0, 'POSITION LIGHTS on', S('navLights', true)],
+  [7.5, 'BEACON on (flasher ticks)', S('anticollision', true)],
+];
+/** Shared second half: hydraulics, canopy, oxygen, caution reset, display menu, throttle, guards, PULL. */
+const CLOSE = [
+  [39.0, 'HYDRAULICS on (pump whine, pressure rise)', S('hydraulics', true)],
+  [41.0, 'CANOPY close (motor ≈ 3.2 s, latch thunk)', S('canopy', true)],
+  [45.0, 'OXYGEN on (soft hiss)', S('oxygen', true)],
+  [46.0, 'CAUTION reset (short tone)', S('masterCaution', true)],
+  [47.0, 'display menu: bezel press', C('bezelPress')],
+  [47.4, 'display menu: cursor steps', C('cursorStep')],
+  [47.6, '', C('cursorStep')],
+  [47.9, 'display menu: select', C('selectConfirm')],
+  [48.5, 'display menu: page change', C('pageChange')],
+  [49.5, 'throttle up a little (to ≈ 45 %, back to idle by 56 s)', null],
+  [57.0, 'QUICK START cover open', S('quickStartGuard', true)],
+  [58.0, 'QUICK START pressed (engines already running → no change)', S('quickStart', true)],
+  [59.0, 'QUICK START cover closed', S('quickStartGuard', false)],
+  [60.0, 'AB guard cover open', C('abGuardOpen')],
+  [61.0, 'AB guard cover close', C('abGuardClose')],
+  [62.5, 'PULL cover open', C('guardOpen')],
+  [64.0, 'PULL emergency stop (warning, fuel cut at +0.6 s, everything spools down)', (e) => e.jetEmergencyStop()],
+  [75.0, 'PULL cover closed', C('guardClose')],
+  [76.0, 'checklist card closed', C('pamphletClose')],
+];
+
 export const DEMO_TIMELINES = {
   apu: [
-    [1.0, 'BATT on', (e) => e.setJetSystem('batt', true)],
-    [3.0, 'SEAT BELT on (chime)', (e) => e.setJetSystem('seatbelt', true)],
-    [5.0, 'APU on (spool to steady hum)', (e) => e.setJetSystem('apu', true)],
-    [14.0, 'L ENG start (left)', (e) => e.setJetSystem('engL', true)],
-    [23.0, 'R ENG start (right)', (e) => e.setJetSystem('engR', true)],
-    [33.0, 'APU off (spool-down)', (e) => e.setJetSystem('apu', false)],
-    [36.5, 'AB guard cover open', (e) => e.playJetCue('abGuardOpen')],
-    [38.0, 'AB guard cover close', (e) => e.playJetCue('abGuardClose')],
-    [39.0, 'display menu: bezel press', (e) => e.playJetCue('bezelPress')],
-    [39.5, 'display menu: cursor steps', (e) => e.playJetCue('cursorStep')],
-    [39.75, '', (e) => e.playJetCue('cursorStep')],
-    [40.0, 'throttle up a little', null],
-    [40.3, 'display menu: select (acknowledge)', (e) => e.playJetCue('selectConfirm')],
-    [41.0, 'display menu: page change', (e) => e.playJetCue('pageChange')],
-    [49.5, 'PULL guard open', (e) => e.playJetCue('guardOpen')],
-    [51.0, 'PULL emergency stop (warning, fuel cut at +0.6 s)', (e) => e.jetEmergencyStop()],
-    [62.0, 'guard close', (e) => e.playJetCue('guardClose')],
+    ...OPEN,
+    [8.5, 'APU on (tonal turbine whine, steady ≈ 15.5 s)', S('apu', true)],
+    [16.0, 'L FUEL PUMP on', S('fuelPumpL', true)],
+    [16.8, 'L IGNITION on (igniter arm)', S('ignL', true)],
+    [17.5, 'L ENG start (left; motors, igniters tick)', S('engL', true)],
+    [21.0, 'L THROTTLE to idle (detent) → light-off, idle ≈ 25 s', S('throttleL', true)],
+    [27.0, 'R FUEL PUMP on', S('fuelPumpR', true)],
+    [27.8, 'R IGNITION on', S('ignR', true)],
+    [28.5, 'R ENG start (right)', S('engR', true)],
+    [32.0, 'R THROTTLE to idle → light-off, idle ≈ 36 s', S('throttleR', true)],
+    [37.5, 'APU off (spool-down)', S('apu', false)],
+    ...CLOSE,
   ],
   groundcart: [
-    [1.0, 'BATT on', (e) => e.setJetSystem('batt', true)],
-    [3.0, 'AIR CART on (hiss + whine, right side)', (e) => e.setJetSystem('aircart', true)],
-    [5.0, 'SEAT BELT on (chime)', (e) => e.setJetSystem('seatbelt', true)],
-    [8.0, 'R ENG start on cart air (right)', (e) => e.setJetSystem('engR', true)],
-    [17.0, 'CROSSBLEED open (valve + air rush)', (e) => e.setJetSystem('crossbleed', true)],
-    [19.0, 'L ENG start on crossbleed (left)', (e) => e.setJetSystem('engL', true)],
-    [28.5, 'CROSSBLEED closed', (e) => e.setJetSystem('crossbleed', false)],
-    [30.0, 'AIR CART off (disconnect clunk)', (e) => e.setJetSystem('aircart', false)],
-    [36.5, 'AB guard cover open', (e) => e.playJetCue('abGuardOpen')],
-    [38.0, 'AB guard cover close', (e) => e.playJetCue('abGuardClose')],
-    [39.0, 'display menu: bezel press', (e) => e.playJetCue('bezelPress')],
-    [39.5, 'display menu: cursor steps', (e) => e.playJetCue('cursorStep')],
-    [39.75, '', (e) => e.playJetCue('cursorStep')],
-    [40.0, 'throttle up a little', null],
-    [40.3, 'display menu: select (acknowledge)', (e) => e.playJetCue('selectConfirm')],
-    [41.0, 'display menu: page change', (e) => e.playJetCue('pageChange')],
-    [49.5, 'PULL guard open', (e) => e.playJetCue('guardOpen')],
-    [51.0, 'PULL emergency stop (warning, fuel cut at +0.6 s)', (e) => e.jetEmergencyStop()],
-    [62.0, 'guard close', (e) => e.playJetCue('guardClose')],
+    ...OPEN,
+    [8.5, 'GROUND AIR on (hose clunk, distant diesel chug, hose roar; right side)', S('aircart', true)],
+    [14.0, 'R FUEL PUMP on', S('fuelPumpR', true)],
+    [14.8, 'R IGNITION on', S('ignR', true)],
+    [15.5, 'R ENG start on cart air (right)', S('engR', true)],
+    [18.5, 'R THROTTLE to idle → light-off, idle ≈ 23 s', S('throttleR', true)],
+    [24.5, 'CROSSBLEED open (valve, air rush)', S('crossbleed', true)],
+    [26.0, 'L FUEL PUMP on', S('fuelPumpL', true)],
+    [26.8, 'L IGNITION on', S('ignL', true)],
+    [27.5, 'L ENG start on crossbleed (left)', S('engL', true)],
+    [30.5, 'L THROTTLE to idle → light-off, idle ≈ 35 s', S('throttleL', true)],
+    [36.5, 'CROSSBLEED closed', S('crossbleed', false)],
+    [37.5, 'GROUND AIR off (pressure dump hiss + disconnect clunk)', S('aircart', false)],
+    ...CLOSE,
   ],
 };
-export const DEMO_SECONDS = 66;
+export const DEMO_SECONDS = 79;
 
-/** Park, then a little throttle 40–47 s (to ≈ 45 %), back to idle by 49 s. */
+/** Park, then a little throttle 49.5–56 s (to ≈ 45 %), back to idle. */
 export function demoThrottle(t) {
-  const up = Math.min(1, Math.max(0, (t - 40) / 2.5));
-  const down = Math.min(1, Math.max(0, (t - 46) / 2.5));
+  const up = Math.min(1, Math.max(0, (t - 49.5) / 2.5));
+  const down = Math.min(1, Math.max(0, (t - 53.5) / 2.5));
   return { speed: 0, throttle: 0.45 * up * (1 - down), load: 0.45 * up * (1 - down) };
 }
 
