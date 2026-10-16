@@ -180,7 +180,7 @@ export function CarrierJetMount(props: PackHudProps) {
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const sysReduced = useSyncExternalStore(subSysReduced, readSysReduced, () => false);
   const reduced = reducedMotion(prefs, sysReduced || !props.motion);
-  const cold = useColdStart({ park, mode: prefs.startMode, reduced });
+  const cold = useColdStart({ park, mode: prefs.startMode, reduced, tesla });
   const coldOn = v2 && cold.on;
   // Phones (no shelf / PULL / QUICK START placement yet): skip the cold start, so the engine is never locked out.
   const coldPhone = coldOn && !tesla && !cold.live;

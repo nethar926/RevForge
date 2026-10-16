@@ -421,6 +421,24 @@ export function parkStep(prev: ParkState, speed: number, now: number): ParkState
   return { park: prev.park || now - since >= PARK_DWELL_MS, stillSince: since };
 }
 
+/* ------------------------------------------------------------------ shelf discoverability (Tesla) */
+
+/**
+ * Auto-open the cold-start shelf once per Park entry while the engines are not live (Tesla board / window only;
+ * phones keep their auto quick start). `armed` re-arms whenever we are out of Park, the board is live or cold start is
+ * off, so a manual close stays closed until the next Park entry (or the next dark cockpit). `auto` = Options › AUTO
+ * SHELF (default on). Returns the next armed flag and whether to open now. Tucking away (leave Park / live) is the
+ * shelf's existing close rule.
+ */
+export function shelfAutoStep(armed: boolean, s: { park: boolean; live: boolean; on: boolean; auto: boolean; tesla: boolean }): { armed: boolean; open: boolean } {
+  if (!s.park || s.live || !s.on) return { armed: true, open: false };
+  if (armed && s.auto && s.tesla) return { armed: false, open: true };
+  return { armed, open: false };
+}
+/** The SHELF key's backlit amber START legend: until the first successful start (prefs.cjFirstStartDone). */
+export const shelfStartLit = (s: { on: boolean; firstStartDone: boolean }) => s.on && !s.firstStartDone;
+export const SHELF_START_ARIA = 'Shelf, start engines here';
+
 /* ------------------------------------------------------------------ snapshot */
 
 /** Dan's JetSystemsState (or undefined) → CsSystems. */

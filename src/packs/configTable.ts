@@ -7,7 +7,7 @@
  * Root: RTN · ROLE · TLM · SND · MAP · OPT. K1 = RTN on every page (SPEED cell); tiles are also tapped directly.
  *   ROLE  VEHICLE (OPAC · BRT⚑ · SCAN⚑ · BEZEL⚑ · SCALE⚑ · FONTS P⚑ · COLORS P⚑) + DYNAMICS (TOP SPD · IDLE LO ·
  *         IDLE HI · JITTER · JIT % · MEDIA — all P)
- *   TLM   LOOK (the theme's looks) · UNITS (SPEED · DIST⚑ · TEMP⚑ · PRESS⚑) · READOUT (DENSITY⚑)
+ *   TLM   LOOK (the theme's looks) · UNITS (SPEED · HDG M/T · DIST⚑ · TEMP⚑ · PRESS⚑) · READOUT (DENSITY⚑)
  *   SND   PACK ▸ P · AUDIO (MUTE · VOL = SYS read-only · SW SND · BKGND) · ALERTS (CALLS · HI-SPD · AB UNARM — REQ)
  *   MAP   GPS P · FIX + RETRY · COMPASS (phones) · RADAR · STYLE · RNG · MODE · (i) MAP CREDIT (REQ)
  *   OPT   ENGINE STARTUP P (APU / STANDARD) · MOTION (REQ) · ALERTS ▸ · TIP · DIAG ▸ P · ABOUT · RESET ▸ P
@@ -16,7 +16,7 @@
  */
 import type { CjNavAction } from './carrier-jet.nav.ts';
 import { abUnarmedReason, type CjPrefs } from './carrier-jet/cjPrefs.ts';
-import { applyMapKey, stepRange, type MapView } from './carrier-jet/mapView.ts';
+import { applyMapKey, stepRange, stepZoom, type MapView } from './carrier-jet/mapView.ts';
 import type { PackShellUi } from './runtime.ts';
 
 export const DEFAULT_ROLE = 'DRIVER';
@@ -83,7 +83,8 @@ export interface PackConfigSpec {
 
 export const PARK_REASON = 'Park to change';
 export const DRIVE_REASON = 'Available on Drive';
-export const MAP_CREDIT = '© OpenStreetMap contributors · Tiles: OpenFreeMap';
+/** Live map credit (MATRIX MAP cell (i) popover); must match the skin's CJ_MAP_CREDIT (tests check). */
+export const MAP_CREDIT = '© OpenStreetMap contributors · © OpenMapTiles · Tiles: OpenFreeMap · Terrain: Mapzen / AWS Terrain Tiles (SRTM, USGS and others)';
 export const ABOUT_TEXT = 'RevForge · Carrier Jet preview. Fonts: B612, Barlow, VT323, Oswald (SIL OFL 1.1). Map: ' + MAP_CREDIT;
 export const RTN: ConfigItem = { id: 'rtn', label: 'RTN', aria: () => 'Return', effect: () => ({ type: 'rtn' }) };
 
@@ -163,6 +164,7 @@ export function buildConfig(spec: PackConfigSpec): Record<PageId, ConfigPage> {
         RTN,
         ...looks,
         { id: 'speed', group: 'UNITS', label: 'SPEED', needsUi: true, value: (c) => (c.ui!.speedUnit === 'mph' ? 'MPH' : 'KM/H'), aria: (c) => `Speed units, ${c.ui!.speedUnit === 'mph' ? 'miles per hour' : 'kilometres per hour'}`, effect: (c) => ({ type: 'ui', partial: { speedUnit: c.ui!.speedUnit === 'mph' ? 'kph' : 'mph' } }) },
+        { id: 'hdg', group: 'UNITS', label: 'HDG', value: (c) => (c.prefs.hdgRef === 'M' ? 'MAG' : 'TRUE'), aria: (c) => `Heading reference, ${c.prefs.hdgRef === 'M' ? 'magnetic' : 'true'}`, effect: (c) => ({ type: 'prefs', partial: { hdgRef: c.prefs.hdgRef === 'M' ? 'T' : 'M' } }) },
         { id: 'dist', group: 'UNITS', label: 'DIST', flag: 'stored; no readout uses it yet', value: (c) => UP(c.prefs.distUnit), aria: (c) => `Distance units, ${c.prefs.distUnit === 'mi' ? 'miles' : 'kilometres'}`, effect: (c) => ({ type: 'prefs', partial: { distUnit: c.prefs.distUnit === 'mi' ? 'km' : 'mi' } }) },
         { id: 'temp', group: 'UNITS', label: 'TEMP', flag: 'stored; no readout uses it yet', value: (c) => (c.prefs.tempUnit === 'f' ? '°F' : '°C'), aria: (c) => `Temperature, ${c.prefs.tempUnit === 'f' ? 'Fahrenheit' : 'Celsius'}`, effect: (c) => ({ type: 'prefs', partial: { tempUnit: c.prefs.tempUnit === 'f' ? 'c' : 'f' } }) },
         { id: 'press', group: 'UNITS', label: 'PRESS', flag: 'stored; no readout uses it yet', value: (c) => UP(c.prefs.pressUnit), aria: (c) => `Pressure, ${c.prefs.pressUnit === 'psi' ? 'P S I' : 'bar'}`, effect: (c) => ({ type: 'prefs', partial: { pressUnit: c.prefs.pressUnit === 'psi' ? 'bar' : 'psi' } }) },
@@ -191,9 +193,9 @@ export function buildConfig(spec: PackConfigSpec): Record<PageId, ConfigPage> {
         { id: 'fix', label: 'FIX · RETRY', needsUi: true, value: (c) => UP(c.ui!.gpsLabel || '—').slice(0, 14), aria: (c) => `GPS fix, ${c.ui!.gpsLabel}. Retry`, effect: () => ({ type: 'retry-gps' }) },
         { id: 'compass', label: 'COMPASS', when: (c) => !!c.compass?.available, value: (c) => UP(c.compass?.state ?? ''), aria: (c) => `Compass, ${c.compass?.state}`, effect: () => ({ type: 'compass' }) },
         { id: 'radar', label: 'RADAR', value: (c) => onOff(c.map.radar), on: (c) => c.map.radar, aria: (c) => `Radar, ${c.map.radar ? 'on' : 'off'}`, effect: (c) => ({ type: 'map', next: { ...c.map, radar: !c.map.radar } }) },
-        { id: 'style', label: 'STYLE', value: (c) => `${c.map.northUp ? 'N-UP' : 'TRK-UP'} ${c.map.zoom}MI`, aria: (c) => `Map style, ${c.map.northUp ? 'north up' : 'track up'}, ${c.map.zoom} miles`, effect: (c) => ({ type: 'map', next: c.map.northUp ? applyMapKey(c.map, 'orient') : { ...applyMapKey(c.map, 'orient'), zoom: c.map.zoom === 10 ? 2 : stepRange(c.map.zoom, 1) } }) },
+        { id: 'style', label: 'STYLE', value: (c) => `${c.map.northUp ? 'N-UP' : 'TRK-UP'} ${c.map.zoom}MI`, aria: (c) => `Map style, ${c.map.northUp ? 'north up' : 'track up'}, ${c.map.zoom} miles`, effect: (c) => ({ type: 'map', next: c.map.northUp ? applyMapKey(c.map, 'orient') : { ...applyMapKey(c.map, 'orient'), zoom: c.map.zoom === 10 ? 1 : stepZoom(c.map.zoom, 1) } }) },
         { id: 'rng', label: 'RNG', value: (c) => `${c.map.range} MI`, aria: (c) => `Radar range ${c.map.range} miles`, effect: (c) => ({ type: 'map', next: { ...c.map, range: c.map.range === 10 ? 2 : stepRange(c.map.range, 1) } }) },
-        { id: 'mode', label: 'MODE', value: (c) => (c.map.mode === 'map' ? 'MAP' : 'TERR'), aria: (c) => `Radar mode, ${c.map.mode === 'map' ? 'map' : 'terrain'}`, effect: (c) => ({ type: 'map', next: applyMapKey(c.map, 'mode') }) },
+        { id: 'mode', label: 'MODE', value: (c) => (c.map.mode === 'map' ? 'MAP' : 'TERR'), aria: (c) => `Map and radar mode, ${c.map.mode === 'map' ? 'map' : 'terrain'}`, effect: (c) => ({ type: 'map', next: applyMapKey(c.map, 'mode') }) },
         { id: 'mapCredit', label: '(i) CREDIT', value: () => 'OSM · OpenFreeMap', aria: () => `Map credit: ${MAP_CREDIT}`, effect: () => ({ type: 'info', text: MAP_CREDIT }) },
         ...(ex.map ?? []),
       ],
@@ -204,6 +206,7 @@ export function buildConfig(spec: PackConfigSpec): Record<PageId, ConfigPage> {
         RTN,
         { id: 'start', label: 'ENGINE STARTUP', parkOnly: true, value: (c) => (c.prefs.startMode === 'apu' ? 'APU' : 'STANDARD'), aria: (c) => `Engine startup, ${c.prefs.startMode === 'apu' ? 'A P U' : 'standard, ground air cross-bleed'}`, effect: (c) => ({ type: 'prefs', partial: { startMode: c.prefs.startMode === 'apu' ? 'gndAir' : 'apu' } }) },
         { id: 'motion', label: 'MOTION', value: (c) => UP(c.prefs.motion), aria: (c) => `Motion, ${c.prefs.motion === 'auto' ? 'follows system' : c.prefs.motion}`, effect: (c) => ({ type: 'prefs', partial: { motion: cycle(['auto', 'reduced', 'full'] as const, c.prefs.motion) } }) },
+        { id: 'shelfAuto', label: 'AUTO SHELF', value: (c) => onOff(c.prefs.shelfAutoOpen), on: (c) => c.prefs.shelfAutoOpen, aria: (c) => `Auto-open start shelf in Park, ${c.prefs.shelfAutoOpen ? 'on' : 'off'}`, effect: (c) => ({ type: 'prefs', partial: { shelfAutoOpen: !c.prefs.shelfAutoOpen } }) },
         { id: 'alerts', label: 'ALERTS ▸', value: () => 'Calls · hi-spd · AB', aria: () => 'Alerts, opens the sound page', effect: () => ({ type: 'page', page: 'sound' }) },
         { id: 'tip', label: 'TIP', needsUi: true, value: (c) => onOff(c.ui!.showKeepAliveTip), on: (c) => !!c.ui?.showKeepAliveTip, aria: (c) => `Keep-tab-open tip, ${c.ui!.showKeepAliveTip ? 'on' : 'off'}`, effect: (c) => ({ type: 'ui', partial: { showKeepAliveTip: !c.ui!.showKeepAliveTip } }) },
         { id: 'diag', label: 'DIAG ▸', parkOnly: true, value: () => 'Sensor test', aria: () => 'Diagnostics, sensor test', effect: nav({ type: 'route', to: '/diag' }) },

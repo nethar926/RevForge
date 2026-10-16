@@ -16,9 +16,9 @@ import { ApuBlock, GndAirBlock, PullHandle, QuickStartGuard, SwitchShelf } from 
 import type { CjShelfOpen, CjToggleState } from '../../skins/carrier-jet/parts/index';
 import type { JetCue, JetSystem } from '../../audio/types';
 import { getPackJet, subscribePackJet } from '../jetBridge';
-import { csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, CS_PARK_REASON, parkStep, PARK_DWELL_MS, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
+import { csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, CS_PARK_REASON, parkStep, PARK_DWELL_MS, shelfAutoStep, shelfStartLit, SHELF_START_ARIA, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
-import { getCjPrefs } from '../carrier-jet/cjPrefs';
+import { getCjPrefs, setCjPrefs, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
 
 /** Park from the HUD speed (one source of truth for the cold start AND CONFIG's Park-only tiles). */
 export function useCjPark(speedMph: number): boolean {
@@ -60,7 +60,8 @@ export interface ColdStart {
   };
 }
 
-export function useColdStart({ park, mode, reduced }: { park: boolean; mode: CsMode; reduced: boolean }): ColdStart {
+export function useColdStart({ park, mode, reduced, tesla = false }: { park: boolean; mode: CsMode; reduced: boolean; tesla?: boolean }): ColdStart {
+  const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const api = useSyncExternalStore(subscribePackJet, getPackJet, () => null);
   const [snap, setSnap] = useState<Snap>(NO_SNAP);
   useEffect(() => {
@@ -147,6 +148,17 @@ export function useColdStart({ park, mode, reduced }: { park: boolean; mode: CsM
       setPamphletPhase('closed');
     }
   }, [park, live, on, shelf]);
+  // discoverability (Tesla): auto-open once per Park entry with the engines off (Options › AUTO SHELF); first start
+  // done → the SHELF key's START legend goes out for good
+  const autoArmed = useRef(true);
+  useEffect(() => {
+    const r = shelfAutoStep(autoArmed.current, { park, live, on, auto: prefs.shelfAutoOpen, tesla });
+    autoArmed.current = r.armed;
+    if (r.open && shelf === 'closed') setShelf('opening');
+  }, [park, live, on, prefs.shelfAutoOpen, tesla]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (on && live && !prefs.cjFirstStartDone) setCjPrefs({ cjFirstStartDone: true });
+  }, [on, live, prefs.cjFirstStartDone]);
   useEffect(() => {
     if (shelf !== 'opening') return;
     const t = setTimeout(() => setShelf('open'), reduced ? 0 : 300);
@@ -347,8 +359,11 @@ export function useColdStart({ park, mode, reduced }: { park: boolean; mode: CsM
   const shelfKey = (size: 'wide' | 'narrow') => {
     if (!on) return null;
     const legend = !park ? 'PARK' : shelf === 'closed' ? '▲ OPEN' : '▼ CLOSE';
+    const start = shelfStartLit({ on, firstStartDone: prefs.cjFirstStartDone });
+    const name = start ? SHELF_START_ARIA : 'Switch shelf';
     return (
-      <button type="button" className="cjcs-shelfkey" data-size={size} aria-expanded={shelf !== 'closed'} aria-disabled={!park || undefined} aria-label={park ? 'Switch shelf' : `Switch shelf. ${CS_PARK_REASON}`} onClick={toggleShelf}>
+      <button type="button" className="cjcs-shelfkey" data-size={size} data-start={start || undefined} data-motion={reduced ? 'static' : 'live'} aria-expanded={shelf !== 'closed'} aria-disabled={!park || undefined} aria-label={park ? name : `${name}. ${CS_PARK_REASON}`} onClick={toggleShelf}>
+        {start && <span className="cjcs-start" aria-hidden="true">START</span>}
         <strong aria-hidden="true">SHELF</strong>
         <small aria-hidden="true">{legend}</small>
       </button>

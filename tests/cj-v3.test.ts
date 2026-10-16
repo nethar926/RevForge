@@ -27,6 +27,8 @@ test('NAV → SPDS: right bank = DRIVE · MORE · spare under COMPASS, on the bo
     assert.match(k[0]!.ariaLabel, config ? /return to the board/ : /board showing/);
   }
   assert.equal(cellKeys(RIGHT_BANK, 3, { map: MAP_VIEW_DEFAULT, config: null, moreOpen: true })[1]!.active, true, 'MORE boxed while its sheet is open');
+  // 1280 / 1256: four keys fit under COMPASS; K3 and K4 are both inert spares (data-reason=spare, dim cap, no legend)
+  assert.deepEqual(cellKeys(RIGHT_BANK, 4, { map: MAP_VIEW_DEFAULT, config: null }).map((x) => x?.id ?? null), ['drive', 'more', null, null]);
 });
 test('NAV → SPDS: nothing dropped — every old NAV function (CJ preview) has a home', () => {
   const r = cjNavItems({ current: 'drive', muted: false, moreOpen: true, compass: 'off', features: CJ });
@@ -71,7 +73,7 @@ test('NAV → SPDS: Tesla bank has no NAV panel; DRIVE acts like RTN; MORE sheet
   const row = src('packs/mounts/CjNavRow.tsx');
   assert.match(mount, /\{spds \? coldOn && <div className="cjm-bank-shelf">/);
   assert.match(row, /if \(spds\) return null;|getCjNavSpds/);
-  assert.match(layer, /data-reason=\{[^}]*'spare'/);
+  assert.match(layer, /data-reason=\{[^}]*i >= SPARE_INDEX && !k \? 'spare'/);
   assert.match(layer, /className="cjv2-more"[^>]*role="dialog"/);
   assert.match(layer, /role=\{it\.id === 'mute' \? 'switch' : undefined\} aria-checked=\{it\.id === 'mute' \? !!it\.on\?\.\(c\) : undefined\}/);
   assert.match(layer, /case 'drive':/);

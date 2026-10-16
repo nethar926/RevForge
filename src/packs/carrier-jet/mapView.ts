@@ -1,7 +1,8 @@
 /**
  * Carrier Jet v2 MAP cell view state (framework; pure store, persisted). RADAR (the bat toggle on the GPS+RADAR plate)
  * swaps the MAP cell between the HSD map and the round radar scope; the MAP edge keys follow it:
- *   RADAR off: ZM+ / ZM− (map scale 2 · 5 · 10 mi) · N/TRK-UP (north-up ↔ track-up)
+ *   RADAR off: ZM+ / ZM− (live map range 1 · 2 · 5 · 10 mi) · N/TRK-UP (north-up ↔ track-up) · MAP/TERR (4th key:
+ *              the live map's hillshade off ↔ on; the same `mode` the radar's MODE key sets)
  *   RADAR on:  RNG+ / RNG− (scope range 2 · 5 · 10 mi) · MODE (MAP ↔ TERR returns)
  * All of it is a view change, so it works while driving. Default: radar off, 5 mi, MAP returns, north-up.
  */
@@ -10,20 +11,24 @@ import type { KV } from '../abArmed.ts';
 
 export const RANGES = [2, 5, 10] as const;
 export type RangeMi = (typeof RANGES)[number];
+/** Live map ranges (cell half-height in mi; zoomForRangeMi). */
+export const MAP_ZOOMS = [1, 2, 5, 10] as const;
+export type ZoomMi = (typeof MAP_ZOOMS)[number];
 export interface MapView {
   radar: boolean;
   /** Radar scope range (mi). */
   range: RangeMi;
-  /** Radar returns: roads (MAP) or terrain contours (TERR). */
+  /** Radar returns: roads (MAP) or terrain contours (TERR). Live map: TERR = hillshade on, MAP = off. */
   mode: 'map' | 'terr';
   /** HSD map scale (mi across the half-cell). */
-  zoom: RangeMi;
+  zoom: ZoomMi;
   northUp: boolean;
 }
 export const MAP_VIEW_DEFAULT: MapView = { radar: false, range: 5, mode: 'map', zoom: 5, northUp: true };
 export const MAP_VIEW_KEY = 'revforge.pack.carrier-jet.mapView';
 
 const isRange = (v: unknown): v is RangeMi => v === 2 || v === 5 || v === 10;
+const isZoom = (v: unknown): v is ZoomMi => v === 1 || isRange(v);
 export function parseMapView(raw: string | null): MapView {
   try {
     const o = raw ? (JSON.parse(raw) as Partial<MapView>) : {};
@@ -31,7 +36,7 @@ export function parseMapView(raw: string | null): MapView {
       radar: o.radar === true,
       range: isRange(o.range) ? o.range : MAP_VIEW_DEFAULT.range,
       mode: o.mode === 'terr' ? 'terr' : 'map',
-      zoom: isRange(o.zoom) ? o.zoom : MAP_VIEW_DEFAULT.zoom,
+      zoom: isZoom(o.zoom) ? o.zoom : MAP_VIEW_DEFAULT.zoom,
       northUp: o.northUp !== false,
     };
   } catch {
@@ -41,6 +46,9 @@ export function parseMapView(raw: string | null): MapView {
 
 /** Step 2 ↔ 5 ↔ 10 (clamped). */
 export const stepRange = (r: RangeMi, dir: 1 | -1): RangeMi => RANGES[Math.max(0, Math.min(RANGES.length - 1, RANGES.indexOf(r) + dir))];
+
+/** Step 1 ↔ 2 ↔ 5 ↔ 10 (clamped). */
+export const stepZoom = (z: ZoomMi, dir: 1 | -1): ZoomMi => MAP_ZOOMS[Math.max(0, Math.min(MAP_ZOOMS.length - 1, MAP_ZOOMS.indexOf(z) + dir))];
 
 export type MapKeyId = 'zoomIn' | 'zoomOut' | 'orient' | 'rngUp' | 'rngDown' | 'mode';
 export interface MapKey { id: MapKeyId; legend: string; ariaLabel: string; disabledReason?: string }
@@ -56,17 +64,18 @@ export function mapKeys(v: MapView): MapKey[] {
   }
   return [
     // ZM+ zooms in = smaller scale
-    { id: 'zoomIn', legend: 'ZM+', ariaLabel: `Zoom in, ${v.zoom} miles`, disabledReason: v.zoom === 2 ? 'Already at 2 miles' : undefined },
+    { id: 'zoomIn', legend: 'ZM+', ariaLabel: `Zoom in, ${v.zoom} ${v.zoom === 1 ? 'mile' : 'miles'}`, disabledReason: v.zoom === 1 ? 'Already at 1 mile' : undefined },
     { id: 'zoomOut', legend: 'ZM−', ariaLabel: `Zoom out, ${v.zoom} miles`, disabledReason: v.zoom === 10 ? 'Already at 10 miles' : undefined },
     { id: 'orient', legend: 'N/TRK-UP', ariaLabel: v.northUp ? 'North up, switch to track up' : 'Track up, switch to north up' },
+    { id: 'mode', legend: 'MAP/TERR', ariaLabel: v.mode === 'terr' ? 'Terrain on, switch to map' : 'Map, switch to terrain' },
   ];
 }
 
 /** Apply a MAP key. */
 export function applyMapKey(v: MapView, id: MapKeyId): MapView {
   switch (id) {
-    case 'zoomIn': return { ...v, zoom: stepRange(v.zoom, -1) };
-    case 'zoomOut': return { ...v, zoom: stepRange(v.zoom, 1) };
+    case 'zoomIn': return { ...v, zoom: stepZoom(v.zoom, -1) };
+    case 'zoomOut': return { ...v, zoom: stepZoom(v.zoom, 1) };
     case 'orient': return { ...v, northUp: !v.northUp };
     case 'rngUp': return { ...v, range: stepRange(v.range, 1) };
     case 'rngDown': return { ...v, range: stepRange(v.range, -1) };

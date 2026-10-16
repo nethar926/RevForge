@@ -50,12 +50,23 @@
 .cjcs-shelfkey { box-sizing: border-box; width: 80px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0;
   border: 1px solid #1d2022; border-radius: 6px; cursor: pointer; color: #f3f1e8; font: 700 13px/1 'B612', system-ui, sans-serif; letter-spacing: 0.12em;
   background: linear-gradient(#5b6267, #3f4549); box-shadow: inset 1px 1px 0 rgb(255 255 255 / 0.25), inset -1px -1px 0 rgb(0 0 0 / 0.4), 1px 2px 3px rgb(0 0 0 / 0.5); }
-.cjcs-shelfkey small { font-size: 11px; letter-spacing: 0.06em; color: #8dffad; }
+/* HIG 11px floor after scaling: the key can sit inside the scaled .skin-body (--hud-scale × --fit-scale, e.g. 0.971 at
+   1256), so the legends divide by it (never below 11px rendered); 11.2px base keeps a margin over rounding. */
+.cjcs-shelfkey { --cjcs-leg: max(11.2px, calc(11.2px / (var(--hud-scale, 1) * var(--fit-scale, 1)))); }
+.cjcs-shelfkey small { font-size: var(--cjcs-leg); letter-spacing: 0.06em; color: #8dffad; }
 .cjcs-shelfkey[aria-expanded='true'] small { color: #ffc35a; }
 .cjcs-shelfkey[aria-disabled='true'] { color: #c9cfd3; cursor: default; }
 .cjcs-shelfkey[aria-disabled='true'] small { color: #c9cfd3; }
 .cjcs-shelfkey:active:not([aria-disabled='true']) { background: linear-gradient(#3f4549, #5b6267); }
 .cjcs-shelfkey:focus-visible { outline: 2px solid #8dffad; outline-offset: 2px; }
+/* SHELF discoverability: backlit amber START legend until the first successful start (prefs.cjFirstStartDone).
+   Slow glow pulse; Reduce Motion = the same glow, static. */
+.cjcs-shelfkey[data-start] { gap: 2px; }
+.cjcs-shelfkey .cjcs-start { font-size: var(--cjcs-leg); line-height: 1.1; letter-spacing: 0.12em; color: #ffc35a; padding: 0 4px; border-radius: 2px;
+  background: rgb(255 195 90 / 0.14); text-shadow: 0 0 4px rgb(255 195 90 / 0.85); box-shadow: 0 0 6px rgb(255 195 90 / 0.35); animation: cjcs-start-glow 2.4s ease-in-out infinite; }
+@keyframes cjcs-start-glow { 50% { text-shadow: 0 0 1px rgb(255 195 90 / 0.5); box-shadow: 0 0 2px rgb(255 195 90 / 0.15); } }
+.cjcs-shelfkey[data-motion='static'] .cjcs-start { animation: none; }
+@media (prefers-reduced-motion: reduce) { .cjcs-shelfkey .cjcs-start { animation: none; } }
 .cjm-bank[data-cjm-v2][data-rf-layout='phone-landscape'] > .cjm-bank-plate { display: none; } /* 68px strip: no room for 118 */
 .rev-viewport > .cjm-below > .cjm-bank[data-cjm-v2] > .cjm-bank-plate { align-self: center; margin-bottom: 0; }
 /* the row under the guard keeps its 48px switch floor; tighter gaps at 1280 as before */
@@ -144,7 +155,7 @@
 .cjv2-info { position: absolute; top: 0; right: 0; width: 44px; height: 44px; border: 0; background: transparent; color: #8dffad; font: 700 13px/1 'B612', system-ui, sans-serif; cursor: pointer; padding: 0; z-index: 1; }
 .cjv2-info::before { content: ''; position: absolute; left: 11px; top: 11px; width: 19px; height: 19px; border: 1.5px solid currentColor; border-radius: 50%; }
 .cjv2-info:focus-visible { outline: 2px solid #8dffad; outline-offset: -2px; }
-.cjv2-attr { position: absolute; left: 8px; right: 48px; top: 6px; margin: 0; padding: 4px 6px; background: #041009; border: 1px solid #45ad66; font-size: 11px; line-height: 14px; color: #8dffad; z-index: 1; }
+.cjv2-attr { position: absolute; left: 4px; right: 44px; top: 3px; margin: 0; padding: 2px 5px; background: #041009; border: 1px solid #45ad66; font-size: 11px; line-height: 13px; color: #8dffad; z-index: 1; }
 .cjv2-alerts { position: absolute; left: 0; right: 0; top: 0; height: 33.4%; pointer-events: none; }
 
 /* edge keys (Meghan's BezelKey; inert keys are her darker disabled caps) */
@@ -217,3 +228,20 @@
 .cjcs-pclose:focus-visible { outline: 2px solid #1f6b3a; outline-offset: 2px; }
 .cjm > .cjcs-say { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); margin: 0; z-index: 7; pointer-events: none; font: 700 12px/16px 'B612', system-ui, sans-serif; padding: 0 8px; background: #041009; color: #ffc35a; max-width: 90%; }
 .cjm > .cjcs-say:empty { display: none; }
+
+/* ---------------- live map (CjLiveMap.tsx, BUILD.md): MapLibre canvas (z 0) · static scanlines · HSD overlay · labels/corners */
+.cjv2-hsd > .cjv2-mapgl { position: absolute; inset: 0; z-index: 0; background: #041009; }
+.cjv2-hsd > .cjv2-mapgl canvas { outline: none; }
+.cjv2-hsd > .cjv2-scan { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.22) 0 1px, transparent 1px 3px); }
+.cjv2-map .cjv2-hsd > svg.cjv2-hsd-ov { inset: 0; width: 100%; height: 100%; }
+.cjv2-hsd .cjv2-own { stroke: #041009; stroke-width: 1.2; paint-order: stroke; }
+.cjv2-hsd .cjv2-own[data-acq] { fill: none; stroke: #8dffad; stroke-width: 1.5; }
+.cjv2-hsd .cjv2-bug[data-stale] { opacity: 0.45; }
+.cjv2-hsd > .cjv2-corner { background: rgb(4 16 9 / 0.82); padding: 0 3px; border-radius: 3px; }
+.cjv2-hsd > .cjv2-br { color: #8fb59a; }
+.cjv2-hsd > .cjv2-hdg { top: 4px; padding: 1px 4px; line-height: normal; }
+.cjv2-street { position: absolute; box-sizing: border-box; padding: 2px; text-align: center; white-space: nowrap; pointer-events: none; font: 700 11px/13px 'B612', system-ui, sans-serif; letter-spacing: 0.02em; color: #8dffad;
+  text-shadow: 0 0 2px #041009, 0 0 2px #041009, 1px 1px 0 #041009, -1px -1px 0 #041009, 1px -1px 0 #041009, -1px 1px 0 #041009; }
+/* compass readout: Meghan's HeadingLegend over the HSD rose's top digit box (HDG 047 M / HDG 040 T) */
+.cjv2 > .cjv2-hdgcell { pointer-events: none; }
+.cjv2-hdgro { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); padding: 1px 6px; background: #041009; border: 1px solid #2f7a48; border-radius: 4px; white-space: nowrap; }

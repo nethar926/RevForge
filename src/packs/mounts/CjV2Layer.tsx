@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type RefObject } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type RefObject } from 'react';
 import { BezelKey } from '../../skins/carrier-jet/parts/index';
 import { useCarrierJetVariant, writeCarrierJetVariant, type CarrierJetVariant } from '../../skins/carrier-jet';
 import ID from '../carrier-jet.identity';
@@ -16,6 +16,9 @@ import { cellKeys, KEY_CELLS, RIGHT_BANK, SPARE_INDEX, type EdgeKey } from '../c
 import { cjNavAction, cjNavItems } from '../carrier-jet.nav';
 import { disabledReason, itemAria, itemValue, MAP_CREDIT, pageTiles, runItem, visibleItems, type ConfigCtx, type ConfigEffect, type ConfigItem } from '../configTable';
 import { CJ_CONFIG } from '../carrier-jet/configPages';
+// live map + compass legend: a lazy chunk (CjLiveMap.tsx, Meghan's style + WMM2025); maplibre-gl is a further lazy chunk
+const CjLiveMap = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjLiveMap })));
+const CjHeadingReadout = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjHeadingReadout })));
 
 const sysReduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const subSysReduced = (f: () => void) => {
@@ -153,7 +156,8 @@ function AccelCell({ box, demo, reduced }: { box: Box; demo: boolean; reduced: b
 }
 
 /* ------------------------------------------------------------------ MAP / RADAR */
-function MapCell({ box, view, heading, headingStale, reduced }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean }) {
+type LiveMapCtx = { demo: boolean; park: boolean; hdgRef: 'M' | 'T' };
+function MapCell({ box, view, heading, headingStale, reduced, live }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx }) {
   const [info, setInfo] = useState(false);
   const hdg = heading == null ? '---' : String(Math.round(heading) % 360).padStart(3, '0');
   return (
@@ -184,25 +188,9 @@ function MapCell({ box, view, heading, headingStale, reduced }: { box: Box; view
             <span className="cjv2-corner cjv2-bl">{view.range} MI</span>
             <span className="cjv2-corner cjv2-br">NO RETURNS</span>
           </div>
-        ) : (
-          <div className="cjv2-hsd" role="img" aria-label={`Map, ${view.northUp ? 'north up' : 'track up'}, ${view.zoom} mile scale, no map data`}>
-            <svg viewBox="-50 -50 100 100" aria-hidden="true">
-              <g transform={`rotate(${view.northUp || heading == null ? 0 : -heading})`}>
-                {[-30, -15, 0, 15, 30].map((v) => (
-                  <g key={v}>
-                    <line x1={v} y1="-46" x2={v} y2="46" className="cjv2-grid" />
-                    <line x1="-46" y1={v} x2="46" y2={v} className="cjv2-grid" />
-                  </g>
-                ))}
-                <text x="0" y="-30" className="cjv2-n">N</text>
-              </g>
-              <path d={`M0 -5 L4 5 L0 2.5 L-4 5 Z`} className="cjv2-own" transform={`rotate(${view.northUp && heading != null ? heading : 0})`} />
-            </svg>
-            <span className="cjv2-corner cjv2-tl">{view.northUp ? 'N-UP' : 'TRK-UP'}</span>
-            <span className="cjv2-corner cjv2-bl">{view.zoom} MI</span>
-            <span className="cjv2-corner cjv2-br">NO MAP DATA</span>
-          </div>
-        )}
+        ) : null}
+        {/* live map (lazy MapLibre, CjLiveMap.tsx); kept mounted under RADAR so it pauses, then is removed after 30 s */}
+        <Suspense fallback={null}><CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} hidden={view.radar} /></Suspense>
         <button type="button" className="cjv2-info" aria-expanded={info} aria-label="Map credit" onClick={() => setInfo((v) => !v)}>i</button>
         {info && <p className="cjv2-attr" role="note">{MAP_CREDIT}</p>}
       </div>
@@ -405,7 +393,8 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
       {cells && (
         <>
           <AccelCell box={cells.accel} demo={demo} reduced={reduced} />
-          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} />
+          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} />
+          <div className="cjv2-hdgcell" style={boxStyle(cells.compass)}><Suspense fallback={null}><CjHeadingReadout heading={heading} headingStale={headingStale} hdgRef={prefs.hdgRef} /></Suspense></div>
         </>
       )}
       {cfg.open && (
@@ -427,7 +416,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
           return (
             <div key={cell} className="cjv2-keys" data-cell={cell} role="group" aria-label={`${cell} keys`}>
               {keys.map((k, i) => (
-                <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k?.id} data-reason={k?.reason ? true : cell === RIGHT_BANK && i === SPARE_INDEX && !k ? 'spare' : undefined}>
+                <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k?.id} data-reason={k?.reason ? true : cell === RIGHT_BANK && i >= SPARE_INDEX && !k ? 'spare' : undefined}>
                   <BezelKey legend={k?.legend} active={!!k?.active} ariaLabel={k?.ariaLabel} onPress={k ? () => onKey(cell, k) : undefined} />
                 </div>
               ))}

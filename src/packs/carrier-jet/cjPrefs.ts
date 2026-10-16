@@ -9,6 +9,8 @@
  *  - switchSound (default on)
  *  - startMode apu | gndAir (default apu; Park only; same key the cold-start branch uses)
  *  - motion auto | reduced | full (Reduce Motion override; AUTO follows the system)
+ *  - hdgRef M | T (TLM › UNITS › HDG: which heading leads, magnetic or true; default M; GPS course is TRUE,
+ *    MAG = TRUE − declination from the skin's offline WMM2025)
  *  - distUnit mi | km, tempUnit f | c, pressUnit psi | bar (TLM › UNITS; FLAGGED: no readout uses them yet)
  */
 import { storageKey } from '../../lib/storageKey.ts';
@@ -24,9 +26,14 @@ export interface CjPrefs {
   distUnit: 'mi' | 'km';
   tempUnit: 'f' | 'c';
   pressUnit: 'psi' | 'bar';
+  hdgRef: 'M' | 'T';
+  /** Options › AUTO SHELF: open the cold-start shelf in Park while the engines are off (Tesla; default on). */
+  shelfAutoOpen: boolean;
+  /** Set on the first successful start (board live); the SHELF key's amber START legend goes out. */
+  cjFirstStartDone: boolean;
 }
 export const CJ_PREFS_DEFAULT: Readonly<CjPrefs> = Object.freeze({
-  calloutMode: 'voice', highSpeedCallouts: false, abUnarmedCall: 'silent', switchSound: true, startMode: 'apu', motion: 'auto', distUnit: 'mi', tempUnit: 'f', pressUnit: 'psi',
+  calloutMode: 'voice', highSpeedCallouts: false, abUnarmedCall: 'silent', switchSound: true, startMode: 'apu', motion: 'auto', distUnit: 'mi', tempUnit: 'f', pressUnit: 'psi', hdgRef: 'M', shelfAutoOpen: true, cjFirstStartDone: false,
 });
 export const CJ_PREFS_KEY = 'revforge.pack.carrier-jet.config';
 /** Start mode (cold start's prefs.ts folded in: one source of truth). */
@@ -51,6 +58,9 @@ export function parseCjPrefs(raw: string | null, startRaw: string | null = null)
     distUnit: pick(o.distUnit, ['mi', 'km'] as const, d.distUnit),
     tempUnit: pick(o.tempUnit, ['f', 'c'] as const, d.tempUnit),
     pressUnit: pick(o.pressUnit, ['psi', 'bar'] as const, d.pressUnit),
+    hdgRef: pick(o.hdgRef, ['M', 'T'] as const, d.hdgRef),
+    shelfAutoOpen: o.shelfAutoOpen !== false,
+    cjFirstStartDone: o.cjFirstStartDone === true,
   };
 }
 
