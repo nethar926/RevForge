@@ -55,8 +55,8 @@
 .cjcs-shelfkey { --cjcs-leg: max(11.2px, calc(11.2px / (var(--hud-scale, 1) * var(--fit-scale, 1)))); }
 .cjcs-shelfkey small { font-size: var(--cjcs-leg); letter-spacing: 0.06em; color: #8dffad; }
 .cjcs-shelfkey[aria-expanded='true'] small { color: #ffc35a; }
-.cjcs-shelfkey[aria-disabled='true'] { color: #c9cfd3; cursor: default; }
-.cjcs-shelfkey[aria-disabled='true'] small { color: #c9cfd3; }
+.cjcs-shelfkey[aria-disabled='true'] { color: #ccd2d6; cursor: default; }
+.cjcs-shelfkey[aria-disabled='true'] small { color: #ccd2d6; }
 .cjcs-shelfkey:active:not([aria-disabled='true']) { background: linear-gradient(#3f4549, #5b6267); }
 .cjcs-shelfkey:focus-visible { outline: 2px solid #8dffad; outline-offset: 2px; }
 /* SHELF discoverability: backlit amber START legend until the first successful start (prefs.cjFirstStartDone).
@@ -173,7 +173,7 @@
 .cjv2-tile small { font-size: 11px; line-height: 13px; font-weight: 600; letter-spacing: 0.02em; color: #6fe593; white-space: nowrap; }
 .cjv2-tile .cjv2-group { color: #a9b3ad; letter-spacing: 0.14em; }
 .cjv2-tile .cjv2-note { color: #ffc35a; }
-.cjv2-tile[aria-disabled='true'] small { color: #c9cfd3; }
+.cjv2-tile[aria-disabled='true'] small { color: #ccd2d6; }
 .cjv2-tile[aria-pressed='true'] strong { outline: 1.5px solid #7ef7a1; outline-offset: 2px; }
 .cjv2-tile:focus-visible { outline: 2px solid #8dffad; outline-offset: -5px; }
 .cjv2-say { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); margin: 0; pointer-events: none; font-size: 12px; line-height: 16px; padding: 0 8px; background: #041009; color: #ffc35a; max-width: 90%; }
