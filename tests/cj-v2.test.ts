@@ -57,13 +57,18 @@ test('hidden features: no VoiceOver node — CONFIG pages never list them', () =
   for (const w of ['sound builder', 'pro builder', 'lab', 'account', 'garage']) assert.ok(!all.includes(w), w);
 });
 
-// ---------------- bank: guard leftmost at every viewport
-test('AB guard is leftmost at every viewport (bank order 0, flush left; Hold to rev right of it)', () => {
-  assert.match(css, /\.rev-dock > \.cjm-bank\[data-cjm-v2\] \{ order: 0; margin-left: 0 !important;/);
+// ---------------- bank: plate far left, then the guard with the NAV row under it
+test('bank order: plate < guard (DOM + grid column), NAV row under the guard; Hold to rev / Shutdown to the right', () => {
+  const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
+  assert.match(mount, /if \(dock\.firstElementChild !== bankEl\) dock\.prepend\(bankEl\)/, 'bank leads the dock DOM (before Hold / Shutdown)');
+  assert.match(mount, /\{plate\}\s*<div className="cjm-bank-ab">\{guard\}<\/div>\s*<div className="cjm-bank-nav"/, 'DOM / VoiceOver order: plate, guard, row');
+  const G = String.raw`\.rev-dock > \.cjm-bank\[data-cjm-v2\]:is\(\[data-rf-layout='board'\], \[data-rf-layout='window'\]\)`;
+  assert.match(css, new RegExp(G + String.raw` > \.cjm-bank-plate \{ grid-column: 1; grid-row: 1 \/ 3;`));
+  assert.match(css, new RegExp(G + String.raw` > \.cjm-bank-ab \{ grid-column: 2; grid-row: 1;`));
+  assert.match(css, new RegExp(G + String.raw` > \.cjm-bank-nav \{\s*grid-column: 2; grid-row: 2;`));
+  assert.match(css, /\.rev-dock > \.cjm-bank\[data-cjm-v2\] \{ order: 0; margin-left: 0 !important;/, 'bank first in the dock');
   assert.match(css, /> \.rev-chip:not\(\.rev-stop\) \{ order: 1;/);
   assert.match(css, /> \.rev-stop \{ order: 2; \}/);
-  const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
-  assert.match(mount, /<div className="cjm-bank-ab">\{guard\}<\/div>\s*\{plate\}\s*<div className="cjm-bank-nav"/, 'guard, then plate, then row in DOM order');
 });
 
 // ---------------- RADAR / MAP keys

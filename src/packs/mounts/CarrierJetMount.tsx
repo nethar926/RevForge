@@ -59,7 +59,8 @@ import { CjV2Layer } from './CjV2Layer';
  *  - phone-landscape: the 68px strip at the bottom of the board's box: guard, then row.
  * The bank is a plain slot pair (.cjm-bank-ab / .cjm-bank-nav) so new bottom-panel art can replace it.
  * CJ v2 (preview build only, FEATURES.cjV2 → data-cjm-v2; carrier-jet-v2.css): the AB guard is FAR LEFT at every size
- * with Hold to rev to the right of the bank; Meghan's GPS+RADAR plate (option C) sits between the guard and the row;
+ * Meghan's GPS+RADAR plate FAR LEFT (DOM first = VoiceOver first), then one stack: the AB guard on top, the switch row
+ * under it (carrier-jet-v2.css grid); Hold to rev and Shutdown to the right;
  * Board 2 re-grids the MATRIX look and CjV2Layer adds ACCEL (GPS), MAP / radar scope, edge keys and CONFIG.
  */
 export function CarrierJetMount(props: PackHudProps) {
@@ -143,6 +144,19 @@ export function CarrierJetMount(props: PackHudProps) {
     };
   }, [layout, docked, viewport]);
   const v2 = FEATURES.cjV2;
+  // CJ v2 (Tesla): the bank leads the dock line, so it must lead the dock's DOM too (VoiceOver follows the DOM, not
+  // CSS order): move the portaled bank to the dock's first child. Same parent, so React's portal bookkeeping holds.
+  useLayoutEffect(() => {
+    const bankEl = bankRef.current;
+    const dock = vp.dock;
+    if (!v2 || !tesla || !dock || !bankEl || bankEl.parentElement !== dock) return;
+    const lead = () => { if (dock.firstElementChild !== bankEl) dock.prepend(bankEl); };
+    lead();
+    if (typeof MutationObserver === 'undefined') return;
+    const mo = new MutationObserver(lead);
+    mo.observe(dock, { childList: true });
+    return () => mo.disconnect();
+  });
   const gpsStatus = useSyncExternalStore(subscribeGpsStatus, getGpsStatus, getGpsStatus);
   const mapView = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
   const onRadar = (on: boolean) => {
@@ -157,8 +171,8 @@ export function CarrierJetMount(props: PackHudProps) {
   const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />;
   const bank = (
     <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined}>
-      <div className="cjm-bank-ab">{guard}</div>
       {plate}
+      <div className="cjm-bank-ab">{guard}</div>
       <div className="cjm-bank-nav" ref={setNavSlot} />
     </div>
   );

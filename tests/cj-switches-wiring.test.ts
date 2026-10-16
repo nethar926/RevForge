@@ -157,7 +157,7 @@ test('bottom bank: guard left + row right in one panel; row portals into it once
   const nav = src('packs/mounts/CjNavRow.tsx');
   const css = src('packs/mounts/carrier-jet-controls.css').replace(/\/\*[\s\S]*?\*\//g, '');
   // one swappable panel: guard slot first, nav slot second
-  assert.match(mount, /<div ref=\{bankRef\} className="cjm-bank" data-rf-layout=\{layout\}[^>]*>\s*<div className="cjm-bank-ab">\{guard\}<\/div>\s*(\{plate\}\s*)?<div className="cjm-bank-nav" ref=\{setNavSlot\} \/>/); // CJ v2: GPS+RADAR plate between
+  assert.match(mount, /<div ref=\{bankRef\} className="cjm-bank" data-rf-layout=\{layout\}[^>]*>\s*(\{plate\}\s*)?<div className="cjm-bank-ab">\{guard\}<\/div>\s*<div className="cjm-bank-nav" ref=\{setNavSlot\} \/>/); // CJ v2: GPS+RADAR plate first
   // the slot is published only while the drive dock exists (after IGNITION), withdrawn on cleanup
   assert.match(mount, /if \(!docked \|\| !navSlot\) return;\s*setCjNavSlot\(navSlot\);\s*return \(\) => setCjNavSlot\(null, navSlot\);/);
   assert.match(mount, /querySelector<HTMLElement>\(':scope > \.rev-dock'\)/);
