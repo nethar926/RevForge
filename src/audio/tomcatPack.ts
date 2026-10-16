@@ -2,7 +2,7 @@
  * Tomcat — procedural twin afterburning-turbofan voice for the `aerospace-f14` builtin.
  *
  * Identity hub. The builtin keeps its id `aerospace-f14`, topology `aerospace-f14` and snippet
- * `aerospace-f14.wav` (keys for saved settings / migrations). Display label: "Tomcat".
+ * `aerospace-f14.wav` (keys for saved settings / migrations). Display label: "Carrier Jet".
  *
  * Which patches get the voice: the `aerospace-f14` builtin itself, plus any patch whose params carry
  * `tomcatVoice: 1` (Tune This Engine copies clone it). Other patches on the same topology — e.g.
@@ -19,7 +19,7 @@ export const TOMCAT_PACK = {
   /** Builtin id / topology / snippet key — never changes. */
   id: 'aerospace-f14',
   /** Human-readable label for this engine. */
-  name: 'Tomcat',
+  name: 'Carrier Jet',
   /**
    * Pack-level drivetrain flag: the jet has no gearbox. The audio layer opts this pack out of every
    * gearbox output a car sim sends (rpm / rpmNorm sawtooth, upshift / downshift cues, shift dips);
