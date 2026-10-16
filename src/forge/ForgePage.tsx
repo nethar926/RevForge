@@ -183,6 +183,7 @@ export function ForgePage({
     pedal,
     brake,
     jitterEnabled?jitterAmount:0,
+    activePackId===CARRIER_JET_IDENTITY.id,
   );
   const revReady = audio.running && source === "demo";
 

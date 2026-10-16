@@ -220,12 +220,8 @@ export function CarrierJetMount(props: PackHudProps) {
       <GpsRadarPlate gps={props.demo ? 'none' : cjGps(gpsStatus)} radarOn={mapView.radar} onRadarToggle={onRadar} size={layout === 'board' ? 'wide' : 'narrow'} />
     </div>
   ) : null;
-  const guard = (
-    <>
-      <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />
-      {launch.lit && <span className="cjm-launch" aria-hidden="true">LAUNCH</span>}
-    </>
-  );
+  // launch: the skin's AB ARMED plate reads LAUNCH via .cjm-bank[data-ab-launch] (carrier-jet-controls.css; no skin edit)
+  const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />;
   const bank = (
     <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined}>
       {plate}

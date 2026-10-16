@@ -1,3 +1,4 @@
+import { engineSpeedMph } from "./engineSpeed";
 import {idleWander} from './flightProfile';
 import { useEffect, useRef, useState } from "react";
 import type { useAudioEngine } from "../hooks/useAudioEngine";
@@ -15,14 +16,16 @@ export function useDriveSimulation(
   pedal: number,
   brake: boolean,
   jitter: number,
+  /** Carrier Jet: the engine gets raw GPS speed (engineSpeed.ts); the HUD keeps the smoothed one. */
+  rawGpsSpeed = false,
 ) {
   const simulation = useRef(createSimulation(config));
   const queuedShift = useRef(0);
-  const latest = useRef({ audio, gps, config, source, mode, pedal, brake, jitter });
+  const latest = useRef({ audio, gps, config, source, mode, pedal, brake, jitter, rawGpsSpeed });
   const [hud, setHud] = useState(() => createSimulation(config));
   useEffect(() => {
-    latest.current = { audio, gps, config, source, mode, pedal, brake, jitter };
-  }, [audio, gps, config, source, mode, pedal, brake, jitter]);
+    latest.current = { audio, gps, config, source, mode, pedal, brake, jitter, rawGpsSpeed };
+  }, [audio, gps, config, source, mode, pedal, brake, jitter, rawGpsSpeed]);
   useEffect(() => {
     simulation.current.gear = Math.min(simulation.current.gear, config.gears);
     simulation.current.rpm = config.idleRpm;
@@ -36,7 +39,7 @@ export function useDriveSimulation(
       previous = performance.now(),
       published = 0;
     const frame = (now: number) => {
-      const { audio, gps, config, source, mode, pedal, brake, jitter } = latest.current;
+      const { audio, gps, config, source, mode, pedal, brake, jitter, rawGpsSpeed } = latest.current;
       const dt = Math.min(document.visibilityState === "hidden" ? .25 : .05, Math.max(0, (now - previous) / 1000));
       previous = now;
       if (audio.running || source === "gps") {
@@ -56,7 +59,7 @@ export function useDriveSimulation(
         if (state.gear < previousGear) audio.triggerUiCue("downshift");
         const throttle = source === "gps" ? state.load : pedal;
         if (audio.running) audio.setDriving({
-          speed: mphToSpeed(state.speedMps * 2.2369362920544),
+          speed: mphToSpeed(engineSpeedMph(state.speedMps * 2.2369362920544, { fresh, mph: gps.mph }, rawGpsSpeed, source)),
           throttle: state.shifting ? throttle * 0.3 : throttle,
           load: state.load,
           rpm: state.rpm + idleWander(now/1000,state.rpm,config.idleRpm,throttle,jitter),

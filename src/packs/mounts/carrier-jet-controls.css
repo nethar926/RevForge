@@ -126,10 +126,13 @@
 .rev-dock > .cjm-bank[data-rf-layout='window'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-label,
 .rev-dock > .cjm-bank[data-rf-layout='window'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-legend { font-size: 13px; line-height: 13px; letter-spacing: 0; }
 
-/* carrier-launch AB light (launchLight.ts): the AB control's LAUNCH state, backlit amber like the AB readouts; a soft
-   burner flicker, steady under Reduce Motion. 12px legend (≥ 11px floor). */
-.cjm-bank > .cjm-bank-ab { position: relative; }
-.cjm-bank-ab > .cjm-launch { position: absolute; right: 4px; top: 4px; z-index: 2; pointer-events: none; padding: 1px 6px; border-radius: 3px;
-  font: 800 12px/14px 'B612', system-ui, sans-serif; letter-spacing: 0.08em; color: #1a0e00; background: #ffb54a; box-shadow: 0 0 8px 1px rgb(255 181 74 / 0.75); }
-.cjm-bank[data-ab-launch][data-launch-motion='live'] > .cjm-bank-ab > .cjm-launch { animation: cjm-launch-flicker 0.42s steps(2, jump-none) infinite alternate; }
+/* carrier-launch AB light (launchLight.ts; Meghan's fix): no separate badge. While getLaunchActive() the skin's own
+   AB ARMED plate (.cjg-plate, already amber when armed) swaps its legend to LAUNCH from here: the plate's aria-hidden
+   legend goes to 0 and its ::after (inside aria-hidden, so VoiceOver keeps the plate's 'Afterburner armed' and hears the
+   aria-live 'Afterburner launch' line) reads LAUNCH. 12px, divided by any HUD / fit scale so it never renders < 11px.
+   Burner flicker on the plate; steady under Reduce Motion. */
+.cjm-bank[data-ab-launch] .cjg-plate[data-armed='true'] { --cjm-launch-fs: max(12px, calc(12px / (var(--hud-scale, 1) * var(--fit-scale, 1)))); }
+.cjm-bank[data-ab-launch] .cjg-plate[data-armed='true'] > span[aria-hidden='true'] { font-size: 0; letter-spacing: 0; }
+.cjm-bank[data-ab-launch] .cjg-plate[data-armed='true'] > span[aria-hidden='true']::after { content: 'LAUNCH'; font-weight: 800; font-size: var(--cjm-launch-fs); line-height: 1; letter-spacing: 0.08em; }
+.cjm-bank[data-ab-launch][data-launch-motion='live'] .cjg-plate[data-armed='true'] { animation: cjm-launch-flicker 0.42s steps(2, jump-none) infinite alternate; }
 @keyframes cjm-launch-flicker { from { opacity: 1; } to { opacity: 0.8; } }

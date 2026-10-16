@@ -27,12 +27,17 @@ test('launch light ON: getLaunchActive() true while running → lit, AB zone ≥
   assert.match(m, /const abZone = launchAbZone\(abZoneAudio, launch\.lit\);/);
   assert.match(m, /abZone=\{abZone\} heading=\{h\}/);
   assert.match(m, /data-ab-launch=\{launch\.lit \|\| undefined\} data-launch-motion=\{reduced \? 'static' : 'live'\}/);
-  assert.match(m, /\{launch\.lit && <span className="cjm-launch" aria-hidden="true">LAUNCH<\/span>\}/);
+  assert.doesNotMatch(m, /className="cjm-launch"/, 'no separate badge (it overlapped the AB ARMED lamp)');
+  assert.match(m, /const guard = <CarrierJetAfterburnerGuard armed=\{armed\}[^\n]*\/>;/, 'skin guard untouched; the plate is overridden from mount CSS');
   assert.match(m, /<p className="rf-sr-only cjm-launch-say" role="status" aria-live="polite">\{launch\.say\}<\/p>/);
   const css = src('packs/mounts/carrier-jet-controls.css');
-  assert.match(css, /\.cjm-bank\[data-ab-launch\]\[data-launch-motion='live'\] > \.cjm-bank-ab > \.cjm-launch \{ animation:/, 'flicker only with motion');
-  assert.doesNotMatch(css.replace(/\[data-launch-motion='live'\] > \.cjm-bank-ab > \.cjm-launch \{ animation:[^}]*\}/, ''), /cjm-launch[^{]*\{[^}]*animation/, 'Reduce Motion: steady');
-  assert.match(css, /\.cjm-launch \{[^}]*font: 800 12px/, '≥ 11px legend');
+  const P = String.raw`\.cjm-bank\[data-ab-launch\] \.cjg-plate\[data-armed='true'\]`;
+  assert.match(css, new RegExp(P + String.raw` > span\[aria-hidden='true'\] \{ font-size: 0;`), 'armed legend hidden');
+  assert.match(css, new RegExp(P + String.raw` > span\[aria-hidden='true'\]::after \{ content: 'LAUNCH'; font-weight: 800; font-size: var\(--cjm-launch-fs\);`), 'LAUNCH on the lamp, inside aria-hidden');
+  assert.match(css, /--cjm-launch-fs: max\(12px, calc\(12px \/ \(var\(--hud-scale, 1\) \* var\(--fit-scale, 1\)\)\)\)/, '12px, ≥ 11px after scaling');
+  assert.match(css, new RegExp(String.raw`\.cjm-bank\[data-ab-launch\]\[data-launch-motion='live'\] \.cjg-plate\[data-armed='true'\] \{ animation: cjm-launch-flicker`), 'flicker only with motion');
+  assert.doesNotMatch(css.replace(/[^\n]*\[data-launch-motion='live'\][^\n]*\n/g, ''), /\[data-ab-launch\][^{]*\{[^}]*animation/, 'Reduce Motion: steady (no animation outside the live rule)');
+  assert.doesNotMatch(css, /\.cjm-launch\b/, 'badge CSS gone');
 });
 
 test('launch light OFF: not running / no API / false / throws → off; ends clear the announcement so the next launch speaks again', () => {
@@ -85,4 +90,17 @@ test("compass readout: name on Meghan's CjHeadingLegend ariaLabel, wrapper unlab
   assert.match(l, /<div className="cjv2-hdgro">/);
   assert.match(l, /<CjHeadingLegend trueHdg=\{pair\.t\} magHdg=\{pair\.m\} lead=\{hdgRef\} stale=\{headingStale\} ariaLabel=\{label\} \/>/);
   assert.doesNotMatch(l, /className="cjv2-hdgro" role=/);
+});
+
+test("engine speed: Carrier Jet feeds the latest raw GPS fix (Dan's launch lag); the HUD and other packs keep the smoothed speed", async () => {
+  const { engineSpeedMph } = await import('../src/forge/engineSpeed.ts');
+  assert.equal(engineSpeedMph(12.3, { fresh: true, mph: 20 }, true, 'gps'), 20, 'CJ + live fix → raw');
+  assert.equal(engineSpeedMph(12.3, { fresh: true, mph: 20 }, false, 'gps'), 12.3, 'other packs: smoothed as before');
+  assert.equal(engineSpeedMph(12.3, { fresh: false, mph: 20 }, true, 'gps'), 12.3, 'stale GPS: smoothed decay');
+  assert.equal(engineSpeedMph(12.3, { fresh: true, mph: 20 }, true, 'demo'), 12.3, 'demo: simulated');
+  assert.equal(engineSpeedMph(12.3, { fresh: true, mph: Number.NaN }, true, 'gps'), 12.3);
+  const sim = src('forge/useDriveSimulation.ts');
+  assert.match(sim, /speed: mphToSpeed\(engineSpeedMph\(state\.speedMps \* 2\.2369362920544, \{ fresh, mph: gps\.mph \}, rawGpsSpeed, source\)\)/);
+  assert.match(sim, /setHud\(\{ \.\.\.s,/, 'HUD still publishes the smoothed simulation');
+  assert.match(src('forge/ForgePage.tsx'), /jitterEnabled\?jitterAmount:0,\n\s*activePackId===CARRIER_JET_IDENTITY\.id,\n\s*\);/);
 });
