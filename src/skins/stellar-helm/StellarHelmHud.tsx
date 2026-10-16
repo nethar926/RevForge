@@ -18,7 +18,7 @@ export interface StellarHelmHudProps extends PackHudProps {
    * Compact layout for small windows: host passes `true` once its fit would push text
    * under 11px (`'auto'` = skin self-detects from its rendered scale). Sizes are authored
    * in on-screen px so text stays ≥11px and the bar ≥48px at any host scale. Keeps tabs,
-   * RPM / MPH / THR, rings + gear + WARP FACTOR + ring readout, power bar + redline,
+   * RPM / MPH / THR, rings + WARP FACTOR, power bar + redline,
    * LIGHT SPEED meter, full bottom bar (modes, MUTE, Frame CLASSIC/NEO, SHUTDOWN); drops
    * header, data rows and log line. Both frames. Default false = full layout. Dev/test: `?hudCompact=1|auto|0`.
    */
@@ -71,7 +71,7 @@ function useClock(): Date {
 }
 
 export function StellarHelmHud(p: StellarHelmHudProps) {
-  const { rpm, speed, unit, throttle, load, gear, redlineRpm, running, demo, motion, distanceM } = p;
+  const { rpm, speed, unit, throttle, load, redlineRpm, running, demo, motion, distanceM } = p;
   const now = useClock();
   const rootRef = useRef<HTMLDivElement>(null);
   const cfit = useHudCompact(rootRef, p.compact, 13);
@@ -81,7 +81,6 @@ export function StellarHelmHud(p: StellarHelmHudProps) {
   const unitLabel = unit === 'kph' ? 'KM/H' : 'MPH';
   const thr = running ? clamp01(throttle) : 0;
   const ld = running ? clamp01(load) : 0;
-  const gearText = typeof gear === 'number' && gear > 0 ? String(gear) : 'N';
 
   // POWER bar: 0..max(8000, redline + 1000) in 500 rpm segments; red + hatched past redline.
   const scaleK = Math.max(8, Math.ceil(redlineRpm / 1000) + 1);
@@ -182,12 +181,11 @@ export function StellarHelmHud(p: StellarHelmHudProps) {
         <span className="sh-cap" aria-hidden="true">{p.frame === 'classic' ? 'WARP' : 'DRIVE'}</span>
         <div className="sh-ring-wrap">
           <div className="sh-ring-dial" aria-hidden="true">
-            <HelmRings rpm={running ? rpm : 0} mph={running ? mph : 0} gear={gearText} still={!motion} compact={cfit.compact} />
+            <HelmRings rpm={running ? rpm : 0} mph={running ? mph : 0} still={!motion} />
           </div>
           <div className="sh-warp" role="img" aria-label={`Warp ${warp}`}>
             <span className="sh-warp-label" aria-hidden="true">WARP FACTOR</span>
             <span className="sh-warp-num" aria-hidden="true">{warp}</span>
-            <span className="sh-cap-r" aria-hidden="true">{Math.round(mph)} MPH · {Math.round(rpm)} RPM</span>
           </div>
         </div>
       </section>

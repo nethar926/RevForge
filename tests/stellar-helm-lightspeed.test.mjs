@@ -79,3 +79,15 @@ test('new light-speed code stays free of franchise names', () => {
     for (const re of banned) assert.doesNotMatch(s, re, `${f}: ${re}`);
   }
 });
+
+test('ring panel: WARP FACTOR is the only readout (no centre digit, no GEAR, no MPH · RPM line)', () => {
+  const dir = 'src/skins/stellar-helm/';
+  for (const f of ['HelmRings.tsx', 'StellarHelmHud.tsx', 'stellar-helm.css', 'frame-classic.css', 'frame-helm.css', 'StellarHelmThumb.tsx', 'HANDOFF.md'])
+    assert.doesNotMatch(read(dir + f), /gear/i, f);
+  const hud = read(`${dir}StellarHelmHud.tsx`);
+  assert.doesNotMatch(hud, /sh-cap-r/);
+  assert.doesNotMatch(read(`${dir}HelmRings.tsx`), /<text/);
+  // primary readouts stay
+  for (const c of ['sh-rpm', 'sh-mph', 'sh-power-head', 'sh-warp-num', 'role="meter"', "'WARP' : 'DRIVE'"]) assert.ok(hud.includes(c), c);
+  assert.match(hud, /POWER · RPM × 1000/);
+});

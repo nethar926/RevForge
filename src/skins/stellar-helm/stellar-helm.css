@@ -79,16 +79,16 @@
 .sh-val { font: 600 min(30px, 12cqh) / 1 var(--sh-display); max-width: 200px; color: var(--sh-val); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sh-row small { font: 400 14px var(--sh-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 1.5px; color: var(--sh-muted); }
 
-/* gear rings */
+/* rings */
 .sh-ring { grid-area: ring; position: relative; display: flex; flex-direction: column; }
 .sh-cap { font: 600 22px var(--sh-display); letter-spacing: 3px; }
 .sh-ring-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 6px; }
 .sh-ring-dial { flex: 1 1 0; min-width: 0; align-self: stretch; display: flex; align-items: center; justify-content: center; }
-/* WARP FACTOR (mph ÷ 10) beside the rings; the MPH · RPM readout sits under it */
+/* WARP FACTOR (mph ÷ 10) beside the rings: the panel's one readout (the ring core stays empty) */
 .sh-warp { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding-right: 8px; }
 .sh-warp-label { font: 400 14px var(--sh-display); letter-spacing: 2px; color: var(--sh-warp-label, var(--sh-muted)); }
-.sh-warp-num { font: 600 76px / 0.95 var(--sh-display); color: var(--sh-warp, var(--sh-text)); font-variant-numeric: tabular-nums; }
-.sh-cap-r { font: 400 14px var(--sh-display); letter-spacing: 1.5px; color: var(--sh-warp-sub, var(--sh-muted)); white-space: nowrap; }
+.sh-warp-num { font: 600 92px / 0.95 var(--sh-display); color: var(--sh-warp, var(--sh-text)); font-variant-numeric: tabular-nums; min-width: 1.25em; }
+/* min-width = one "9.9" slot, so the rings never shift as the number changes */
 .sh-rings { width: 100%; height: 100%; }
 .sh-ticks line { stroke: var(--sh-tick); stroke-width: 1.4; }
 .sh-ring-outer .sh-ring-track { fill: none; stroke: var(--sh-ring-outer-track); }
@@ -97,8 +97,6 @@
 .sh-ring-inner .sh-ring-seg { fill: none; stroke: var(--sh-ring-inner); }
 .sh-ring-outer .sh-ring-mark { fill: var(--sh-ring-outer); }
 .sh-ring-inner .sh-ring-mark { fill: var(--sh-ring-mark-inner, #fff); }
-.sh-gear-num { font: 600 76px var(--sh-display); fill: var(--sh-gear); }
-.sh-gear-label { font: 400 15px var(--sh-display); font-size: max(15px, calc(11.5px / var(--sh-rings-scale, 1))); letter-spacing: 3px; fill: var(--sh-muted); }
 
 /* POWER bar (red + hatched + REDLINE label past redline: not colour alone) */
 .sh-power { grid-area: power; display: flex; flex-direction: column; }
@@ -186,7 +184,7 @@
 /* ---- Compact (small Tesla window) ----
  * --u = one on-screen px (1 / host scale, measured by useHudCompact): every size here is
  * real screen px — text ≥11px, bar/tab targets ≥48px — whatever the host's fit.
- * Keeps: tabs, RPM / MPH / THR, rings + gear + ring readout, power bar + REDLINE + scale,
+ * Keeps: tabs, RPM / MPH / THR, rings + WARP FACTOR, power bar + REDLINE + scale,
  * bottom bar (modes, MUTE, Frame CLASSIC/NEO, SHUTDOWN). Drops: header (title/status/clock),
  * numbered data rows, log line, audio bus. Frame toggle + SHUTDOWN lose their fixed widths.
  */
@@ -223,11 +221,7 @@
 .sh-compact .sh-ring-wrap { gap: calc(6 * var(--u, 1px)); padding: calc(2 * var(--u, 1px)); }
 .sh-compact .sh-warp { max-width: 46%; gap: calc(1 * var(--u, 1px)); padding-right: calc(4 * var(--u, 1px)); }
 .sh-compact .sh-warp-label { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
-.sh-compact .sh-warp-num { font-size: calc(40 * var(--u, 1px)); }
-.sh-compact .sh-cap-r { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); white-space: normal; }
-.sh-compact .sh-gear-num-c { font-size: min(84px, max(64px, calc(11.5px / var(--sh-rings-scale, 1)))); }
-/* rings share the panel with WARP FACTOR: GEAR tracks the rendered ring (≥11px on screen, capped at the core chord) */
-.sh-compact .sh-gear-label-c { font-size: min(31px, max(21px, calc(11.25px / var(--sh-rings-scale, 1)))); letter-spacing: 1px; }
+.sh-compact .sh-warp-num { font-size: calc(52 * var(--u, 1px)); }
 .sh-compact .sh-power-head { font-size: calc(11.25 * var(--u, 1px)); letter-spacing: calc(2 * var(--u, 1px)); }
 .sh-compact .sh-segs { gap: calc(3 * var(--u, 1px)); height: calc(20 * var(--u, 1px)); margin-top: calc(16 * var(--u, 1px)); }
 .sh-compact .sh-redline-mark { top: calc(-16 * var(--u, 1px)); padding-left: calc(4 * var(--u, 1px)); border-left-width: calc(2 * var(--u, 1px)); font-size: calc(11.25 * var(--u, 1px)); line-height: calc(14 * var(--u, 1px)); letter-spacing: calc(1 * var(--u, 1px)); }
@@ -278,8 +272,6 @@
 .sh.sh-compact[data-sh-tight][data-frame='classic'] .sh-bar { margin-left: 0; }
 .sh-compact[data-sh-tight] .sh-mph { font-size: min(calc(120 * var(--u, 1px)), 34cqh); }
 .sh-compact[data-sh-tight] .sh-rpm { font-size: max(calc(12 * var(--u, 1px)), min(calc(48 * var(--u, 1px)), 19cqh)); }
-/* small ring: caption grows so it still renders ≥11px (fits the core chord at this baseline) */
-.sh-compact[data-sh-tight] .sh-gear-label-c { font-size: 31px; letter-spacing: 1px; }
 /* Tight: WARP FACTOR takes the full panel height on the right (caption + rings stack on the left) */
 .sh-compact[data-sh-tight] .sh-ring { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); }
 .sh-compact[data-sh-tight] .sh-ring-wrap { display: contents; }
@@ -288,9 +280,8 @@
 .sh-compact[data-sh-tight] .sh-ring-dial { grid-area: 2 / 1 / 3 / 2; min-height: 0; padding: calc(2 * var(--u, 1px)); }
 .sh-compact[data-sh-tight] .sh-warp { grid-area: 1 / 2 / 3 / 3; align-self: center; max-width: none; padding: calc(2 * var(--u, 1px)) calc(8 * var(--u, 1px)) calc(2 * var(--u, 1px)) calc(4 * var(--u, 1px)); }
 .sh-compact[data-sh-tight] .sh-warp { gap: 0; }
-.sh-compact[data-sh-tight] .sh-warp-num { font-size: calc(28 * var(--u, 1px)); }
-.sh-compact[data-sh-tight] .sh-warp-label, .sh-compact[data-sh-tight] .sh-cap-r { line-height: calc(13 * var(--u, 1px)); }
-.sh-compact[data-sh-tight] .sh-cap-r { max-width: calc(72 * var(--u, 1px)); }
+.sh-compact[data-sh-tight] .sh-warp-num { font-size: calc(36 * var(--u, 1px)); }
+.sh-compact[data-sh-tight] .sh-warp-label { line-height: calc(13 * var(--u, 1px)); }
 /* Tight: the LIGHT SPEED row is paid for by a shorter POWER strip, so the RPM / MPH block keeps its height */
 .sh-compact[data-sh-tight] .sh-segs { height: calc(12 * var(--u, 1px)); }
 .sh-compact[data-sh-tight] .sh-ls { margin-top: calc(3 * var(--u, 1px)); }

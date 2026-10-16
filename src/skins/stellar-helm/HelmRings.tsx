@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const C = 150;
 
@@ -29,12 +29,12 @@ function useReducedMotion(): boolean {
 }
 
 /**
- * Gear readout inside two counter-rotating segmented rings.
+ * Two counter-rotating segmented rings around an empty core (WARP FACTOR beside them is the readout).
  * Inner ring: rpm / 5 °/s clockwise. Outer ring: mph / 2 °/s counter-clockwise.
  * One rAF loop integrates angle from the latest telemetry (no CSS durations, so
  * speed changes never jump). Holds still under Reduce Motion / motion off.
  */
-export function HelmRings({ rpm, mph, gear, still, compact = false }: { rpm: number; mph: number; gear: string; still: boolean; compact?: boolean }) {
+export function HelmRings({ rpm, mph, still }: { rpm: number; mph: number; still: boolean }) {
   const reduced = useReducedMotion();
   const frozen = still || reduced;
   const live = useRef({ rpm, mph });
@@ -69,27 +69,8 @@ export function HelmRings({ rpm, mph, gear, still, compact = false }: { rpm: num
     return () => cancelAnimationFrame(raf);
   }, [frozen]);
 
-  // GEAR label in on-screen px: --sh-rings-scale = rendered px per viewBox unit (incl. host fit).
-  const svgRef = useRef<SVGSVGElement>(null);
-  useLayoutEffect(() => {
-    const el = svgRef.current;
-    if (!el) return;
-    const measure = () => {
-      const r = el.getBoundingClientRect();
-      if (r.width && r.height) el.style.setProperty('--sh-rings-scale', (Math.min(r.width, r.height) / 300).toFixed(4));
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    for (let a: Element | null = el, i = 0; a && i < 6; a = a.parentElement, i++) ro.observe(a);
-    window.addEventListener('resize', measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, []);
-
   return (
-    <svg ref={svgRef} className="sh-rings" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" data-frozen={frozen ? 'true' : 'false'}>
+    <svg className="sh-rings" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" data-frozen={frozen ? 'true' : 'false'}>
       <defs>
         <radialGradient id="sh-core" cx="50%" cy="45%" r="60%">
           <stop offset="0" stopColor="#16223a" />
@@ -115,18 +96,6 @@ export function HelmRings({ rpm, mph, gear, still, compact = false }: { rpm: num
         <rect x={C - 3} y="68" width="6" height="16" className="sh-ring-mark" />
       </g>
       <circle cx={C} cy={C} r="66" fill="url(#sh-core)" className="sh-ring-core" />
-      {compact ? (
-        // Compact: label grows (rendered ≥11px down to a ~165px ring) and sits lower in the core.
-        <>
-          <text x={C} y={C + 18} textAnchor="middle" className="sh-gear-num sh-gear-num-c">{gear}</text>
-          <text x={C} y={C + 53} textAnchor="middle" className="sh-gear-label sh-gear-label-c">GEAR</text>
-        </>
-      ) : (
-        <>
-          <text x={C} y={C + 26} textAnchor="middle" className="sh-gear-num">{gear}</text>
-          <text x={C} y={C + 50} textAnchor="middle" className="sh-gear-label">GEAR</text>
-        </>
-      )}
     </svg>
   );
 }
