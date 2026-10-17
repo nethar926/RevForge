@@ -266,3 +266,27 @@
    after the L RPM value, the LOAD value steps right (still inside its svg box), so the two keep a visible gap. */
 .cjm[data-cjm-v2][data-cj-mapfirst='drive'][data-rf-layout='window'] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-eng [data-cj-el='ab-ladder'] > text:last-child { letter-spacing: 0; transform: translateX(-6px); }
 .cjm[data-cjm-v2][data-cj-mapfirst='drive'][data-rf-layout='window'] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-eng [data-cj-el='engines'] > g:nth-child(2) > text:last-child { transform: translateX(4px); }
+
+/* ---------------- MOCK (mock/cj-map-first, not shipped): OAT readout, behind ?cjWxMock=live|aged|dim|hidden|tempOnly.
+   Board 2 (MATRIX look), map-first Drive and Park: bottom-right corner of the SPEED cell, OAT legend over
+   `glyph 79° · 25m`, right of MPH / GPS LIVE (773: legend dropped, one line under GPS LIVE). Host-drawn over the
+   skin cell (CjWxReadout.tsx), so nothing moves. Phosphor text + original line glyphs (wxGlyphs.ts); static, no
+   flashing. Dimmed > 90 min: 62% opacity, still ≥ 4.5:1 on the CRT. */
+.cjv2 > .cjwx-host { pointer-events: none; container-type: size; }
+.cjwx { position: absolute; right: 10px; bottom: 7px; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; color: #8dffad; font: 700 13px/15px 'B612', 'Barlow Semi Condensed', system-ui, sans-serif; white-space: nowrap; text-shadow: 0 0 8px rgb(126 247 161 / 0.45); }
+.cjwx-line { display: flex; align-items: center; gap: 4px; }
+.cjwx-oat { font-size: 11px; line-height: 13px; letter-spacing: 0.12em; color: #b9d8c2; text-shadow: none; }
+.cjwx-glyph { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; overflow: visible; filter: drop-shadow(0 0 2px rgb(126 247 161 / 0.45)); }
+.cjwx-glyph .cjwx-bgfill { fill: #061409; }
+.cjwx-t { font-weight: 700; letter-spacing: 0.02em; }
+.cjwx-age { font-size: 11px; line-height: 13px; letter-spacing: 0.04em; }
+.cjwx[data-dim] { opacity: 0.62; text-shadow: none; }
+.cjwx[data-dim] .cjwx-glyph { filter: none; }
+@container (max-width: 140px) { .cjwx-oat { display: none; } }
+@container (min-height: 170px) { .cjwx { font-size: 15px; line-height: 17px; bottom: 9px; right: 12px; } .cjwx-glyph { width: 20px; height: 20px; } }
+/* credit slot under the map credit: its own line; with it the panel also runs under the (i) (a float keeps the
+   (i) corner clear), so the taller text still fits the short Park map at 773 */
+.cjv2-attr[data-wx] { right: 4px; }
+.cjv2-attr[data-wx]::before { content: ''; float: right; width: 27px; height: 27px; margin: -2px -5px 0 2px; }
+.cjv2-crt:has(> .cjv2-attr[data-wx]) > .cjv2-info { z-index: 2; }
+.cjv2-wxcredit { display: block; margin-top: 2px; padding-top: 2px; border-top: 1px solid #2f7a48; }

@@ -16,9 +16,14 @@ import { cellKeys, KEY_CELLS, RIGHT_BANK, SPARE_INDEX, type EdgeKey } from '../c
 import { cjNavAction, cjNavItems } from '../carrier-jet.nav';
 import { disabledReason, itemAria, itemValue, MAP_CREDIT, pageTiles, runItem, visibleItems, type ConfigCtx, type ConfigEffect, type ConfigItem } from '../configTable';
 import { CJ_CONFIG } from '../carrier-jet/configPages';
+import { wxMockFromQuery, wxView, type WxView } from '../carrier-jet/wxMock';
+import { CjWxReadout } from './CjWxReadout';
 // live map + compass legend: a lazy chunk (CjLiveMap.tsx, Meghan's style + WMM2025); maplibre-gl is a further lazy chunk
 const CjLiveMap = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjLiveMap })));
 const CjHeadingReadout = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjHeadingReadout })));
+
+/** MOCK (mock/cj-map-first): fake OAT values from ?cjWxMock=… (undefined = weather mock off). */
+const MOCK_WX = typeof location !== 'undefined' ? wxMockFromQuery(location.search) : undefined;
 
 const sysReduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const subSysReduced = (f: () => void) => {
@@ -161,7 +166,7 @@ function AccelCell({ box, demo, reduced }: { box: Box; demo: boolean; reduced: b
 
 /* ------------------------------------------------------------------ MAP / RADAR */
 type LiveMapCtx = { demo: boolean; park: boolean; hdgRef: 'M' | 'T' };
-function MapCell({ box, view, heading, headingStale, reduced, live }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx }) {
+function MapCell({ box, view, heading, headingStale, reduced, live, wx }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx; wx?: WxView | null }) {
   const [info, setInfo] = useState(false);
   const hdg = heading == null ? '---' : String(Math.round(heading) % 360).padStart(3, '0');
   return (
@@ -196,7 +201,14 @@ function MapCell({ box, view, heading, headingStale, reduced, live }: { box: Box
         {/* live map (lazy MapLibre, CjLiveMap.tsx); kept mounted under RADAR so it pauses, then is removed after 30 s */}
         <Suspense fallback={null}><CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} hidden={view.radar} /></Suspense>
         <button type="button" className="cjv2-info" aria-expanded={info} aria-label="Map credit" onClick={() => setInfo((v) => !v)}>i</button>
-        {info && <p className="cjv2-attr" role="note">{MAP_CREDIT}</p>}
+        {info && (
+          <p className="cjv2-attr" role="note" data-wx={wx ? true : undefined}>
+            {MAP_CREDIT}
+            {/* MOCK weather credit slot: the source of the value on screen (Open-Meteo: required; NWS: courtesy). Plain text,
+                not a link: a link here would be a sub-44px target in the car (URL kept in wxMock.WX_CREDIT_URL). */}
+            {wx && <span className="cjv2-wxcredit">{wx.credit}</span>}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -243,9 +255,11 @@ export interface CjV2LayerProps {
   motion: boolean;
   heading: number | undefined;
   headingStale: boolean;
+  /** Speed unit pref (also the OAT unit: mph → °F, kph → °C). */
+  unit?: 'mph' | 'kph';
 }
 
-export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }: CjV2LayerProps) {
+export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, unit = 'mph' }: CjV2LayerProps) {
   const selfRef = useRef<HTMLDivElement>(null);
   const geo = useGeo(selfRef, layout);
   const view = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
@@ -392,12 +406,15 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
     return t === 'next' ? { label: 'next tiles' } : { label: t.label, reason: disabledReason(t, ctx) };
   };
   const edge = geo.board2 && cells && !phone;
+  // MOCK weather: Board 2 only (MATRIX look), in the SPEED cell's bottom-right corner
+  const wx = MOCK_WX && geo.board2 && !phone ? wxView(MOCK_WX.value, unit) : null;
   return (
     <div ref={selfRef} className="cjv2" data-config={cfg.open || undefined} data-motion={reduced ? 'static' : 'live'}>
       {cells && (
         <>
           <AccelCell box={cells.accel} demo={demo} reduced={reduced} />
-          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} />
+          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} wx={wx} />
+          {wx && <CjWxReadout box={cells.speed} view={wx} />}
           <div className="cjv2-hdgcell" style={boxStyle(cells.compass)}><Suspense fallback={null}><CjHeadingReadout heading={heading} headingStale={headingStale} hdgRef={prefs.hdgRef} /></Suspense></div>
         </>
       )}
