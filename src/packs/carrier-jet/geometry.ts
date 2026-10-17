@@ -7,7 +7,8 @@ export type CellId = 'speed' | 'mach' | 'accel' | 'vdi' | 'sweep' | 'eng' | 'map
 export const TOP_CELLS: readonly CellId[] = ['speed', 'mach', 'accel', 'vdi', 'sweep'];
 export const BOTTOM_CELLS: readonly CellId[] = ['eng', 'map', 'compass'];
 
-/** Raw skin rects (relative to the board) → Board 2 cells. ACCEL and MAP are the empty grid areas between them. */
+/** Raw skin rects (relative to the board) → Board 2 cells. ACCEL and MAP are the empty grid areas between them.
+ * SPEED has the whole first column; RPM sits under MACH, so the MACH cell runs down to RPM's bottom. */
 export function board2Cells(r: {
   speed: Box; rpm: Box; mach: Box; vdi: Box; sweep: Box; eng: Box; compass: Box;
 }): Record<CellId, Box> {
@@ -16,8 +17,8 @@ export function board2Cells(r: {
   const cg = Math.max(0, r.mach.left - (r.speed.left + r.speed.width));
   const accel: Box = { left: r.mach.left + r.mach.width + cg, top: r.mach.top, width: Math.max(0, col - 2 * cg), height: r.mach.height };
   return {
-    speed: { left: r.speed.left, top: r.speed.top, width: r.speed.width, height: r.rpm.top + r.rpm.height - r.speed.top },
-    mach: r.mach,
+    speed: r.speed,
+    mach: { left: r.mach.left, top: r.mach.top, width: r.mach.width, height: r.rpm.top + r.rpm.height - r.mach.top },
     accel,
     vdi: r.vdi,
     sweep: r.sweep,
@@ -39,8 +40,8 @@ export function board2CellsMapFirst(r: {
   const cg = Math.max(0, r.mach.left - (r.speed.left + r.speed.width));
   const mapLeft = r.vdi.left + r.vdi.width + cg, mapRight = r.sweep.left - cg;
   return {
-    speed: { left: r.speed.left, top: r.speed.top, width: r.speed.width, height: r.rpm.top + r.rpm.height - r.speed.top },
-    mach: r.mach,
+    speed: r.speed,
+    mach: { left: r.mach.left, top: r.mach.top, width: r.mach.width, height: r.rpm.top + r.rpm.height - r.mach.top },
     accel: { left: r.vdi.left, top: r.compass.top, width: r.vdi.width, height: r.compass.height },
     vdi: r.vdi,
     sweep: r.sweep,
