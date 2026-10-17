@@ -148,3 +148,32 @@ test('paired GPS callbacks (~0.1 s apart) count as one fix: launch still fires o
     assert.equal(runPaired([40, 40, 40, 40, 40, 40], { jitter }), -1, `steady speed stays off (jitter ${jitter})`);
   }
 });
+
+/** Paired callbacks where a NEW fix only comes every 1.43–1.82 s (Build Lead's model of the sensor log). */
+function runSlow(a, { v0 = 0, vmax = 60, seed = 7, noise = 0.5 } = {}) {
+  let s = seed; const r = () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const d = createLaunchDetector();
+  const start = 4, vAt = (t) => (t < start ? v0 : Math.min(vmax, v0 + a * (t - start)));
+  let next = r() * 1.8, cur = v0, pend = null, first = -1;
+  for (let t = 0; t < 20; t += 1 / 30) {
+    if (t >= next) { cur = Math.max(0, vAt(next) + (r() * 2 - 1) * noise); pend = { t: next + 0.1, v: cur + (r() * 2 - 1) * noise }; next += 1.43 + r() * 0.39; }
+    if (pend && t >= pend.t) { cur = Math.max(0, pend.v); pend = null; }
+    if (stepLaunchDetector(d, cur / FULL, t) && first < 0) first = t - start;
+  }
+  return first;
+}
+
+test('slow paired fixes (new fix every 1.43–1.82 s): period is learned up to 2.2 s, from a stop too', () => {
+  let falseFires = 0, hard = 0, plaid = 0, wilson = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    if (runSlow(4.0, { seed }) >= 0) falseFires++;
+    if (runSlow(27.3, { seed }) >= 0) hard++;
+    if (runSlow(30.2, { seed }) >= 0) plaid++;
+    const w = runSlow(12, { seed });
+    if (w >= 0 && w < 4.5) wilson++;
+  }
+  assert.ok(falseFires <= 1, `4 mph/s from a stop: ${falseFires}/60 fired`);
+  assert.equal(hard, 60, `0–60 in 2.2 s: ${hard}/60`);
+  assert.equal(plaid, 60, `0–60 in 1.99 s: ${plaid}/60`);
+  assert.equal(wilson, 60, `0–60 in 5 s within 4.5 s: ${wilson}/60`);
+});
