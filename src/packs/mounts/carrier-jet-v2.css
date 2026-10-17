@@ -387,3 +387,40 @@
 /* cover: the next step's badge code (a closed guard hides it on the shelf), in the badge's amber on a dark chip */
 .cjcs-cover > .cjcs-cover-next { align-self: flex-start; padding: 3px 8px; border-radius: 3px; background: #1b1d1f; color: #e8e2d2; font-size: 12px; letter-spacing: .08em; }
 .cjcs-cover > .cjcs-cover-next > span { color: #ffc35a; }
+
+/* ---------------- OAT readout (Meghan's mock a7fce46, ported; live data from carrier-jet/weather/).
+   Board 2 (MATRIX look), map-first Drive and Park: top-left corner of the COMPASS cell (Wilson, Oct 16), left of the
+   HDG box and above the rose arc; OAT legend over `glyph 79° · 25m` (773: one stacked column glyph / 79° / 25m, no
+   OAT legend: the corner is ~35 px wide). Host-drawn over the
+   skin cell (CjWxReadout.tsx), so nothing moves. Phosphor text + original line glyphs (wxGlyphs.ts); static, no
+   flashing. Dimmed > 90 min: 62% opacity, still ≥ 4.5:1 on the CRT. */
+.cjv2 > .cjwx-host { pointer-events: none; container-type: size; }
+.cjwx { position: absolute; left: 8px; top: 5px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; color: #8dffad; font: 700 13px/15px 'B612', 'Barlow Semi Condensed', system-ui, sans-serif; white-space: nowrap; text-shadow: 0 0 8px rgb(126 247 161 / 0.45); }
+.cjwx-line { display: flex; align-items: center; gap: 4px; }
+.cjwx-oat { font-size: 11px; line-height: 13px; letter-spacing: 0.12em; color: #b9d8c2; text-shadow: none; }
+.cjwx-glyph { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; overflow: visible; filter: drop-shadow(0 0 2px rgb(126 247 161 / 0.45)); }
+.cjwx-glyph .cjwx-bgfill { fill: #061409; }
+.cjwx-t { font-weight: 700; letter-spacing: 0.02em; }
+.cjwx-age { font-size: 11px; line-height: 13px; letter-spacing: 0.04em; }
+.cjwx-sep { font-style: normal; }
+.cjwx[data-dim] { opacity: 0.62; text-shadow: none; }
+.cjwx[data-dim] .cjwx-glyph { filter: none; }
+/* 773 compass (~197 px): the corner left of the HDG box is ~35 px wide and the rose ticks reach it ~50 px down, so one
+   stacked column glyph / 79° / age with the OAT legend dropped (as in the 773 SPEED slot before; the aria label keeps it) */
+@container (max-width: 259px) {
+  .cjwx { left: 6px; top: 4px; gap: 0; letter-spacing: 0; }
+  .cjwx-oat { display: none; }
+  .cjwx-line { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .cjwx-sep { display: none; }
+}
+@container (min-height: 140px) and (min-width: 260px) { .cjwx { font-size: 15px; line-height: 17px; left: 10px; top: 7px; } .cjwx-glyph { width: 20px; height: 20px; } }
+.cjv2-attr[data-wx] { right: 4px; }
+.cjv2-attr[data-wx]::before { content: ''; float: right; width: 27px; height: 27px; margin: -2px -5px 0 2px; }
+.cjv2-crt:has(> .cjv2-attr[data-wx]) > .cjv2-info { z-index: 2; }
+.cjv2-wxcredit { display: block; margin-top: 2px; padding-top: 2px; border-top: 1px solid #2f7a48; }
+/* WX radar on: weather + radar credits run on after the map credit (" · "), so the panel still fits the Park 773 CRT (90 px) */
+.cjv2-attr[data-wx='radar'] .cjv2-wxcredit { display: inline; margin: 0; padding: 0; border: 0; }
+.cjv2-attr[data-wx='radar'] .cjv2-wxcredit::before { content: ' · '; }
+/* WX key off: the legend in the unlit engraving grey (#ccd2d6), as the mock's BezelKey `unlit` prop draws it. Mount-side
+   because the skin's BezelKey has no `unlit` prop on this base (a7fce46 adds it under src/skins; not edited here). */
+.cjv2-key[data-unlit] .cjp-bezel text { fill: #ccd2d6; }

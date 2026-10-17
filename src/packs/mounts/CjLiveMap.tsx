@@ -21,6 +21,7 @@ import { type MapView } from '../carrier-jet/mapView';
 import { cjRadarScopeAria } from '../../skins/carrier-jet/map/radarAria';
 import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, compassSpeech, headingPair, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
+import { attachWxRadar, WX_SRC } from './cjWxRadarLayer';
 
 type Ml = typeof import('maplibre-gl');
 let mlPromise: Promise<Ml> | null = null;
@@ -70,9 +71,11 @@ export interface CjLiveMapProps {
    * `scope(status)` renders it; the map follows the scope (heading-up, centred, outer ring = `range` mi).
    */
   radar?: { range: 2 | 5 | 10; mode: 'map' | 'terr'; scope: (status: CjMapStatus) => ReactNode };
+  /** WX key: precipitation radar overlay (RainViewer, recoloured) under the roads. */
+  wxRadar?: boolean;
 }
 
-export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hidden = false, radar }: CjLiveMapProps) {
+export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hidden = false, wxRadar, radar }: CjLiveMapProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const glRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -237,6 +240,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
         center: [pos.lon, pos.lat], zoom: c.radar ? zoomForRangeMi(c.radar, pos.lat, 2 * Math.max(1, scopeRingPx(c.w, c.h || 100))) : zoomForRangeMi(c.zoomMi, pos.lat, c.h || 100), bearing: c.northUp && !c.radar ? 0 : (c.heading ?? 0),
       });
       map.on('error', (e: MapLibreEvent & { error?: { status?: number; message?: string }; tile?: unknown; sourceId?: string }) => {
+        if (e.sourceId === WX_SRC) return; // WX radar is an extra: its failures never flag the map itself
         const k = classifyMapError(e, navigator.onLine !== false);
         if (k) setTiles((p) => (p === 'network' ? p : k));
       });
@@ -282,6 +286,19 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
     if (map.isStyleLoaded()) apply();
     else map.once('styledata', apply);
   }, [view.mode, hasMap]);
+  // WX radar overlay: attached while on (re-attached when the map is re-created)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !hasMap || !wxRadar) return;
+    let off: (() => void) | null = null, dead = false;
+    void loadMapLibre().then((ml) => {
+      if (!dead) off = attachWxRadar(ml, map);
+    });
+    return () => {
+      dead = true;
+      off?.();
+    };
+  }, [wxRadar, hasMap]);
   // RADAR: dim the base map + roads (paint colours × CJ_RADAR_MAP_DIM). Restored when RADAR goes off. No rebuild, no
   // tile reload for the base map. (The WX rain layer + its scope tint live on the weather branch.)
   const radarOn = !!radar;

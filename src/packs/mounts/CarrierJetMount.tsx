@@ -287,7 +287,7 @@ export function CarrierJetMount(props: PackHudProps) {
             <div className="cjm-fill">
               <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} bank={vdiBank} />
             </div>
-            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} />}
+            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} />}
           </>
         )}
       </CjHeadingEase>
