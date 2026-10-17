@@ -168,6 +168,7 @@ export function createTomcatDriveState(phase = 'off') {
     b: engineState(),
     speed: 0,
     thrCmd: 0,
+    cruiseGate: 0,
     abDemand: 0,
     abEngaged: false,
     /** Frontend arm switch; default true so never calling setAfterburnerArmed is byte-identical. */
@@ -648,6 +649,16 @@ export function tomcatTimeScale(params = {}) {
 }
 
 /**
+ * Cruise thrust floor (GPS drive). The car sim's GPS throttle is ≈ 0.12 + accel/5, so a steady
+ * speed sounded like idle and thrust bass only came in while speed was rising. When the caller
+ * supplies `acceleration` (m/s²) the command is held at least at `base + perSpeed × speed` while
+ * the car is moving and not slowing; it opens at accel ≥ `onAccel`, closes below `offAccel`
+ * (hysteresis against GPS noise) and glides with `tau`; a harder pull rides on top. The afterburner still
+ * stages from load only.
+ */
+export const TC_CRUISE_FLOOR = { base: 0.42, perSpeed: 0.25, minSpeed: 0.025, onAccel: -0.15, offAccel: -0.45, tau: 0.35 };
+
+/**
  * One drive step (dt seconds). Input: DrivingInput (speed, throttle, load?, shifting?).
  * The jet has no gearbox: frontend rpm / rpmNorm are not inputs, so a gearbox simulation never puts
  * a shift sawtooth into the spool, and the model emits no gear or shift events. Spool follows
@@ -666,7 +677,16 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
   const loadGiven = d.load !== undefined && d.load !== null && Number.isFinite(Number(d.load));
   const demand = tomcatAbDemand(d);
   const thr = clip(num(d.throttle, 0));
-  const cmd = loadGiven ? Math.max(thr, demand) : thr;
+  let cmd = loadGiven ? Math.max(thr, demand) : thr;
+  const acc = Number(d.acceleration);
+  if (d.acceleration !== undefined && d.acceleration !== null && Number.isFinite(acc)) {
+    const F = TC_CRUISE_FLOOR;
+    const v = clip(num(d.speed, 0));
+    const want = v < F.minSpeed || acc < F.offAccel ? 0 : acc >= F.onAccel ? 1 : state.cruiseGate >= 0.5 ? 1 : 0;
+    state.cruiseGate = lag(num(state.cruiseGate, 0), want, clip(num(dt, 1 / 60), 0, 0.25), F.tau);
+    // pulling harder than cruise rides on top of the floor (half the GPS throttle's rise above its cruise 0.12)
+    cmd = Math.max(cmd, state.cruiseGate * (F.base + F.perSpeed * v + 0.5 * Math.max(0, thr - 0.12)));
+  }
   if (d.shifting) {
     // no gearbox: a car-sim shift dip never reaches the spool (rises still pass straight through)
     state.thrCmd = Math.max(state.thrCmd, cmd);
