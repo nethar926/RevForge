@@ -5,6 +5,7 @@ import { CarrierJetAfterburnerGuard, CarrierJetHud, useCarrierJetVariant } from 
 import ID from '../carrier-jet.identity';
 import { readPackAbZone, requestPackShell, sendPackEngineCommand, subscribePackAbZone } from '../runtime';
 import { ShutdownGuard } from '../../skins/carrier-jet';
+import { SeatBeltLamp } from '../../skins/carrier-jet/concept/SeatBeltLamp';
 import { playGuardCue, sdCoverTap, sdEngineStopped, sdLever, sdShown, type ShutdownGuardDeps } from '../carrier-jet/shutdownGuard';
 import { getAbArmed, setAbArmed, subscribeAbArmed } from '../abArmed';
 import type { PackHudProps } from '../types';
@@ -248,7 +249,15 @@ export function CarrierJetMount(props: PackHudProps) {
     </div>
   );
   const sdShow = sdShown({ v2, tesla, docked: !!vp.dock, running: props.running });
-  const shutdownGuard = sdShow && vp.dock ? (
+  // Meghan's sheet panel 6: with the cold start on, the guarded SHUTDOWN goes (EMER STOP PULL + the cold-start steps
+  // cover stopping) and its dock slot carries the SEAT BELT lamp (panel 5), on the dash in Park and Drive. Cold start
+  // off: the guarded SHUTDOWN stays as before.
+  const sbLamp = sdShow && vp.dock && spds && coldOn ? (
+    <div className="cjm-sbl" data-rf-layout={layout}>
+      <SeatBeltLamp on={cold.seatbelt} />
+    </div>
+  ) : null;
+  const shutdownGuard = sdShow && vp.dock && !sbLamp ? (
     <div className="cjm-sdg" data-rf-layout={layout}>
       <ShutdownGuard guardOpen={sdOpen} onGuardToggle={() => setSdOpen((o) => sdCoverTap(o, sdDeps))} on={props.running} onToggle={() => setSdOpen((o) => sdLever(o, props.running, sdDeps).open)} reduceMotion={reduced} />
     </div>
@@ -280,11 +289,12 @@ export function CarrierJetMount(props: PackHudProps) {
           </>
         )}
       </CjHeadingEase>
-      {spds && coldOn && cold.render.shelf()}
+      {spds && coldOn && cold.render.shelf(layout === 'board' ? 'wide' : 'narrow')}
       {coldOn && <p className="cjcs-say" role="status" aria-live="polite">{cold.say}</p>}
       <p className="rf-sr-only cjm-launch-say" role="status" aria-live="polite">{launch.say}</p>
       {bankB && vp.dock && createPortal(bankB, vp.dock)}
       {shutdownGuard && vp.dock && createPortal(shutdownGuard, vp.dock)}
+      {sbLamp && vp.dock && createPortal(sbLamp, vp.dock)}
       {bankHost ? createPortal(layout === 'portrait' ? <div className="cjm-below">{bank}</div> : bank, bankHost) : layout !== 'portrait' && <div className="cjm-ab">{bank}</div>}
     </div>
   );

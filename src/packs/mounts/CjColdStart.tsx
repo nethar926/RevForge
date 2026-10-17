@@ -20,6 +20,10 @@ import { getPackJet, subscribePackJet } from '../jetBridge';
 import { csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, CS_PARK_REASON, parkStep, PARK_DWELL_MS, shelfAutoClose, shelfAutoStep, shelfStartLit, shelfToggle, SHELF_START_ARIA, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
 import { getCjPrefs, setCjPrefs, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
+import { ckPlan, ckTitle } from '../carrier-jet/checklistModes';
+import { hostCueFor } from '../carrier-jet/hostCues';
+import { MasterCaution } from '../../skins/carrier-jet/concept/MasterCaution';
+import { CjPamphlet } from './CjPamphlet';
 
 /** Park from the HUD speed (one source of truth for the cold start AND CONFIG's Park-only tiles). */
 export function useCjPark(speedMph: number): boolean {
@@ -54,8 +58,10 @@ export interface ColdStart {
   pamphlet: PamphletPhase;
   setPamphlet(open: boolean): void;
   say: string;
+  /** SEAT BELT sign on (Dan's seatbelt system), for the dash lamp. */
+  seatbelt: boolean;
   render: {
-    shelf: () => ReactElement | null;
+    shelf: (size?: 'wide' | 'narrow') => ReactElement | null;
     shelfKey: (size: 'wide' | 'narrow') => ReactElement | null;
     pullQs: (size: 'wide' | 'narrow') => ReactElement | null;
   };
@@ -128,6 +134,9 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     } catch {
       /* engine not ready */
     }
+    // named cue hooks for Dan (hostCues.ts): seat belt ON → seatbeltTone, O2 ON → o2Chimes (unknown to his voice = silent)
+    const hc = hostCueFor(id, v);
+    if (hc) cue(hc as unknown as JetCue);
   };
   const announce = (t: string) => setSay(t);
   useEffect(() => {
@@ -230,7 +239,7 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     if (it.type === 'set') {
       set(it.system, it.on);
       if (it.system === 'masterCaution') setCautionReset(true);
-    } else if (it.type === 'none') announce(`${view.switches[id]?.ariaLabel ?? id}: ${it.reason}`);
+    } else if (it.type === 'none') announce(`${view.switches[id]?.name ?? id}: ${it.reason}`);
   };
   const onGuard = (id: string) => {
     if (!park) return announce(`${id === 'apuGuard' ? 'APU arm' : id === 'engL' ? 'L engine' : 'R engine'} guard: ${CS_PARK_REASON}`);
@@ -308,6 +317,33 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       ro?.disconnect();
     };
   }, [shelf, mode]);
+  // MASTER CAUTION (sheet panel 4) replaces CAUT RST in place: the skin cell stays for the layout, hidden
+  // (data-mc on the host, mount CSS), and Meghan's 64×64 push button sits centred on it.
+  const [mcAt, setMcAt] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  useLayoutEffect(() => {
+    const host = shelfRef.current;
+    if (!host || shelf === 'closed') return;
+    let dead = false;
+    const read = () => {
+      if (dead) return;
+      const o = host.getBoundingClientRect();
+      const r = host.querySelector<HTMLElement>(".cjp-cell:has(> .cjp-toggle[data-sys='masterCaution'])")?.getBoundingClientRect();
+      const n = r ? { left: r.left - o.left, top: r.top - o.top, width: r.width, height: r.height } : null;
+      setMcAt((p) => (p && n && Math.abs(p.left - n.left) < 0.5 && Math.abs(p.top - n.top) < 0.5 && Math.abs(p.width - n.width) < 0.5 && Math.abs(p.height - n.height) < 0.5 ? p : n));
+    };
+    queueMicrotask(read);
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => queueMicrotask(read));
+    ro?.observe(host);
+    return () => {
+      dead = true;
+      ro?.disconnect();
+    };
+  }, [shelf, mode]);
+  const pamphRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (pamphlet !== 'open') return;
+    pamphRef.current?.querySelector('.ckp-li[aria-current="step"]')?.scrollIntoView?.({ block: 'center' });
+  }, [pamphlet, view.cursor]);
   const pullRef = useRef(pull);
   pullRef.current = pull;
   const grip = {
@@ -318,35 +354,40 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     onLostPointerCapture: (e: RPointerEvent<HTMLButtonElement>) => applyPull(pullUp(pullRef.current, e.pointerId)),
   };
 
-  const shelfEl = () => {
+  const shelfEl = (size: 'wide' | 'narrow' = 'wide') => {
     if (!on) return null;
     const block = mode === 'apu'
       ? <ApuBlock arm={view.apu.arm} start={view.apu.start} ready={view.apu.ready} onArmToggle={() => onGuard('apuGuard')} onStartToggle={(_id, n) => onToggle('apu', n)} disabled={view.apu.disabled} disabledReason={view.apu.disabledReason} step={view.apu.step} />
       : <GndAirBlock aircart={view.gndAir.aircart} crossbleed={view.gndAir.crossbleed} side={view.gndAir.side} onToggle={(id, n) => onToggle(id, n)} disabledReasons={view.gndAir.disabledReasons} steps={view.gndAir.steps} />;
     const step = view.checklist;
-    const lines = (a: readonly string[], cur: number | null) => a.map((t, i) => <li key={i} aria-current={cur === i + 1 ? 'step' : undefined}>{t}</li>);
+    const lines = (a: readonly string[]) => a.map((t, i) => <li key={i}>{t}</li>);
+    const plan = ckPlan(mode);
     return (
-      <div ref={shelfRef} className="cjcs-shelf" data-apu-park={mode === 'apu' && view.apu.parkLegend ? '' : undefined} data-cue-apu={mode === 'apu' ? view.apu.cue : undefined} data-cue-aircart={mode === 'apu' ? undefined : view.gndAir.cues.aircart} data-cue-crossbleed={mode === 'apu' ? undefined : view.gndAir.cues.crossbleed} data-open={shelf} data-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined}>
+      <div ref={shelfRef} className="cjcs-shelf" data-apu-park={mode === 'apu' && view.apu.parkLegend ? '' : undefined} data-mc={mcAt ? '' : undefined} data-cue-apu={mode === 'apu' ? view.apu.cue : undefined} data-cue-aircart={mode === 'apu' ? undefined : view.gndAir.cues.aircart} data-cue-crossbleed={mode === 'apu' ? undefined : view.gndAir.cues.crossbleed} data-open={shelf} data-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined}>
         <SwitchShelf systems={list} switches={view.switches} onToggle={onToggle} guards={{ engL: !!guards.engL, engR: !!guards.engR }} onGuardToggle={onGuard} mode={mode} block={block} open={shelf} annunciators={view.annunciators} />
         {shelf !== 'closed' && (
-          <button type="button" className="cjcs-card" data-bay={bay?.at ?? 'corner'} style={bay ? { left: bay.left, top: bay.top, width: bay.width, height: bay.height, right: 'auto', bottom: 'auto' } : undefined} aria-haspopup="dialog" aria-expanded={pamphlet !== 'closed'} aria-label={`Pilot checklist${step ? `, step ${step.index} of ${step.total}: ${step.text}` : ''}`} onClick={() => setPamphlet(pamphlet === 'closed')}>
+          <button type="button" className="cjcs-card" data-bay={bay?.at ?? 'corner'} style={bay ? { left: bay.left, top: bay.top, width: bay.width, height: bay.height, right: 'auto', bottom: 'auto' } : undefined} aria-haspopup="dialog" aria-expanded={pamphlet !== 'closed'} aria-label={`Pilot checklist${step ? `, step ${step.code.replace(/^(\d+)([a-z])$/, '$1 $2')}, ${step.index} of ${step.total}: ${step.text}` : ''}`} onClick={() => setPamphlet(pamphlet === 'closed')}>
             <small aria-hidden="true">REVFORGE</small>
             <strong aria-hidden="true">PILOT CHECKLIST</strong>
-            <small aria-hidden="true">{step ? `STEP ${step.index}/${step.total}` : live ? 'BOARD LIVE' : 'NORMAL PROCEDURES'}</small>
+            <small aria-hidden="true">{step ? `STEP ${step.code} · ${step.index}/${step.total}` : live ? 'BOARD LIVE' : 'NORMAL PROCEDURES'}</small>
           </button>
         )}
+        {shelf !== 'closed' && mcAt && (
+          <div className="cjcs-mc" style={{ left: mcAt.left + mcAt.width / 2, top: mcAt.top + mcAt.height / 2 }}>
+            <MasterCaution lit={view.caution.lit} step={view.caution.step} onPress={() => onToggle('masterCaution', 'momentary')} />
+          </div>
+        )}
         {pamphlet !== 'closed' && (
-          <div className="cjcs-pamph" data-phase={pamphlet} role="dialog" aria-modal="false" aria-label="Pilot checklist" onKeyDown={(e) => e.key === 'Escape' && setPamphlet(false)}>
+          <div ref={pamphRef} className="cjcs-pamph" data-phase={pamphlet} data-size={size} role="dialog" aria-modal="false" aria-label="Pilot checklist" onKeyDown={(e) => e.key === 'Escape' && setPamphlet(false)}>
             {pamphlet === 'open' ? (
               <div className="cjcs-pages">
-                <section aria-label="Startup">
-                  <h3>STARTUP · {mode === 'apu' ? 'APU' : 'STANDARD'}</h3>
-                  <ol>{lines(checklist.startup, step?.index ?? null)}</ol>
+                <div className="cjcs-startup">
+                  <CjPamphlet plan={plan} title={ckTitle(mode)} cursor={view.cursor} size={size} />
                   <p>Or lift QUICK START and press it once.</p>
-                </section>
+                </div>
                 <section aria-label="Shutdown">
                   <h3>SHUTDOWN</h3>
-                  <ol>{lines(checklist.shutdown, null)}</ol>
+                  <ol>{lines(checklist.shutdown)}</ol>
                   <p>EMERGENCY: pull the red EMER STOP handle down past the line.</p>
                   <p className="cjcs-foot">Our own wording · not for real aircraft</p>
                 </section>
@@ -390,5 +431,5 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       </>
     );
   };
-  return { on, park, live, shelf, toggleShelf, quickStart, pamphlet, setPamphlet, say, render: { shelf: shelfEl, shelfKey, pullQs } };
+  return { on, park, live, shelf, toggleShelf, quickStart, pamphlet, setPamphlet, say, seatbelt: !!sys.on.seatbelt, render: { shelf: shelfEl, shelfKey, pullQs } };
 }

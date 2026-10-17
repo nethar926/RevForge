@@ -50,15 +50,18 @@ test('dark cockpit: only BATT is live, everything else locked with a reason; BAT
   assert.equal(v.switches.engL.disabledReason, 'Battery first');
   assert.equal(v.switches.oxygen.disabled, undefined); // no requires
   assert.equal(v.apu.disabled, true);
-  assert.equal(v.checklist?.text, 'Battery on');
+  assert.equal(v.checklist?.text, 'BATT Switch, ON'); // pamphlet wording (Meghan's plan), same line as the card
+  assert.equal(v.checklist?.code, '1a');
 });
 
-test('short engraved labels, Dan long labels as the VoiceOver name', () => {
+test('short engraved labels; Dan long labels as the announcement name; VoiceOver name = sheet line with the code', () => {
   const v = csView(input('apu'));
   assert.equal(v.switches.engL.label, 'L ENG');
-  assert.equal(v.switches.engL.ariaLabel, 'L engine start');
+  assert.equal(v.switches.engL.name, 'L engine start');
+  assert.equal(v.switches.engL.ariaLabel, 'Left engine start, step 4 b');
   assert.equal(v.switches.fuelPumpL.label, 'FUEL L');
-  assert.equal(v.switches.fuelPumpL.ariaLabel, 'L fuel pump');
+  assert.equal(v.switches.fuelPumpL.name, 'L fuel pump');
+  assert.equal(v.switches.batt.ariaLabel, 'Battery switch, step 1 a, next');
   for (const [id, l] of Object.entries(CS_SHORT)) for (const w of l.split(' ')) assert.ok(w.length <= 8, `${id} ${l}`);
 });
 
@@ -264,24 +267,18 @@ test('START MODE pref (v3: one source of truth = cjPrefs; RADAR = mapView): APU 
   resetCjPrefsCache();
 });
 
-test('every step number 1..N shows on some control, off steps too (APU 6·7·14, X-BLEED 9·14, GND AIR 4·15); off steps get the next cue', () => {
-  for (const mode of ['apu', 'gndAir'] as const) {
-    const v = csView(input(mode));
-    const shown: string[] = [
-      // the shelf draws these through the start block (skin CJ_SHELF_BLOCK_IDS), not as plain switches
-      ...Object.entries(v.switches).filter(([id]) => !(mode === 'apu' ? ['apu'] : ['aircart', 'crossbleed']).includes(id)).map(([, s]) => s.step),
-      v.apu.step,
-      ...Object.values(v.gndAir.steps),
-    ].filter((s) => s != null).flatMap((s) => String(s).split('·'));
-    const nums = shown.map(Number).sort((a, b) => a - b);
-    assert.deepEqual(nums, v.seq.map((_, i) => i + 1), `${mode}: each step exactly once`);
-  }
-  assert.equal(csView(input('apu')).apu.step, '6·7·14');
+test('badges carry pamphlet codes (sheet panel 8): each control shows its next code still to do; off steps get the next cue', () => {
+  // dark cockpit: first code of each control (a multi-step control shows its first one: APU START 3a of 3a·3b·6a)
+  const a = csView(input('apu'));
+  assert.equal(a.apu.step, '3a');
+  assert.equal(a.switches.batt.step, '1a');
+  assert.equal(a.switches.masterCaution?.step, '9a');
   const g = csView(input('gndAir'));
-  assert.equal(g.gndAir.steps.crossbleed, '9·14');
-  assert.equal(g.gndAir.steps.aircart, '4·15');
-  assert.equal(g.switches.masterCaution?.step, '22');
-  assert.equal(csView(input('apu')).switches.masterCaution?.step, '21');
+  assert.equal(g.gndAir.steps.aircart, '2a');
+  assert.equal(g.gndAir.steps.crossbleed, '4a');
+  assert.equal(g.switches.masterCaution?.step, '9a');
+  assert.equal(a.codes.join(' '), '1a 1b 1c 2a 2b 3a 3b 4a 4b 4c 5a 5b 5c 6a 7a 7b 7c 7d 8a 8b 9a');
+  assert.equal(g.codes.join(' '), '1a 1b 1c 2a 3a 3b 3c 3d 4a 5a 5b 5c 5d 6a 6b 7a 7b 7c 7d 8a 8b 9a');
   // off step current: the cue lights the block
   const at = (mode: CsMode, key: string) => {
     const seq = csSequence(getJetSystemList(csVariant(mode)), mode);

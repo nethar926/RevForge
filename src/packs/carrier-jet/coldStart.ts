@@ -22,6 +22,7 @@
  *    (pump, ign, start, idle) → X-BLEED closed, GND AIR off → SYSTEMS → LIGHTS → caution reset.
  */
 import type { JetEnginePhase, JetStartMode, JetSystem, JetSystemEntry } from '../../audio/types.ts';
+import { ckAlign, ckBadgeLabel } from './checklistModes.ts';
 
 /** Host start mode (Meghan's CjStartMode). */
 export type CsMode = 'apu' | 'gndAir';
@@ -213,7 +214,10 @@ export function csCursor(seq: readonly CsStep[], inp: CsInput): number {
 
 export interface CsSwitchView {
   label: string;
+  /** VoiceOver name with the pamphlet code (sheet panel 8): "Battery switch, step 1 a, done". */
   ariaLabel: string;
+  /** Plain name for announcements ("Battery"). */
+  name: string;
   state: 'off' | 'on' | 'momentary';
   lit: boolean;
   disabled?: boolean;
@@ -237,7 +241,11 @@ export interface CsView {
    * Checklist card: the current step on the same sequence as the switch badges (index = cursor + 1, total = steps,
    * off steps included), with Dan's checklist line for it when one matches. null when complete.
    */
-  checklist: { index: number; total: number; text: string } | null;
+  checklist: { index: number; total: number; text: string; /** pamphlet section code ("6a"); the step number when the plan doesn't cover the list */ code: string } | null;
+  /** Pamphlet code per sequence step (same index as seq), or step numbers if the plan doesn't match Dan's list. */
+  codes: string[];
+  /** MASTER CAUTION push button (sheet panel 4): lit while a caution is present (power on, not yet reset). */
+  caution: { lit: boolean; step?: string };
   /** Both engines running. */
   live: boolean;
 }
@@ -248,11 +256,16 @@ export function csView(inp: CsInput): CsView {
   const cursor = csCursor(seq, inp);
   const next = seq[cursor] ?? null;
   const s = inp.sys;
-  const numbers: Record<string, number[]> = {};
-  // every step's number on its control, off steps too (APU START 6·7·14, X-BLEED 9·14, GND AIR 4·15)
-  seq.forEach((st, i) => {
-    (numbers[st.id] ??= []).push(i + 1);
-  });
+  // Badges (Meghan's sheet, panel 8): the pamphlet section code instead of the step number; a control with several
+  // steps (APU START 3a·3b·6a) shows its next code still to do, else its last one (her badgeFor).
+  const items = ckAlign(inp.mode, seq.map((st) => st.key));
+  const codes = seq.map((_, i) => items?.[i].code ?? String(i + 1));
+  const badge = (ids: readonly string[]) => {
+    const mine = seq.map((_, i) => i).filter((i) => ids.includes(seq[i].id));
+    if (!mine.length) return null;
+    const i = mine.find((j) => j >= cursor) ?? mine[mine.length - 1];
+    return { i, code: codes[i], state: (i === cursor ? 'next' : i < cursor ? 'done' : 'todo') as 'next' | 'done' | 'todo' };
+  };
   const switches: Record<string, CsSwitchView> = {};
   for (const e of inp.list) {
     const id = e.id as string;
@@ -264,6 +277,7 @@ export function csView(inp: CsInput): CsView {
     const v: CsSwitchView = {
       label: CS_SHORT[id] ?? e.label.toUpperCase(),
       ariaLabel: e.label,
+      name: e.label,
       state: held ? 'momentary' : on ? 'on' : 'off',
       lit: on || held,
     };
@@ -279,13 +293,17 @@ export function csView(inp: CsInput): CsView {
       v.disabled = true;
       v.disabledReason = lock;
     }
-    if (numbers[id]) v.step = numbers[id].join('·');
+    const b = badge([id]);
+    if (b) {
+      v.step = b.code;
+      v.ariaLabel = ckBadgeLabel(items?.[b.i].spoken ?? e.label, b.code, b.state);
+    }
     if (next && next.id === id) v.cue = held || eng === 'starting' ? 'busy' : 'next';
     else if (held || eng === 'starting') v.cue = 'busy';
     switches[id] = v;
   }
   // APU block: ARM (cover), START and the APU-off step all print on the START switch
-  const apuStep = [...(numbers.apuGuard ?? []), ...(numbers.apu ?? [])].sort((a, b) => a - b).join('·');
+  const apuStep = badge(['apuGuard', 'apu'])?.code;
   const apuLock = !inp.park ? CS_PARK_REASON : isOn(s, 'apu') ? null : csLockReason('batt', inp) ?? (isOn(s, 'batt') ? null : 'Battery first');
   const apuBusy = inp.held === 'apu' || (isOn(s, 'apu') && !s.apuReady);
   const apu: CsView['apu'] = {
@@ -304,8 +322,10 @@ export function csView(inp: CsInput): CsView {
     if (r) reasons[id] = r;
   }
   const steps: CsView['gndAir']['steps'] = {};
-  if (numbers.aircart) steps.aircart = numbers.aircart.join('·');
-  if (numbers.crossbleed) steps.crossbleed = numbers.crossbleed.join('·');
+  for (const id of ['aircart', 'crossbleed'] as const) {
+    const b = badge([id]);
+    if (b) steps[id] = b.code;
+  }
   // next cue for the GND AIR block's switches (on and off steps); drawn by the host (the skin block has no cue prop)
   const cues: CsView['gndAir']['cues'] = {};
   if (next && (next.id === 'aircart' || next.id === 'crossbleed')) cues[next.id] = 'next';
@@ -332,9 +352,12 @@ export function csView(inp: CsInput): CsView {
   let checklist: CsView['checklist'] = null;
   if (next) {
     const line = (inp.checklist ?? []).find((l) => next.line.test(l));
-    checklist = { index: cursor + 1, total: seq.length, text: line ?? `${inp.list.find((e) => e.id === next.id)?.label ?? next.id} ${next.act === 'arm' ? 'cover up' : next.on ? 'on' : 'off'}` };
+    const it = items?.[cursor];
+    checklist = { index: cursor + 1, total: seq.length, code: codes[cursor], text: it ? `${it.item}, ${it.action}` : line ?? `${inp.list.find((e) => e.id === next.id)?.label ?? next.id} ${next.act === 'arm' ? 'cover up' : next.on ? 'on' : 'off'}` };
   }
-  return { seq, cursor, complete: cursor >= seq.length, next, switches, apu, gndAir, annunciators, checklist, live };
+  const mc = badge(['masterCaution']);
+  const caution: CsView['caution'] = { lit: isOn(s, 'batt') && !inp.cautionReset, step: mc && mc.state !== 'done' ? mc.code : undefined };
+  return { seq, cursor, complete: cursor >= seq.length, next, switches, apu, gndAir, annunciators, checklist, codes, caution, live };
 }
 
 /* ------------------------------------------------------------------ tap intents */

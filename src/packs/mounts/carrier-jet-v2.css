@@ -310,3 +310,24 @@
   content: 'PARK'; position: absolute; left: calc(14 / 60 * 100cqw); top: calc((88 - 8.2) / 60 * 100cqw); pointer-events: none;
   font: 700 calc(11 / 60 * 100cqw) / 1 'B612', 'Barlow Semi Condensed', system-ui, sans-serif; letter-spacing: 0; color: #ccd2d6;
 }
+
+/* SEAT BELT lamp (Meghan's sheet panel 5) in the guarded SHUTDOWN's dock slot (panel 6: SHUTDOWN removed with the
+   cold start on; EMER STOP + the cold-start steps cover stopping). Same rect rule as .cjm-sdg; the host Shutdown chip
+   stays hidden while it shows. Lamp 104×52 (her 96×44 lens + bezel), bottom-aligned with the dock row. */
+.rev-dock:has(> .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window'])) > .cjm-sbl {
+  position: absolute; left: calc(var(--cjv3-plate) + 8px + var(--cjv3-guard)); translate: -100% 0; bottom: -3px; margin: 0; display: flex; align-items: flex-end; z-index: 1;
+}
+.rev-dock:has(> .cjm-sbl) > .rev-stop { visibility: hidden !important; }
+.cjm-sbl .sbl { display: block; }
+
+/* MASTER CAUTION (sheet panel 4) in place of CAUT RST: the skin cell keeps its box (layout unchanged) but is hidden
+   (out of the a11y tree too); her 64×64 push button is centred on it (CjColdStart measures the cell). */
+.cjcs-shelf[data-mc] .cjp-cell:has(> .cjp-toggle[data-sys='masterCaution']) > * { visibility: hidden; }
+.cjcs-shelf > .cjcs-mc { position: absolute; translate: -50% -50%; pointer-events: auto; z-index: 2; display: flex; }
+.cjcs-shelf[data-open='opening'] > .cjcs-mc { opacity: 0; }
+
+/* Pamphlet (sheet panel 8): her printed card replaces the Startup list; Shutdown keeps the right column. */
+.cjcs-pages { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); align-items: start; background: linear-gradient(160deg, #d9d2bf, #c9c1ab); }
+.cjcs-pages > .cjcs-startup { min-width: 0; }
+.cjcs-pages > .cjcs-startup > p { margin: 6px 0 0 4px; }
+.cjcs-pamph[data-size='narrow'] .cjcs-pages { grid-template-columns: minmax(0, 1fr); padding: 8px 52px 8px 8px; gap: 10px; }
