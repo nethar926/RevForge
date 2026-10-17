@@ -58,7 +58,8 @@ export function useAudioEngine(
       // output; older engines that reject the options bag fall back to the default.
       try {
         ctxRef.current = new AC({ latencyHint: "playback" });
-      } catch {
+      } catch (err) {
+        console.warn("[RevForge audio] latencyHint 'playback' rejected; using default AudioContext latency", err);
         ctxRef.current = new AC();
       }
       try{mediaRef.current=new MediaOutput(ctxRef.current);}catch{setBackgroundStatus("Media streams unavailable · direct audio active");}
