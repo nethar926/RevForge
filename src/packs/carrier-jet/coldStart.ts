@@ -231,7 +231,7 @@ export interface CsView {
   next: CsStep | null;
   switches: Record<string, CsSwitchView>;
   apu: { arm: boolean; start: boolean; ready: 'off' | 'spooling' | 'ready'; disabled: boolean; disabledReason?: string; step?: string; cue?: 'next' | 'busy' };
-  gndAir: { aircart: boolean; crossbleed: boolean; side: 'L' | 'R' | null; disabledReasons: Partial<Record<'aircart' | 'crossbleed', string>>; steps: Partial<Record<'aircart' | 'crossbleed', number | string>> };
+  gndAir: { aircart: boolean; crossbleed: boolean; side: 'L' | 'R' | null; disabledReasons: Partial<Record<'aircart' | 'crossbleed', string>>; steps: Partial<Record<'aircart' | 'crossbleed', number | string>>; cues: Partial<Record<'aircart' | 'crossbleed', 'next'>> };
   annunciators: CsAnnunciator[];
   /** Checklist line for the current step (1-based index, text) or null. */
   checklist: { index: number; total: number; text: string } | null;
@@ -246,8 +246,9 @@ export function csView(inp: CsInput): CsView {
   const next = seq[cursor] ?? null;
   const s = inp.sys;
   const numbers: Record<string, number[]> = {};
+  // every step's number on its control, off steps too (APU START 6·7·14, X-BLEED 9·14, GND AIR 4·15)
   seq.forEach((st, i) => {
-    if (st.on) (numbers[st.id] ??= []).push(i + 1);
+    (numbers[st.id] ??= []).push(i + 1);
   });
   const switches: Record<string, CsSwitchView> = {};
   for (const e of inp.list) {
@@ -277,7 +278,8 @@ export function csView(inp: CsInput): CsView {
     else if (held || eng === 'starting') v.cue = 'busy';
     switches[id] = v;
   }
-  const apuStep = [seq.findIndex((x) => x.act === 'arm'), seq.findIndex((x) => x.id === 'apu' && x.on)].filter((i) => i >= 0).map((i) => i + 1).join('·');
+  // APU block: ARM (cover), START and the APU-off step all print on the START switch
+  const apuStep = [...(numbers.apuGuard ?? []), ...(numbers.apu ?? [])].sort((a, b) => a - b).join('·');
   const apuLock = !inp.park ? CS_PARK_REASON : isOn(s, 'apu') ? null : csLockReason('batt', inp) ?? (isOn(s, 'batt') ? null : 'Battery first');
   const apuBusy = inp.held === 'apu' || (isOn(s, 'apu') && !s.apuReady);
   const apu: CsView['apu'] = {
@@ -297,12 +299,16 @@ export function csView(inp: CsInput): CsView {
   const steps: CsView['gndAir']['steps'] = {};
   if (numbers.aircart) steps.aircart = numbers.aircart.join('·');
   if (numbers.crossbleed) steps.crossbleed = numbers.crossbleed.join('·');
+  // next cue for the GND AIR block's switches (on and off steps); drawn by the host (the skin block has no cue prop)
+  const cues: CsView['gndAir']['cues'] = {};
+  if (next && (next.id === 'aircart' || next.id === 'crossbleed')) cues[next.id] = 'next';
   const gndAir: CsView['gndAir'] = {
     aircart: isOn(s, 'aircart'),
     crossbleed: isOn(s, 'crossbleed'),
     side: isOn(s, 'aircart') && s.engines.R !== 'run' ? 'R' : isOn(s, 'crossbleed') && s.engines.R === 'run' && s.engines.L !== 'run' ? 'L' : null,
     disabledReasons: reasons,
     steps,
+    cues,
   };
   const live = s.engines.L === 'run' && s.engines.R === 'run';
   const annunciators: CsAnnunciator[] = [
