@@ -2,17 +2,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CJ_RADAR_MAP_DIM, scopeBugPoint, scopeRingPx } from '../src/packs/carrier-jet/liveMap.ts';
+import { CJ_RADAR_MAP_DIM, dimHex, radarDimPaint, scopeBugPoint, scopeRingPx } from '../src/packs/carrier-jet/liveMap.ts';
+import { buildCjMapStyle } from '../src/skins/carrier-jet/map/style.ts';
 import { radarAria, SWEEP_PERIOD_MS } from '../src/packs/carrier-jet/mapView.ts';
 import { zoomForRangeMi } from '../src/skins/carrier-jet/map/style.ts';
 
 const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
 const nc = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '');
 
-test('dim: map at 55–70% brightness under the scope', () => {
+test('dim: base map + roads at 62% (paint colours), the WX rain layer never dimmed; restore = the style values', () => {
   assert.ok(CJ_RADAR_MAP_DIM >= 0.55 && CJ_RADAR_MAP_DIM <= 0.7);
-  assert.match(nc(src('packs/mounts/carrier-jet-v2.css')), /\.cjv2-hsd\[data-radar\] > \.cjv2-mapgl \{ filter: brightness\(var\(--cjv2-radar-dim, 0\.62\)\)/);
+  assert.equal(dimHex('#8dffad', 0.62), '#579e6b');
+  assert.equal(dimHex('#000', 0.62), '#000');
+  const layers = [...buildCjMapStyle({ terrain: true }).layers, { id: 'cjwx-radar', paint: { 'raster-opacity': 1 } }];
+  const dim = radarDimPaint(layers, CJ_RADAR_MAP_DIM, ['cjwx-radar']);
+  assert.ok(dim.some((c) => c.id === 'road_motorway' && c.prop === 'line-color' && c.value === '#579e6b'));
+  assert.ok(dim.some((c) => c.id === 'background'));
+  assert.ok(!dim.some((c) => c.id === 'cjwx-radar'), 'rain untouched');
+  for (const c of radarDimPaint(layers, 1)) assert.equal(c.value, (layers.find((l) => l.id === c.id)!.paint as Record<string, unknown>)[c.prop]);
+  assert.doesNotMatch(nc(src('packs/mounts/carrier-jet-v2.css')), /\.cjv2-mapgl \{ filter/, 'no whole-canvas filter (would dim the rain too)');
 });
+
+// (rain under RADAR — teal + hatched light rain, own tile set — is tested on frontend/cj-radar-rain-on-weather)
 
 test('scope geometry: outer ring px from the 14×8 inset square; the map zoom puts RNG mi on that ring', () => {
   assert.equal(scopeRingPx(400, 300), (272 * 46) / 100);

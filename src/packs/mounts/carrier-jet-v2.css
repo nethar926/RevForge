@@ -289,10 +289,10 @@
 .cjp-apu .cjp-toggle[data-sys='apu'] svg g[data-eng]:has(> text[y='36']) { transform: translateY(-6px); }
 
 /* ---------------- RADAR over the map (Wilson, Oct 16: "Radar overlay should stack atop maps"; mock). Stack, bottom up:
-   MapLibre canvas (map base → roads) dimmed to --cjv2-radar-dim (CJ_RADAR_MAP_DIM, 0.62) → static scanlines →
+   MapLibre canvas (map base → roads; base + roads dimmed to 0.62 in their paint colours, CJ_RADAR_MAP_DIM; the WX rain
+   layer, on the weather branch, keeps full strength) → static scanlines →
    the scope, no background of its own (rings → sweep → bug + own-ship → corners) → street labels. No map: the scope alone
    on the dark CRT (the canvas box keeps its #041009). The sweep is unchanged (4 s, static under Reduce Motion). */
-.cjv2-hsd[data-radar] > .cjv2-mapgl { filter: brightness(var(--cjv2-radar-dim, 0.62)) saturate(0.85); }
 .cjv2-hsd > .cjv2-scope { background: transparent; pointer-events: none; }
 .cjv2-hsd[data-radar='over-map'] .cjv2-ring-edge { stroke: #6fdc8e; stroke-width: 0.9; }
 .cjv2-hsd[data-radar='over-map'] .cjv2-ring { stroke: #4fbf72; stroke-width: 0.7; }
