@@ -16,7 +16,9 @@
 .sbl { display: inline-block; padding: 4px; border-radius: 3px; background: linear-gradient(160deg, #3a3f43, #24282b); box-shadow: inset 1px 1px 0 #50575c, inset -1px -1px 0 #121416; }
 .sbl-lens { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 96px; height: 44px; border-radius: 2px; background: #121517;
   box-shadow: inset 1px 1px 2px #000; font: 700 11px/14px 'B612', system-ui, sans-serif; letter-spacing: .1em; color: #8a9196; }
-.sbl[data-on] .sbl-lens { background: #1c2124; color: #f4f1e6; text-shadow: 0 0 4px rgb(255 248 225 / .55); }
+.sbl[data-on] .sbl-lens { background: radial-gradient(ellipse at 50% 45%, #4a3f27 0%, #2a2519 70%, #1c1a14 100%); color: #fff6dc;
+  text-shadow: 0 0 3px rgb(255 236 180 / .95), 0 0 9px rgb(255 214 140 / .7);
+  box-shadow: inset 1px 1px 2px #000, inset 0 0 14px rgb(255 214 140 / .35), 0 0 8px rgb(255 214 140 / .25); }
 
 /* ---- checklist PAMPHLET card */
 .ckp { position: relative; display: flex; align-items: stretch; font-family: 'B612', system-ui, sans-serif; }
