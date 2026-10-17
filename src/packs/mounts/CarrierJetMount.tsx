@@ -2,7 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { createPortal } from 'react-dom';
 import { CarrierJetAfterburnerGuard, CarrierJetHud, useCarrierJetVariant } from '../../skins/carrier-jet';
 import ID from '../carrier-jet.identity';
-import { readPackAbZone, sendPackEngineCommand, subscribePackAbZone } from '../runtime';
+import { readPackAbZone, requestPackShell, sendPackEngineCommand, subscribePackAbZone } from '../runtime';
+import { ShutdownGuard } from '../../skins/carrier-jet';
+import { playGuardCue, sdCoverTap, sdEngineStopped, sdLever, sdShown, type ShutdownGuardDeps } from '../carrier-jet/shutdownGuard';
 import { getAbArmed, setAbArmed, subscribeAbArmed } from '../abArmed';
 import type { PackHudProps } from '../types';
 import { useFitBox } from './useFitBox';
@@ -189,6 +191,13 @@ export function CarrierJetMount(props: PackHudProps) {
   const launchActive = readLaunchActive(jetApi, props.running);
   useEffect(() => setLaunch((p) => launchStep(p, launchActive)), [launchActive]);
   const abZone = launchAbZone(abZoneAudio, launch.lit); // a launch lights the AB readouts like normal AB
+  // Guarded SHUTDOWN (Meghan's ShutdownGuard; shutdownGuard.ts): cover = UI state, closed on load, not persisted
+  const [sdOpen, setSdOpen] = useState(false);
+  const sdDeps: ShutdownGuardDeps = {
+    cue: (c) => playGuardCue(jetApi, getCjPrefs().switchSound, c),
+    shutdown: () => void requestPackShell({ type: 'shutdown' }),
+  };
+  useEffect(() => setSdOpen((o) => sdEngineStopped(o, props.running, sdDeps)), [props.running]); // eslint-disable-line react-hooks/exhaustive-deps
   const coldOn = v2 && cold.on;
   // Phones (no shelf / PULL / QUICK START placement yet): skip the cold start, so the engine is never locked out.
   const coldPhone = coldOn && !tesla && !cold.live;
@@ -229,6 +238,12 @@ export function CarrierJetMount(props: PackHudProps) {
       {spds ? coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div> : <div className="cjm-bank-nav" ref={setNavSlot} />}
     </div>
   );
+  const sdShow = sdShown({ v2, tesla, docked: !!vp.dock, running: props.running });
+  const shutdownGuard = sdShow && vp.dock ? (
+    <div className="cjm-sdg" data-rf-layout={layout}>
+      <ShutdownGuard guardOpen={sdOpen} onGuardToggle={() => setSdOpen((o) => sdCoverTap(o, sdDeps))} on={props.running} onToggle={() => setSdOpen((o) => sdLever(o, props.running, sdDeps).open)} reduceMotion={reduced} />
+    </div>
+  ) : null;
   const bankB = spds && coldOn && vp.dock ? (
     <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} role="group" aria-label="Engine start and stop">
       {cold.render.pullQs(layout === 'board' ? 'wide' : 'narrow')}
@@ -259,6 +274,7 @@ export function CarrierJetMount(props: PackHudProps) {
       {coldOn && <p className="cjcs-say" role="status" aria-live="polite">{cold.say}</p>}
       <p className="rf-sr-only cjm-launch-say" role="status" aria-live="polite">{launch.say}</p>
       {bankB && vp.dock && createPortal(bankB, vp.dock)}
+      {shutdownGuard && vp.dock && createPortal(shutdownGuard, vp.dock)}
       {bankHost ? createPortal(layout === 'portrait' ? <div className="cjm-below">{bank}</div> : bank, bankHost) : layout !== 'portrait' && <div className="cjm-ab">{bank}</div>}
     </div>
   );

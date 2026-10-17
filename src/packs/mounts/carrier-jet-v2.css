@@ -245,3 +245,11 @@
 /* compass readout: Meghan's HeadingLegend over the HSD rose's top digit box (HDG 047 M / HDG 040 T) */
 .cjv2 > .cjv2-hdgcell { pointer-events: none; }
 .cjv2-hdgro { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); padding: 1px 6px; background: #041009; border: 1px solid #2f7a48; border-radius: 4px; white-space: nowrap; }
+
+/* Guarded SHUTDOWN (Meghan's ShutdownGuard, 108.67x48): portaled into .rev-dock while the engine runs, on the host
+   Shutdown chip's own rule (same rect at 1280 / 1256 / 773); the chip keeps its box but is hidden meanwhile. Engine
+   off: no part, the chip (Ignition / Resume) is back as the start path. */
+.rev-dock:has(> .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window'])) > .cjm-sdg {
+  position: absolute; left: calc(var(--cjv3-plate) + 8px + var(--cjv3-guard)); translate: -100% 0; bottom: -3px; margin: 0; width: 108.67px; height: 48px; display: flex; z-index: 1;
+}
+.rev-dock:has(> .cjm-sdg) > .rev-stop { visibility: hidden !important; }
