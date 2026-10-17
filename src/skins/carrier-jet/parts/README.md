@@ -23,3 +23,4 @@ timer and gesture. Prop interfaces: `../types.ts`. Sizes and pure helpers: `toke
 | `RadarToggle` | 56×118 / 44×118 narrow | beside GPS |
 | `GpsRadarPlate` | 107×118 (1280) / 89×118 (773) | bank, guard end |
 | `BezelKey` | 52×66 (key 44×44) | MFD edge |
+| `ShutdownGuard` | 108.67×48 fixed (cover 108.67×48 closed / 46×48 open, switch 62.67×48) | bottom row, in place of the Shutdown plate |

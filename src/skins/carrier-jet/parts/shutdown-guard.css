@@ -1,0 +1,28 @@
+/*
+ * Guarded SHUTDOWN toggle (ShutdownGuard.tsx), bottom row. 108.67×48 CSS px, the Shutdown plate's footprint.
+ * Matte gunmetal plate (.cjp-metal), AB-guard stripes on the lid, Dzus leaf + hinge pin, one key light top-left.
+ * Motion: the lid lift / fold only, transform + opacity, 160ms ease-out (no blink, no flash).
+ * Reduce Motion (OS setting, any [data-rf-reduce-motion] ancestor, or the part's own reduceMotion prop): static swap.
+ * The cover and switch buttons are never transformed, so their rects are the tap targets (>= 44x44 CSS px).
+ */
+.cjp.cjp-sdg { position: relative; flex: none; display: block; box-sizing: border-box; overflow: visible; }
+.cjp-sdg > .cjp-sdg-base { position: absolute; left: 0; top: 0; }
+.cjp-sdg > .cjp-sdg-switch, .cjp-sdg > .cjp-sdg-cover { position: absolute; top: 0; height: 100%; z-index: 1; }
+.cjp-sdg > .cjp-sdg-cover { left: 0; z-index: 3; }
+.cjp-sdg > .cjp-sdg-switch:active:not([aria-disabled='true']) { background: rgba(0, 0, 0, 0.12); border-radius: 3px; }
+.cjp-sdg > .cjp-sdg-cover:active:not([aria-disabled='true']) { background: rgba(0, 0, 0, 0.1); border-radius: 3px; }
+.cjp-sdg > .cjp-sdg-lid, .cjp-sdg > .cjp-sdg-under { position: absolute; z-index: 2; pointer-events: none; transform-origin: 0 50%; }
+.cjp-sdg > .cjp-sdg-lid { filter: drop-shadow(1px 1.5px 1px rgba(0, 0, 0, 0.5)); transition: transform 160ms ease-out, opacity 160ms ease-out; }
+.cjp-sdg > .cjp-sdg-under { opacity: 0; transform: perspective(160px) rotateY(70deg); transition: transform 160ms ease-out, opacity 160ms ease-out; }
+/* open: the lid swings up on the hinge (its edge toward the eye) and the folded underside takes the strip column */
+.cjp-sdg[data-open='true'] > .cjp-sdg-lid { opacity: 0; transform: perspective(160px) rotateY(-80deg); }
+.cjp-sdg[data-open='true'] > .cjp-sdg-under { opacity: 1; transform: none; }
+.cjp-sdg[data-disabled] > .cjp-sdg-switch, .cjp-sdg[data-disabled] > .cjp-sdg-cover { cursor: not-allowed; }
+.cjp-sdg[data-open='false'] > .cjp-sdg-switch { cursor: default; }
+
+/* Reduce Motion: static open / closed swap */
+@media (prefers-reduced-motion: reduce) {
+  .cjp-sdg > .cjp-sdg-lid, .cjp-sdg > .cjp-sdg-under { transition: none; }
+}
+[data-rf-reduce-motion] .cjp-sdg > .cjp-sdg-lid, [data-rf-reduce-motion] .cjp-sdg > .cjp-sdg-under,
+.cjp-sdg[data-rf-reduce-motion] > .cjp-sdg-lid, .cjp-sdg[data-rf-reduce-motion] > .cjp-sdg-under { transition: none; }
