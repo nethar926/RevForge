@@ -63,10 +63,9 @@
    Slow glow pulse; Reduce Motion = the same glow, static. */
 .cjcs-shelfkey[data-start] { gap: 2px; }
 .cjcs-shelfkey .cjcs-start { font-size: var(--cjcs-leg); line-height: 1.1; letter-spacing: 0.12em; color: #ffc35a; padding: 0 4px; border-radius: 2px;
-  background: rgb(255 195 90 / 0.14); text-shadow: 0 0 4px rgb(255 195 90 / 0.85); box-shadow: 0 0 6px rgb(255 195 90 / 0.35); animation: cjcs-start-glow 2.4s ease-in-out infinite; }
-@keyframes cjcs-start-glow { 50% { text-shadow: 0 0 1px rgb(255 195 90 / 0.5); box-shadow: 0 0 2px rgb(255 195 90 / 0.15); } }
-.cjcs-shelfkey[data-motion='static'] .cjcs-start { animation: none; }
-@media (prefers-reduced-motion: reduce) { .cjcs-shelfkey .cjcs-start { animation: none; } }
+  background: #3a3328; box-shadow: 0 0 0 1px rgb(255 195 90 / 0.35); }
+/* START lamp: lit steadily (no glow animation, so nothing for Reduce Motion to stop); amber #ffc35a on a dark warm
+   plate #3a3328 (rendered >= 4.5:1, measured in the shots: /workspace/frontend-handoff/cj-start-contrast/) */
 .cjm-bank[data-cjm-v2][data-rf-layout='phone-landscape'] > .cjm-bank-plate { display: none; } /* 68px strip: no room for 118 */
 .rev-viewport > .cjm-below > .cjm-bank[data-cjm-v2] > .cjm-bank-plate { align-self: center; margin-bottom: 0; }
 /* the row under the guard keeps its 48px switch floor; tighter gaps at 1280 as before */

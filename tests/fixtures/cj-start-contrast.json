@@ -1,0 +1,32 @@
+{
+ "note": "rendered pixels of the SHELF key START legend (preview build, Park, START lit), measured by /workspace/frontend-handoff/cj-start-contrast/measure.py; before (16ccd19): 3.29 / 3.21 / 3.32",
+ "viewports": {
+  "1256": {
+   "bg": "#3a3328",
+   "text": "#fdc259",
+   "contrast": 7.74,
+   "crop": [
+    77,
+    18
+   ]
+  },
+  "773": {
+   "bg": "#3a3328",
+   "text": "#fec25a",
+   "contrast": 7.77,
+   "crop": [
+    77,
+    19
+   ]
+  },
+  "390": {
+   "bg": "#3a3328",
+   "text": "#ffc35a",
+   "contrast": 7.84,
+   "crop": [
+    150,
+    37
+   ]
+  }
+ }
+}

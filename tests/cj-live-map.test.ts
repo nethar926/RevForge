@@ -206,7 +206,7 @@ test('cold start shelf: auto-opens once per Park entry with engines off (Tesla),
   assert.equal(it.aria!(ctx()), 'Auto-open start shelf in Park, on');
   assert.deepEqual(runItem(it, ctx()), { type: 'prefs', partial: { shelfAutoOpen: false } });
   const css = src('packs/mounts/carrier-jet-v2.css');
-  assert.match(css, /\.cjcs-shelfkey\[data-motion='static'\] \.cjcs-start \{ animation: none; \}/, 'Reduce Motion: static glow');
+  assert.doesNotMatch(css, /cjcs-start-glow/, 'START lamp lit steadily: no glow animation (nothing for Reduce Motion to stop)');
   assert.match(css, /--cjcs-leg: max\(11\.2px, calc\(11\.2px \/ \(var\(--hud-scale, 1\) \* var\(--fit-scale, 1\)\)\)\)/, '≥ 11px rendered after scale');
   assert.match(css, /\.cjcs-shelfkey small \{ font-size: var\(--cjcs-leg\)/);
 });
