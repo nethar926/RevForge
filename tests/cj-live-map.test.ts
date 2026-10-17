@@ -188,7 +188,9 @@ test('cold start shelf: auto-opens once per Park entry with engines off (Tesla),
   assert.equal(shelfAutoStep(true, { ...base, auto: false }).open, false, 'toggle off: manual only');
   assert.equal(shelfAutoStep(true, { ...base, tesla: false }).open, false, 'phones keep auto quick start');
   const cs = src('packs/mounts/CjColdStart.tsx');
-  assert.match(cs, /if \(\(!park \|\| live \|\| !on\) && shelf !== 'closed'\)/, 'tuck rule kept');
+  // tuck rule (Wilson, shelf reachable at all times): no level close on live / leaving Park; only the completion edge
+  assert.doesNotMatch(cs, /if \(\(!park \|\| live \|\| !on\) && shelf !== 'closed'\)/);
+  assert.match(cs, /shelfAutoClose\(prev, \{ park, complete: view\.complete, on \}\)/, 'completion-edge auto-close');
   assert.match(cs, /shelfAutoStep\(autoArmed\.current/);
   // START legend: lit until the first successful start, even with auto off
   assert.equal(shelfStartLit({ on: true, firstStartDone: false }), true);

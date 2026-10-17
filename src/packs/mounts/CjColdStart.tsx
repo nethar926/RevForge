@@ -3,8 +3,9 @@
  * Host side of Meghan's parts (src/skins/carrier-jet/parts): the Park-only switch shelf over the board, the checklist
  * pamphlet on the shelf, the SHELF key, the EMER STOP PULL handle and the guarded QUICK START.
  *  - State machine / lockouts / step numbers: packs/carrier-jet/coldStart.ts (pure). PULL gesture: pullGesture.ts.
- *  - Park: speed ≤ 0.5 for 1.5 s; leaving Park: speed > 2 (parkStep). The full sequence runs only in Park; the shelf
- *    closes when the car leaves Park or the board goes live. Leaving Park mid-sequence auto-finishes (jetQuickStart),
+ *  - Park: speed ≤ 0.5 for 1.5 s; leaving Park: speed > 2 (parkStep). The full sequence runs only in Park, but the
+ *    shelf is reachable at all times: SHELF toggles it in Park or Drive, and it only closes itself on the edge into a
+ *    completed sequence (shelfAutoClose). Leaving Park mid-sequence auto-finishes (jetQuickStart),
  *    and QUICK START works while driving, so the engine is never locked out.
  *  - Hold switches (APU START, L / R ENG) start on a tap (VoiceOver-safe) and show CRANK / busy until READY / RUN.
  *  - PULL fires only on a ≥ 40 px pull of the grip (pointer captured) or the VoiceOver "Emergency stop" button; a tap
@@ -16,7 +17,7 @@ import { ApuBlock, GndAirBlock, PullHandle, QuickStartGuard, SwitchShelf } from 
 import type { CjShelfOpen, CjToggleState } from '../../skins/carrier-jet/parts/index';
 import type { JetCue, JetSystem } from '../../audio/types';
 import { getPackJet, subscribePackJet } from '../jetBridge';
-import { csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, CS_PARK_REASON, parkStep, PARK_DWELL_MS, shelfAutoStep, shelfStartLit, SHELF_START_ARIA, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
+import { csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, CS_PARK_REASON, parkStep, PARK_DWELL_MS, shelfAutoClose, shelfAutoStep, shelfStartLit, shelfToggle, SHELF_START_ARIA, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
 import { getCjPrefs, setCjPrefs, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
 
@@ -141,13 +142,17 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     setCautionReset(false);
     setGuards({});
   }, [sys.on.batt, sys.engines.L, sys.engines.R]);
-  // shelf closes itself when the car leaves Park or the board goes live
+  // Shelf auto-close: only once the sequence is complete (edge), never while steps are left; SHELF reopens it.
+  // (Was: closed whenever out of Park or both engines ran, level-triggered, so after step 12 it shut and SHELF couldn't hold it open.)
+  const prevShelfCtx = useRef({ park, complete: view.complete });
   useEffect(() => {
-    if ((!park || live || !on) && shelf !== 'closed') {
+    const prev = prevShelfCtx.current;
+    prevShelfCtx.current = { park, complete: view.complete };
+    if (shelfAutoClose(prev, { park, complete: view.complete, on }) && shelf !== 'closed') {
       setShelf('closed');
       setPamphletPhase('closed');
     }
-  }, [park, live, on, shelf]);
+  }, [park, view.complete, on]); // eslint-disable-line react-hooks/exhaustive-deps
   // discoverability (Tesla): auto-open once per Park entry with the engines off (Options › AUTO SHELF); first start
   // done → the SHELF key's START legend goes out for good
   const autoArmed = useRef(true);
@@ -214,9 +219,8 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
   }, [live]);
 
   const toggleShelf = () => {
-    if (!park) return announce(`Switch shelf: ${CS_PARK_REASON}`);
     cue('toggle');
-    setShelf((s) => (s === 'closed' ? 'opening' : 'closed'));
+    setShelf(shelfToggle);
     if (shelf !== 'closed') setPamphletPhase('closed');
   };
   const onToggle = (id: string, next: CjToggleState) => {
@@ -358,11 +362,11 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
   };
   const shelfKey = (size: 'wide' | 'narrow') => {
     if (!on) return null;
-    const legend = !park ? 'PARK' : shelf === 'closed' ? '▲ OPEN' : '▼ CLOSE';
+    const legend = shelf === 'closed' ? '▲ OPEN' : '▼ CLOSE';
     const start = shelfStartLit({ on, firstStartDone: prefs.cjFirstStartDone });
     const name = start ? SHELF_START_ARIA : 'Switch shelf';
     return (
-      <button type="button" className="cjcs-shelfkey" data-size={size} data-start={start || undefined} data-motion={reduced ? 'static' : 'live'} aria-expanded={shelf !== 'closed'} aria-disabled={!park || undefined} aria-label={park ? name : `${name}. ${CS_PARK_REASON}`} onClick={toggleShelf}>
+      <button type="button" className="cjcs-shelfkey" data-size={size} data-start={start || undefined} data-motion={reduced ? 'static' : 'live'} aria-expanded={shelf !== 'closed'} aria-label={park ? name : `${name}. Switches: ${CS_PARK_REASON}`} onClick={toggleShelf}>
         {start && <span className="cjcs-start" aria-hidden="true">START</span>}
         <strong aria-hidden="true">SHELF</strong>
         <small aria-hidden="true">{legend}</small>

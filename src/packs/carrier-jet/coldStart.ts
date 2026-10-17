@@ -441,6 +441,18 @@ export function shelfAutoStep(armed: boolean, s: { park: boolean; live: boolean;
   if (armed && s.auto && s.tesla) return { armed: false, open: true };
   return { armed, open: false };
 }
+/**
+ * Shelf auto-close (Wilson: the shelf is reachable at all times). Never while steps are left: it closes only on the
+ * edge into a completed sequence (or a Park → Drive edge after completion), or when there's no cold start to show.
+ * Edge-triggered, so SHELF reopens it afterwards in Park or Drive and it stays open.
+ */
+export function shelfAutoClose(prev: { park: boolean; complete: boolean }, cur: { park: boolean; complete: boolean; on: boolean }): boolean {
+  if (!cur.on) return true;
+  if (!cur.complete) return false;
+  return !prev.complete || (prev.park && !cur.park);
+}
+/** SHELF key: always toggles, Park or Drive, before or after the start. */
+export const shelfToggle = (s: 'closed' | 'opening' | 'open'): 'closed' | 'opening' => (s === 'closed' ? 'opening' : 'closed');
 /** The SHELF key's backlit amber START legend: until the first successful start (prefs.cjFirstStartDone). */
 export const shelfStartLit = (s: { on: boolean; firstStartDone: boolean }) => s.on && !s.firstStartDone;
 export const SHELF_START_ARIA = 'Shelf, start engines here';
