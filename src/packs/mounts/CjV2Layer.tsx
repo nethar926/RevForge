@@ -436,7 +436,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, u
       case 'wx':
         cue('bezelPress');
         setWxRadar(!wxRadar);
-        return setSay(view.radar && !wxRadar ? 'WX radar on: shows on the MAP page' : `WX radar ${wxRadar ? 'off' : 'on'}`);
+        return setSay(`WX radar ${wxRadar ? 'off' : 'on'}`);
       case 'config': cue('pageChange'); setMoreOpen(false); return setCjConfig({ open: true, page: 'home', sub: 0 });
       case 'rtn': return apply({ type: 'rtn' });
       case 'prev': cue('cursorStep'); return setCjConfig({ sub: cfg.sub - 1 });

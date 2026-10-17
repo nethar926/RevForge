@@ -19,7 +19,7 @@ import { buildCjMapStyle, cjMapStatus, CJ_MAP_MAX_STREET_LABELS, CJ_MAP_OPTIONS,
 import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { radarAria, type MapView } from '../carrier-jet/mapView';
-import { attachWxRadar, WX_SRC } from './cjWxRadarLayer';
+import { attachWxRadar, setWxScopeTint, WX_SRC } from './cjWxRadarLayer';
 import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, headingPair, headingSpeech, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
 
 type Ml = typeof import('maplibre-gl');
@@ -306,10 +306,11 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
     if (!map || !hasMap) return;
     const apply = () => {
       for (const c of radarDimPaint(buildCjMapStyle({ terrain: true }).layers, radarOn ? CJ_RADAR_MAP_DIM : 1)) if (map.getLayer(c.id)) map.setPaintProperty(c.id, c.prop, c.value);
+      setWxScopeTint(map, radarOn);
     };
     if (map.isStyleLoaded()) apply();
     else map.once('styledata', apply);
-  }, [radarOn, hasMap]);
+  }, [radarOn, hasMap, wxRadar]);
   useEffect(() => {
     if (online) setTiles((p) => (p === 'network' ? false : p));
   }, [online]);
