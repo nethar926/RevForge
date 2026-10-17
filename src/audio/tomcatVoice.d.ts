@@ -27,6 +27,7 @@ export interface TomcatDriveState {
   b: TomcatEngineState;
   speed: number;
   thrCmd: number;
+  cruiseGate?: number;
   abDemand: number;
   /** Speed engage state (on at ≥ 75 mph, off below 72 mph). */
   abEngaged: boolean;
@@ -131,6 +132,7 @@ export const TC_LAUNCH_KEEP_MPHS: number;
 export const TC_LAUNCH_HOLD_S: number;
 export const TC_LAUNCH_CONFIRM_SPAN_S: number;
 export const TC_LAUNCH_NOISE_MPH: number;
+export const TC_CRUISE_FLOOR: { base: number; perSpeed: number; minSpeed: number; onAccel: number; offAccel: number; tau: number };
 export const TC_LAUNCH_DROP_S: number;
 export const TC_LAUNCH_WINDOW_S: number;
 export const TC_LAUNCH_STALE_S: number;
