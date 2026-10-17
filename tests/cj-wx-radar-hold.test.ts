@@ -153,10 +153,39 @@ test('map: label in the TR corner (both modes), dim attr, spoken after the map n
   assert.match(m, /const radarAge = useWxRadarAge\(!!wxRadar && hasMap\);/);
   assert.match(m, /const ariaFull = radarAge \? `\$\{aria\}\. \$\{radarAge\.aria\}` : aria;/);
   assert.match(m, /aria-label=\{ariaFull\}/);
-  assert.match(m, /\{radarAge && <span className="cjv2-corner cjv2-tr cjwx-rage" data-cjmap-ob data-dim=\{radarAge\.dim \|\| undefined\} data-stale=\{radarAge\.stale \|\| undefined\} aria-hidden="true">\{radarAge\.text\}<\/span>\}\n\s*<\/div>/);
+  assert.match(m, /\{radarAge && <span className="cjv2-corner cjv2-tr cjwx-rage" data-cjmap-ob data-dim=\{radarAge\.dim \|\| undefined\} data-held=\{radarAge\.stale \|\| undefined\} aria-hidden="true"><span className="cjwx-rage-t">\{radarAge\.text\}<\/span><\/span>\}\n\s*<\/div>/);
+  assert.doesNotMatch(m, /cjwx-rage[^\n]*data-stale=/, 'not data-stale: .cjv2-tr[data-stale] greys the whole chip to 0.45');
   // outside the MAP-only corner block, so RADAR shows it too
   assert.ok(m.indexOf('cjwx-rage') > m.indexOf('{!radar && <>') && m.indexOf('cjwx-rage') > m.indexOf('</>}', m.indexOf('{!radar && <>')));
   const css = src('packs/mounts/carrier-jet-v2.css');
-  assert.match(css, /\.cjv2-hsd > \.cjwx-rage\[data-dim\] \{ opacity: 0\.62; \}/);
-  assert.match(css, /\.cjwx\[data-dim\] \{ opacity: 0\.62;/, 'same dim look as the OAT');
+  // one dim level for OAT and the radar age; the age dims its text, not the chip
+  assert.match(css, /\.cjv2 \{ --cjwx-dim: 0\.62; \}/);
+  assert.match(css, /\.cjwx\[data-dim\] \{ opacity: var\(--cjwx-dim, 0\.62\);/, 'OAT');
+  assert.match(css, /\.cjv2-hsd > \.cjwx-rage\[data-dim\] > \.cjwx-rage-t \{ opacity: var\(--cjwx-dim, 0\.62\); \}/, 'radar age');
+  // the N-UP chip: same classes (.cjv2-corner → backing, padding, 11px font), full brightness, phosphor
+  assert.match(css, /\.cjv2-hsd > \.cjwx-rage \{ right: 60px; color: #8dffad; opacity: 1; z-index: 1; \}/);
+});
+
+// WCAG relative luminance / contrast, sRGB
+const lin = (c: number) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+const lum = ([r, g, b]: number[]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+const ratio = (a: number[], b: number[]) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const over = (fg: number[], a: number, bg: number[]) => fg.map((v, i) => v * a + bg[i] * (1 - a));
+const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+
+test('radar age chip contrast (from the CSS): >= 4.5:1 lit, >= 3:1 dimmed, even over the brightest thing under it', () => {
+  const css = src('packs/mounts/carrier-jet-v2.css');
+  const chip = /\.cjv2-hsd > \.cjv2-corner \{ background: rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\);/.exec(css)!;
+  assert.ok(chip, 'N-UP chip backing');
+  const chipRgb = [+chip[1], +chip[2], +chip[3]], chipA = +chip[4];
+  const text = hex(/\.cjv2-hsd > \.cjwx-rage \{[^}]*color: (#[0-9a-f]{6});/.exec(css)![1]);
+  const dim = +/--cjwx-dim: ([\d.]+);/.exec(css)![1];
+  // under the chip: map black, a phosphor road (#8dffad), the brightest rain ramp colours, and pure white (worst case)
+  for (const under of [[4, 16, 9], hex('#8dffad'), hex('#ffb000'), hex('#ff4a3a'), [255, 255, 255]]) {
+    const bg = over(chipRgb, chipA, under);
+    const lit = ratio(text, bg), dimmed = ratio(over(text, dim, bg), bg);
+    assert.ok(lit >= 4.5, `lit ${lit.toFixed(2)} over ${under}`);
+    assert.ok(dimmed >= 3, `dimmed ${dimmed.toFixed(2)} over ${under}`);
+  }
+  // the rendered-pixel numbers from the shots (radar-*-label.png, measured the same way) sit in shots.json
 });

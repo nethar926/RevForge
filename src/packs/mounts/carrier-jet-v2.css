@@ -403,7 +403,9 @@
 .cjwx-t { font-weight: 700; letter-spacing: 0.02em; }
 .cjwx-age { font-size: 11px; line-height: 13px; letter-spacing: 0.04em; }
 .cjwx-sep { font-style: normal; }
-.cjwx[data-dim] { opacity: 0.62; text-shadow: none; }
+/* the one dim level, shared by the OAT readout and the radar age chip (same wxStaleness schedule) */
+.cjv2 { --cjwx-dim: 0.62; }
+.cjwx[data-dim] { opacity: var(--cjwx-dim, 0.62); text-shadow: none; }
 .cjwx[data-dim] .cjwx-glyph { filter: none; }
 /* 773 compass (~197 px): the corner left of the HDG box is ~35 px wide and the rose ticks reach it ~50 px down, so one
    stacked column glyph / 79° / age with the OAT legend dropped (as in the 773 SPEED slot before; the aria label keeps it) */
@@ -427,5 +429,8 @@
 /* WX radar age (the overlay is holding its last good frame: offline / the last fetch failed): 'RADAR · 12m' in the map's
    TR corner (free in MAP and RADAR since the one-heading change), phosphor like the OAT age, static. Dimmed on the OAT
    schedule (wxStaleness, > 90 min) with the OAT's 62%. Labels are placed clear of it (data-cjmap-ob). */
-.cjv2-hsd > .cjwx-rage { color: #8dffad; z-index: 1; }
-.cjv2-hsd > .cjwx-rage[data-dim] { opacity: 0.62; }
+/* radar age: the N-UP chip (.cjv2-hsd > .cjv2-corner: rgb(4 16 9 / 0.82) backing, 0 3px, 11px B612, phosphor #8dffad) at
+   full brightness; 16 px clear of the 44 px (i) button. Past the OAT dim point the text (not the chip) dims to the
+   OAT level, so the backing stays dark: >= 4.5:1 lit, >= 3:1 dimmed (tests/cj-wx-radar-hold.test.ts, shots). */
+.cjv2-hsd > .cjwx-rage { right: 60px; color: #8dffad; opacity: 1; z-index: 1; }
+.cjv2-hsd > .cjwx-rage[data-dim] > .cjwx-rage-t { opacity: var(--cjwx-dim, 0.62); }
