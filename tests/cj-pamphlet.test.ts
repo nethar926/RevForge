@@ -160,12 +160,12 @@ test('MASTER CAUTION: dark without power, lit with power, press resets it (step 
   assert.match(css, /\.cjcs-shelf\[data-mc\] \.cjp-cell:has\(> \.cjp-toggle\[data-sys='masterCaution'\]\) > \* \{ visibility: hidden; \}/);
 });
 
-test('SEAT BELT lamp takes the guarded SHUTDOWN slot with the cold start on (panel 6); cue hooks for Dan', () => {
+test('SEAT BELT lamp on every cold-start dock, guarded SHUTDOWN removed (panel 6); cue hooks for Dan', () => {
   const mount = src('src/packs/mounts/CarrierJetMount.tsx');
-  assert.match(mount, /const sbLamp = sdShow && vp\.dock && spds && coldOn \?/);
+  assert.match(mount, /const sbLamp = sbLampShown\(sbCtx\) \?/);
   assert.match(mount, /<SeatBeltLamp on=\{cold\.seatbelt\} \/>/);
-  assert.match(mount, /const shutdownGuard = sdShow && vp\.dock && !sbLamp \?/);
-  assert.match(src('src/packs/mounts/carrier-jet-v2.css'), /\.rev-dock:has\(> \.cjm-sbl\) > \.rev-stop \{ visibility: hidden !important; \}/);
+  assert.match(mount, /const shutdownGuard = sdGuardShown\(sdShow, sbCtx\) \?/);
+  assert.match(src('src/packs/mounts/carrier-jet-v2.css'), /\.rev-dock:has\(> \.cjm-sbl\[data-sd-off\]\) > \.rev-stop \{ visibility: hidden !important; \}/);
   assert.deepEqual(CJ_HOST_CUES, { seatbelt: 'seatbeltTone', oxygen: 'o2Chimes' });
   assert.equal(hostCueFor('seatbelt', true), 'seatbeltTone');
   assert.equal(hostCueFor('oxygen', true), 'o2Chimes');

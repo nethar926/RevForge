@@ -6,6 +6,7 @@ import ID from '../carrier-jet.identity';
 import { readPackAbZone, requestPackShell, sendPackEngineCommand, subscribePackAbZone } from '../runtime';
 import { ShutdownGuard } from '../../skins/carrier-jet';
 import { SeatBeltLamp } from '../../skins/carrier-jet/concept/SeatBeltLamp';
+import { sbLampAria, sbLampShown, sdGuardShown } from '../carrier-jet/seatbeltLamp';
 import { playGuardCue, sdCoverTap, sdEngineStopped, sdLever, sdShown, type ShutdownGuardDeps } from '../carrier-jet/shutdownGuard';
 import { getAbArmed, setAbArmed, subscribeAbArmed } from '../abArmed';
 import type { PackHudProps } from '../types';
@@ -250,14 +251,15 @@ export function CarrierJetMount(props: PackHudProps) {
   );
   const sdShow = sdShown({ v2, tesla, docked: !!vp.dock, running: props.running });
   // Meghan's sheet panel 6: with the cold start on, the guarded SHUTDOWN goes (EMER STOP PULL + the cold-start steps
-  // cover stopping) and its dock slot carries the SEAT BELT lamp (panel 5), on the dash in Park and Drive. Cold start
-  // off: the guarded SHUTDOWN stays as before.
-  const sbLamp = sdShow && vp.dock && spds && coldOn ? (
-    <div className="cjm-sbl" data-rf-layout={layout}>
-      <SeatBeltLamp on={cold.seatbelt} />
+  // cover stopping). The SEAT BELT lamp (panel 5) has its own dock spot whenever the cold start is on, engine running
+  // or not, Park or Drive (seatbeltLamp.ts; spot in carrier-jet-v2.css). Cold start off: guarded SHUTDOWN as before.
+  const sbCtx = { coldOn, spds, docked: !!vp.dock };
+  const sbLamp = sbLampShown(sbCtx) ? (
+    <div className="cjm-sbl" data-rf-layout={layout} data-sd-off={sdShow || undefined} role="img" aria-label={sbLampAria(cold.seatbelt)}>
+      <div aria-hidden="true"><SeatBeltLamp on={cold.seatbelt} /></div>
     </div>
   ) : null;
-  const shutdownGuard = sdShow && vp.dock && !sbLamp ? (
+  const shutdownGuard = sdGuardShown(sdShow, sbCtx) ? (
     <div className="cjm-sdg" data-rf-layout={layout}>
       <ShutdownGuard guardOpen={sdOpen} onGuardToggle={() => setSdOpen((o) => sdCoverTap(o, sdDeps))} on={props.running} onToggle={() => setSdOpen((o) => sdLever(o, props.running, sdDeps).open)} reduceMotion={reduced} />
     </div>
