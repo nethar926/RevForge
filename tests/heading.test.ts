@@ -228,7 +228,7 @@ test('persistence throttle: ≤ 1 write per HEADING_SAVE_MS, newest pending valu
 test('wiring: mount passes headingStale (chip shown while stale, hidden once live); no host hint overlay', () => {
   const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
   assert.match(mount, /const \{ heading, stale: headingStale \} = useHeading\(layout\);/);
-  assert.match(mount, /<CarrierJetHud [^>]*heading=\{h(?:eading)?\} headingStale=\{headingStale\} \/>/);
+  assert.match(mount, /<CarrierJetHud [^>]*heading=\{h(?:eading)?\} headingStale=\{headingStale\}(?: bank=\{vdiBank\})? \/>/);
   assert.doesNotMatch(mount.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ''), /NEEDS MOTION|hdg-hint/, 'the skin owns the chip (b0f4a8d); no second chip from the host');
   const heading = readFileSync(new URL('../src/packs/heading.ts', import.meta.url), 'utf8');
   assert.match(heading, /setStale\(view\.stale\);/);

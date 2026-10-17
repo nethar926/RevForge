@@ -237,7 +237,8 @@ export function Ladder({ x, y, w, h, P, pitch = 0, bank = 0 }: { x: number; y: n
         </g>
       </g>
       <path d={`M${f1(cx - 46)} ${f1(cy)} H${f1(cx - 18)} L${f1(cx - 9)} ${f1(cy + 10)} L${f1(cx)} ${f1(cy)} L${f1(cx + 9)} ${f1(cy + 10)} L${f1(cx + 18)} ${f1(cy)} H${f1(cx + 46)}`} fill="none" stroke={P.ref} strokeWidth="3.5" strokeLinejoin="round" />
-      {[-45, -30, -10, 0, 10, 30, 45].map((a) => {
+      {/* bank scale: ticks at 0 / 10 / 20 / 30 each side (long at 0 and 30); the pointer below rides with the horizon */}
+      {[-30, -20, -10, 0, 10, 20, 30].map((a) => {
         const t = ((a - 90) * Math.PI) / 180, l = a % 30 === 0 ? 12 : 7;
         return <line key={a} x1={f1(cx + R * Math.cos(t))} y1={f1(cy + R * Math.sin(t))} x2={f1(cx + (R + l) * Math.cos(t))} y2={f1(cy + (R + l) * Math.sin(t))} stroke={P.sym} strokeWidth="2" />;
       })}

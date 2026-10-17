@@ -55,6 +55,8 @@ export interface CarrierJetHudProps extends Partial<Omit<PackHudProps, 'compact'
   parked?: boolean;
   /** GPS course in degrees (secondary heading cues). Undefined → "---". */
   heading?: number;
+  /** VDI bank (deg, + right; the host computes it from GPS turn rate, ±30°). Rotates the horizon / ladder. Default 0. */
+  bank?: number;
   /**
    * The heading is not live: the mount sets true when it holds the last heading or restored it from storage with no
    * live GPS / compass heading. Draws the heading digits and scale dimmed (static, no flashing) plus a small
@@ -134,6 +136,8 @@ interface View {
   /** headingStale prop (dims the heading cues, adds the NEEDS MOTION caption). */
   headingStale: boolean;
   pitch: number;
+  /** VDI bank (deg, + right), clamped ±30. */
+  bank: number;
   demo: boolean;
   /** flightSlot content, phone portrait only (else undefined). */
   slot?: ReactNode;
@@ -282,7 +286,7 @@ function Cockpit({ v }: { v: View }) {
       </div>
       <Sec className="cj-panel cj-a-mid">
         <span data-cj-el="panel-label" className="cj-plab">VDI</span>
-        <div className="cj-crt cj-scan"><Svg w={390} h={278}><g className="cj-glow-sym"><Ladder x={0} y={0} w={390} h={278} P={P} pitch={v.pitch} /></g></Svg></div>
+        <div className="cj-crt cj-scan"><Svg w={390} h={278}><g className="cj-glow-sym"><Ladder x={0} y={0} w={390} h={278} P={P} pitch={v.pitch} bank={v.bank} /></g></Svg></div>
         <span data-cj-el="panel-label" className="cj-plab cj-plab-2">HSD<StaleCap v={v} /></span>
         <div className="cj-crt cj-scan"><Svg w={390} h={300}><Rose x={0} y={4} w={390} h={296} P={P} heading={v.heading} stale={v.headingStale} /></Svg></div>
       </Sec>
@@ -325,7 +329,7 @@ function Glass({ v }: { v: View }) {
       </Sec>
       <Sec className="cj-b-mid">
         <Svg w={450} h={56}><HeadingTape x={0} y={6} w={450} P={P} heading={v.heading} stale={v.headingStale} /></Svg>
-        <Svg w={450} h={420}><g className="cj-glow-sym"><Ladder x={0} y={0} w={450} h={420} P={P} pitch={v.pitch} /></g></Svg>
+        <Svg w={450} h={420}><g className="cj-glow-sym"><Ladder x={0} y={0} w={450} h={420} P={P} pitch={v.pitch} bank={v.bank} /></g></Svg>
         <Svg w={450} h={96}><Engines x={0} y={2} w={450} h={92} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} horizontal /></Svg>
         <StaleCap v={v} />
       </Sec>
@@ -373,7 +377,7 @@ function Deck({ v }: { v: View }) {
         <div className="cj-swbox"><SweepDigits v={v} label="WING SWEEP" /></div>
       </SweepMeter>
       <Sec className="cj-card cj-c-right">
-        <Svg w={294} h={220}><Ladder x={0} y={0} w={294} h={220} P={P} pitch={v.pitch} /></Svg>
+        <Svg w={294} h={220}><Ladder x={0} y={0} w={294} h={220} P={P} pitch={v.pitch} bank={v.bank} /></Svg>
         <Svg w={294} h={56}><HeadingTape x={0} y={6} w={294} P={P} heading={v.heading} span={50} stale={v.headingStale} /></Svg>
         <div className="cj-c-rb">
           <Svg w={150} h={340}><Approach x={0} y={6} w={150} h={330} P={P} cell={accelCell(v.accel)} active={!v.parked} label={accelWord(v.accel, v.parked)} /></Svg>
@@ -416,7 +420,7 @@ function CockpitCompact({ v }: { v: View }) {
       </div>
       <Sec className="cj-panel cj-a-mid">
         <span className="cj-plab" data-cj-el="panel-label">VDI</span>
-        <div className="cj-crt cj-scan"><Svg w={390} h={250}><g className="cj-glow-sym"><Ladder x={0} y={0} w={390} h={250} P={P} pitch={v.pitch} /></g></Svg></div>
+        <div className="cj-crt cj-scan"><Svg w={390} h={250}><g className="cj-glow-sym"><Ladder x={0} y={0} w={390} h={250} P={P} pitch={v.pitch} bank={v.bank} /></g></Svg></div>
         <span className="cj-plab cj-plab-2" data-cj-el="panel-label">HSD<StaleCap v={v} /></span>
         <div className="cj-crt cj-scan"><Svg w={390} h={v.phone ? 262 : 250}><Rose x={0} y={v.phone ? 16 : 4} w={390} h={246} P={P} heading={v.heading} stale={v.headingStale} /></Svg></div>
       </Sec>
@@ -461,7 +465,7 @@ function GlassCompact({ v }: { v: View }) {
       </Sec>
       <Sec className="cj-b-mid">
         <Svg w={450} h={56}><HeadingTape x={0} y={6} w={450} P={P} heading={v.heading} stale={v.headingStale} /></Svg>
-        <Svg w={450} h={330}><g className="cj-glow-sym"><Ladder x={0} y={0} w={450} h={330} P={P} pitch={v.pitch} /></g></Svg>
+        <Svg w={450} h={330}><g className="cj-glow-sym"><Ladder x={0} y={0} w={450} h={330} P={P} pitch={v.pitch} bank={v.bank} /></g></Svg>
         <Svg w={450} h={96}><Engines x={0} y={2} w={450} h={92} P={P} rpmN={v.rpmN} load={v.load} ab={v.ab} rpm={v.rpm} horizontal /></Svg>
         <StaleCap v={v} />
       </Sec>
@@ -512,7 +516,7 @@ function DeckCompact({ v }: { v: View }) {
       </SweepMeter>
       <Sec className="cj-card cj-c-right">
         <div className="cj-c-lh">
-          <Svg w={220} h={200} className="cj-c-lad"><Ladder x={0} y={0} w={220} h={200} P={P} pitch={v.pitch} /></Svg>
+          <Svg w={220} h={200} className="cj-c-lad"><Ladder x={0} y={0} w={220} h={200} P={P} pitch={v.pitch} bank={v.bank} /></Svg>
           <StaleCap v={v} />
           <Svg w={220} h={56}><HeadingTape x={0} y={6} w={220} P={P} heading={v.heading} span={40} stale={v.headingStale} /></Svg>
         </div>
@@ -715,6 +719,7 @@ export function CarrierJetHud(p: CarrierJetHudProps) {
     heading: p.heading,
     headingStale: p.headingStale === true,
     pitch: Math.max(-12, Math.min(12, 1.5 + accel * 2.25)),
+    bank: Math.max(-30, Math.min(30, Number.isFinite(p.bank) ? (p.bank as number) : 0)),
     demo: !!p.demo,
     slot: rfPhone === 'portrait' && p.flightSlot ? p.flightSlot : undefined,
   };
