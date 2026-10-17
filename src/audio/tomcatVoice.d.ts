@@ -129,6 +129,8 @@ export const TC_LAUNCH_ON_MPHS: number;
 export const TC_LAUNCH_OFF_MPHS: number;
 export const TC_LAUNCH_KEEP_MPHS: number;
 export const TC_LAUNCH_HOLD_S: number;
+export const TC_LAUNCH_CONFIRM_SPAN_S: number;
+export const TC_LAUNCH_NOISE_MPH: number;
 export const TC_LAUNCH_DROP_S: number;
 export const TC_LAUNCH_WINDOW_S: number;
 export const TC_LAUNCH_STALE_S: number;
