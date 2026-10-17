@@ -152,7 +152,7 @@ button.cjp[aria-disabled='true'], .cjp button[aria-disabled='true'] { cursor: no
 
 /* engraved HTML legends (shelf header): recess shadow + faint warm backlight */
 .cjp-eng { color: #f3f1e8; text-shadow: -0.5px -0.5px 0 rgba(0, 0, 0, 0.7), 0 0 3px rgba(255, 246, 220, 0.3); letter-spacing: 0.06em; }
-.cjp-eng--amber { font-size: 11px; color: #ffc46a; text-shadow: -0.5px -0.5px 0 rgba(0, 0, 0, 0.7), 0 0 5px rgba(255, 181, 74, 0.5); }
+.cjp-eng--amber { font-size: 11px; color: #ffdea2; text-shadow: -0.5px -0.5px 0 rgba(0, 0, 0, 0.7), 0 0 5px rgba(255, 181, 74, 0.5); }
 /* annunciator push-lights: square, metal rim, lit = steady */
 .cjp-ann {
   display: inline-flex; align-items: center; height: 22px; padding: 0 7px; border-radius: 2px; font-size: 11px; letter-spacing: 0.06em; white-space: nowrap;

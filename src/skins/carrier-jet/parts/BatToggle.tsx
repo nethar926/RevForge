@@ -1,4 +1,4 @@
-import { Bat, Defs, Eng, Lens, Lock, Sr, UNLIT_CLASS, useSvgPrefix } from './art';
+import { Bat, CUE_TINT, Defs, Eng, Lens, Lock, Sr, UNLIT_CLASS, useSvgPrefix } from './art';
 import { labelLines, nextToggle, toggleLamp, toggleLegend, TOGGLE_MIN } from './tokens';
 import type { CjToggleProps } from '../types';
 import './parts.css';
@@ -37,7 +37,7 @@ export function BatToggle({ id, label, state, lit, disabled, disabledReason, ari
     >
       <svg viewBox={`0 0 ${W} ${H}`} className="cjp-svg" aria-hidden="true" focusable="false">
         <Defs p={p} />
-        {cue ? <rect x={1} y={1} width={W - 2} height={H - 2} rx={3} fill={cue === 'next' ? 'rgba(126,247,161,.10)' : 'rgba(255,181,74,.10)'} stroke={cue === 'next' ? '#7ef7a1' : '#ffb54a'} strokeWidth={1.5} /> : null}
+        {cue ? <rect x={1} y={1} width={W - 2} height={H - 2} rx={3} fill={cue === 'next' ? CUE_TINT.next : CUE_TINT.busy} stroke={cue === 'next' ? '#7ef7a1' : '#ffb54a'} strokeWidth={1.5} /> : null}
         {lines.map((t, i) => (
           <Eng key={i} x={W / 2} y={ly[i]} tone={disabled ? 'grey' : 'white'} fit={W - 4}>{t}</Eng>
         ))}

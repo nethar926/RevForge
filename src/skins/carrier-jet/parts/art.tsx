@@ -19,15 +19,22 @@ export const ENG = {
   white: '#f3f1e8',
   /**
    * unlit grey engraving (backlight off). Also the disabled / locked legend: the normal text, no glow.
-   * 4.74:1 on the lightest gunmetal stop #51585d, 5.19:1 on the plate base #4a5055, 11.2:1 on the guard tab #17191a.
+   * Lifted from #ccd2d6 (Oct 17 2026 phone sweep: 4.1–4.49:1 as rendered on the textured gunmetal at 773/1280).
+   * Rendered panel background measured up to relative luminance 0.124 → 4.67:1 (tests/cj-contrast-holo.test.ts).
    */
-  grey: '#ccd2d6',
+  grey: '#dfe3e6',
   /** lit green */
   green: '#8dffad',
-  /** lit amber */
-  amber: '#ffc46a',
+  /** lit amber (lifted from #ffc46a: 3.3–4.0:1 on the rendered panel; now >= 4.5:1 up to luminance 0.124) */
+  amber: '#ffdea2',
 } as const;
 export type EngTone = keyof typeof ENG;
+
+/**
+ * Next-step cue wash inside a toggle cell (the 1.5px stroke carries the cue). Was 10%: the green wash lifted the cell
+ * to luminance ~0.15 and pulled the cued cell's legends under 4.5:1; 3% keeps the wash visible and the legends readable.
+ */
+export const CUE_TINT = { next: 'rgba(126,247,161,.03)', busy: 'rgba(255,181,74,.03)' } as const;
 
 /**
  * Engraved text: a -0.5 recess shadow under the fill, plus a soft backlight halo (a wide translucent stroke,

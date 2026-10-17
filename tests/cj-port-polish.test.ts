@@ -75,7 +75,7 @@ test("ApuBlock legend 'PARK' + disabled: lock + PARK engraved unlit grey, START 
   const legend = b.match(/<g class="cjp-unlit"[^>]*>[\s\S]*?<\/g>/)?.[0] ?? '';
   assert.ok(legend, 'locked legend group (cjp-unlit)');
   assert.match(legend, /data-eng="grey"/, 'unlit grey');
-  assert.match(legend, /x="14" y="88" text-anchor="start"[^>]*fill="#ccd2d6"[^>]*>PARK<\/text>/, 'beside the lock, unlit #ccd2d6');
+  assert.match(legend, /x="14" y="88" text-anchor="start"[^>]*fill="#dfe3e6"[^>]*>PARK<\/text>/, 'beside the lock, unlit grey (ENG.grey #dfe3e6)');
   assert.doesNotMatch(legend, />(START|OFF)</);
   assert.equal((b.match(/>START<\/text>/g) ?? []).length, 2, 'only the engraved START label (+ its shadow) above the lever');
   assert.doesNotMatch(b, />OFF<\/text>/);

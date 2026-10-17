@@ -202,7 +202,7 @@
 /* ---------------- C · swing-wing (carrier-deck night) */
 .cj[data-variant='swing-wing'] {
   background: #0b1018; color: #dbe6f2; font-family: 'Barlow Semi Condensed', system-ui, sans-serif;
-  --cj-cap: #aebdcc; --cj-lab: #aebdcc; --cj-num-c: #f5f8fb; --cj-unit: #ffc35a; --cj-src: #5be38f; --cj-sw-c: #ffc35a; --cj-mode: #dbe6f2;
+  --cj-cap: #aebdcc; --cj-lab: #bccad8; --cj-num-c: #f5f8fb; --cj-unit: #ffc35a; --cj-src: #5be38f; --cj-sw-c: #ffc35a; --cj-mode: #dbe6f2;
   --cj-over-bg: #ffc35a; --cj-over-fg: #120a00; --cj-bar-edge: #7fb6f5; --cj-bar-bg: #0b1018; --cj-bar-fill: #4ea3ff; --cj-red: #ff7070;
   --cj-tab-edge: #5f7a99; --cj-tab-bg: #0b1018; --cj-tab-fg: #dbe6f2; --cj-tab-on-bg: #ffc35a; --cj-tab-on-fg: #120a00; --cj-tab-r: 4px; --cj-focus: #4ea3ff;
 }
@@ -252,6 +252,10 @@
 .cj[data-layout='reflow'] .cj-a-gr > *, .cj[data-layout='reflow'] .cj-b-gr > *, .cj[data-layout='reflow'] .cj-c-gr > * { container-type: size; }
 .cj[data-layout='reflow'] .cj-spd-num { font-size: min(calc(100cqh - 44px), 56cqw); }
 .cj[data-layout='reflow'] .cj-rpm .cj-k-num { font-size: min(calc(100cqh - 34px), 42cqw); }
+/* HOLO RPM digits: the same 11px floor as the other text (container units alone gave 8.09px in phone landscape).
+   Kept before the portrait rules below on purpose: portrait keeps its own RPM sizing (its RPM cell has no room for an
+   11px line under SUPERSONIC; a floor there pushed the digits into the tag). */
+.cj[data-layout='reflow'][data-variant='swing-wing'] .cj-rpm .cj-k-num { font-size: max(11px, min(calc(100cqh - 34px), 42cqw)); }
 .cj[data-layout='reflow'] .cj-mach .cj-mach-num { font-size: max(13px, min(calc(100cqh - 48px), 30cqw)); }
 .cj[data-layout='reflow'] .cj-mach-tape { height: 12px; margin-top: 2px; }
 .cj[data-layout='reflow'] .cj-mach-tag { margin-top: 2px; padding: 0 3px; font-size: 11px; }
