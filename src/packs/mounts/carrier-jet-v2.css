@@ -89,8 +89,12 @@
    Rows: label · top a · top b · keys · label · bottom · keys. The skin's ACCEL BALL strip is replaced by the host ACCEL
    cell (GPS-driven, ≥ 11px text); no ON DECK chip; LOOK keys 136×44. */
 .cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-st { display: none; }
-.cjm[data-cjm-v2] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs .cj-tab { min-width: 136px; width: 136px; min-height: 44px; height: 44px; box-sizing: border-box; }
-.cjm[data-cjm-v2][data-rf-layout='window'] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs .cj-tab { min-width: 112px; width: 112px; }
+/* LOOK keys keep their 136 (112 in window) width; where the row is narrower than Look + 3 keys (390 portrait, phone-size
+   window) the row wraps onto a second line instead of running HOLO off the right edge (Ivy's 789ed99 phone sweep: cut
+   64-71px at 390). A key only shrinks if one key alone is wider than its line, and never below 44px. Layout only. */
+.cjm[data-cjm-v2] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.cjm[data-cjm-v2] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs .cj-tab { flex: 0 1 136px; min-width: 44px; width: 136px; min-height: 44px; height: 44px; box-sizing: border-box; }
+.cjm[data-cjm-v2][data-rf-layout='window'] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs .cj-tab { flex-basis: 112px; width: 112px; }
 .cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-body {
   position: relative;
   grid-template-columns: minmax(0, 96fr) minmax(0, 88fr) minmax(0, 96fr) minmax(0, 196fr) minmax(0, 176fr);
