@@ -9,17 +9,22 @@
  *   and CONFIG): K1 DRIVE (legend lit on the board, unlit inside CONFIG; press = RTN to the board), K2 MORE (the MORE
  *   sheet), K3 inert spare (data-reason=spare). OPTIONS = CONFIG › OPT, MUTE = CONFIG › SND › AUDIO MUTE. The COMPASS
  *   tile in CONFIG is tapped directly (its K1 is DRIVE).
+ *   WX (weather radar overlay, board only): a 5th MAP key when the MAP cell is wide enough (1256/1280: ZM+ ZM−
+ *   N/TRK-UP MAP/TERR WX), else the right bank's K3 spare (773: the key directly right of the MAP strip).
  */
 import { CELL_ORDER } from './configCells.ts';
 import type { CellId } from './geometry.ts';
+import { keyCount } from './geometry.ts';
 import { mapKeys, type MapKeyId, type MapView } from './mapView.ts';
 
-export type EdgeKeyId = 'config' | 'rtn' | 'prev' | 'next' | 'sel' | 'drive' | 'more' | MapKeyId;
+export type EdgeKeyId = 'config' | 'rtn' | 'prev' | 'next' | 'sel' | 'drive' | 'more' | 'wx' | MapKeyId;
 export interface EdgeKey {
   id: EdgeKeyId;
   legend: string;
   ariaLabel: string;
   active?: boolean;
+  /** Toggle that is off: legend drawn in the unlit grey (cjp-unlit), not the phosphor green. */
+  unlit?: boolean;
   /** Pressable but can't act right now (end stop / Park only): announced, no effect. */
   reason?: string;
 }
@@ -29,7 +34,27 @@ export interface EdgeCtx {
   moreOpen?: boolean;
   /** null = board; else the open CONFIG page's tiles per cell (label or null) and its sub-page count. */
   config: null | { tiles: Partial<Record<CellId, { label: string; reason?: string } | null>>; subs: number };
+  /** WX radar toggle: on/off and which strip carries it (see wxSlot). Absent = no WX key. */
+  wx?: { on: boolean; slot: WxSlot };
 }
+
+export type WxSlot = 'map' | 'bank';
+/** Where WX goes: a 5th key under MAP if the MAP strip fits one more key than it uses, else the right bank's K3. */
+export function wxSlot(mapWidth: number, map: MapView): WxSlot {
+  return keyCount(mapWidth, 5) > Math.min(keyCount(mapWidth), mapKeys(map).length) ? 'map' : 'bank';
+}
+/** Keys in a cell's strip (MAP grows to 5 when it carries WX). */
+export function stripCount(cell: CellId, width: number, c: Pick<EdgeCtx, 'map' | 'config' | 'wx'>): number {
+  if (cell === 'map' && !c.config && c.wx?.slot === 'map') return Math.min(keyCount(width, 5), mapKeys(c.map).length + 1);
+  return keyCount(width);
+}
+export const wxKey = (on: boolean): EdgeKey => ({
+  id: 'wx',
+  legend: 'WX',
+  ariaLabel: on ? 'Weather radar, on' : 'Weather radar, off',
+  active: on,
+  unlit: !on,
+});
 
 export function cellKeys(cell: CellId, n: number, c: EdgeCtx): (EdgeKey | null)[] {
   const keys: (EdgeKey | null)[] = [];
@@ -38,9 +63,15 @@ export function cellKeys(cell: CellId, n: number, c: EdgeCtx): (EdgeKey | null)[
       { id: 'drive', legend: 'DRIVE', ariaLabel: c.config ? 'Drive, return to the board' : 'Drive, board showing', active: !c.config },
       { id: 'more', legend: 'MORE', ariaLabel: c.moreOpen ? 'More, open' : 'More', active: !!c.moreOpen },
     );
+    if (!c.config && c.wx?.slot === 'bank') keys.push(wxKey(c.wx.on));
   } else if (!c.config) {
     if (cell === 'speed') keys.push({ id: 'config', legend: 'CONFIG', ariaLabel: 'Open config' });
     if (cell === 'map') for (const k of mapKeys(c.map)) keys.push({ id: k.id, legend: k.legend, ariaLabel: k.disabledReason ? `${k.ariaLabel}. ${k.disabledReason}` : k.ariaLabel, reason: k.disabledReason, active: k.id === 'mode' ? c.map.mode === 'terr' : k.id === 'orient' ? !c.map.northUp : false });
+    if (cell === 'map' && c.wx?.slot === 'map') {
+      // WX is always the strip's last key (never pushed off by the cap)
+      keys.length = Math.min(keys.length, n - 1);
+      keys.push(wxKey(c.wx.on));
+    }
   } else if (cell === 'speed') {
     keys.push({ id: 'rtn', legend: 'RTN', ariaLabel: 'Return' });
     if (c.config.subs > 1 && n >= 3) {

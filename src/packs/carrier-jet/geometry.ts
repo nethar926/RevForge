@@ -60,9 +60,9 @@ export const TOP_CELLS_MAP_FIRST: readonly CellId[] = ['speed', 'mach', 'vdi', '
 export const KEY_W = 52;
 export const KEY_H = 66;
 export const KEY_GAP = 4;
-/** Keys per cell by width (up to 4; narrow cells get fewer, never 0). */
-export function keyCount(width: number): number {
-  return Math.max(1, Math.min(4, Math.floor((width + KEY_GAP) / (KEY_W + KEY_GAP))));
+/** Keys per cell by width (up to 4, or `max`; narrow cells get fewer, never 0). */
+export function keyCount(width: number, max = 4): number {
+  return Math.max(1, Math.min(max, Math.floor((width + KEY_GAP) / (KEY_W + KEY_GAP))));
 }
 /** Left x of each key, centred under the cell. */
 export function keyXs(cell: Box, n: number): number[] {
