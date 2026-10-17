@@ -17,7 +17,7 @@ import { ApuBlock, GndAirBlock, PullHandle, QuickStartGuard, SwitchShelf } from 
 import type { CjShelfOpen, CjToggleState } from '../../skins/carrier-jet/parts/index';
 import type { JetCue, JetSystem } from '../../audio/types';
 import { getPackJet, subscribePackJet } from '../jetBridge';
-import { csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, CS_PARK_REASON, parkStep, PARK_DWELL_MS, shelfAutoClose, shelfAutoStep, shelfStartLit, shelfToggle, SHELF_START_ARIA, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
+import { csCoverNext, csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, CS_PARK_REASON, parkStep, PARK_DWELL_MS, shelfAutoClose, shelfAutoStep, shelfStartLit, shelfToggle, SHELF_START_ARIA, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
 import { getCjPrefs, setCjPrefs, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
 import { ckPlan, ckTitle } from '../carrier-jet/checklistModes';
@@ -372,6 +372,7 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       ? <ApuBlock arm={view.apu.arm} start={view.apu.start} ready={view.apu.ready} onArmToggle={() => onGuard('apuGuard')} onStartToggle={(_id, n) => onToggle('apu', n)} disabled={view.apu.disabled} disabledReason={view.apu.disabledReason} step={view.apu.step} legend={view.apu.parkLegend ? 'PARK' : undefined} />
       : <GndAirBlock aircart={view.gndAir.aircart} crossbleed={view.gndAir.crossbleed} side={view.gndAir.side} onToggle={(id, n) => onToggle(id, n)} disabledReasons={view.gndAir.disabledReasons} steps={view.gndAir.steps} />;
     const step = view.checklist;
+    const coverNext = csCoverNext(view, inp);
     const plan = ckPlan(mode);
     return (
       <div ref={shelfRef} className="cjcs-shelf" data-mc={mcAt ? '' : undefined} data-cue-apu={mode === 'apu' ? view.apu.cue : undefined} data-cue-aircart={mode === 'apu' ? undefined : view.gndAir.cues.aircart} data-cue-crossbleed={mode === 'apu' ? undefined : view.gndAir.cues.crossbleed} data-open={shelf} data-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined}>
@@ -398,11 +399,11 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
                 </div>
               </div>
             ) : (
-              // cover (seen while the card lifts): name + the next step's badge code, which a closed guard hides on the shelf
+              // cover (seen while the card lifts): name, plus the next step's badge code only while a closed guard hides it on the shelf
               <div className="cjcs-cover" aria-hidden="true">
                 <small>REVFORGE</small>
                 <strong>MATRIX PILOT CHECKLIST</strong>
-                {step && !live && <b className="cjcs-cover-next" data-code={step.code}>NEXT <span>{step.code}</span></b>}
+                {coverNext && <b className="cjcs-cover-next" data-code={coverNext}>NEXT <span>{coverNext}</span></b>}
                 <small>NORMAL PROCEDURES</small>
               </div>
             )}

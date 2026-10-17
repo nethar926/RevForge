@@ -520,3 +520,16 @@ export function csGps(status: string): 'none' | 'acq' | 'live' | 'fail' {
   if (status === 'denied' || status === 'unavailable' || status === 'error') return 'fail';
   return 'none';
 }
+
+/**
+ * Pamphlet cover "NEXT <code>": the current step's code, ONLY while that step's badge sits under a closed cover on the
+ * shelf (L / R ENG start under its guard; APU ARM / START / off on the START switch under the APU cover). Any other
+ * step shows its badge in the open, so the cover names nothing. A guard with no state yet (undefined) is down, the same
+ * as the shelf draws it (`!!guards.engL`).
+ */
+export function csCoverNext(view: Pick<CsView, 'next' | 'checklist'>, inp: Pick<CsInput, 'guards' | 'mode'>): string | null {
+  const st = view.next, code = view.checklist?.code;
+  if (!st || !code) return null;
+  const cover: CsGuardId | null = st.id === 'engL' || st.id === 'engR' ? st.id : inp.mode === 'apu' && (st.id === 'apu' || st.id === 'apuGuard') ? 'apuGuard' : null;
+  return cover && !inp.guards[cover] ? code : null;
+}

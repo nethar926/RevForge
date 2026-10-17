@@ -118,7 +118,10 @@ test('5 + 6 cover: MATRIX PILOT CHECKLIST with the next badge code', () => {
   const cs = src('src/packs/mounts/CjColdStart.tsx');
   assert.match(cs, /<strong>MATRIX PILOT CHECKLIST<\/strong>/);
   assert.doesNotMatch(cs, /CARRIER JET PILOT CHECKLIST|REVFORGE JET/);
-  assert.match(cs, /\{step && !live && <b className="cjcs-cover-next" data-code=\{step\.code\}>NEXT <span>\{step\.code\}<\/span><\/b>\}/);
+  // NEXT only while the step's badge is under a closed guard (tests/cj-cover-next.test.ts)
+  assert.match(cs, /const coverNext = csCoverNext\(view, inp\);/);
+  assert.match(cs, /\{coverNext && <b className="cjcs-cover-next" data-code=\{coverNext\}>NEXT <span>\{coverNext\}<\/span><\/b>\}/);
+  assert.doesNotMatch(cs, /step && !live && <b/);
   const css = nc(src('src/packs/mounts/carrier-jet-v2.css'));
   assert.match(css, /\.cjcs-cover > \.cjcs-cover-next \{[^}]*font-size: 12px;/);
   assert.ok(ckItems().length === 21);
