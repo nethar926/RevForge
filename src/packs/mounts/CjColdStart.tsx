@@ -20,7 +20,7 @@ import { getPackJet, subscribePackJet } from '../jetBridge';
 import { csCoverNext, csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, CS_PARK_REASON, parkStep, PARK_DWELL_MS, shelfAutoClose, shelfAutoStep, shelfStartLit, shelfToggle, SHELF_START_ARIA, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
 import { getCjPrefs, setCjPrefs, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
-import { CK_BOOK_BRAND, CK_BOOK_SHORT, CK_BOOK_SPOKEN, CK_BOOK_TITLE, ckBookAria, ckPlan, ckTitle } from '../carrier-jet/checklistModes';
+import { CK_BOOK_BRAND, CK_BOOK_SHORT, CK_BOOK_SPOKEN, CK_BOOK_TITLE, ckBookAria, ckPlan, ckTitle, shelfStepAria } from '../carrier-jet/checklistModes';
 import { hostCueFor } from '../carrier-jet/hostCues';
 import { MasterCaution } from '../../skins/carrier-jet/concept/MasterCaution';
 import { CjPamphlet, type CkPage } from './CjPamphlet';
@@ -460,8 +460,12 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     const legend = shelf === 'closed' ? '▲ OPEN' : '▼ CLOSE';
     const start = shelfStartLit({ on, firstStartDone: prefs.cjFirstStartDone });
     const name = start ? SHELF_START_ARIA : 'Switch shelf';
+    // the tucked tag found no clear spot and hides (data-bay none): the key carries the current step instead, so
+    // VoiceOver never loses it (no visual change)
+    const tagHidden = shelf !== 'closed' && !bay;
+    const stepSaid = tagHidden ? shelfStepAria(view.checklist) : '';
     return (
-      <button type="button" className="cjcs-shelfkey" data-size={size} data-start={start || undefined} data-motion={reduced ? 'static' : 'live'} aria-expanded={shelf !== 'closed'} aria-label={park ? name : `${name}. Switches: ${CS_PARK_REASON}`} onClick={toggleShelf}>
+      <button type="button" className="cjcs-shelfkey" data-size={size} data-start={start || undefined} data-motion={reduced ? 'static' : 'live'} data-tag-hidden={tagHidden || undefined} aria-expanded={shelf !== 'closed'} aria-label={`${park ? name : `${name}. Switches: ${CS_PARK_REASON}`}${stepSaid}`} onClick={toggleShelf}>
         {start && <span className="cjcs-start" aria-hidden="true">START</span>}
         <strong aria-hidden="true">SHELF</strong>
         <small aria-hidden="true">{legend}</small>

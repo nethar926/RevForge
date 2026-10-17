@@ -66,3 +66,7 @@ export function ckAlign(mode: CkMode, keys: readonly string[]): CkItem[] | null 
 /** Switch name + code for VoiceOver: "APU switch, step 3 b, next" / "…, done" / "…, step 6 a". */
 export const ckBadgeLabel = (spoken: string, code: string, state: 'next' | 'done' | 'todo') =>
   `${spoken}, step ${spokenCode(code)}${state === 'next' ? ', next' : state === 'done' ? ', done' : ''}`;
+
+/** SHELF key suffix while the tucked tag is hidden (no clear spot): ", checklist step 7 b, 17 of 22"; "" with no step. Never PARK. */
+export const shelfStepAria = (step: { code: string; index: number; total: number } | null) =>
+  step ? `, checklist step ${step.code.replace(/^(\d+)([a-z])$/, '$1 $2')}, ${step.index} of ${step.total}` : '';
