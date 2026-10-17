@@ -150,6 +150,11 @@ export interface CjApuBlockProps {
   disabledReason?: string;
   /** Step number on the START switch (sheet: '2·3'). */
   step?: number | string;
+  /**
+   * Throw legend on the START switch in place of START / OFF, e.g. 'PARK' while the APU is locked in Drive.
+   * Upper-cased. With `disabled`: lock + legend unlit grey (the shelf's locked style). Omit / '' → START / OFF.
+   */
+  legend?: string;
 }
 
 /** Engine fed by start air / crossbleed: lights the L or R side lamp of X-BLEED. */

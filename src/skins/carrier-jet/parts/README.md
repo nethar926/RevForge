@@ -24,3 +24,6 @@ timer and gesture. Prop interfaces: `../types.ts`. Sizes and pure helpers: `toke
 | `GpsRadarPlate` | 107×118 (1280) / 89×118 (773) | bank, guard end |
 | `BezelKey` | 52×66 (key 44×44) | MFD edge |
 | `ShutdownGuard` | 108.67×48 fixed (cover 108.67×48 closed / 46×48 open, switch 62.67×48) | bottom row, in place of the Shutdown plate |
+
+- `ApuBlock` `legend?: string`: START switch throw legend in place of START / OFF (e.g. `legend="PARK"` with `disabled`
+  in Drive: lock + PARK engraved unlit grey, the shelf's locked style). Omit or `''` → START / OFF.

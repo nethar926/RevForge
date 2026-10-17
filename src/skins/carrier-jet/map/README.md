@@ -25,3 +25,9 @@
   `formatHeading(deg, 'T' | 'M')` → `'040 T'`, `headingLegendLines(...)`.
 - `HeadingLegend.tsx`: `<CjHeadingLegend trueHdg magHdg lead="M" stale={headingStale} />` shows 'HDG 047 M' large
   (18px) over 'HDG 040 T' small (11px). `lead` defaults to 'M'. `stale` dims both values to 0.45.
+
+## RADAR scope label
+
+- `radarAria.ts` (no React): `cjRadarScopeAria({ range, mode }, status, mapShown)` → 'Radar scope over map, 5 mile range,
+  map mode, no returns. Map track up, dimmed' (map down: 'Radar scope, … Map unavailable, no tiles, offline').
+  No heading: COMPASS reads it once (concept sheet panel 7).
