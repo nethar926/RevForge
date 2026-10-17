@@ -519,17 +519,20 @@ export function stepLaunchDetector(det, speedNorm, nowS) {
     // a hold started on a guessed span is re-based once the confirming fix has taught the period
     if (changed && det.holdBase && det.holdBase[2] && det.learned) det.holdBase[0] = det.holdFrom - det.period;
     const overall = det.holdBase ? (mph - det.holdBase[1]) / Math.max(1e-3, t - det.holdBase[0]) : 0;
-    // a first jump bigger than any car covers in one slow fix gap (after a long hold) may be a GPS
-    // reacquire: then the confirming fix must still be accelerating
-    const suspect = !!det.holdBase && det.holdBase[2] && det.holdBase[3] > TC_LAUNCH_JUMP_MPH;
-    if (held || (det.holdFrom >= 0 ? changed && overall < TC_LAUNCH_OFF_MPHS : det.accel < TC_LAUNCH_KEEP_MPHS)) {
+    // A hold that started on a jump after a long hold (assumed span: a stop, a steady stretch, or a
+    // GPS dropout), or on one very steep fix, may be a reacquire: the next fix must itself still be
+    // accelerating hard, or the hold is dropped.
+    const suspect = !!det.holdBase && (!!det.holdBase[2] || det.holdBase[4] >= 2 * TC_LAUNCH_KEEP_MPHS);
+    // and any confirming fix must still be accelerating: a car that jumps one fix and then holds
+    // speed is a GPS jump (dropout / reacquire), not a launch
+    if (held || (det.holdFrom >= 0 ? changed && t - det.holdFrom >= TC_LAUNCH_HOLD_S && (overall < TC_LAUNCH_OFF_MPHS || (suspect && det.accel < TC_LAUNCH_KEEP_MPHS)) : det.accel < TC_LAUNCH_KEEP_MPHS)) {
       det.holdFrom = -1;
       det.holdBase = null;
     }
     if (changed && !held && det.holdFrom < 0 && det.accel >= TC_LAUNCH_KEEP_MPHS) {
       det.holdFrom = t;
-      det.holdBase = [det.base[0], det.base[1], det.assumed, mph - det.base[1]];
-    } else if (changed && det.holdFrom >= 0 && t - det.holdFrom >= TC_LAUNCH_HOLD_S && overall >= TC_LAUNCH_ON_MPHS && (!suspect || det.accel >= TC_LAUNCH_OFF_MPHS)) {
+      det.holdBase = [det.base[0], det.base[1], det.assumed, mph - det.base[1], det.accel];
+    } else if (changed && det.holdFrom >= 0 && t - det.holdFrom >= TC_LAUNCH_HOLD_S && overall >= TC_LAUNCH_ON_MPHS && det.accel >= (suspect ? TC_LAUNCH_KEEP_MPHS : TC_LAUNCH_OFF_MPHS)) {
       det.on = true;
       det.dropFrom = -1;
     }
