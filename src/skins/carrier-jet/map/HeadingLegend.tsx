@@ -14,10 +14,12 @@ export type CjHeadingLegendProps = {
   stale?: boolean;
   /** Accessible name for the legend root. Given → `aria-label` (with `role="group"` so the name is exposed). Omitted → no label (default). */
   ariaLabel?: string;
+  /** Show only the lead reference (one heading readout, sheet panel 7). Default false keeps both lines. */
+  single?: boolean;
 };
 
 /** Compass-cell heading legend: lead value large (18px), the other small (11px floor; HTML, no viewBox scaling). */
-export function CjHeadingLegend({ trueHdg, magHdg, lead = 'M', stale = false, ariaLabel }: CjHeadingLegendProps) {
+export function CjHeadingLegend({ trueHdg, magHdg, lead = 'M', stale = false, ariaLabel, single = false }: CjHeadingLegendProps) {
   const [primary, secondary] = headingLegendLines(trueHdg, magHdg, lead);
   return (
     <div
@@ -25,12 +27,13 @@ export function CjHeadingLegend({ trueHdg, magHdg, lead = 'M', stale = false, ar
       data-cj-el="heading-legend"
       data-lead={lead}
       data-stale={stale || undefined}
+      data-single={single || undefined}
       role={ariaLabel ? 'group' : undefined}
       aria-label={ariaLabel || undefined}
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, fontWeight: 700, lineHeight: 1.15, opacity: stale ? CJ_HEADING_STALE_OPACITY : 1 }}
     >
       <span style={{ fontSize: 18, color: PRIMARY }}>{primary}</span>
-      <span style={{ fontSize: 11, color: SECONDARY }}>{secondary}</span>
+      {single ? null : <span style={{ fontSize: 11, color: SECONDARY }}>{secondary}</span>}
     </div>
   );
 }
