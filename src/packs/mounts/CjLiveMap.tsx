@@ -12,6 +12,8 @@
  *  - Pause: hidden (IntersectionObserver / tab hidden) or Park with no live GPS → no updates + map.stop();
  *    30 s hidden → map.remove(), recreated on show. Other looks unmount the cell (map removed).
  *  - MAP / TERR (the mode key): the hillshade layer's visibility, no map rebuild; DEM tiles load only for TERR.
+ *  - TERR contour lines (cjContours.ts, maplibre-contour, lazy on first TERR): 'contour' / 'contour-index' above the
+ *    hillshade, under water + roads; same visibility switch, interval by range, radar dim like the base map.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Map as MlMap, StyleSpecification, MapLibreEvent } from 'maplibre-gl';
@@ -20,6 +22,8 @@ import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { type MapView } from '../carrier-jet/mapView';
 import { cjRadarScopeAria } from '../../skins/carrier-jet/map/radarAria';
 import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
+import { attachContours, contourStats, type CjContours } from './cjContours';
+import { CJ_CONTOUR_SRC } from '../carrier-jet/contours';
 import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, compassSpeech, headingPair, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
 
 type Ml = typeof import('maplibre-gl');
@@ -213,6 +217,9 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   const removeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const terrRef = useRef(view.mode === 'terr');
   terrRef.current = view.mode === 'terr';
+  const contours = useRef<CjContours | null>(null);
+  const contourInit = useRef({ rangeMi: radar ? radar.range : view.zoom, dim: radar ? CJ_RADAR_MAP_DIM : 1 });
+  contourInit.current = { rangeMi: radar ? radar.range : view.zoom, dim: radar ? CJ_RADAR_MAP_DIM : 1 };
   const haveFix = fixAt != null;
   useEffect(() => {
     if (!active || !haveFix) return;
@@ -238,6 +245,8 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       });
       map.on('error', (e: MapLibreEvent & { error?: { status?: number; message?: string }; tile?: unknown; sourceId?: string }) => {
         const k = classifyMapError(e, navigator.onLine !== false);
+        // contours are an extra on TERR: a contour-only decode / worker error is not a map outage (network still counts)
+        if (k === 'error' && e.sourceId === CJ_CONTOUR_SRC) return;
         if (k) setTiles((p) => (p === 'network' ? p : k));
       });
       map.on('data', (e: { dataType?: string; tile?: unknown }) => {
@@ -245,8 +254,10 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       });
       map.on('idle', () => relabel.current());
       mapRef.current = map;
+      // contours: nothing loads until TERR is on (then maplibre-contour + its worker, once)
+      contours.current = attachContours(ml, map, { visible: terrRef.current, ...contourInit.current });
       lastApplied.current = null;
-      (window as unknown as { __cjMap?: unknown }).__cjMap = { map, stats: stats.current };
+      (window as unknown as { __cjMap?: unknown }).__cjMap = { map, stats: stats.current, contours: contourStats };
       setHasMap(true);
       kick.current();
     }).catch(() => setTiles('error'));
@@ -264,6 +275,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       removeTimer.current = null;
       mapRef.current?.remove();
       mapRef.current = null;
+      contours.current = null;
       setHasMap(false);
       setLabels([]);
     }, CJ_MAP_REMOVE_AFTER_HIDDEN_MS);
@@ -281,7 +293,14 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
     const apply = () => map.getLayer('hillshade') && map.setLayoutProperty('hillshade', 'visibility', view.mode === 'terr' ? 'visible' : 'none');
     if (map.isStyleLoaded()) apply();
     else map.once('styledata', apply);
+    // contours follow the same switch (first TERR loads them)
+    contours.current?.setVisible(view.mode === 'terr');
   }, [view.mode, hasMap]);
+  // contour interval follows the shown range (RADAR: the scope range)
+  const contourRange = radar ? radar.range : view.zoom;
+  useEffect(() => {
+    if (hasMap) contours.current?.setRange(contourRange);
+  }, [contourRange, hasMap]);
   // RADAR: dim the base map + roads (paint colours × CJ_RADAR_MAP_DIM). Restored when RADAR goes off. No rebuild, no
   // tile reload for the base map. (The WX rain layer + its scope tint live on the weather branch.)
   const radarOn = !!radar;
@@ -290,6 +309,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
     if (!map || !hasMap) return;
     const apply = () => {
       for (const c of radarDimPaint(buildCjMapStyle({ terrain: true }).layers, radarOn ? CJ_RADAR_MAP_DIM : 1)) if (map.getLayer(c.id)) map.setPaintProperty(c.id, c.prop, c.value);
+      contours.current?.setDim(radarOn ? CJ_RADAR_MAP_DIM : 1); // contours are base map under RADAR
     };
     if (map.isStyleLoaded()) apply();
     else map.once('styledata', apply);
