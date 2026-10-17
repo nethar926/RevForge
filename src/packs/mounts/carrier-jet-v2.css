@@ -300,3 +300,13 @@
 .cjv2-hsd[data-radar='over-map'] .cjv2-trail { fill-opacity: 0.24; }
 .cjv2-hsd .cjv2-scope > .cjv2-corner { background: rgb(4 16 9 / 0.82); padding: 0 3px; border-radius: 3px; }
 .cjv2-hsd .cjv2-scope > .cjv2-br { color: #8fb59a; }
+
+/* APU START lock legend in Drive (data-apu-park, csView apu.parkLegend): the skin's ApuBlock draws START / OFF next to
+   the lock (it has no legend prop), so the host hides that word and engraves PARK in its place, as the switches read
+   (BatToggle disabled: lock at x 2, legend at x 14 / baseline 88 of the 60×96 toggle, 11 units, unlit #ccd2d6). */
+.cjcs-shelf[data-apu-park] .cjp-apu .cjp-toggle[data-sys='apu'] { position: relative; container-type: inline-size; }
+.cjcs-shelf[data-apu-park] .cjp-apu .cjp-toggle[data-sys='apu'] g.cjp-unlit text { fill: transparent; }
+.cjcs-shelf[data-apu-park] .cjp-apu .cjp-toggle[data-sys='apu']::after {
+  content: 'PARK'; position: absolute; left: calc(14 / 60 * 100cqw); top: calc((88 - 8.2) / 60 * 100cqw); pointer-events: none;
+  font: 700 calc(11 / 60 * 100cqw) / 1 'B612', 'Barlow Semi Condensed', system-ui, sans-serif; letter-spacing: 0; color: #ccd2d6;
+}

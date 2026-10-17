@@ -230,10 +230,13 @@ export interface CsView {
   /** Current step (null when complete). */
   next: CsStep | null;
   switches: Record<string, CsSwitchView>;
-  apu: { arm: boolean; start: boolean; ready: 'off' | 'spooling' | 'ready'; disabled: boolean; disabledReason?: string; step?: string; cue?: 'next' | 'busy' };
+  apu: { arm: boolean; start: boolean; ready: 'off' | 'spooling' | 'ready'; disabled: boolean; disabledReason?: string; step?: string; cue?: 'next' | 'busy'; /** Locked only for Park with an APU step (ARM / START / off) still ahead: the START legend reads PARK, like the switches. */ parkLegend?: boolean };
   gndAir: { aircart: boolean; crossbleed: boolean; side: 'L' | 'R' | null; disabledReasons: Partial<Record<'aircart' | 'crossbleed', string>>; steps: Partial<Record<'aircart' | 'crossbleed', number | string>>; cues: Partial<Record<'aircart' | 'crossbleed', 'next'>> };
   annunciators: CsAnnunciator[];
-  /** Checklist line for the current step (1-based index, text) or null. */
+  /**
+   * Checklist card: the current step on the same sequence as the switch badges (index = cursor + 1, total = steps,
+   * off steps included), with Dan's checklist line for it when one matches. null when complete.
+   */
   checklist: { index: number; total: number; text: string } | null;
   /** Both engines running. */
   live: boolean;
@@ -294,6 +297,7 @@ export function csView(inp: CsInput): CsView {
     step: apuStep || undefined,
     cue: next && (next.id === 'apu' || next.id === 'apuGuard') ? (apuBusy ? 'busy' : 'next') : apuBusy ? 'busy' : undefined,
   };
+  if (apuLock === CS_PARK_REASON && inp.held !== 'apu' && seq.some((st, i) => i >= cursor && (st.id === 'apu' || st.id === 'apuGuard') && !csStepDone(st, inp))) apu.parkLegend = true;
   const reasons: CsView['gndAir']['disabledReasons'] = {};
   for (const id of ['aircart', 'crossbleed'] as const) {
     const r = isOn(s, id) ? (inp.park ? null : CS_PARK_REASON) : csLockReason(id, inp);
@@ -323,11 +327,12 @@ export function csView(inp: CsInput): CsView {
     { id: 'live', label: 'BOARD LIVE', tone: live ? 'green' : 'off' },
   ];
   if (s.emergency) annunciators.push({ id: 'estop', label: 'EMER STOP', tone: 'red' });
+  // Was: index / total counted in Dan's 15-line startup checklist (no off steps, several steps per line), so the card
+  // read "step 12 of 15" while the badges cued 14. Now the badge sequence itself; Dan's line only supplies the text.
   let checklist: CsView['checklist'] = null;
-  const lines = inp.checklist ?? [];
-  if (next && lines.length) {
-    const i = lines.findIndex((l) => next.line.test(l));
-    if (i >= 0) checklist = { index: i + 1, total: lines.length, text: lines[i] };
+  if (next) {
+    const line = (inp.checklist ?? []).find((l) => next.line.test(l));
+    checklist = { index: cursor + 1, total: seq.length, text: line ?? `${inp.list.find((e) => e.id === next.id)?.label ?? next.id} ${next.act === 'arm' ? 'cover up' : next.on ? 'on' : 'off'}` };
   }
   return { seq, cursor, complete: cursor >= seq.length, next, switches, apu, gndAir, annunciators, checklist, live };
 }
