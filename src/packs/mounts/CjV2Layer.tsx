@@ -18,7 +18,9 @@ import { cjNavAction, cjNavItems } from '../carrier-jet.nav';
 import { disabledReason, itemAria, itemValue, MAP_CREDIT, pageTiles, runItem, visibleItems, type ConfigCtx, type ConfigEffect, type ConfigItem } from '../configTable';
 import { CJ_CONFIG } from '../carrier-jet/configPages';
 import { wxView, type WxView } from '../carrier-jet/wxView';
-import { getWxObs, subscribeWxObs, wxValueAt } from '../carrier-jet/wxStore';
+import { getWxObs, setWxObs, subscribeWxObs, wxValueAt } from '../carrier-jet/wxStore';
+import { startWxPoller } from '../carrier-jet/weather/poller';
+import { storageKey } from '../../lib/storageKey';
 import { CjWxReadout } from './CjWxReadout';
 import { getWxRadar, setWxRadar, subscribeWxRadar, WX_RADAR_CREDIT } from '../carrier-jet/wxRadar';
 // live map + compass legend: a lazy chunk (CjLiveMap.tsx, Meghan's style + WMM2025); maplibre-gl is a further lazy chunk
@@ -37,6 +39,37 @@ function useWxValue() {
   }, [obs]);
   return wxValueAt(obs, now);
 }
+/** Live OAT (carrier-jet/weather): polls while the readout can show; position from the shared GPS fixes (no fix or
+ * denied → no request, the slot stays empty / shows the persisted value aging out). */
+function useWxPoller(active: boolean) {
+  useEffect(() => {
+    if (!active || typeof fetch === 'undefined') return;
+    const p = startWxPoller({
+      fetch: (u, i) => fetch(u, i),
+      kv: typeof localStorage === 'undefined' ? null : localStorage,
+      prefix: storageKey('revforge.pack.carrier-jet.wx.'),
+      now: Date.now,
+      random: Math.random,
+      hidden: () => typeof document !== 'undefined' && document.hidden,
+      getPos: () => {
+        const f = latestGpsFix();
+        return f && Number.isFinite(f.latitude) && Number.isFinite(f.longitude) && !(f.latitude === 0 && f.longitude === 0) ? { lat: f.latitude, lon: f.longitude } : null;
+      },
+      onObs: setWxObs,
+      setInterval: (f, ms) => setInterval(f, ms),
+      clearInterval: (t) => clearInterval(t as ReturnType<typeof setInterval>),
+    });
+    const offFix = subscribeGpsFixes(() => p.poke());
+    const onVis = () => p.poke();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      p.stop();
+      offFix();
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [active]);
+}
+
 const sysReduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const subSysReduced = (f: () => void) => {
   if (typeof matchMedia === 'undefined') return () => undefined;
@@ -432,6 +465,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, u
   }, [say]);
 
   const wxValue = useWxValue();
+  useWxPoller(!!geo?.board2 && !phone);
   if (!geo) return <div ref={selfRef} className="cjv2" />;
   const cells = geo.cells;
   const tileFor = (cell: CellId) => {
