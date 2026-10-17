@@ -380,7 +380,7 @@ test('PULL emergency stop: warning first, then everything spools down to silence
 
 test('playJetCue: every cue is a short quiet transient; unknown cues are refused', async () => {
   // gearUp / gearDown are multi-second gear sequences (cj-gear.test.mjs); radarOn is a ~1.6 s hum (cj-ab-unarmed-radar.test.mjs)
-  const cues = cold.JET_CUES.filter((c) => c !== 'gearUp' && c !== 'gearDown' && c !== 'radarOn');
+  const cues = cold.JET_CUES.filter((c) => c !== 'gearUp' && c !== 'gearDown' && c !== 'radarOn' && c !== 'o2Chimes');
   const SR = 44100;
   const gap = 1.5;
   const off = new nwa.OfflineAudioContext(2, Math.ceil(SR * gap * cues.length), SR);
@@ -399,6 +399,33 @@ test('playJetCue: every cue is a short quiet transient; unknown cues are refused
   // chime stays under the engine idle peak (≈ −22 dBFS here) — quieter than a car alert
   const chime = 20 * Math.log10(peakOf(channelsOf(buf, cues.indexOf('chime') * gap, (cues.indexOf('chime') + 1) * gap)));
   assert.ok(chime < -18, `chime ${chime.toFixed(1)} dBFS`);
+  v.dispose();
+});
+
+test('SEAT BELT tone is one low tone; O2 is three hi-lo chimes; both quiet and ended', async () => {
+  const SR = 44100;
+  const off = new nwa.OfflineAudioContext(1, SR * 5, SR);
+  const v = new cold.JetColdStartVoice(off, off.destination);
+  assert.equal(v.cue('seatbeltTone', { when: 0 }), true);
+  assert.equal(v.cue('o2Chimes', { when: 1.5 }), true);
+  const buf = await off.startRendering();
+  const x = buf.getChannelData(0);
+  const win = (a, b) => x.subarray(Math.round(a * SR), Math.round(b * SR));
+  const db = (a) => 20 * Math.log10(Math.max(1e-9, a.reduce((m, y) => Math.max(m, Math.abs(y)), 0)));
+  // zero-crossing pitch of a window
+  const hz = (a) => { let z = 0; for (let i = 1; i < a.length; i++) if (a[i - 1] < 0 && a[i] >= 0) z++; return z / (a.length / SR); };
+  for (const [a, b] of [[0, 1.5], [1.5, 4]]) { const p = db(win(a, b)); assert.ok(p > -50 && p < -18, `peak ${p.toFixed(1)}`); }
+  // seatbelt: one sustained low tone (~392 Hz fundamental), silent by 0.8 s
+  assert.ok(Math.abs(hz(win(0.1, 0.5)) - 392) < 40, `seatbelt ${hz(win(0.1, 0.5)).toFixed(0)} Hz`);
+  assert.ok(db(win(0.8, 1.5)) < db(win(0.1, 0.5)) - 40);
+  // O2: hi (≈1047) then lo (≈784), three times, with gaps between pairs
+  for (let k = 0; k < 3; k++) {
+    const t0 = 1.5 + k * 0.72;
+    assert.ok(Math.abs(hz(win(t0 + 0.03, t0 + 0.17)) - 1046.5) < 80, `pair ${k} hi`);
+    assert.ok(Math.abs(hz(win(t0 + 0.29, t0 + 0.43)) - 784) < 60, `pair ${k} lo`);
+    assert.ok(db(win(t0 + 0.6, t0 + 0.7)) < db(win(t0 + 0.05, t0 + 0.15)) - 30, `gap after pair ${k}`);
+  }
+  assert.ok(db(win(4, 5)) < -90, 'O2 ended');
   v.dispose();
 });
 
