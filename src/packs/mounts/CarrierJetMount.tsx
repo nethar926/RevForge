@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useCjBank } from './useCjBank';
 import { createPortal } from 'react-dom';
 import { CarrierJetAfterburnerGuard, CarrierJetHud, useCarrierJetVariant } from '../../skins/carrier-jet';
 import ID from '../carrier-jet.identity';
@@ -190,6 +191,8 @@ export function CarrierJetMount(props: PackHudProps) {
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const sysReduced = useSyncExternalStore(subSysReduced, readSysReduced, () => false);
   const reduced = reducedMotion(prefs, sysReduced || !props.motion);
+  // VDI bank from GPS turn rate (same v·ω/g as the ACCEL ball), ±30°, 0 below 3 mph / stale; Reduce Motion snaps
+  const vdiBank = useCjBank(true, !!props.demo, reduced);
   const cold = useColdStart({ park, mode: prefs.startMode, reduced, tesla });
   // carrier-launch AB light (launchLight.ts): poll Dan's getLaunchActive() on the HUD tick (every render; no rAF)
   const jetApi = useSyncExternalStore(subscribePackJet, getPackJet, getPackJet);
@@ -271,7 +274,7 @@ export function CarrierJetMount(props: PackHudProps) {
         {(h) => (
           <>
             <div className="cjm-fill">
-              <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} />
+              <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} bank={vdiBank} />
             </div>
             {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} />}
           </>
