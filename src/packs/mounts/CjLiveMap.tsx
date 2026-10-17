@@ -66,7 +66,7 @@ function useWxRadarAge(on: boolean): WxRadarAgeView | null {
   useEffect(() => {
     const f = () => setV((p) => {
       const n = read();
-      return p && n && p.text === n.text && p.dim === n.dim ? p : n;
+      return p && n && p.text === n.text && p.dim === n.dim && p.stale === n.stale ? p : n;
     });
     f();
     if (!on) return;
@@ -390,7 +390,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       <span className="cjv2-corner cjv2-bl" data-cjmap-ob aria-hidden="true">{view.zoom} MI · {view.mode === 'terr' ? 'TERR' : 'MAP'}</span>
       {status && <span className="cjv2-corner cjv2-br" data-cjmap-ob aria-hidden="true">{status}</span>}
       </>}
-      {radarAge && <span className="cjv2-corner cjv2-tr cjwx-rage" data-cjmap-ob data-dim={radarAge.dim || undefined} aria-hidden="true">{radarAge.text}</span>}
+      {radarAge && <span className="cjv2-corner cjv2-tr cjwx-rage" data-cjmap-ob data-dim={radarAge.dim || undefined} data-stale={radarAge.stale || undefined} aria-hidden="true">{radarAge.text}</span>}
     </div>
   );
 }

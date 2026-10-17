@@ -5,10 +5,11 @@
  * (green → amber → red, moderate alpha). Latest frame only, re-read every 10 min; no animation.
  * Offline / a failed fetch never blanks it: the frame list keeps the last good frame (wxRadar status store), a failed
  * tile is answered from the last good copy of that tile (WxTileCache, any frame), and every fetch reports to the
- * status store, which drives the 'RADAR · 12m' age label (CjLiveMap). Back online → re-read at once.
+ * status store, which drives the 'RADAR · 12m' age label (CjLiveMap; shown whenever a frame is up). Back online →
+ * re-read at once. Past 180 min since the last good fetch (OAT hide point) the frame, label and held tiles all go.
  */
 import type { Map as MlMap, RasterTileSource } from 'maplibre-gl';
-import { __setWxRadarStatus, getWxRadarStatus, latestFrame, recolorRgba, reportWxRadarFetch, rvSourceTemplate, WxTileCache, WX_SCOPE_PREFIX, WX_RADAR_API, WX_RADAR_MAX_ZOOM, WX_RADAR_PROTOCOL, WX_RADAR_REFRESH_MS } from '../carrier-jet/wxRadar';
+import { __setWxRadarStatus, expireWxRadarFrame, getWxRadarStatus, subscribeWxRadarStatus, wxRadarExpired, latestFrame, recolorRgba, reportWxRadarFetch, rvSourceTemplate, WxTileCache, WX_SCOPE_PREFIX, WX_RADAR_API, WX_RADAR_MAX_ZOOM, WX_RADAR_PROTOCOL, WX_RADAR_REFRESH_MS } from '../carrier-jet/wxRadar';
 
 type Ml = typeof import('maplibre-gl');
 export const WX_SRC = 'cjwx-radar';
@@ -55,8 +56,8 @@ function register(ml: Ml) {
       if (abort.signal.aborted) throw e;
       wxRadarStats.errors++;
       reportWxRadarFetch(false);
-      // last good copy of this tile (any earlier frame): the rain stays instead of blanking
-      const last = lastTiles.get(scope, z, x, y);
+      // last good copy of this tile (any earlier frame): the rain stays instead of blanking (never once expired)
+      const last = wxRadarExpired(getWxRadarStatus(), Date.now()) ? undefined : lastTiles.get(scope, z, x, y);
       if (last) {
         wxRadarStats.held++;
         return { data: last.slice(0) };
@@ -98,6 +99,25 @@ export function attachWxRadar(ml: Ml, map: MlMap): () => void {
     const before = BEFORE.find((id) => map.getLayer(id));
     map.addLayer({ id: WX_LAYER, type: 'raster', source: WX_SRC, paint: { 'raster-opacity': 1, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, before);
   };
+  const unput = () => {
+    try {
+      if (map.getLayer(WX_LAYER)) map.removeLayer(WX_LAYER);
+      if (map.getSource(WX_SRC)) map.removeSource(WX_SRC);
+    } catch {
+      /* map already removed */
+    }
+    wxRadarStats.frame = '';
+  };
+  // 3h stale: the rain frame, its label (radarAgeView → null) and the held frame + tiles go together; WX off/on can't
+  // bring it back (no held frame, no held tiles) until a fresh frame list arrives
+  const drop = () => {
+    lastTiles.clear();
+    unput();
+    expireWxRadarFrame();
+  };
+  const checkExpiry = () => {
+    if (!ac.signal.aborted && wxRadarExpired(getWxRadarStatus(), Date.now()) && (getWxRadarStatus().frame || map.getSource(WX_SRC))) drop();
+  };
   const tick = async () => {
     clearTimeout(timer);
     try {
@@ -109,6 +129,10 @@ export function attachWxRadar(ml: Ml, map: MlMap): () => void {
         if (ac.signal.aborted) throw e;
         reportWxRadarFetch(false);
         // offline / API down: keep (or, on a re-created map, put back) the last good frame; tiles come from lastTiles
+        if (wxRadarExpired(getWxRadarStatus(), Date.now())) {
+          drop();
+          throw e;
+        }
         const last = getWxRadarStatus().frame;
         if (!last || map.getSource(WX_SRC)) throw e;
         f = { host: last.host, frame: { path: last.path, time: last.time } };
@@ -136,7 +160,10 @@ export function attachWxRadar(ml: Ml, map: MlMap): () => void {
       if (!ac.signal.aborted) timer = window.setTimeout(tick, WX_RADAR_REFRESH_MS);
     }
   };
+  checkExpiry();
   void tick();
+  const offExpiry = subscribeWxRadarStatus(checkExpiry);
+  const expiryTimer = window.setInterval(checkExpiry, 30_000);
   // back online: re-read now instead of waiting out the 10 min
   const onOnline = () => void tick();
   window.addEventListener('online', onOnline);
@@ -149,12 +176,8 @@ export function attachWxRadar(ml: Ml, map: MlMap): () => void {
     ac.abort();
     clearTimeout(timer);
     window.removeEventListener('online', onOnline);
-    try {
-      if (map.getLayer(WX_LAYER)) map.removeLayer(WX_LAYER);
-      if (map.getSource(WX_SRC)) map.removeSource(WX_SRC);
-    } catch {
-      /* map already removed */
-    }
-    wxRadarStats.frame = '';
+    offExpiry();
+    clearInterval(expiryTimer);
+    unput();
   };
 }
