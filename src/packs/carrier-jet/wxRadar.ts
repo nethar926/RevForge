@@ -9,6 +9,7 @@
  * (smoothed, snow drawn in the rain colours so one table decodes every pixel).
  */
 import { storageKey } from '../../lib/storageKey.ts';
+import { ageSpan, fmtAge, wxStaleness } from './wxView.ts';
 
 export const WX_RADAR_API = 'https://api.rainviewer.com/public/weather-maps.json';
 export const WX_RADAR_CREDIT = 'Radar: RainViewer.com';
@@ -131,4 +132,93 @@ export function setWxRadar(v: boolean) {
 export function subscribeWxRadar(f: Listener) {
   listeners.add(f);
   return () => listeners.delete(f);
+}
+
+/* ---- last good frame (radar offline / a fetch failed): keep showing it, with its age.
+   cjWxRadarLayer reports every radar fetch here (the weather-maps.json frame list and each tile). A failed fetch
+   never blanks the overlay: the frame list keeps the last good frame, and a tile that fails is answered from the
+   last good copy of that tile (WxTileCache), from any earlier frame. The age is minutes since the last good fetch. */
+export interface WxRadarStatus {
+  /** Last successful radar fetch (frame list or tile), ms; null before the first. */
+  lastGoodAt: number | null;
+  /** Last failed radar fetch, ms. */
+  lastFailAt: number | null;
+  /** Last good frame list result: re-used when the list cannot be fetched (e.g. the map is re-created offline). */
+  frame: { host: string; path: string; time: number } | null;
+}
+let status: WxRadarStatus = { lastGoodAt: null, lastFailAt: null, frame: null };
+const statusLs = new Set<Listener>();
+const emitStatus = (next: WxRadarStatus) => {
+  status = next;
+  for (const f of [...statusLs]) f();
+};
+export const getWxRadarStatus = (): WxRadarStatus => status;
+export function subscribeWxRadarStatus(f: Listener) {
+  statusLs.add(f);
+  return () => void statusLs.delete(f);
+}
+export function reportWxRadarFetch(ok: boolean, at: number = Date.now(), frame?: WxRadarStatus['frame']): void {
+  if (!ok) return emitStatus({ ...status, lastFailAt: at });
+  const fresh = status.lastGoodAt != null && !(status.lastFailAt != null && status.lastFailAt > status.lastGoodAt);
+  // a burst of good tiles while already fresh: record quietly (no re-render per tile); the label only shows when stale
+  if (fresh && !frame && at - (status.lastGoodAt as number) < 5000) {
+    status = { ...status, lastGoodAt: at };
+    return;
+  }
+  emitStatus({ ...status, lastGoodAt: at, frame: frame ?? status.frame });
+}
+/** Tests / shots: reset, or move the last good fetch `min` minutes into the past (window.__cjWxRadarStatus). */
+export function __setWxRadarStatus(next: Partial<WxRadarStatus>): void {
+  emitStatus({ ...status, ...next });
+}
+/** Stale = the last radar fetch failed (after the last good one) or the browser is offline. */
+export const wxRadarStale = (s: WxRadarStatus, online: boolean) => s.lastGoodAt != null && (!online || (s.lastFailAt != null && s.lastFailAt > s.lastGoodAt));
+
+export interface WxRadarAgeView {
+  /** "RADAR · 12m" / "RADAR · 1h" / "RADAR · 1h45" (fmtAge, as the OAT age) */
+  text: string;
+  aria: string;
+  /** dims on the OAT schedule (wxStaleness: > 90 min) */
+  dim: boolean;
+}
+/** The age label while stale (null when fresh or nothing was ever shown). */
+export function radarAgeView(s: WxRadarStatus, online: boolean, now: number): WxRadarAgeView | null {
+  if (!wxRadarStale(s, online) || s.lastGoodAt == null) return null;
+  const min = Math.max(0, (now - s.lastGoodAt) / 60000);
+  return { text: `RADAR · ${fmtAge(min)}`, aria: `Radar, last updated ${ageSpan(min)} ago`, dim: wxStaleness(min).dim };
+}
+
+/** Last good recoloured tile per z/x/y (any frame), so a failed tile fetch answers with the last good copy. LRU. */
+export const WX_TILE_CACHE_MAX = 384;
+export class WxTileCache {
+  private m = new Map<string, ArrayBuffer>();
+  private max: number;
+  constructor(max = WX_TILE_CACHE_MAX) {
+    this.max = max;
+  }
+  static key(scope: boolean, z: number | string, x: number | string, y: number | string) {
+    return `${scope ? 's' : 'm'}/${z}/${x}/${y}`;
+  }
+  put(scope: boolean, z: number | string, x: number | string, y: number | string, data: ArrayBuffer) {
+    const k = WxTileCache.key(scope, z, x, y);
+    this.m.delete(k);
+    this.m.set(k, data);
+    while (this.m.size > this.max) this.m.delete(this.m.keys().next().value as string);
+  }
+  /** Same tint first, then the other one (the scope tint toggled while offline): the rain still shows. */
+  get(scope: boolean, z: number | string, x: number | string, y: number | string): ArrayBuffer | undefined {
+    for (const s of [scope, !scope]) {
+      const k = WxTileCache.key(s, z, x, y);
+      const v = this.m.get(k);
+      if (v) {
+        this.m.delete(k);
+        this.m.set(k, v);
+        return v;
+      }
+    }
+    return undefined;
+  }
+  get size() {
+    return this.m.size;
+  }
 }

@@ -22,6 +22,7 @@ import { cjRadarScopeAria } from '../../skins/carrier-jet/map/radarAria';
 import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, compassSpeech, headingPair, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
 import { attachWxRadar, setWxScopeTint, WX_SRC } from './cjWxRadarLayer';
+import { getWxRadarStatus, radarAgeView, subscribeWxRadarStatus, type WxRadarAgeView } from '../carrier-jet/wxRadar';
 
 type Ml = typeof import('maplibre-gl');
 let mlPromise: Promise<Ml> | null = null;
@@ -54,6 +55,34 @@ const useOnline = () => {
   }, []);
   return on;
 };
+
+/**
+ * WX radar age label while the radar is stale (offline / last fetch failed; the overlay keeps the last good frame):
+ * 'RADAR · 12m', dimmed on the OAT schedule. Re-read on each radar fetch, online / offline, and every 30 s.
+ */
+function useWxRadarAge(on: boolean): WxRadarAgeView | null {
+  const read = () => (on ? radarAgeView(getWxRadarStatus(), typeof navigator === 'undefined' || navigator.onLine !== false, Date.now()) : null);
+  const [v, setV] = useState<WxRadarAgeView | null>(read);
+  useEffect(() => {
+    const f = () => setV((p) => {
+      const n = read();
+      return p && n && p.text === n.text && p.dim === n.dim ? p : n;
+    });
+    f();
+    if (!on) return;
+    const off = subscribeWxRadarStatus(f);
+    window.addEventListener('online', f);
+    window.addEventListener('offline', f);
+    const t = setInterval(f, 30_000);
+    return () => {
+      off();
+      window.removeEventListener('online', f);
+      window.removeEventListener('offline', f);
+      clearInterval(t);
+    };
+  }, [on]); // eslint-disable-line react-hooks/exhaustive-deps
+  return v;
+}
 
 export interface CjLiveMapProps {
   view: MapView;
@@ -88,6 +117,8 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   const [tiles, setTiles] = useState<false | 'network' | 'error'>(false);
   const [labels, setLabels] = useState<PlacedLabel[]>([]);
   const [hasMap, setHasMap] = useState(false);
+  // WX radar stale: the last good frame stays on the map with its age (TR corner, free in MAP and RADAR); spoken last
+  const radarAge = useWxRadarAge(!!wxRadar && hasMap);
   const online = useOnline();
 
   // --- fixes (the app's one geolocation watch, via gpsFixes)
@@ -326,7 +357,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   // corners change (status pill, TRK-UP legend): re-run the collision walk even while the map is paused
   useEffect(() => {
     if (hasMap) queueMicrotask(() => relabel.current());
-  }, [status, view.northUp, hasMap, size.w, size.h, !!radar]);
+  }, [status, view.northUp, hasMap, size.w, size.h, !!radar, !!radarAge]);
   const { w, h } = size;
   const o = ownShip(w, h, view.northUp);
   const bp = bugPoint(w, h, view.northUp, view.northUp ? (heading ?? 0) : 0);
@@ -335,9 +366,10 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   // RADAR: the map shows under the scope once it exists and has tiles; else the scope alone on the dark CRT
   const mapShown = hasMap && status !== 'NO TILES' && status !== 'NO MAP DATA';
   const aria = radar ? cjRadarScopeAria({ range: radar.range, mode: radar.mode }, status, mapShown) : mapAria(view, status, null); // heading: once, on COMPASS (sheet panel 7)
+  const ariaFull = radarAge ? `${aria}. ${radarAge.aria}` : aria;
   const boxStyle: CSSProperties | undefined = hidden ? { visibility: 'hidden' } : undefined;
   return (
-    <div ref={boxRef} className="cjv2-hsd" role="img" aria-label={aria} style={boxStyle} data-status={status || 'ok'} data-radar={radar ? (mapShown ? 'over-map' : 'alone') : undefined}>
+    <div ref={boxRef} className="cjv2-hsd" role="img" aria-label={ariaFull} style={boxStyle} data-status={status || 'ok'} data-radar={radar ? (mapShown ? 'over-map' : 'alone') : undefined}>
       <div ref={glRef} className="cjv2-mapgl" aria-hidden="true" />
       <div className="cjv2-scan" aria-hidden="true" />
       {/* RADAR: the scope (transparent) above map + WX + roads, under the street labels; it draws its own bug, own-ship
@@ -358,6 +390,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       <span className="cjv2-corner cjv2-bl" data-cjmap-ob aria-hidden="true">{view.zoom} MI · {view.mode === 'terr' ? 'TERR' : 'MAP'}</span>
       {status && <span className="cjv2-corner cjv2-br" data-cjmap-ob aria-hidden="true">{status}</span>}
       </>}
+      {radarAge && <span className="cjv2-corner cjv2-tr cjwx-rage" data-cjmap-ob data-dim={radarAge.dim || undefined} aria-hidden="true">{radarAge.text}</span>}
     </div>
   );
 }

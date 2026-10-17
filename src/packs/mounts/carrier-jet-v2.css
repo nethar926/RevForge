@@ -424,3 +424,8 @@
 /* WX key off: the legend in the unlit engraving grey (#ccd2d6), as the mock's BezelKey `unlit` prop draws it. Mount-side
    because the skin's BezelKey has no `unlit` prop on this base (a7fce46 adds it under src/skins; not edited here). */
 .cjv2-key[data-unlit] .cjp-bezel text { fill: #ccd2d6; }
+/* WX radar age (the overlay is holding its last good frame: offline / the last fetch failed): 'RADAR · 12m' in the map's
+   TR corner (free in MAP and RADAR since the one-heading change), phosphor like the OAT age, static. Dimmed on the OAT
+   schedule (wxStaleness, > 90 min) with the OAT's 62%. Labels are placed clear of it (data-cjmap-ob). */
+.cjv2-hsd > .cjwx-rage { color: #8dffad; z-index: 1; }
+.cjv2-hsd > .cjwx-rage[data-dim] { opacity: 0.62; }
