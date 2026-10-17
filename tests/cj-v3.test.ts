@@ -172,9 +172,11 @@ test('PULL: a tap never fires (no click path on the grip); ≥ 40px pull fires; 
   assert.doesNotMatch(grip, /onClick|onKeyDown/);
   assert.match(cs, /className="cjp-sr" data-cjcs-sr onClick=\{\(\) => applyPull\(pullAction\(pullRef\.current\)\)\}>Emergency stop, stop the engines now</);
 });
-test('cold start: Park-gated shelf, quick start never locked out while driving, ENGINE STARTUP calls setJetStartMode', () => {
+test('cold start: Park-gated switches (the shelf itself opens anywhere), quick start never locked out while driving, ENGINE STARTUP calls setJetStartMode', () => {
   const cs = src('packs/mounts/CjColdStart.tsx');
-  assert.match(cs, /aria-disabled=\{!park \|\| undefined\}/);
+  // Wilson: the shelf is reachable at all times; out of Park the SHELF key says the switches need Park (it isn't disabled)
+  assert.doesNotMatch(cs, /aria-disabled=\{!park \|\| undefined\}/);
+  assert.match(cs, /Switches: \$\{CS_PARK_REASON\}/);
   assert.match(cs, /jetQuickStart/);
   assert.match(cs, /setJetStartMode/);
   const start = item('options', 'start')!;

@@ -281,3 +281,9 @@
 .cjcs-shelf[data-cue-aircart] .cjp-gndair .cjp-toggle[data-sys='aircart'],
 .cjcs-shelf[data-cue-crossbleed] .cjp-gndair .cjp-toggle[data-sys='crossbleed'] { outline: 1.5px solid #7ef7a1; outline-offset: -2px; border-radius: 3px; background-color: rgb(126 247 161 / 0.10); }
 .cjcs-shelf[data-cue-apu='busy'] .cjp-apu .cjp-apu-start { outline-color: #ffb54a; background-color: rgb(255 181 74 / 0.10); }
+
+/* APU START step label (6·7·14): the skin draws it at baseline y 36 of the 60×96 toggle, where the raised lever's ball
+   (cy 36, r 4.6, x 17–27) covers the "6". Lift it 6 user units: glyphs span ≈ y 22–30, clear of the ball in both lever
+   positions (up: top 31.4; down: 61.4) and of the START label (baseline 16). Same 11-unit size. The whole Eng group
+   moves (halo, the -0.5 emboss shadow and the fill); y 36 is only the step label (the throw legend sits at y 88). */
+.cjp-apu .cjp-toggle[data-sys='apu'] svg g[data-eng]:has(> text[y='36']) { transform: translateY(-6px); }
