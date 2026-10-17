@@ -426,13 +426,13 @@ export const TC_LAUNCH_MAX_MPHS = 45;
 export const TC_LAUNCH_GLITCH_HOLDOFF_S = 3.0;
 
 export function createLaunchDetector() {
-  return { t: 0, hist: [], period: 0.9, base: [0, 0], holdBase: null, on: false, holdFrom: -1, dropFrom: -1, accel: 0, holdoffUntil: -1 };
+  return { t: 0, hist: [], period: 0.9, base: [0, 0], holdBase: null, on: false, holdFrom: -1, dropFrom: -1, accel: 0, holdoffUntil: -1, rawAt: -1 };
 }
 
 /** Clear the detector (disarm, disable, pack change). */
 export function resetLaunchDetector(det) {
   det.t = 0; det.hist.length = 0; det.period = 0.9; det.base = [0, 0]; det.holdBase = null; det.on = false; det.holdFrom = -1; det.dropFrom = -1;
-  det.accel = 0; det.holdoffUntil = -1;
+  det.accel = 0; det.holdoffUntil = -1; det.rawAt = -1;
 }
 
 /**
@@ -457,7 +457,13 @@ export function stepLaunchDetector(det, speedNorm, nowS) {
   if (!last || Math.abs(mph - last[1]) > 1e-6) {
     changed = true;
     const gap = last ? t - last[0] : 0;
-    if (last && gap >= 0.3) {
+    if (last && det.rawAt === last[0] && gap < 0.3) {
+      // a second callback < 0.3 s after a raw fix (Tesla delivers GPS callbacks in pairs ~0.1 s
+      // apart): the same fix, revised. Replace the fix's value, keep its time and span.
+      last[1] = mph;
+      det.accel = (mph - det.base[1]) / Math.max(1e-3, last[0] - det.base[0]);
+      det.rawAt = -1;
+    } else if (last && gap >= 0.3) {
       // a raw GPS fix (held between updates): slope since the previous fix. A value held longer
       // than the usual fix period (car was steady) only counts from one period back, so the first
       // hard fix after a steady stretch reads its true slope.
@@ -467,6 +473,7 @@ export function stepLaunchDetector(det, speedNorm, nowS) {
       det.base = [t - span, last[1]];
       det.hist.length = 0;
       det.hist.push([t - span, last[1]], [t, mph]);
+      det.rawAt = t;
     } else {
       // eased speed (changes every frame): gain since one window earlier, linear between samples
       det.hist.push([t, mph]);

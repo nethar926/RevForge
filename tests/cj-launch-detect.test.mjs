@@ -123,3 +123,28 @@ test('from a stop: 0–60 in ~2 s at exact 1 Hz fires on the 2nd fix; 4 mph/s do
   assert.equal(on[4], true, 'Plaid-class launch is not mistaken for a GPS jump');
   assert.ok(!run([0, 0, 0, 4, 8, 12, 16, 20, 24]).includes(true), '4 mph/s from a stop');
 });
+
+/** Tesla delivers GPS callbacks in pairs ~0.1 s apart (Wilson's in-car test): each fix arrives twice,
+ *  the second repeating or slightly revising its speed. Fixes every `gap` s, stepped at 60 fps. */
+function runPaired(mphPerFix, { gap = 0.85, jitter = 0.5 } = {}) {
+  const d = createLaunchDetector();
+  let firstOn = -1;
+  const dt = 1 / 60;
+  const T = mphPerFix.length * gap;
+  for (let t = 0, v = mphPerFix[0]; t < T; t += dt) {
+    const i = Math.floor(t / gap);
+    const into = t - i * gap;
+    v = mphPerFix[i] + (into >= 0.1 && i > 0 ? (i % 2 ? jitter : -jitter) : 0);
+    if (stepLaunchDetector(d, Math.max(0, v) / FULL, t) && firstOn < 0) firstOn = t;
+  }
+  return firstOn;
+}
+
+test('paired GPS callbacks (~0.1 s apart) count as one fix: launch still fires on time, normal driving does not', () => {
+  for (const jitter of [0, 0.5, 1]) {
+    const on = runPaired([0, 0, 8, 16, 24, 32, 38, 40, 40], { jitter });
+    assert.ok(on > 0 && on < 4 * 0.85 + 0.2, `launch fires by the 3rd hard fix (jitter ${jitter}): ${on}`);
+    assert.equal(runPaired([0, 3, 6, 9, 12, 15, 18, 21], { jitter }), -1, `3 mph/s stays off (jitter ${jitter})`);
+    assert.equal(runPaired([40, 40, 40, 40, 40, 40], { jitter }), -1, `steady speed stays off (jitter ${jitter})`);
+  }
+});
