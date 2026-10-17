@@ -5,7 +5,7 @@
  * (green → amber → red, moderate alpha). Latest frame only, re-read every 10 min; no animation.
  */
 import type { Map as MlMap, RasterTileSource } from 'maplibre-gl';
-import { latestFrame, recolorRgba, rvSourceTemplate, WX_RADAR_API, WX_RADAR_MAX_ZOOM, WX_RADAR_PROTOCOL, WX_RADAR_REFRESH_MS } from '../carrier-jet/wxRadar';
+import { latestFrame, recolorRgba, rvSourceTemplate, WX_SCOPE_PREFIX, WX_RADAR_API, WX_RADAR_MAX_ZOOM, WX_RADAR_PROTOCOL, WX_RADAR_REFRESH_MS } from '../carrier-jet/wxRadar';
 
 type Ml = typeof import('maplibre-gl');
 export const WX_SRC = 'cjwx-radar';
@@ -18,7 +18,7 @@ let registered = false;
 const cache = new Map<number, number>();
 export const wxRadarStats = { tiles: 0, lit: 0, errors: 0, frame: '' as string, frameTime: 0 };
 
-async function recolour(buf: ArrayBuffer): Promise<ArrayBuffer> {
+async function recolour(buf: ArrayBuffer, scope: boolean): Promise<ArrayBuffer> {
   const bmp = await createImageBitmap(new Blob([buf], { type: 'image/png' }));
   const w = bmp.width, h = bmp.height;
   const cv: OffscreenCanvas | HTMLCanvasElement = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h });
@@ -26,7 +26,7 @@ async function recolour(buf: ArrayBuffer): Promise<ArrayBuffer> {
   if (!ctx) return buf;
   ctx.drawImage(bmp, 0, 0);
   const img = ctx.getImageData(0, 0, w, h);
-  wxRadarStats.lit += recolorRgba(img.data, cache);
+  wxRadarStats.lit += recolorRgba(img.data, cache, { scope, width: w });
   ctx.putImageData(img, 0, 0);
   const blob = 'convertToBlob' in cv ? await cv.convertToBlob({ type: 'image/png' }) : await new Promise<Blob>((ok, no) => (cv as HTMLCanvasElement).toBlob((b) => (b ? ok(b) : no(new Error('toBlob'))), 'image/png'));
   return blob.arrayBuffer();
@@ -39,13 +39,15 @@ function register(ml: Ml) {
     // cjrv://v2/radar/<id>/{z}/{x}/{y}
     const m = /^cjrv:\/\/(.+)\/(\d+)\/(\d+)\/(\d+)$/.exec(params.url);
     if (!m) throw new Error('cjrv: bad url');
-    const res = await fetch(`${host}/${m[1]}/256/${m[2]}/${m[3]}/${m[4]}/2/1_0.png`, { signal: abort.signal });
+    const scope = m[1].startsWith(WX_SCOPE_PREFIX);
+    const path = scope ? m[1].slice(WX_SCOPE_PREFIX.length) : m[1];
+    const res = await fetch(`${host}/${path}/256/${m[2]}/${m[3]}/${m[4]}/2/1_0.png`, { signal: abort.signal });
     if (!res.ok) {
       wxRadarStats.errors++;
       throw new Error(`cjrv ${res.status}`);
     }
     wxRadarStats.tiles++;
-    return { data: await recolour(await res.arrayBuffer()) };
+    return { data: await recolour(await res.arrayBuffer(), scope) };
   });
 }
 
@@ -55,13 +57,21 @@ async function fetchFrame(signal: AbortSignal) {
   return latestFrame(await r.json());
 }
 
+/** RADAR over the map: the scope tint (teal + hatched light rain). Switches the source's tiles, no layer rebuild. */
+let scopeTint = false;
+export function setWxScopeTint(map: MlMap, on: boolean): void {
+  scopeTint = on;
+  const src = map.getSource(WX_SRC) as RasterTileSource | undefined;
+  if (src && wxRadarStats.frame) src.setTiles([rvSourceTemplate(wxRadarStats.frame, on)]);
+}
+
 /** Turn the overlay on for this map; returns the off switch (removes layer + source, stops the 10-min refresh). */
 export function attachWxRadar(ml: Ml, map: MlMap): () => void {
   register(ml);
   const ac = new AbortController();
   let timer = 0;
   const put = (path: string) => {
-    const tiles = [rvSourceTemplate(path)];
+    const tiles = [rvSourceTemplate(path, scopeTint)];
     const src = map.getSource(WX_SRC) as RasterTileSource | undefined;
     if (src) src.setTiles(tiles);
     else map.addSource(WX_SRC, { type: 'raster', tiles, tileSize: 256, maxzoom: WX_RADAR_MAX_ZOOM, attribution: '' });

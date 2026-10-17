@@ -64,8 +64,27 @@ export function mapAria(v: Pick<MapView, 'northUp' | 'zoom' | 'mode'>, status: C
  * under the scope is heading-up and centred on own-ship (the scope's bug is fixed at 12 o'clock) and scaled so the
  * scope's outer ring is the RNG range. No map (no fix / offline / Park without GPS): the scope alone on the dark CRT.
  */
-/** Map brightness under the scope (CSS brightness()): roads stay readable, the phosphor sweep stays dominant. */
+/**
+ * Map brightness under the scope: roads stay readable, the phosphor sweep stays dominant. Applied to the base map and
+ * road layers only (their colours × 0.62, the same as CSS brightness(0.62) on them), never to the WX rain layer, so
+ * rain keeps full strength under the scope.
+ */
 export const CJ_RADAR_MAP_DIM = 0.62;
+const COLOR_PROPS = ['background-color', 'fill-color', 'line-color', 'hillshade-highlight-color', 'hillshade-accent-color', 'hillshade-shadow-color'];
+/** '#rrggbb' × k → '#rrggbb' (other values unchanged). */
+export function dimHex(c: unknown, k: number): unknown {
+  if (typeof c !== 'string' || !/^#[0-9a-f]{6}$/i.test(c)) return c;
+  return '#' + [1, 3, 5].map((i) => Math.round(parseInt(c.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
+}
+/** setPaintProperty calls that dim (k < 1) or restore (k = 1) the base + road layers of a style; `skip` = layer ids left alone (WX). */
+export function radarDimPaint(layers: readonly { id: string; paint?: Record<string, unknown> }[], k: number, skip: readonly string[] = []): { id: string; prop: string; value: unknown }[] {
+  const out: { id: string; prop: string; value: unknown }[] = [];
+  for (const l of layers) {
+    if (skip.includes(l.id)) continue;
+    for (const [prop, v] of Object.entries(l.paint ?? {})) if (COLOR_PROPS.includes(prop)) out.push({ id: l.id, prop, value: k === 1 ? v : dimHex(v, k) });
+  }
+  return out;
+}
 /** Scope geometry inside the MAP cell: the scope svg is inset 14px × 8px, square viewBox ±50 (meet), outer ring r 46. */
 export const SCOPE_INSET = { x: 8, y: 14 } as const;
 export const SCOPE_RING_UNITS = 46;

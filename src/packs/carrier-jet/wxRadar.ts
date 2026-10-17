@@ -30,7 +30,9 @@ export function latestFrame(j: unknown): { host: string; frame: RvFrame } | null
 }
 export const rvTileUrl = (host: string, path: string, z: number, x: number, y: number) => `${host}${path}/256/${z}/${x}/${y}/2/1_0.png`;
 /** The MapLibre raster source template for a frame (decoded by the cjrv protocol). */
-export const rvSourceTemplate = (path: string) => `${WX_RADAR_PROTOCOL}://${path.replace(/^\//, '')}/{z}/{x}/{y}`;
+/** `scope`: the RADAR-over-map variant (teal + hatched light rain, see rampForDbz), a separate tile set (`scope/` prefix). */
+export const WX_SCOPE_PREFIX = 'scope/';
+export const rvSourceTemplate = (path: string, scope = false) => `${WX_RADAR_PROTOCOL}://${scope ? WX_SCOPE_PREFIX : ''}${path.replace(/^\//, '')}/{z}/{x}/{y}`;
 
 /** RainViewer Universal Blue, rain column (dBZ → RGB), from rainviewer_api_colors_table.csv. */
 export const UNIVERSAL_BLUE: readonly (readonly [number, number])[] = [
@@ -56,8 +58,15 @@ export const UNIVERSAL_BLUE: readonly (readonly [number, number])[] = [
 
 /** Phosphor precip ramp (RGBA 0-255): dim green drizzle → green → amber → orange → red, alpha ≤ 0.67 and darker than the
  * road phosphor (#8dffad) so streets stay readable on top. */
-export function rampForDbz(dbz: number): [number, number, number, number] {
+/**
+ * Phosphor ramp. `scope` (RADAR over the map, mock): light and moderate rain (< 40 dBZ) turn teal so they never read
+ * as the green phosphor roads / sweep; heavy (amber) and intense (red) are unchanged.
+ */
+export function rampForDbz(dbz: number, scope = false): [number, number, number, number] {
   if (dbz < 10) return [0, 0, 0, 0];
+  if (scope && dbz < 20) return [0x3a, 0xb8, 0xd0, 80];
+  if (scope && dbz < 30) return [0x4c, 0xcc, 0xe0, 105];
+  if (scope && dbz < 40) return [0x66, 0xdc, 0xec, 130];
   if (dbz < 20) return [0x2a, 0x9a, 0x4c, 60];
   if (dbz < 30) return [0x33, 0xb8, 0x5c, 85];
   if (dbz < 40) return [0x3f, 0xd0, 0x6a, 110];
@@ -78,15 +87,20 @@ export function dbzForRgb(r: number, g: number, b: number): number {
 }
 
 /** Recolour RGBA pixels in place (alpha < 48 = edge haze / no data → clear). Returns the count of lit pixels. */
-export function recolorRgba(px: Uint8ClampedArray, cache = new Map<number, number>()): number {
+/** Scope variant: light/moderate rain also gets a 45° hatch (every 8th diagonal px pair brighter; 256 % 8 = 0, so it runs on across tiles). */
+export const WX_SCOPE_HATCH = { period: 8, width: 2, alpha: 175 } as const;
+export function recolorRgba(px: Uint8ClampedArray, cache = new Map<number, number>(), opts: { scope?: boolean; width?: number } = {}): number {
   let lit = 0;
+  const scope = !!opts.scope, W = opts.width ?? 256;
   for (let i = 0; i < px.length; i += 4) {
     const a = px[i + 3];
     if (a < 48) { px[i + 3] = 0; continue; }
     const key = (px[i] << 16) | (px[i + 1] << 8) | px[i + 2];
     let d = cache.get(key);
     if (d === undefined) { d = dbzForRgb(px[i], px[i + 1], px[i + 2]); cache.set(key, d); }
-    const [r, g, b, al] = rampForDbz(d);
+    const [r, g, b, al0] = rampForDbz(d, scope);
+    const p = i >> 2, hatch = scope && al0 && d < 40 && ((p % W) + Math.floor(p / W)) % WX_SCOPE_HATCH.period < WX_SCOPE_HATCH.width;
+    const al = hatch ? WX_SCOPE_HATCH.alpha : al0;
     px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = Math.round((al * a) / 255);
     if (al) lit++;
   }

@@ -8,7 +8,7 @@
  *    then the loop stops (MapLibre redraws only on change). Position glides prev fix → latest fix over one interval;
  *    bearing = the v3 eased heading (CjHeadingEase, shortest arc). Reduce Motion: jump per fix, nothing animates.
  *  - RADAR (Wilson, Oct 16): the scope is a transparent overlay ON the live map (`radar` prop, drawn between the map
- *    and the labels). Under it the map is dimmed (CJ_RADAR_MAP_DIM), heading-up, centred, scaled to the scope range.
+ *    and the labels). Under it the base map + roads are dimmed (CJ_RADAR_MAP_DIM, paint colours; WX rain stays full strength), heading-up, centred, scaled to the scope range.
  *  - Pause: hidden (IntersectionObserver / tab hidden) or Park with no live GPS → no updates + map.stop();
  *    30 s hidden → map.remove(), recreated on show. Other looks unmount the cell (map removed).
  *  - MAP / TERR (the mode key): the hillshade layer's visibility, no map rebuild; DEM tiles load only for TERR.
@@ -19,8 +19,8 @@ import { buildCjMapStyle, cjMapStatus, CJ_MAP_MAX_STREET_LABELS, CJ_MAP_OPTIONS,
 import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { radarAria, type MapView } from '../carrier-jet/mapView';
-import { attachWxRadar, WX_SRC } from './cjWxRadarLayer';
-import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, headingPair, headingSpeech, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
+import { attachWxRadar, setWxScopeTint, WX_SRC } from './cjWxRadarLayer';
+import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, headingPair, headingSpeech, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
 
 type Ml = typeof import('maplibre-gl');
 let mlPromise: Promise<Ml> | null = null;
@@ -298,6 +298,19 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
       off?.();
     };
   }, [wxRadar, hasMap]);
+  // RADAR: dim the base map + roads (paint colours × CJ_RADAR_MAP_DIM; WX rain untouched) and switch the rain to the
+  // scope tint (teal + hatched light rain). Restored when RADAR goes off. No rebuild, no tile reload for the base map.
+  const radarOn = !!radar;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !hasMap) return;
+    const apply = () => {
+      for (const c of radarDimPaint(buildCjMapStyle({ terrain: true }).layers, radarOn ? CJ_RADAR_MAP_DIM : 1)) if (map.getLayer(c.id)) map.setPaintProperty(c.id, c.prop, c.value);
+      setWxScopeTint(map, radarOn);
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once('styledata', apply);
+  }, [radarOn, hasMap, wxRadar]);
   useEffect(() => {
     if (online) setTiles((p) => (p === 'network' ? false : p));
   }, [online]);
@@ -325,7 +338,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
   // RADAR: the map shows under the scope once it exists and has tiles; else the scope alone on the dark CRT
   const mapShown = hasMap && status !== 'NO TILES' && status !== 'NO MAP DATA';
   const aria = radar ? radarAria({ range: radar.range, mode: radar.mode }, radar.hdg, status, mapShown) : mapAria(view, status, speech);
-  const boxStyle: CSSProperties | undefined = hidden ? { visibility: 'hidden' } : radar ? ({ '--cjv2-radar-dim': CJ_RADAR_MAP_DIM } as CSSProperties) : undefined;
+  const boxStyle: CSSProperties | undefined = hidden ? { visibility: 'hidden' } : undefined;
   return (
     <div ref={boxRef} className="cjv2-hsd" role="img" aria-label={aria} style={boxStyle} data-status={status || 'ok'} data-radar={radar ? (mapShown ? 'over-map' : 'alone') : undefined}>
       <div ref={glRef} className="cjv2-mapgl" aria-hidden="true" />
