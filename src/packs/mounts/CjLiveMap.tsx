@@ -17,6 +17,7 @@ import { buildCjMapStyle, cjMapStatus, CJ_MAP_MAX_STREET_LABELS, CJ_MAP_OPTIONS,
 import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import type { MapView } from '../carrier-jet/mapView';
+import { attachWxRadar, WX_SRC } from './cjWxRadarLayer';
 import { bugPoint, classifyMapError, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, headingPair, headingSpeech, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
 
 type Ml = typeof import('maplibre-gl');
@@ -62,9 +63,11 @@ export interface CjLiveMapProps {
   hdgRef: 'M' | 'T';
   /** RADAR on: the map is hidden (paused, removed after 30 s). */
   hidden: boolean;
+  /** WX key: precipitation radar overlay (RainViewer, recoloured) under the roads. */
+  wxRadar?: boolean;
 }
 
-export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hdgRef, hidden }: CjLiveMapProps) {
+export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hdgRef, hidden, wxRadar }: CjLiveMapProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const glRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -227,6 +230,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
         center: [pos.lon, pos.lat], zoom: zoomForRangeMi(c.zoomMi, pos.lat, c.h || 100), bearing: c.northUp ? 0 : (c.heading ?? 0),
       });
       map.on('error', (e: MapLibreEvent & { error?: { status?: number; message?: string }; tile?: unknown; sourceId?: string }) => {
+        if (e.sourceId === WX_SRC) return; // WX radar is an extra: its failures never flag the map itself
         const k = classifyMapError(e, navigator.onLine !== false);
         if (k) setTiles((p) => (p === 'network' ? p : k));
       });
@@ -272,6 +276,19 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
     if (map.isStyleLoaded()) apply();
     else map.once('styledata', apply);
   }, [view.mode, hasMap]);
+  // WX radar overlay: attached while on (re-attached when the map is re-created)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !hasMap || !wxRadar) return;
+    let off: (() => void) | null = null, dead = false;
+    void loadMapLibre().then((ml) => {
+      if (!dead) off = attachWxRadar(ml, map);
+    });
+    return () => {
+      dead = true;
+      off?.();
+    };
+  }, [wxRadar, hasMap]);
   useEffect(() => {
     if (online) setTiles((p) => (p === 'network' ? false : p));
   }, [online]);
