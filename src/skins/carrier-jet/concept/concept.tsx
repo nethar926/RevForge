@@ -62,7 +62,7 @@ function Sheet() {
   return (
     <div className="cs">
       <header className="cs-h">
-        <h1>REVFORGE JET · CONCEPT SHEET</h1>
+        <h1>REVFORGE MATRIX · CONCEPT SHEET</h1>
         <p>Mock for Wilson. Matte metal, engraved backlit legends, one light source (top left). Text ≥ 11 px, targets ≥ 44 px, contrast ≥ 4.5 : 1, nothing flashes.</p>
       </header>
       <div className="cs-grid">

@@ -27,7 +27,7 @@ export function ChecklistPamphlet({ cursor, sections, size = 'wide' }: Checklist
     <section className="ckp" data-size={size} aria-label={`Checklist, ${curSec.phase.toLowerCase()}, step ${cursor + 1} of ${all.length}`}>
       <div className="ckp-card">
         <header className="ckp-head" aria-hidden="true">
-          <span className="ckp-brand">REVFORGE · JET</span>
+          <span className="ckp-brand">REVFORGE · MATRIX</span>
           <span className="ckp-title">NORMAL PROCEDURES · COLD START (APU)</span>
         </header>
         {shown.map((s) => (
