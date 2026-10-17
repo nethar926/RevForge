@@ -32,6 +32,22 @@ test('mount CSS: the Look row wraps, keys keep 136 / 112 px but may shrink to a 
   assert.doesNotMatch(key + rule(sel), /(?:^|[\s;{])(?:background|border|border-[a-z-]+|color|font|font-[a-z-]+|box-shadow|text-shadow|letter-spacing|padding)\s*:/);
 });
 
+test('mount CSS, phone widths: label in the left padding (36px B612 / 29px Barlow + 4px gap), keys shrink to two per row, 44px floor', () => {
+  const css = nc(src('src/packs/mounts/carrier-jet-v2.css'));
+  const i = css.indexOf('@media (max-width: 480px) {');
+  assert.ok(i >= 0, 'phone-width query');
+  const q = css.slice(i, css.indexOf('\n}\n', i));
+  const L = ".cj:is([data-layout='reflow'], [data-layout='full'])";
+  assert.ok(q.includes(`.cjm[data-cjm-v2] ${L} .cj-tabs { --cjm-look-cap: 29px; position: relative; padding-left: calc(var(--cjm-look-cap) + 4px); }`));
+  assert.ok(q.includes(".cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-tabs { --cjm-look-cap: 36px; }"));
+  assert.ok(q.includes(`.cjm[data-cjm-v2] ${L} .cj-tabs > .cj-tabs-cap { position: absolute; left: 0; top: 0; height: 44px; display: flex; align-items: center; }`));
+  assert.ok(q.includes(`.cjm[data-cjm-v2] ${L} .cj-tabs > .cj-tab { flex-basis: min(136px, calc(50% - 2.5px)); }`));
+  assert.ok(q.includes(`.cjm[data-cjm-v2][data-rf-layout='window'] ${L} .cj-tabs > .cj-tab { flex-basis: min(112px, calc(50% - 2.5px)); }`));
+  assert.doesNotMatch(q, /(?:^|[\s;{])(?:background|border|border-[a-z-]+|color|font|font-[a-z-]+|box-shadow|text-shadow|letter-spacing)\s*:/, 'layout only');
+  // the 44px key floor (min-width / height) still comes from the base rule, outside the query
+  assert.doesNotMatch(q, /min-width|height: (?!44px)/);
+});
+
 test('skin untouched: VariantTabs keeps the radiogroup / radio roles, aria-checked and roving tabindex', () => {
   const vt = src('src/skins/carrier-jet/VariantTabs.tsx');
   assert.match(vt, /role="radiogroup" aria-label="Look"/);
@@ -78,16 +94,43 @@ test('live geometry: every Look key inside the viewport, >= 44 px, text >= 11 px
   }
 });
 
-test('wrap, not squash: 390 portrait puts HOLO on a second line at full width; 773 / 1280 / 844 landscape stay one row as before', () => {
+test('wrap, not squash: keys keep 136 / 112 px (320 portrait may shrink to fit two per row); 773 / 1280 / 844 one row as before', () => {
   for (const r of fx.rows) {
     const at = `${r.sz} ${r.pointer} ${r.look}`;
     const ys = new Set(r.tabs.map((t) => t.rect.y));
-    for (const t of r.tabs) assert.equal(t.rect.w, r.layout === 'window' ? 112 : 136, `${at} ${t.label}: key keeps its width`);
+    const full = r.layout === 'window' ? 112 : 136;
+    for (const t of r.tabs) {
+      if (r.sz === '320x568' && r.layout === 'portrait') assert.ok(t.rect.w >= 128 && t.rect.w <= 136, `${at} ${t.label}: ${t.rect.w}`);
+      else assert.equal(t.rect.w, full, `${at} ${t.label}: key keeps its width`);
+    }
     if (['773x601', '1280x800', '844x390'].includes(r.sz)) assert.equal(ys.size, 1, `${at}: one row`);
-    if (r.sz === '390x844' && r.pointer === 'touch') {
+    if (['320x568', '390x844'].includes(r.sz) || (r.sz === '430x932' && r.pointer === 'touch')) {
       const [m, v, h] = r.tabs;
-      assert.equal(m.rect.y, v.rect.y, at);
+      assert.equal(m.rect.y, v.rect.y, `${at}: MATRIX + VECTOR share row 1`);
       assert.ok(h.rect.y >= m.rect.b, `${at}: HOLO wraps below`);
+      assert.equal(ys.size, 2, `${at}: two rows, never three`);
     }
   }
+});
+
+test('wrapped rows line up with MATRIX (±1px), nothing under the LOOK label; label centred on row 1', () => {
+  let wrapped = 0;
+  for (const r of fx.rows) {
+    const at = `${r.sz} ${r.pointer} ${r.look}`;
+    const k0 = r.tabs[0].rect;
+    const ys = [...new Set(r.tabs.map((t) => t.rect.y))].sort((a, b) => a - b);
+    assert.equal(ys[0], k0.y, `${at}: MATRIX opens row 1`);
+    for (const y of ys.slice(1)) {
+      wrapped++;
+      const first = r.tabs.filter((t) => t.rect.y === y).sort((a, b) => a.rect.x - b.rect.x)[0];
+      assert.ok(Math.abs(first.rect.x - k0.x) <= 1, `${at}: ${first.label} x ${first.rect.x} vs MATRIX ${k0.x}`);
+    }
+    assert.ok(r.cap, at);
+    const c = r.cap!.rect;
+    const inline = c.y >= k0.y - 0.5 && c.b <= k0.b + 0.5 && c.r <= k0.x + 0.5;
+    assert.ok(inline, `${at}: label inline with row 1 (${JSON.stringify(c)})`);
+    assert.ok(Math.abs((c.y + c.b) / 2 - (k0.y + k0.b) / 2) <= 1, `${at}: label centred on row 1`);
+    for (const t of r.tabs) assert.ok(t.rect.x >= c.r - 0.5, `${at}: ${t.label} x ${t.rect.x} sits under the label (right ${c.r})`);
+  }
+  assert.equal(wrapped, 15, 'the 15 wrap cases: 320 / 390 touch + mouse, 430 touch, x 3 Looks');
 });
