@@ -420,19 +420,24 @@ export const TC_LAUNCH_DROP_S = 2.0;
 /** Look-back window for the speed slope; ~1 s matches the car's ~1 Hz GPS fixes. */
 export const TC_LAUNCH_WINDOW_S = 1.0;
 /** No speed change for this long reads as steady (0 slope). Longer than the slowest GPS gap. */
-export const TC_LAUNCH_STALE_S = 1.6;
+export const TC_LAUNCH_STALE_S = 2.4;
+/** Longest gap between changes still learned as the GPS fix period (Tesla pairs callbacks, so a
+ *  new fix can come only every ~1.4–1.8 s). */
+export const TC_LAUNCH_PERIOD_MAX_S = 2.2;
+/** Most speed a real car gains in one slow fix gap (≈30 mph/s × 2.2 s); a bigger first jump is suspect. */
+export const TC_LAUNCH_JUMP_MPH = 66;
 /** Faster than any car (≈2 g): a GPS reacquire / glitch, not a launch. Hold off a moment. */
 export const TC_LAUNCH_MAX_MPHS = 45;
 export const TC_LAUNCH_GLITCH_HOLDOFF_S = 3.0;
 
 export function createLaunchDetector() {
-  return { t: 0, hist: [], period: 0.9, base: [0, 0], holdBase: null, on: false, holdFrom: -1, dropFrom: -1, accel: 0, holdoffUntil: -1, rawAt: -1 };
+  return { t: 0, hist: [], period: 0.9, base: [0, 0], holdBase: null, on: false, holdFrom: -1, dropFrom: -1, accel: 0, holdoffUntil: -1, rawAt: -1, learned: false, assumed: false };
 }
 
 /** Clear the detector (disarm, disable, pack change). */
 export function resetLaunchDetector(det) {
   det.t = 0; det.hist.length = 0; det.period = 0.9; det.base = [0, 0]; det.holdBase = null; det.on = false; det.holdFrom = -1; det.dropFrom = -1;
-  det.accel = 0; det.holdoffUntil = -1; det.rawAt = -1;
+  det.accel = 0; det.holdoffUntil = -1; det.rawAt = -1; det.learned = false; det.assumed = false;
 }
 
 /**
@@ -444,7 +449,7 @@ export function resetLaunchDetector(det) {
  * since the previous fix (raw ~1 Hz fixes, fix period tracked) or over a ~1 s window (eased speed).
  * It is held until the next change, so frames between fixes never read as a dip. A launch needs
  * two fixes (TC_LAUNCH_HOLD_S apart), so a single jump can't fire it; no change for
- * TC_LAUNCH_STALE_S reads as steady speed. Before a real fix gap is seen, it assumes 0.9 s (car GPS runs 1.1–1.4 Hz).
+ * TC_LAUNCH_STALE_S reads as steady speed. It learns the real fix gap (up to TC_LAUNCH_PERIOD_MAX_S, the first one taken as is) and assumes 0.9 s until it has one; a hold started on that guess is re-based once the next fix teaches the period.
  */
 export function stepLaunchDetector(det, speedNorm, nowS) {
   const t = num(nowS, det.t);
@@ -462,14 +467,26 @@ export function stepLaunchDetector(det, speedNorm, nowS) {
       // apart): the same fix, revised. Replace the fix's value, keep its time and span.
       last[1] = mph;
       det.accel = (mph - det.base[1]) / Math.max(1e-3, last[0] - det.base[0]);
+      det.glitchAccel = det.assumed && !det.learned ? (mph - det.base[1]) / TC_LAUNCH_PERIOD_MAX_S : det.accel;
+      if (det.holdBase && det.holdFrom === last[0]) det.holdBase[1] = det.base[1];
       det.rawAt = -1;
     } else if (last && gap >= 0.3) {
       // a raw GPS fix (held between updates): slope since the previous fix. A value held longer
       // than the usual fix period (car was steady) only counts from one period back, so the first
       // hard fix after a steady stretch reads its true slope.
-      if (gap <= TC_LAUNCH_STALE_S) det.period = 0.7 * det.period + 0.3 * gap;
-      const span = gap > det.period * 1.15 ? det.period : gap;
+      // learn the real fix period (first real gap taken as is, then smoothed)
+      const real = gap <= TC_LAUNCH_PERIOD_MAX_S;
+      if (real) {
+        det.period = det.learned ? 0.6 * det.period + 0.4 * gap : gap;
+        det.learned = true;
+      }
+      const assumed = !real && gap > det.period * 1.15;
+      const span = assumed ? det.period : gap;
+      det.assumed = assumed;
       det.accel = (mph - last[1]) / span;
+      // glitch check on an unknown period uses the slowest plausible gap (never mistake a hard
+      // launch read over a guessed short span for a GPS jump)
+      det.glitchAccel = assumed && !det.learned ? (mph - last[1]) / TC_LAUNCH_PERIOD_MAX_S : det.accel;
       det.base = [t - span, last[1]];
       det.hist.length = 0;
       det.hist.push([t - span, last[1]], [t, mph]);
@@ -487,25 +504,32 @@ export function stepLaunchDetector(det, speedNorm, nowS) {
       const span = t - t0;
       det.accel = span >= W * 0.5 ? (mph - vBack) / Math.min(span, W) : 0;
       det.base = [t - Math.min(span, W), vBack];
+      det.assumed = false;
+      det.glitchAccel = det.accel;
     }
   } else if (t - last[0] > TC_LAUNCH_STALE_S) {
     det.accel = 0; // steady speed (or GPS stopped updating)
   }
   // steeper than any car (GPS reacquire / glitch, raw or eased): stay out until the holdoff ends
-  if (det.accel > TC_LAUNCH_MAX_MPHS) det.holdoffUntil = Math.max(det.holdoffUntil, t + TC_LAUNCH_GLITCH_HOLDOFF_S);
+  if (changed && num(det.glitchAccel, det.accel) > TC_LAUNCH_MAX_MPHS) det.holdoffUntil = Math.max(det.holdoffUntil, t + TC_LAUNCH_GLITCH_HOLDOFF_S);
   const held = t < det.holdoffUntil;
   if (!det.on) {
     // start on any change at ≥ KEEP; confirm on a later change (≥ HOLD later, ≈ the next fix) when
     // the slope across the whole hold (two fixes, so GPS noise averages out) is ≥ ON
+    // a hold started on a guessed span is re-based once the confirming fix has taught the period
+    if (changed && det.holdBase && det.holdBase[2] && det.learned) det.holdBase[0] = det.holdFrom - det.period;
     const overall = det.holdBase ? (mph - det.holdBase[1]) / Math.max(1e-3, t - det.holdBase[0]) : 0;
+    // a first jump bigger than any car covers in one slow fix gap (after a long hold) may be a GPS
+    // reacquire: then the confirming fix must still be accelerating
+    const suspect = !!det.holdBase && det.holdBase[2] && det.holdBase[3] > TC_LAUNCH_JUMP_MPH;
     if (held || (det.holdFrom >= 0 ? changed && overall < TC_LAUNCH_OFF_MPHS : det.accel < TC_LAUNCH_KEEP_MPHS)) {
       det.holdFrom = -1;
       det.holdBase = null;
     }
     if (changed && !held && det.holdFrom < 0 && det.accel >= TC_LAUNCH_KEEP_MPHS) {
       det.holdFrom = t;
-      det.holdBase = det.base.slice();
-    } else if (changed && det.holdFrom >= 0 && t - det.holdFrom >= TC_LAUNCH_HOLD_S && overall >= TC_LAUNCH_ON_MPHS) {
+      det.holdBase = [det.base[0], det.base[1], det.assumed, mph - det.base[1]];
+    } else if (changed && det.holdFrom >= 0 && t - det.holdFrom >= TC_LAUNCH_HOLD_S && overall >= TC_LAUNCH_ON_MPHS && (!suspect || det.accel >= TC_LAUNCH_OFF_MPHS)) {
       det.on = true;
       det.dropFrom = -1;
     }

@@ -132,6 +132,8 @@ export const TC_LAUNCH_HOLD_S: number;
 export const TC_LAUNCH_DROP_S: number;
 export const TC_LAUNCH_WINDOW_S: number;
 export const TC_LAUNCH_STALE_S: number;
+export const TC_LAUNCH_PERIOD_MAX_S: number;
+export const TC_LAUNCH_JUMP_MPH: number;
 export const TC_LAUNCH_MAX_MPHS: number;
 export const TC_LAUNCH_GLITCH_HOLDOFF_S: number;
 export interface LaunchDetector { t: number; hist: [number, number][]; period: number; base: [number, number]; holdBase: [number, number] | null; on: boolean; holdFrom: number; dropFrom: number; accel: number; holdoffUntil: number; }
