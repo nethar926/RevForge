@@ -309,4 +309,6 @@ export interface CjBezelKeyProps {
   onPress?: () => void;
   /** VoiceOver name (default = legend). */
   ariaLabel?: string;
+  /** Toggle that is off: legend in the unlit engraving grey (cjp-unlit) instead of phosphor green. */
+  unlit?: boolean;
 }

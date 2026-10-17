@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { useSvgPrefix } from './art';
+import { UNLIT_CLASS, useSvgPrefix } from './art';
 import { BEZEL_KEY_MIN } from './tokens';
 import type { CjBezelKeyProps } from '../types';
 import './parts.css';
@@ -10,9 +10,9 @@ const KEY = 44;
 /**
  * MFD edge key frame: the legend is printed on the CRT edge slot above a blank machined key (MFD style).
  * With a legend: live `<button>` (whole frame is the target, key 44×44); `active` boxes the legend.
- * No legend: inert: darker cap, `disabled`, `aria-hidden`, no handler.
+ * No legend: inert: darker cap, `disabled`, `aria-hidden`, no handler. `unlit` (a toggle that is off): grey legend.
  */
-export function BezelKey({ legend, active, onPress, ariaLabel }: CjBezelKeyProps) {
+export function BezelKey({ legend, active, onPress, ariaLabel, unlit }: CjBezelKeyProps) {
   const p = useSvgPrefix('k');
   const W = BEZEL_KEY_MIN.w, H = BEZEL_KEY_MIN.h, kx = (W - KEY) / 2, ky = H - KEY;
   const inert = !legend;
@@ -28,7 +28,7 @@ export function BezelKey({ legend, active, onPress, ariaLabel }: CjBezelKeyProps
       {legend ? (
         <>
           {active ? <rect x={3} y={2.5} width={W - 6} height={SLOT_H - 5} fill="none" stroke="#7ef7a1" strokeWidth={1.5} /> : null}
-          <text x={W / 2} y={13} textAnchor="middle" fontSize={11} fontWeight={700} letterSpacing=".02em" fontFamily="'B612', system-ui, sans-serif" fill="#8dffad" data-text-floor={11} {...(legend.length * 7.4 > W - 8 ? { textLength: W - 8, lengthAdjust: 'spacingAndGlyphs' as const } : {})}>{legend}</text>
+          <text x={W / 2} y={13} textAnchor="middle" fontSize={11} fontWeight={700} letterSpacing=".02em" fontFamily="'B612', system-ui, sans-serif" fill={unlit ? '#ccd2d6' : '#8dffad'} className={unlit ? UNLIT_CLASS : undefined} data-text-floor={11} {...(legend.length * 7.4 > W - 8 ? { textLength: W - 8, lengthAdjust: 'spacingAndGlyphs' as const } : {})}>{legend}</text>
         </>
       ) : null}
       {/* blank machined cap: bevel TL highlight, BR shade, small down-right cast shadow, concave centre */}
@@ -47,6 +47,6 @@ export function BezelKey({ legend, active, onPress, ariaLabel }: CjBezelKeyProps
     );
   }
   return (
-    <button type="button" className="cjp cjp-bezel" data-active={active} aria-label={ariaLabel ?? legend} aria-pressed={active} style={style} onClick={onPress}>{art}</button>
+    <button type="button" className="cjp cjp-bezel" data-active={active} data-unlit={unlit || undefined} aria-label={ariaLabel ?? legend} aria-pressed={active} style={style} onClick={onPress}>{art}</button>
   );
 }

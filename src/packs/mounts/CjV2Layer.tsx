@@ -7,17 +7,18 @@ import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompass } from '../heading';
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
-import { board2Cells, board2CellsMapFirst, keyCount, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
+import { board2Cells, board2CellsMapFirst, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
 import { applyMapKey, getMapView, radarCue, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
 import { getCjPrefs, reducedMotion, setCjPrefs, subscribeCjPrefs, type CjPrefs } from '../carrier-jet/cjPrefs';
 import { closeCjConfig, getCjConfig, registerCjConfigHost, setCjConfig, subscribeCjConfig } from '../carrier-jet/configStore';
 import { CELL_ORDER, TILE_SLOTS } from '../carrier-jet/configCells';
-import { cellKeys, KEY_CELLS, RIGHT_BANK, SPARE_INDEX, type EdgeKey } from '../carrier-jet/edgeKeys';
+import { cellKeys, KEY_CELLS, RIGHT_BANK, SPARE_INDEX, stripCount, wxSlot, type EdgeKey } from '../carrier-jet/edgeKeys';
 import { cjNavAction, cjNavItems } from '../carrier-jet.nav';
 import { disabledReason, itemAria, itemValue, MAP_CREDIT, pageTiles, runItem, visibleItems, type ConfigCtx, type ConfigEffect, type ConfigItem } from '../configTable';
 import { CJ_CONFIG } from '../carrier-jet/configPages';
 import { wxMockFromQuery, wxView, type WxView } from '../carrier-jet/wxMock';
 import { CjWxReadout } from './CjWxReadout';
+import { getWxRadar, setWxRadar, subscribeWxRadar, WX_RADAR_CREDIT } from '../carrier-jet/wxRadar';
 // live map + compass legend: a lazy chunk (CjLiveMap.tsx, Meghan's style + WMM2025); maplibre-gl is a further lazy chunk
 const CjLiveMap = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjLiveMap })));
 const CjHeadingReadout = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjHeadingReadout })));
@@ -166,7 +167,7 @@ function AccelCell({ box, demo, reduced }: { box: Box; demo: boolean; reduced: b
 
 /* ------------------------------------------------------------------ MAP / RADAR */
 type LiveMapCtx = { demo: boolean; park: boolean; hdgRef: 'M' | 'T' };
-function MapCell({ box, view, heading, headingStale, reduced, live, wx }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx; wx?: WxView | null }) {
+function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx; wx?: WxView | null; wxRadar?: boolean }) {
   const [info, setInfo] = useState(false);
   const hdg = heading == null ? '---' : String(Math.round(heading) % 360).padStart(3, '0');
   return (
@@ -199,14 +200,16 @@ function MapCell({ box, view, heading, headingStale, reduced, live, wx }: { box:
           </div>
         ) : null}
         {/* live map (lazy MapLibre, CjLiveMap.tsx); kept mounted under RADAR so it pauses, then is removed after 30 s */}
-        <Suspense fallback={null}><CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} hidden={view.radar} /></Suspense>
+        <Suspense fallback={null}><CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} hidden={view.radar} wxRadar={!!wxRadar} /></Suspense>
         <button type="button" className="cjv2-info" aria-expanded={info} aria-label="Map credit" onClick={() => setInfo((v) => !v)}>i</button>
         {info && (
-          <p className="cjv2-attr" role="note" data-wx={wx ? true : undefined}>
+          <p className="cjv2-attr" role="note" data-wx={wxRadar ? 'radar' : wx ? true : undefined}>
             {MAP_CREDIT}
             {/* MOCK weather credit slot: the source of the value on screen (Open-Meteo: required; NWS: courtesy). Plain text,
                 not a link: a link here would be a sub-44px target in the car (URL kept in wxMock.WX_CREDIT_URL). */}
             {wx && <span className="cjv2-wxcredit">{wx.credit}</span>}
+            {/* MOCK WX radar (RainViewer asks to be named as the source; plain text for the same 44px reason) */}
+            {wxRadar && <span className="cjv2-wxcredit" data-radar-credit>{WX_RADAR_CREDIT}</span>}
           </p>
         )}
       </div>
@@ -263,6 +266,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, u
   const selfRef = useRef<HTMLDivElement>(null);
   const geo = useGeo(selfRef, layout);
   const view = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
+  const wxRadar = useSyncExternalStore(subscribeWxRadar, getWxRadar, getWxRadar);
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const cfg = useSyncExternalStore(subscribeCjConfig, getCjConfig, getCjConfig);
   const shell = useSyncExternalStore(onPackShellState, getPackShellState, getPackShellState);
@@ -370,6 +374,10 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, u
         if (cfg.open) return closeCjConfig();
         return setSay('Drive: board showing');
       case 'more': cue('bezelPress'); return setMoreOpen((o) => !o);
+      case 'wx':
+        cue('bezelPress');
+        setWxRadar(!wxRadar);
+        return setSay(view.radar && !wxRadar ? 'WX radar on: shows on the MAP page' : `WX radar ${wxRadar ? 'off' : 'on'}`);
       case 'config': cue('pageChange'); setMoreOpen(false); return setCjConfig({ open: true, page: 'home', sub: 0 });
       case 'rtn': return apply({ type: 'rtn' });
       case 'prev': cue('cursorStep'); return setCjConfig({ sub: cfg.sub - 1 });
@@ -406,16 +414,16 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, u
     return t === 'next' ? { label: 'next tiles' } : { label: t.label, reason: disabledReason(t, ctx) };
   };
   const edge = geo.board2 && cells && !phone;
-  // MOCK weather: Board 2 only (MATRIX look), in the SPEED cell's bottom-right corner
+  // MOCK weather: Board 2 only (MATRIX look), in the COMPASS cell's top-left corner
   const wx = MOCK_WX && geo.board2 && !phone ? wxView(MOCK_WX.value, unit) : null;
   return (
     <div ref={selfRef} className="cjv2" data-config={cfg.open || undefined} data-motion={reduced ? 'static' : 'live'}>
       {cells && (
         <>
           <AccelCell box={cells.accel} demo={demo} reduced={reduced} />
-          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} wx={wx} />
-          {wx && <CjWxReadout box={cells.speed} view={wx} />}
+          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} wx={wx} wxRadar={edge ? wxRadar : false} />
           <div className="cjv2-hdgcell" style={boxStyle(cells.compass)}><Suspense fallback={null}><CjHeadingReadout heading={heading} headingStale={headingStale} hdgRef={prefs.hdgRef} /></Suspense></div>
+          {wx && <CjWxReadout box={cells.compass} view={wx} />}
         </>
       )}
       {cfg.open && (
@@ -430,15 +438,16 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, u
         KEY_CELLS.filter((c) => !(layout === 'window' && ((geo.mapFirst ? TOP_CELLS_MAP_FIRST : TOP_CELLS).includes(c) && c !== 'speed' || c === 'eng'))).map((cell) => {
           // drive window: SPEED's keys sit in the ENG strip (no top key row; see carrier-jet-v2.css)
           const b = layout === 'window' && cell === 'speed' ? cells.eng : cells[cell];
-          const n = keyCount(b.width);
-          const keys = cellKeys(cell, n, { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(CELL_ORDER.map((c) => [c, tileFor(c)])), subs: paged.subs } : null });
+          const kctx = { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(CELL_ORDER.map((c) => [c, tileFor(c)])), subs: paged.subs } : null, wx: { on: wxRadar, slot: wxSlot(cells.map.width, view) } };
+          const n = stripCount(cell, b.width, kctx);
+          const keys = cellKeys(cell, n, kctx);
           const xs = keyXs(b, n);
           const top = b.top + b.height + geo.gap;
           return (
             <div key={cell} className="cjv2-keys" data-cell={cell} role="group" aria-label={`${cell} keys`}>
               {keys.map((k, i) => (
                 <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k?.id} data-reason={k?.reason ? true : cell === RIGHT_BANK && i >= SPARE_INDEX && !k ? 'spare' : undefined}>
-                  <BezelKey legend={k?.legend} active={!!k?.active} ariaLabel={k?.ariaLabel} onPress={k ? () => onKey(cell, k) : undefined} />
+                  <BezelKey legend={k?.legend} active={!!k?.active} unlit={k?.unlit} ariaLabel={k?.ariaLabel} onPress={k ? () => onKey(cell, k) : undefined} />
                 </div>
               ))}
             </div>
