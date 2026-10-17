@@ -53,7 +53,14 @@ export function useAudioEngine(
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext;
-      ctxRef.current = new AC();
+      // Larger output buffer: the in-car browser starves the audio thread under heavy UI (map,
+      // radar canvas), which is heard as pops. 'playback' trades ~40-80 ms latency for glitch-free
+      // output; older engines that reject the options bag fall back to the default.
+      try {
+        ctxRef.current = new AC({ latencyHint: "playback" });
+      } catch {
+        ctxRef.current = new AC();
+      }
       try{mediaRef.current=new MediaOutput(ctxRef.current);}catch{setBackgroundStatus("Media streams unavailable · direct audio active");}
       ctxRef.current.onstatechange = () =>
         setRunning(
