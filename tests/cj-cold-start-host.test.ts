@@ -263,3 +263,41 @@ test('START MODE pref (v3: one source of truth = cjPrefs; RADAR = mapView): APU 
   assert.equal(parseMapView(JSON.stringify({ radar: true })).radar, true);
   resetCjPrefsCache();
 });
+
+test('every step number 1..N shows on some control, off steps too (APU 6·7·14, X-BLEED 9·14, GND AIR 4·15); off steps get the next cue', () => {
+  for (const mode of ['apu', 'gndAir'] as const) {
+    const v = csView(input(mode));
+    const shown: string[] = [
+      // the shelf draws these through the start block (skin CJ_SHELF_BLOCK_IDS), not as plain switches
+      ...Object.entries(v.switches).filter(([id]) => !(mode === 'apu' ? ['apu'] : ['aircart', 'crossbleed']).includes(id)).map(([, s]) => s.step),
+      v.apu.step,
+      ...Object.values(v.gndAir.steps),
+    ].filter((s) => s != null).flatMap((s) => String(s).split('·'));
+    const nums = shown.map(Number).sort((a, b) => a - b);
+    assert.deepEqual(nums, v.seq.map((_, i) => i + 1), `${mode}: each step exactly once`);
+  }
+  assert.equal(csView(input('apu')).apu.step, '6·7·14');
+  const g = csView(input('gndAir'));
+  assert.equal(g.gndAir.steps.crossbleed, '9·14');
+  assert.equal(g.gndAir.steps.aircart, '4·15');
+  assert.equal(g.switches.masterCaution?.step, '22');
+  assert.equal(csView(input('apu')).switches.masterCaution?.step, '21');
+  // off step current: the cue lights the block
+  const at = (mode: CsMode, key: string) => {
+    const seq = csSequence(getJetSystemList(csVariant(mode)), mode);
+    const i = seq.findIndex((s) => s.key === key);
+    const on: Record<string, boolean> = {};
+    for (const s of seq.slice(0, i)) if (s.act !== 'arm' && s.act !== 'press') on[s.id] = s.on;
+    return csView(input(mode, { on, apuReady: true, cartReady: true, engines: { L: 'run', R: 'run' } }, { guards: { apuGuard: true, engL: true, engR: true }, wired: { throttleL: true, throttleR: true } }));
+  };
+  const a14 = at('apu', 'apu:off');
+  assert.equal(a14.next?.key, 'apu:off');
+  assert.equal(a14.apu.cue, 'next');
+  const x14 = at('gndAir', 'crossbleed:off');
+  assert.equal(x14.next?.key, 'crossbleed:off');
+  assert.equal(x14.gndAir.cues.crossbleed, 'next');
+  const c15 = at('gndAir', 'aircart:off');
+  assert.equal(c15.next?.key, 'aircart:off');
+  assert.equal(c15.gndAir.cues.aircart, 'next');
+  assert.equal(c15.gndAir.cues.crossbleed, undefined);
+});
