@@ -1,0 +1,11094 @@
+{
+"built": "789ed99+worktree (tucked tag)",
+"note": "recorded by /workspace/frontend-handoff/cj-tucked-tag/gate.mjs against the VITE_PREVIEW_PACK=carrier-jet build",
+"rows": [
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 1,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1a \u00b7 1/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 a, 1 of 21: BATT Switch, ON",
+"n": 258,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+],
+"narrow": {
+"full": {
+"sw": 159,
+"cw": 120,
+"text": "MATRIX PILOT CHECKLIST"
+},
+"short": {
+"sw": 120,
+"cw": 120,
+"text": "PILOT CHECKLIST",
+"cardSw": 136,
+"cardCw": 136
+}
+}
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 2,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1b \u00b7 2/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 b, 2 of 21: AVIONICS Switch, ON",
+"n": 260,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 3,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1c \u00b7 3/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 c, 3 of 21: INS Switch, ON",
+"n": 262,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 4,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 2a \u00b7 4/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 a, 4 of 21: L FUEL PUMP, ON",
+"n": 264,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 5,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 2b \u00b7 5/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 b, 5 of 21: R FUEL PUMP, ON",
+"n": 266,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 6,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3a \u00b7 6/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 a, 6 of 21: APU Cover, LIFT",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 7,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3b \u00b7 7/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 b, 7 of 21: APU Switch, HOLD TO RUN",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 8,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 4a \u00b7 8/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 a, 8 of 21: L IGNITION, ON",
+"n": 272,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 9,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 4b \u00b7 9/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 b, 9 of 21: L ENGINE START, HOLD TO RUN",
+"n": 274,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 10,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 4c \u00b7 10/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 c, 10 of 21: L THROTTLE, IDLE",
+"n": 276,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 11,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5a \u00b7 11/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 a, 11 of 21: R IGNITION, ON",
+"n": 278,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 12,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5b \u00b7 12/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 b, 12 of 21: R ENGINE START, HOLD TO RUN",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 13,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5c \u00b7 13/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 c, 13 of 21: R THROTTLE, IDLE",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 14,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 6a \u00b7 14/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 a, 14 of 21: APU Switch, OFF",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 15,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7a \u00b7 15/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 a, 15 of 21: SEAT BELT Sign, ON",
+"n": 278,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 16,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7b \u00b7 16/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 16 of 21: HYDRAULICS, ON",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 17,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7c \u00b7 17/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 17 of 21: CANOPY, CLOSE",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "drive",
+"step": 17,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7c \u00b7 17/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 17 of 21: CANOPY, CLOSE",
+"n": 256,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 18,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7d \u00b7 18/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 d, 18 of 21: O2, ON",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 19,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8a \u00b7 19/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 a, 19 of 21: POSITION LIGHTS, ON",
+"n": 286,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 20,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8b \u00b7 20/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 b, 20 of 21: BEACON, ON",
+"n": 288,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": 21,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 9a \u00b7 21/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 9 a, 21 of 21: MASTER CAUTION, PRESS",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "park",
+"step": "done",
+"layout": "board",
+"open": "closed",
+"card": null
+},
+{
+"sz": "1256",
+"mode": "apu",
+"phase": "drive",
+"step": "live",
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 669.1,
+"y": 76.7,
+"r": 862.9,
+"b": 137.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "BOARD LIVE",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 63.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist",
+"n": 255,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 1,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1a \u00b7 1/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 a, 1 of 22: BATT Switch, ON",
+"n": 270,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+],
+"narrow": {
+"full": {
+"sw": 159,
+"cw": 120,
+"text": "MATRIX PILOT CHECKLIST"
+},
+"short": {
+"sw": 120,
+"cw": 120,
+"text": "PILOT CHECKLIST",
+"cardSw": 136,
+"cardCw": 136
+}
+}
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 2,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1b \u00b7 2/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 b, 2 of 22: AVIONICS Switch, ON",
+"n": 272,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 3,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1c \u00b7 3/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 c, 3 of 22: INS Switch, ON",
+"n": 274,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 4,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 2a \u00b7 4/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 a, 4 of 22: GND AIR Switch, ON",
+"n": 276,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 5,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3a \u00b7 5/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 a, 5 of 22: R FUEL PUMP, ON",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 6,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3b \u00b7 6/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 b, 6 of 22: R IGNITION, ON",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 7,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3c \u00b7 7/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 c, 7 of 22: R ENGINE START, HOLD TO RUN",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 8,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3d \u00b7 8/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 d, 8 of 22: R THROTTLE, IDLE",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 9,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 4a \u00b7 9/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 a, 9 of 22: X-BLEED Valve, ON",
+"n": 286,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 10,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5a \u00b7 10/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 a, 10 of 22: L FUEL PUMP, ON",
+"n": 288,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 11,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5b \u00b7 11/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 b, 11 of 22: L IGNITION, ON",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 12,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5c \u00b7 12/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 c, 12 of 22: L ENGINE START, HOLD TO RUN",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 13,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5d \u00b7 13/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 d, 13 of 22: L THROTTLE, IDLE",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 14,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 6a \u00b7 14/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 a, 14 of 22: X-BLEED Valve, CLOSE",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 15,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 6b \u00b7 15/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 b, 15 of 22: GND AIR Switch, OFF",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 16,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7a \u00b7 16/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 a, 16 of 22: SEAT BELT Sign, ON",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 17,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7b \u00b7 17/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 17 of 22: HYDRAULICS, ON",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "drive",
+"step": 17,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7b \u00b7 17/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 17 of 22: HYDRAULICS, ON",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 18,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7c \u00b7 18/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 18 of 22: CANOPY, CLOSE",
+"n": 294,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 19,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7d \u00b7 19/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 d, 19 of 22: O2, ON",
+"n": 296,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 20,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8a \u00b7 20/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 a, 20 of 22: POSITION LIGHTS, ON",
+"n": 298,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 21,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8b \u00b7 21/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 b, 21 of 22: BEACON, ON",
+"n": 300,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": 22,
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 9a \u00b7 22/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 9 a, 22 of 22: MASTER CAUTION, PRESS",
+"n": 302,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "park",
+"step": "done",
+"layout": "board",
+"open": "closed",
+"card": null
+},
+{
+"sz": "1256",
+"mode": "gndAir",
+"phase": "drive",
+"step": "live",
+"layout": "board",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 681.1,
+"y": 292.7,
+"r": 874.9,
+"b": 353.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "BOARD LIVE",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 63.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist",
+"n": 267,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 1,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 1a \u00b7 1/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 a, 1 of 21: BATT Switch, ON",
+"n": 258,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+],
+"narrow": {
+"full": {
+"sw": 159,
+"cw": 120,
+"text": "MATRIX PILOT CHECKLIST"
+},
+"short": {
+"sw": 120,
+"cw": 120,
+"text": "PILOT CHECKLIST",
+"cardSw": 136,
+"cardCw": 136
+}
+}
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 2,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 1b \u00b7 2/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 b, 2 of 21: AVIONICS Switch, ON",
+"n": 260,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 3,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 1c \u00b7 3/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 c, 3 of 21: INS Switch, ON",
+"n": 262,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 4,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 2a \u00b7 4/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 a, 4 of 21: L FUEL PUMP, ON",
+"n": 264,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 5,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 2b \u00b7 5/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 b, 5 of 21: R FUEL PUMP, ON",
+"n": 266,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 6,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 3a \u00b7 6/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 a, 6 of 21: APU Cover, LIFT",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 7,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 3b \u00b7 7/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 b, 7 of 21: APU Switch, HOLD TO RUN",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 8,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 4a \u00b7 8/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 a, 8 of 21: L IGNITION, ON",
+"n": 272,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 9,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 4b \u00b7 9/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 b, 9 of 21: L ENGINE START, HOLD TO RUN",
+"n": 274,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 10,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 4c \u00b7 10/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 c, 10 of 21: L THROTTLE, IDLE",
+"n": 276,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 11,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 5a \u00b7 11/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 a, 11 of 21: R IGNITION, ON",
+"n": 278,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 12,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 5b \u00b7 12/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 b, 12 of 21: R ENGINE START, HOLD TO RUN",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 13,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 5c \u00b7 13/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 c, 13 of 21: R THROTTLE, IDLE",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 14,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 6a \u00b7 14/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 a, 14 of 21: APU Switch, OFF",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 15,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7a \u00b7 15/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 a, 15 of 21: SEAT BELT Sign, ON",
+"n": 278,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 16,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7b \u00b7 16/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 16 of 21: HYDRAULICS, ON",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7c \u00b7 17/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 17 of 21: CANOPY, CLOSE",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "drive",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7c \u00b7 17/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 17 of 21: CANOPY, CLOSE",
+"n": 256,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 18,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7d \u00b7 18/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 d, 18 of 21: O2, ON",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 19,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 8a \u00b7 19/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 a, 19 of 21: POSITION LIGHTS, ON",
+"n": 286,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 20,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 8b \u00b7 20/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 b, 20 of 21: BEACON, ON",
+"n": 288,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": 21,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 9a \u00b7 21/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 9 a, 21 of 21: MASTER CAUTION, PRESS",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "park",
+"step": "done",
+"layout": "window",
+"open": "closed",
+"card": null
+},
+{
+"sz": "773",
+"mode": "apu",
+"phase": "drive",
+"step": "live",
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "BOARD LIVE",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 63.3
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist",
+"n": 255,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 1,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1a \u00b7 1/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 a, 1 of 22: BATT Switch, ON",
+"n": 270,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+],
+"narrow": {
+"full": {
+"sw": 159,
+"cw": 120,
+"text": "MATRIX PILOT CHECKLIST"
+},
+"short": {
+"sw": 120,
+"cw": 120,
+"text": "PILOT CHECKLIST",
+"cardSw": 136,
+"cardCw": 136
+}
+}
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 2,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1b \u00b7 2/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 b, 2 of 22: AVIONICS Switch, ON",
+"n": 272,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 3,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1c \u00b7 3/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 c, 3 of 22: INS Switch, ON",
+"n": 274,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 4,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 2a \u00b7 4/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 a, 4 of 22: GND AIR Switch, ON",
+"n": 276,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 5,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3a \u00b7 5/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 a, 5 of 22: R FUEL PUMP, ON",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 6,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3b \u00b7 6/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 b, 6 of 22: R IGNITION, ON",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 7,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3c \u00b7 7/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 c, 7 of 22: R ENGINE START, HOLD TO RUN",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 8,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3d \u00b7 8/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 d, 8 of 22: R THROTTLE, IDLE",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 9,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 4a \u00b7 9/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 a, 9 of 22: X-BLEED Valve, ON",
+"n": 286,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 10,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5a \u00b7 10/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 a, 10 of 22: L FUEL PUMP, ON",
+"n": 288,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 11,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5b \u00b7 11/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 b, 11 of 22: L IGNITION, ON",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 12,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5c \u00b7 12/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 c, 12 of 22: L ENGINE START, HOLD TO RUN",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 13,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5d \u00b7 13/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 d, 13 of 22: L THROTTLE, IDLE",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 14,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 6a \u00b7 14/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 a, 14 of 22: X-BLEED Valve, CLOSE",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 15,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 6b \u00b7 15/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 b, 15 of 22: GND AIR Switch, OFF",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 16,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7a \u00b7 16/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 a, 16 of 22: SEAT BELT Sign, ON",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7b \u00b7 17/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 17 of 22: HYDRAULICS, ON",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "drive",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7b \u00b7 17/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 17 of 22: HYDRAULICS, ON",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 18,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7c \u00b7 18/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 18 of 22: CANOPY, CLOSE",
+"n": 294,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 19,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7d \u00b7 19/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 d, 19 of 22: O2, ON",
+"n": 296,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 20,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8a \u00b7 20/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 a, 20 of 22: POSITION LIGHTS, ON",
+"n": 298,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 21,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8b \u00b7 21/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 b, 21 of 22: BEACON, ON",
+"n": 300,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": 22,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 9a \u00b7 22/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 9 a, 22 of 22: MASTER CAUTION, PRESS",
+"n": 302,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "park",
+"step": "done",
+"layout": "window",
+"open": "closed",
+"card": null
+},
+{
+"sz": "773",
+"mode": "gndAir",
+"phase": "drive",
+"step": "live",
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 501.1,
+"y": 248.7,
+"r": 694.9,
+"b": 309.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "BOARD LIVE",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 63.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist",
+"n": 267,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 1,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 1a \u00b7 1/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 a, 1 of 21: BATT Switch, ON",
+"n": 258,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+],
+"narrow": {
+"full": {
+"sw": 159,
+"cw": 120,
+"text": "MATRIX PILOT CHECKLIST"
+},
+"short": {
+"sw": 120,
+"cw": 120,
+"text": "PILOT CHECKLIST",
+"cardSw": 136,
+"cardCw": 136
+}
+}
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 2,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 1b \u00b7 2/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 b, 2 of 21: AVIONICS Switch, ON",
+"n": 260,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 3,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 1c \u00b7 3/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 c, 3 of 21: INS Switch, ON",
+"n": 262,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 4,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 2a \u00b7 4/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 a, 4 of 21: L FUEL PUMP, ON",
+"n": 264,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 5,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 2b \u00b7 5/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 b, 5 of 21: R FUEL PUMP, ON",
+"n": 266,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 6,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 3a \u00b7 6/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 a, 6 of 21: APU Cover, LIFT",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 7,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 3b \u00b7 7/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 b, 7 of 21: APU Switch, HOLD TO RUN",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 8,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 4a \u00b7 8/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 a, 8 of 21: L IGNITION, ON",
+"n": 272,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 9,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 4b \u00b7 9/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 b, 9 of 21: L ENGINE START, HOLD TO RUN",
+"n": 274,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 10,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 4c \u00b7 10/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 c, 10 of 21: L THROTTLE, IDLE",
+"n": 276,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 11,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 5a \u00b7 11/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 a, 11 of 21: R IGNITION, ON",
+"n": 278,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 12,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 5b \u00b7 12/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 b, 12 of 21: R ENGINE START, HOLD TO RUN",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 13,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 5c \u00b7 13/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 c, 13 of 21: R THROTTLE, IDLE",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 14,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 6a \u00b7 14/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 a, 14 of 21: APU Switch, OFF",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 15,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7a \u00b7 15/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 a, 15 of 21: SEAT BELT Sign, ON",
+"n": 278,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 16,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7b \u00b7 16/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 16 of 21: HYDRAULICS, ON",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7c \u00b7 17/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 17 of 21: CANOPY, CLOSE",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "drive",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7c \u00b7 17/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 17 of 21: CANOPY, CLOSE",
+"n": 256,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 18,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 7d \u00b7 18/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 d, 18 of 21: O2, ON",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 19,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 8a \u00b7 19/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 a, 19 of 21: POSITION LIGHTS, ON",
+"n": 286,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 20,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 8b \u00b7 20/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 b, 20 of 21: BEACON, ON",
+"n": 288,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": 21,
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "STEP 9a \u00b7 21/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.2
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 9 a, 21 of 21: MASTER CAUTION, PRESS",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "park",
+"step": "done",
+"layout": "window",
+"open": "closed",
+"card": null
+},
+{
+"sz": "844",
+"mode": "apu",
+"phase": "drive",
+"step": "live",
+"layout": "window",
+"open": "open",
+"bay": "head",
+"title": "full",
+"card": {
+"x": 538.3,
+"y": 81.3,
+"r": 731.2,
+"b": 138.7,
+"w": 192.9,
+"h": 57.3
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 158.9
+},
+{
+"t": "BOARD LIVE",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 63.3
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist",
+"n": 255,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 1,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1a \u00b7 1/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 a, 1 of 21: BATT Switch, ON",
+"n": 258,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+],
+"narrow": {
+"full": {
+"sw": 159,
+"cw": 120,
+"text": "MATRIX PILOT CHECKLIST"
+},
+"short": {
+"sw": 120,
+"cw": 120,
+"text": "PILOT CHECKLIST",
+"cardSw": 136,
+"cardCw": 136
+}
+}
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 2,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1b \u00b7 2/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 b, 2 of 21: AVIONICS Switch, ON",
+"n": 260,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 3,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1c \u00b7 3/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 c, 3 of 21: INS Switch, ON",
+"n": 262,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 4,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 2a \u00b7 4/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 a, 4 of 21: L FUEL PUMP, ON",
+"n": 264,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 5,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 2b \u00b7 5/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 b, 5 of 21: R FUEL PUMP, ON",
+"n": 266,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 6,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3a \u00b7 6/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 a, 6 of 21: APU Cover, LIFT",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 7,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3b \u00b7 7/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 b, 7 of 21: APU Switch, HOLD TO RUN",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 8,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 4a \u00b7 8/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 a, 8 of 21: L IGNITION, ON",
+"n": 272,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 9,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 4b \u00b7 9/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 b, 9 of 21: L ENGINE START, HOLD TO RUN",
+"n": 274,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 10,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 4c \u00b7 10/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 c, 10 of 21: L THROTTLE, IDLE",
+"n": 276,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 11,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5a \u00b7 11/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 a, 11 of 21: R IGNITION, ON",
+"n": 278,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 12,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5b \u00b7 12/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 b, 12 of 21: R ENGINE START, HOLD TO RUN",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 13,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5c \u00b7 13/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 c, 13 of 21: R THROTTLE, IDLE",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 14,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 6a \u00b7 14/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 a, 14 of 21: APU Switch, OFF",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 15,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7a \u00b7 15/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 a, 15 of 21: SEAT BELT Sign, ON",
+"n": 278,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 16,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7b \u00b7 16/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 16 of 21: HYDRAULICS, ON",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7c \u00b7 17/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 17 of 21: CANOPY, CLOSE",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "drive",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7c \u00b7 17/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 17 of 21: CANOPY, CLOSE",
+"n": 256,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 18,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7d \u00b7 18/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 d, 18 of 21: O2, ON",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 19,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8a \u00b7 19/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 a, 19 of 21: POSITION LIGHTS, ON",
+"n": 286,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 20,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8b \u00b7 20/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 b, 20 of 21: BEACON, ON",
+"n": 288,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": 21,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 9a \u00b7 21/21",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 9 a, 21 of 21: MASTER CAUTION, PRESS",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "park",
+"step": "done",
+"layout": "window",
+"open": "closed",
+"card": null
+},
+{
+"sz": "390",
+"mode": "apu",
+"phase": "drive",
+"step": "live",
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "BOARD LIVE",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 63.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist",
+"n": 255,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 1,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1a \u00b7 1/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 a, 1 of 22: BATT Switch, ON",
+"n": 270,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+],
+"narrow": {
+"full": {
+"sw": 159,
+"cw": 120,
+"text": "MATRIX PILOT CHECKLIST"
+},
+"short": {
+"sw": 120,
+"cw": 120,
+"text": "PILOT CHECKLIST",
+"cardSw": 136,
+"cardCw": 136
+}
+}
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 2,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1b \u00b7 2/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 b, 2 of 22: AVIONICS Switch, ON",
+"n": 272,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 3,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 1c \u00b7 3/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 c, 3 of 22: INS Switch, ON",
+"n": 274,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 4,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 2a \u00b7 4/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 a, 4 of 22: GND AIR Switch, ON",
+"n": 276,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 5,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3a \u00b7 5/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 a, 5 of 22: R FUEL PUMP, ON",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 6,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3b \u00b7 6/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 b, 6 of 22: R IGNITION, ON",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 7,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3c \u00b7 7/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 c, 7 of 22: R ENGINE START, HOLD TO RUN",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 8,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 3d \u00b7 8/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 d, 8 of 22: R THROTTLE, IDLE",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 9,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 4a \u00b7 9/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 a, 9 of 22: X-BLEED Valve, ON",
+"n": 286,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 10,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5a \u00b7 10/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 a, 10 of 22: L FUEL PUMP, ON",
+"n": 288,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 11,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5b \u00b7 11/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 b, 11 of 22: L IGNITION, ON",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 12,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5c \u00b7 12/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 c, 12 of 22: L ENGINE START, HOLD TO RUN",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 13,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 5d \u00b7 13/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 d, 13 of 22: L THROTTLE, IDLE",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 14,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 6a \u00b7 14/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 a, 14 of 22: X-BLEED Valve, CLOSE",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 15,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 6b \u00b7 15/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 b, 15 of 22: GND AIR Switch, OFF",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 16,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7a \u00b7 16/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 a, 16 of 22: SEAT BELT Sign, ON",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7b \u00b7 17/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 17 of 22: HYDRAULICS, ON",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "drive",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7b \u00b7 17/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 17 of 22: HYDRAULICS, ON",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 18,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7c \u00b7 18/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 18 of 22: CANOPY, CLOSE",
+"n": 294,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 19,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 7d \u00b7 19/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 d, 19 of 22: O2, ON",
+"n": 296,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 20,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8a \u00b7 20/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 a, 20 of 22: POSITION LIGHTS, ON",
+"n": 298,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 21,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 8b \u00b7 21/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 b, 21 of 22: BEACON, ON",
+"n": 300,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": 22,
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "STEP 9a \u00b7 22/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 9 a, 22 of 22: MASTER CAUTION, PRESS",
+"n": 302,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "park",
+"step": "done",
+"layout": "window",
+"open": "closed",
+"card": null
+},
+{
+"sz": "390",
+"mode": "gndAir",
+"phase": "drive",
+"step": "live",
+"layout": "window",
+"open": "open",
+"bay": "gap",
+"title": "full",
+"card": {
+"x": 13.1,
+"y": 104.7,
+"r": 206.9,
+"b": 165.3,
+"w": 193.8,
+"h": 60.7
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.1
+},
+{
+"t": "BOARD LIVE",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 63.5
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist",
+"n": 267,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 1,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 1a \u00b7 1/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 a, 1 of 22: BATT Switch, ON",
+"n": 270,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+],
+"narrow": {
+"full": {
+"sw": 159,
+"cw": 120,
+"text": "MATRIX PILOT CHECKLIST"
+},
+"short": {
+"sw": 120,
+"cw": 120,
+"text": "PILOT CHECKLIST",
+"cardSw": 136,
+"cardCw": 136
+}
+}
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 2,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 1b \u00b7 2/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 b, 2 of 22: AVIONICS Switch, ON",
+"n": 272,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 3,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 1c \u00b7 3/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 1 c, 3 of 22: INS Switch, ON",
+"n": 274,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 4,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 2a \u00b7 4/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 2 a, 4 of 22: GND AIR Switch, ON",
+"n": 276,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 5,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 3a \u00b7 5/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 a, 5 of 22: R FUEL PUMP, ON",
+"n": 280,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 6,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 3b \u00b7 6/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 b, 6 of 22: R IGNITION, ON",
+"n": 282,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 7,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 3c \u00b7 7/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 c, 7 of 22: R ENGINE START, HOLD TO RUN",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 8,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 3d \u00b7 8/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 83.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 3 d, 8 of 22: R THROTTLE, IDLE",
+"n": 284,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 9,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 4a \u00b7 9/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 82.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 4 a, 9 of 22: X-BLEED Valve, ON",
+"n": 286,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 10,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 5a \u00b7 10/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 a, 10 of 22: L FUEL PUMP, ON",
+"n": 288,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 11,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 5b \u00b7 11/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 b, 11 of 22: L IGNITION, ON",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 12,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 5c \u00b7 12/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 c, 12 of 22: L ENGINE START, HOLD TO RUN",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 13,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 5d \u00b7 13/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 5 d, 13 of 22: L THROTTLE, IDLE",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 14,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 6a \u00b7 14/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 a, 14 of 22: X-BLEED Valve, CLOSE",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 15,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 6b \u00b7 15/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 6 b, 15 of 22: GND AIR Switch, OFF",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 16,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 7a \u00b7 16/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 a, 16 of 22: SEAT BELT Sign, ON",
+"n": 290,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 7b \u00b7 17/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 17 of 22: HYDRAULICS, ON",
+"n": 292,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "drive",
+"step": 17,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 7b \u00b7 17/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 b, 17 of 22: HYDRAULICS, ON",
+"n": 268,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 18,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 7c \u00b7 18/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 c, 18 of 22: CANOPY, CLOSE",
+"n": 294,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 19,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 7d \u00b7 19/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 7 d, 19 of 22: O2, ON",
+"n": 296,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 20,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 8a \u00b7 20/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 a, 20 of 22: POSITION LIGHTS, ON",
+"n": 298,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 21,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 8b \u00b7 21/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 90.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 8 b, 21 of 22: BEACON, ON",
+"n": 300,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": 22,
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "STEP 9a \u00b7 22/22",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 89.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist, step 9 a, 22 of 22: MASTER CAUTION, PRESS",
+"n": 302,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "park",
+"step": "done",
+"layout": "window",
+"open": "closed",
+"card": null
+},
+{
+"sz": "844",
+"mode": "gndAir",
+"phase": "drive",
+"step": "live",
+"layout": "window",
+"open": "open",
+"bay": "top",
+"title": "full",
+"card": {
+"x": 126.7,
+"y": -1.0,
+"r": 321.3,
+"b": 63.0,
+"w": 194.6,
+"h": 64.0
+},
+"overlaps": [],
+"mcBlocked": [],
+"texts": [
+{
+"t": "MATRIX PILOT CHECKLIST",
+"sw": 176,
+"cw": 176,
+"sh": 15,
+"ch": 13,
+"px": 12,
+"ell": "clip",
+"nat": 159.3
+},
+{
+"t": "BOARD LIVE",
+"sw": 176,
+"cw": 176,
+"sh": 13,
+"ch": 12,
+"px": 11,
+"ell": "clip",
+"nat": 63.7
+}
+],
+"cardScroll": [
+192,
+192,
+54,
+54
+],
+"aria": "MATRIX pilot checklist",
+"n": 267,
+"kinds": [
+"control",
+"badge",
+"lamp",
+"annunciator",
+"mastercaution",
+"dock"
+]
+}
+]
+}

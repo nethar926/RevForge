@@ -20,10 +20,11 @@ import { getPackJet, subscribePackJet } from '../jetBridge';
 import { csCoverNext, csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, CS_PARK_REASON, parkStep, PARK_DWELL_MS, shelfAutoClose, shelfAutoStep, shelfStartLit, shelfToggle, SHELF_START_ARIA, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
 import { getCjPrefs, setCjPrefs, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
-import { ckPlan, ckTitle } from '../carrier-jet/checklistModes';
+import { CK_BOOK_BRAND, CK_BOOK_SHORT, CK_BOOK_SPOKEN, CK_BOOK_TITLE, ckBookAria, ckPlan, ckTitle } from '../carrier-jet/checklistModes';
 import { hostCueFor } from '../carrier-jet/hostCues';
 import { MasterCaution } from '../../skins/carrier-jet/concept/MasterCaution';
 import { CjPamphlet, type CkPage } from './CjPamphlet';
+import { pickTagSpot, TAG_H, TAG_H_MIN, TAG_W, TAG_W_FULL, type TagRect } from '../carrier-jet/tagSpot';
 
 /** Park from the HUD speed (one source of truth for the cold start AND CONFIG's Park-only tiles). */
 export function useCjPark(speedMph: number): boolean {
@@ -282,11 +283,14 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       }
     }
   };
-  // The pamphlet card lies on the shelf in measured free space (Meghan's shelf lays its groups out from the list, so
-  // the free space moves with the mode and the box): first the bay right of row 1's last group, else the strip above
-  // row 1's right-hand groups (beside the header annunciators), else the panel corner.
+  // The tucked pamphlet tag lies on the shelf in measured free space that covers no switch, guard, key, lamp, badge,
+  // annunciator or MASTER CAUTION (tagSpot.ts): row 1's right-hand bay, else the strip beside the header annunciators,
+  // else the first free gap between groups. Meghan's shelf lays its groups out from the list, so the free space moves
+  // with the mode and the box; the old fixed corner (right/bottom 14px) sat on SYSTEMS › OXY 7d and MASTER CAUTION 9a
+  // in GND AIR at 773. Re-measured on resize, mode and MASTER CAUTION placement.
   const shelfRef = useRef<HTMLDivElement>(null);
-  type Bay = { at: 'row1' | 'head'; left: number; top: number; width: number; height: number };
+  const [mcAt, setMcAt] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  type Bay = { at: 'row1' | 'head' | 'gap' | 'top'; left: number; top: number; width: number; height: number };
   const [bay, setBay] = useState<Bay | null>(null);
   useLayoutEffect(() => {
     const host = shelfRef.current;
@@ -295,23 +299,45 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     const read = () => {
       if (dead) return;
       const o = host.getBoundingClientRect();
-      const row = host.querySelector<HTMLElement>('.cjp-shelf-row');
-      const groups = row ? [...row.querySelectorAll<HTMLElement>(':scope > .cjp-group')].map((g) => g.getBoundingClientRect()) : [];
-      const panel = host.querySelector<HTMLElement>('.cjp-shelf-panel')?.getBoundingClientRect();
+      const panelEl = host.querySelector<HTMLElement>('.cjp-shelf-panel');
       const head = host.querySelector<HTMLElement>('.cjp-shelf-head');
-      if (!groups.length || !panel || !head) return setBay(null);
-      const right = panel.right - 14;
+      const row = host.querySelector<HTMLElement>('.cjp-shelf-row');
+      if (!panelEl || !head || !row) return setBay(null);
+      const R = (r: DOMRect): TagRect => ({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height });
+      const card = host.querySelector<HTMLElement>(':scope > .cjcs-card');
+      const mine = (e: Element) => !!card && card.contains(e);
+      const rects = (sel: string, root: ParentNode = host) => [...root.querySelectorAll(sel)].filter((e) => !mine(e)).map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map(R);
+      const obstacles = [
+        ...rects('.cjp-toggle, .cjp-guarded, .cjp-apu, .cjp-cover, .cjp-shelf button, .cjp-ann, .cjp-group-title, .cjp-shelf svg text, .cjp-shelf svg circle, .cjp-shelf-head > *, .cjcs-mc'),
+        // the dock bank can sit over the shelf (phone landscape)
+        ...rects('.rev-dock > *, .cjm-bank, .cjm-below', document),
+      ];
+      const frames = rects('.cjp-group');
+      const groups = [...row.querySelectorAll<HTMLElement>(':scope > .cjp-group')].map((g) => R(g.getBoundingClientRect()));
+      const p = R(panelEl.getBoundingClientRect());
+      // visible part of the panel: inside the host and the window
+      const x0 = Math.max(p.x + 6, 0), y0 = Math.max(p.y + 4, 0);
+      const area = { x: x0, y: y0, w: Math.min(p.x + p.w - 14, o.width, window.innerWidth - o.left) - x0, h: Math.min(p.y + p.h - 6, o.height, window.innerHeight - o.top) - y0 };
+      const hd = R(head.getBoundingClientRect());
       const last = groups[groups.length - 1];
-      let n: Bay | null = null;
-      if (right - (last.right + 8) >= 92) n = { at: 'row1', left: last.right + 8 - o.left, top: last.top - o.top, width: Math.min(132, right - last.right - 8), height: Math.min(123, last.height) };
-      else {
-        const used = [...head.children].reduce((m, e) => Math.max(m, e.getBoundingClientRect().right), head.getBoundingClientRect().left);
-        const top = head.getBoundingClientRect().top - 2;
-        // start right of the header text and of any row-1 group that rises too close under the header
-        const x0 = groups.filter((g) => g.top - 4 - top < 46).reduce((m, g) => Math.max(m, g.right + 8), used + 10);
-        const under = groups.filter((g) => g.right > x0 && g.left < right).reduce((m, g) => Math.min(m, g.top), panel.bottom);
-        if (right - x0 >= 120 && under - 4 - top >= 46) n = { at: 'head', left: x0 - o.left, top: top - o.top, width: Math.min(200, right - x0), height: Math.min(64, under - 4 - top) };
+      const usedHead = [...head.children].reduce((m, e) => Math.max(m, R(e.getBoundingClientRect()).x + R(e.getBoundingClientRect()).w), hd.x);
+      const anchors = [...(last ? [{ x: last.x + last.w + 8, y: last.y }] : []), { x: usedHead + 12, y: hd.y - 2 }];
+      // wide enough for the full title first, then the 136 px tag (title drops MATRIX), then a 44 px-tall one
+      let spot: TagRect | null = null;
+      for (const [w, h] of [[TAG_W_FULL, TAG_H], [TAG_W, TAG_H], [TAG_W, TAG_H_MIN]]) if ((spot = pickTagSpot({ area, obstacles, frames, anchors, w, h }))) break;
+      let at: Bay['at'] = !spot ? 'gap' : last && spot.x === anchors[0].x && spot.y === anchors[0].y ? 'row1' : spot.x === usedHead + 12 && spot.y === hd.y - 2 ? 'head' : 'gap';
+      if (!spot) {
+        // nothing free on the visible shelf (phone landscape: the bank covers most of it): the strip above the board,
+        // clear of every visible control and heading text there
+        const top = { x: 4, y: -o.top + 4, w: Math.min(o.width, window.innerWidth - o.left) - 8, h: o.top - 10 };
+        // every visible control, picture or text there (the REVFORGE wordmark and the pack name sit on the left)
+        const above = [...document.body.querySelectorAll('*')]
+          .filter((e) => !host.contains(e) && (e.matches('button, a, input, img, svg, [role]') || [...e.childNodes].some((c) => c.nodeType === 3 && !!c.textContent?.trim())))
+          .map((e) => R(e.getBoundingClientRect())).filter((r) => r.w > 0 && r.h > 0 && r.y < 0);
+        for (const [w, h] of [[TAG_W_FULL, TAG_H], [TAG_W, TAG_H], [TAG_W, TAG_H_MIN]]) if ((spot = pickTagSpot({ area: top, obstacles: [...above, ...obstacles], frames: [], w, h }))) break;
+        at = 'top';
       }
+      const n: Bay | null = spot ? { at, left: spot.x, top: spot.y, width: spot.w, height: spot.h } : null;
       setBay((p) => (p && n && p.at === n.at && Math.abs(p.left - n.left) < 0.5 && Math.abs(p.width - n.width) < 0.5 && Math.abs(p.top - n.top) < 0.5 && Math.abs(p.height - n.height) < 0.5 ? p : n));
     };
     queueMicrotask(read);
@@ -321,10 +347,27 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       dead = true;
       ro?.disconnect();
     };
-  }, [shelf, mode]);
+  }, [shelf, mode, mcAt?.left, mcAt?.top]); // eslint-disable-line react-hooks/exhaustive-deps
+  // tag title: the full MATRIX PILOT CHECKLIST where it fits the tag's width, else PILOT CHECKLIST (never clipped, no
+  // ellipsis). Set on the DOM (no re-render); re-checked once the B612 face has loaded.
+  useLayoutEffect(() => {
+    const card = shelfRef.current?.querySelector<HTMLElement>(':scope > .cjcs-card');
+    const title = card?.querySelector<HTMLElement>('strong');
+    if (!card || !title) return;
+    let dead = false;
+    const fit = () => {
+      if (dead) return;
+      card.dataset.title = 'full';
+      if (title.scrollWidth > title.clientWidth + 0.5) card.dataset.title = 'short';
+    };
+    fit();
+    void document.fonts?.ready.then(fit);
+    return () => {
+      dead = true;
+    };
+  }, [bay, shelf]);
   // MASTER CAUTION (sheet panel 4) replaces CAUT RST in place: the skin cell stays for the layout, hidden
   // (data-mc on the host, mount CSS), and Meghan's 64×64 push button sits centred on it.
-  const [mcAt, setMcAt] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   useLayoutEffect(() => {
     const host = shelfRef.current;
     if (!host || shelf === 'closed') return;
@@ -378,9 +421,8 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       <div ref={shelfRef} className="cjcs-shelf" data-mc={mcAt ? '' : undefined} data-cue-apu={mode === 'apu' ? view.apu.cue : undefined} data-cue-aircart={mode === 'apu' ? undefined : view.gndAir.cues.aircart} data-cue-crossbleed={mode === 'apu' ? undefined : view.gndAir.cues.crossbleed} data-open={shelf} data-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined}>
         <SwitchShelf systems={list} switches={view.switches} onToggle={onToggle} guards={{ engL: !!guards.engL, engR: !!guards.engR }} onGuardToggle={onGuard} mode={mode} block={block} open={shelf} annunciators={view.annunciators} />
         {shelf !== 'closed' && (
-          <button type="button" className="cjcs-card" data-bay={bay?.at ?? 'corner'} style={bay ? { left: bay.left, top: bay.top, width: bay.width, height: bay.height, right: 'auto', bottom: 'auto' } : undefined} aria-haspopup="dialog" aria-expanded={pamphlet !== 'closed'} aria-label={`Pilot checklist${step ? `, step ${step.code.replace(/^(\d+)([a-z])$/, '$1 $2')}, ${step.index} of ${step.total}: ${step.text}` : ''}`} onClick={() => setPamphlet(pamphlet === 'closed')}>
-            <small aria-hidden="true">REVFORGE</small>
-            <strong aria-hidden="true">PILOT CHECKLIST</strong>
+          <button type="button" className="cjcs-card" data-bay={bay?.at ?? 'none'} style={bay ? { left: bay.left, top: bay.top, width: bay.width, height: bay.height, right: 'auto', bottom: 'auto' } : undefined} aria-haspopup="dialog" aria-expanded={pamphlet !== 'closed'} aria-label={ckBookAria(step)} onClick={() => setPamphlet(pamphlet === 'closed')}>
+            <strong aria-hidden="true"><span className="cjcs-card-mx">{CK_BOOK_BRAND} </span>{CK_BOOK_SHORT}</strong>
             <small aria-hidden="true">{step ? `STEP ${step.code} · ${step.index}/${step.total}` : live ? 'BOARD LIVE' : 'NORMAL PROCEDURES'}</small>
           </button>
         )}
@@ -390,7 +432,7 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
           </div>
         )}
         {pamphlet !== 'closed' && (
-          <div ref={pamphRef} className="cjcs-pamph" data-phase={pamphlet} data-size={size} role="dialog" aria-modal="false" aria-label="Pilot checklist" onKeyDown={(e) => e.key === 'Escape' && setPamphlet(false)}>
+          <div ref={pamphRef} className="cjcs-pamph" data-phase={pamphlet} data-size={size} role="dialog" aria-modal="false" aria-label={CK_BOOK_SPOKEN} onKeyDown={(e) => e.key === 'Escape' && setPamphlet(false)}>
             {pamphlet === 'open' ? (
               <div className="cjcs-pages">
                 <div className="cjcs-startup">
@@ -402,7 +444,7 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
               // cover (seen while the card lifts): name, plus the next step's badge code only while a closed guard hides it on the shelf
               <div className="cjcs-cover" aria-hidden="true">
                 <small>REVFORGE</small>
-                <strong>MATRIX PILOT CHECKLIST</strong>
+                <strong>{CK_BOOK_TITLE}</strong>
                 {coverNext && <b className="cjcs-cover-next" data-code={coverNext}>NEXT <span>{coverNext}</span></b>}
                 <small>NORMAL PROCEDURES</small>
               </div>
