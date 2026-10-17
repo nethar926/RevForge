@@ -52,6 +52,12 @@ export function headingSpeech(p: { t: number; m: number | null }, lead: 'M' | 'T
   return lead === 'M' ? `heading ${d3(p.m)} magnetic, ${d3(p.t)} true` : `heading ${d3(p.t)} true, ${d3(p.m)} magnetic`;
 }
 
+/** COMPASS VoiceOver, one reference only (sheet panel 7: "heading 047 magnetic"; CONFIG › HDG REF picks TRUE).
+ *  No position yet → MAG unknown → "heading 040 true". */
+export function compassSpeech(p: { t: number; m: number | null }, ref: 'M' | 'T'): string {
+  return ref === 'M' && p.m != null ? `heading ${d3(p.m)} magnetic` : `heading ${d3(p.t)} true`;
+}
+
 /** Map cell aria-label: mode (orientation + MAP / TERRAIN), range, status, heading. */
 export function mapAria(v: Pick<MapView, 'northUp' | 'zoom' | 'mode'>, status: CjMapStatus, heading: string | null): string {
   const st = status === '' ? 'live' : status === 'GPS ACQ' ? 'acquiring GPS' : status === 'NO TILES' ? 'no tiles, offline' : status.toLowerCase();

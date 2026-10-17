@@ -8,7 +8,8 @@ import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompa
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
 import { board2Cells, board2CellsMapFirst, keyCount, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
-import { applyMapKey, getMapView, radarAria, radarCue, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
+import { applyMapKey, getMapView, radarCue, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
+import { cjRadarScopeAria } from '../../skins/carrier-jet/map/radarAria';
 import { getCjPrefs, reducedMotion, setCjPrefs, subscribeCjPrefs, type CjPrefs } from '../carrier-jet/cjPrefs';
 import { closeCjConfig, getCjConfig, registerCjConfigHost, setCjConfig, subscribeCjConfig } from '../carrier-jet/configStore';
 import { CELL_ORDER, TILE_SLOTS } from '../carrier-jet/configCells';
@@ -164,9 +165,10 @@ function AccelCell({ box, demo, reduced }: { box: Box; demo: boolean; reduced: b
  * The phosphor radar scope: no background of its own (transparent over the map). Layers, bottom up: range rings →
  * sweep (its own HTML-level svg, rotated as an element) → heading bug + own-ship → corners. The accessible name is on
  * the MAP cell (CjLiveMap: "Radar scope over map, …"), so the scope itself is aria-hidden. BR: the map's status when
- * it has one (GPS ACQ / DEMO / NO TILES), else NO RETURNS.
+ * it has one (GPS ACQ / DEMO / NO TILES), else NO RETURNS. No heading corner: COMPASS owns the heading (sheet panel 7;
+ * the TR digits read "040" beside COMPASS "047 M"), the scope keeps its bug.
  */
-function RadarScope({ view, hdg, headingStale, reduced, status, label }: { view: MapView; hdg: string; headingStale: boolean; reduced: boolean; status: string; label?: string }) {
+function RadarScope({ view, reduced, status, label }: { view: MapView; reduced: boolean; status: string; label?: string }) {
   return (
     <div className="cjv2-scope" data-motion={reduced ? 'static' : 'live'} {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}>
       <svg viewBox="-50 -50 100 100" aria-hidden="true">
@@ -188,7 +190,6 @@ function RadarScope({ view, hdg, headingStale, reduced, status, label }: { view:
         <path d="M0 -4 L3 4 L0 2 L-3 4 Z" className="cjv2-own" />
       </svg>
       <span className="cjv2-corner cjv2-tl" data-cjmap-ob>{view.mode === 'map' ? 'MAP' : 'TERR'}</span>
-      <span className="cjv2-corner cjv2-tr" data-cjmap-ob data-stale={headingStale}>{hdg}</span>
       <span className="cjv2-corner cjv2-bl" data-cjmap-ob>{view.range} MI</span>
       <span className="cjv2-corner cjv2-br" data-cjmap-ob>{status || 'NO RETURNS'}</span>
     </div>
@@ -197,7 +198,6 @@ function RadarScope({ view, hdg, headingStale, reduced, status, label }: { view:
 type LiveMapCtx = { demo: boolean; park: boolean; hdgRef: 'M' | 'T' };
 function MapCell({ box, view, heading, headingStale, reduced, live }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx }) {
   const [info, setInfo] = useState(false);
-  const hdg = heading == null ? '---' : String(Math.round(heading) % 360).padStart(3, '0');
   return (
     <div className="cjv2-cell cjv2-map" data-radar={view.radar} style={boxStyle(box)}>
       <span className="cjv2-lab" aria-hidden="true">{view.radar ? 'RADAR' : 'MAP'}</span>
@@ -207,8 +207,8 @@ function MapCell({ box, view, heading, headingStale, reduced, live }: { box: Box
         {/* RADAR (Wilson, Oct 16 "Radar overlay should stack atop maps"): the scope is a transparent overlay ON the
             live map, inside CjLiveMap between the dimmed map and the street labels. Until
             the map chunk loads, or with no map (no fix / offline / Park without GPS), the scope stands alone on the CRT. */}
-        <Suspense fallback={view.radar ? <RadarScope view={view} hdg={hdg} headingStale={headingStale} reduced={reduced} status="" label={radarAria(view, hdg, '', false)} /> : null}>
-          <CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} radar={view.radar ? { range: view.range, hdg, mode: view.mode, scope: (st) => <RadarScope view={view} hdg={hdg} headingStale={headingStale} reduced={reduced} status={st} /> } : undefined} />
+        <Suspense fallback={view.radar ? <RadarScope view={view} reduced={reduced} status="" label={cjRadarScopeAria({ range: view.range, mode: view.mode }, '', false)} /> : null}>
+          <CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} radar={view.radar ? { range: view.range, mode: view.mode, scope: (st) => <RadarScope view={view} reduced={reduced} status={st} /> } : undefined} />
         </Suspense>
         <button type="button" className="cjv2-info" aria-expanded={info} aria-label="Map credit" onClick={() => setInfo((v) => !v)}>i</button>
         {info && <p className="cjv2-attr" role="note">{MAP_CREDIT}</p>}

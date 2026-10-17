@@ -79,7 +79,22 @@ test('spot: dock row 2 between the SHELF key and the Shutdown slot, clear of bot
   // Shutdown chip hidden only where panel 6 removes it (running); stopped it stays the Ignition / Resume path
   assert.match(css, /\.rev-dock:has\(> \.cjm-sbl\[data-sd-off\]\) > \.rev-stop \{ visibility: hidden !important; \}/);
   assert.doesNotMatch(css, /\.rev-dock:has\(> \.cjm-sbl\) > \.rev-stop/);
-  // a host chip in the gap (demo Hold to rev): the Shutdown slot while running, else after the EMER STOP group
+  // a host chip in the gap (demo Hold to rev): the Shutdown slot (the host runs through the cold start, EMER STOP too)
   assert.match(css, /:has\(> \.rev-chip:not\(\.rev-stop\)\) > \.cjm-sbl\[data-sd-off\] \{\s*left: calc\(var\(--cjv3-plate\) \+ 8px \+ var\(--cjv3-guard\)\); translate: -100% 0;/);
-  assert.match(css, /:has\(> \.rev-chip:not\(\.rev-stop\)\) > \.cjm-sbl:not\(\[data-sd-off\]\) \{\s*position: relative;[^}]*order: 4;/);
+  assert.doesNotMatch(css, /\.cjm-sbl:not\(\[data-sd-off\]\)/, 'no dead stopped-position rule (William gate)');
+});
+
+test('EMER STOP: the lamp stays visible in its spot and goes dark (EMER STOP switches the seat belt off)', async () => {
+  const { JET_POWERED } = await import('../src/audio/jetColdStart.js');
+  assert.ok((JET_POWERED as readonly string[]).includes('seatbelt'), 'emergency stop powers the seat belt sign down');
+  // shown does not depend on the engine running or the seat belt: still on the dock after the stop
+  assert.equal(sbLampShown({ coldOn: true, spds: true, docked: true }), true);
+  assert.equal(sbLampAria(false), 'Seat belt light, off');
+  // the mount keys lit / dark on cold.seatbelt only, and keeps data-sd-off on sdShow (host running) → same CSS spot
+  const mount = readFileSync(join(root, 'src/packs/mounts/CarrierJetMount.tsx'), 'utf8');
+  assert.match(mount, /<SeatBeltLamp on=\{cold\.seatbelt\} \/>/);
+  assert.match(mount, /const sdShow = sdShown\(\{ v2, tesla, docked: !!vp\.dock, running: props\.running \}\);/);
+  // no stopped-position CSS: the lamp keeps the spot it had before the stop (preview: cj-port-polish/emer-stop-seatbelt-*.png)
+  const css = readFileSync(join(root, 'src/packs/mounts/carrier-jet-v2.css'), 'utf8');
+  assert.doesNotMatch(css, /\.cjm-sbl:not\(\[data-sd-off\]\)/);
 });

@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { CJ_RADAR_MAP_DIM, dimHex, radarDimPaint, scopeBugPoint, scopeRingPx } from '../src/packs/carrier-jet/liveMap.ts';
 import { buildCjMapStyle } from '../src/skins/carrier-jet/map/style.ts';
-import { radarAria, SWEEP_PERIOD_MS } from '../src/packs/carrier-jet/mapView.ts';
+import { SWEEP_PERIOD_MS } from '../src/packs/carrier-jet/mapView.ts';
+import { cjRadarScopeAria } from '../src/skins/carrier-jet/map/radarAria.ts';
 import { zoomForRangeMi } from '../src/skins/carrier-jet/map/style.ts';
 
 const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
@@ -38,10 +39,22 @@ test('scope geometry: outer ring px from the 14×8 inset square; the map zoom pu
   assert.ok(b.y > 14 && b.y < 30);
 });
 
-test('aria: RADAR names both layers; no map → the scope alone', () => {
-  assert.match(radarAria({ range: 5, mode: 'map' }, '047', '', true), /^Radar scope over map, 5 mile range, map mode, heading 047, no returns\. Map track up, dimmed$/);
-  assert.match(radarAria({ range: 2, mode: 'terr' }, '---', 'GPS ACQ', true), /^Radar scope over map, .*terrain mode.*acquiring GPS$/);
-  assert.match(radarAria({ range: 10, mode: 'map' }, '047', 'NO TILES', false), /^Radar scope, 10 mile range.*Map unavailable, no tiles, offline$/);
+test('aria: RADAR names both layers, no heading (COMPASS owns it); no map → the scope alone; no 040 corner', () => {
+  assert.match(cjRadarScopeAria({ range: 5, mode: 'map' }, '', true), /^Radar scope over map, 5 mile range, map mode, no returns\. Map track up, dimmed$/);
+  assert.match(cjRadarScopeAria({ range: 2, mode: 'terr' }, 'GPS ACQ', true), /^Radar scope over map, .*terrain mode.*acquiring GPS$/);
+  assert.match(cjRadarScopeAria({ range: 10, mode: 'map' }, 'NO TILES', false), /^Radar scope, 10 mile range.*Map unavailable, no tiles, offline$/);
+  const live = src('packs/mounts/CjLiveMap.tsx');
+  const layer = src('packs/mounts/CjV2Layer.tsx');
+  assert.match(live, /const aria = radar \? cjRadarScopeAria\(\{ range: radar\.range, mode: radar\.mode \}, status, mapShown\)/);
+  assert.match(layer, /label=\{cjRadarScopeAria\(\{ range: view\.range, mode: view\.mode \}, '', false\)\}/);
+  assert.doesNotMatch(live + layer, /\bradarAria\(/, 'old heading-carrying label gone');
+  assert.doesNotMatch(src('packs/carrier-jet/mapView.ts'), /export function radarAria/);
+  // the scope's top-right heading digits ("040") are gone; TL / BL / BR corners stay
+  const scope = layer.slice(layer.indexOf('function RadarScope('), layer.indexOf('function MapCell('));
+  assert.doesNotMatch(scope, /cjv2-tr\b|\{hdg\}/);
+  assert.match(scope, /cjv2-corner cjv2-tl/);
+  assert.match(scope, /cjv2-corner cjv2-bl/);
+  assert.match(scope, /cjv2-corner cjv2-br/);
 });
 
 test('stacking: map → scope → labels; MAP mode unchanged; RADAR no longer hides the map', () => {

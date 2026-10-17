@@ -44,12 +44,12 @@ test('fix 1: APU START reads PARK in Drive while the APU-off step (14) is ahead;
   assert.equal(v.apu.parkLegend, true);
 });
 
-test('fix 1: the mount marks the shelf and the CSS swaps the APU START word for PARK at the legend size', () => {
+test('fix 1: the mount passes PARK to Meghan\'s ApuBlock legend prop; the CSS PARK overlay is gone', () => {
   const tsx = readFileSync(new URL('../src/packs/mounts/CjColdStart.tsx', import.meta.url), 'utf8');
-  assert.match(tsx, /data-apu-park=\{mode === 'apu' && view\.apu\.parkLegend/);
+  assert.match(tsx, /<ApuBlock arm=[^\n]*legend=\{view\.apu\.parkLegend \? 'PARK' : undefined\} \/>/);
+  assert.doesNotMatch(tsx, /data-apu-park/);
   const css = readFileSync(new URL('../src/packs/mounts/carrier-jet-v2.css', import.meta.url), 'utf8');
-  assert.match(css, /\[data-apu-park\] \.cjp-apu \.cjp-toggle\[data-sys='apu'\] g\.cjp-unlit text \{ fill: transparent; \}/);
-  assert.match(css, /\[data-apu-park\][^{]*::after \{\s*content: 'PARK';[^}]*font: 700 calc\(11 \/ 60 \* 100cqw\)/);
+  assert.doesNotMatch(css, /data-apu-park|content: 'PARK'/);
 });
 
 for (const mode of ['apu', 'gndAir'] as const) {

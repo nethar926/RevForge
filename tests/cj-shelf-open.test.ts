@@ -189,7 +189,10 @@ test('mount: SHELF has no Park gate, the level-triggered close is gone, the key 
   assert.match(toggle, /setShelf\(shelfToggle\)/);
   assert.doesNotMatch(src, /!park \|\| live/);
   assert.match(src, /shelfAutoClose\(prev, \{ park, complete: view\.complete, on \}\)/);
-  assert.doesNotMatch(src, /'PARK' :/);
+  // the SHELF key never reads PARK (the APU START switch legend may: Meghan's ApuBlock legend prop, apu.parkLegend)
+  assert.doesNotMatch(src.slice(src.indexOf('const shelfKey'), src.indexOf('const pullQs')), /'PARK'/);
+  assert.equal([...src.matchAll(/'PARK'/g)].length, 1);
+  assert.match(src, /legend=\{view\.apu\.parkLegend \? 'PARK' : undefined\}/);
   assert.doesNotMatch(src, /aria-disabled=\{!park/);
 });
 

@@ -23,7 +23,7 @@ import { getCjPrefs, setCjPrefs, subscribeCjPrefs } from '../carrier-jet/cjPrefs
 import { ckPlan, ckTitle } from '../carrier-jet/checklistModes';
 import { hostCueFor } from '../carrier-jet/hostCues';
 import { MasterCaution } from '../../skins/carrier-jet/concept/MasterCaution';
-import { CjPamphlet } from './CjPamphlet';
+import { CjPamphlet, type CkPage } from './CjPamphlet';
 
 /** Park from the HUD speed (one source of truth for the cold start AND CONFIG's Park-only tiles). */
 export function useCjPark(speedMph: number): boolean {
@@ -111,6 +111,8 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
   const [cautionReset, setCautionReset] = useState(false);
   const [shelf, setShelf] = useState<CjShelfOpen>('closed');
   const [pamphlet, setPamphletPhase] = useState<PamphletPhase>('closed');
+  /** Pamphlet page picked on its tabs (null: the current step's phase); forgotten when the pamphlet closes. */
+  const [page, setPage] = useState<CkPage | null>(null);
   const [qsOpen, setQsOpen] = useState(false);
   const [pull, setPull] = useState<PullState>(PULL_REST);
   const [say, setSay] = useState('');
@@ -208,6 +210,9 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       return () => clearTimeout(t);
     }
   }, [pamphlet]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (pamphlet === 'closed') setPage(null);
+  }, [pamphlet]);
   const setPamphlet = (open: boolean) => {
     if (open) {
       cue('pamphletLift');
@@ -340,10 +345,17 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     };
   }, [shelf, mode]);
   const pamphRef = useRef<HTMLDivElement>(null);
+  // centre the current line inside the card's own scroll only (the page tabs stay put; the browser's into-view scroll would also
+  // scroll the pamphlet's clipped ancestors, which is how the tabs used to slide up to "E-START" at 773)
   useEffect(() => {
     if (pamphlet !== 'open') return;
-    pamphRef.current?.querySelector('.ckp-li[aria-current="step"]')?.scrollIntoView?.({ block: 'center' });
-  }, [pamphlet, view.cursor]);
+    const card = pamphRef.current?.querySelector<HTMLElement>('.ckp-card');
+    const li = card?.querySelector<HTMLElement>('.ckp-li[aria-current="step"]');
+    if (!card || !li) return;
+    const c = card.getBoundingClientRect();
+    const r = li.getBoundingClientRect();
+    card.scrollTop += r.top - c.top - (c.height - r.height) / 2;
+  }, [pamphlet, view.cursor, page]);
   const pullRef = useRef(pull);
   pullRef.current = pull;
   const grip = {
@@ -357,13 +369,12 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
   const shelfEl = (size: 'wide' | 'narrow' = 'wide') => {
     if (!on) return null;
     const block = mode === 'apu'
-      ? <ApuBlock arm={view.apu.arm} start={view.apu.start} ready={view.apu.ready} onArmToggle={() => onGuard('apuGuard')} onStartToggle={(_id, n) => onToggle('apu', n)} disabled={view.apu.disabled} disabledReason={view.apu.disabledReason} step={view.apu.step} />
+      ? <ApuBlock arm={view.apu.arm} start={view.apu.start} ready={view.apu.ready} onArmToggle={() => onGuard('apuGuard')} onStartToggle={(_id, n) => onToggle('apu', n)} disabled={view.apu.disabled} disabledReason={view.apu.disabledReason} step={view.apu.step} legend={view.apu.parkLegend ? 'PARK' : undefined} />
       : <GndAirBlock aircart={view.gndAir.aircart} crossbleed={view.gndAir.crossbleed} side={view.gndAir.side} onToggle={(id, n) => onToggle(id, n)} disabledReasons={view.gndAir.disabledReasons} steps={view.gndAir.steps} />;
     const step = view.checklist;
-    const lines = (a: readonly string[]) => a.map((t, i) => <li key={i}>{t}</li>);
     const plan = ckPlan(mode);
     return (
-      <div ref={shelfRef} className="cjcs-shelf" data-apu-park={mode === 'apu' && view.apu.parkLegend ? '' : undefined} data-mc={mcAt ? '' : undefined} data-cue-apu={mode === 'apu' ? view.apu.cue : undefined} data-cue-aircart={mode === 'apu' ? undefined : view.gndAir.cues.aircart} data-cue-crossbleed={mode === 'apu' ? undefined : view.gndAir.cues.crossbleed} data-open={shelf} data-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined}>
+      <div ref={shelfRef} className="cjcs-shelf" data-mc={mcAt ? '' : undefined} data-cue-apu={mode === 'apu' ? view.apu.cue : undefined} data-cue-aircart={mode === 'apu' ? undefined : view.gndAir.cues.aircart} data-cue-crossbleed={mode === 'apu' ? undefined : view.gndAir.cues.crossbleed} data-open={shelf} data-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined}>
         <SwitchShelf systems={list} switches={view.switches} onToggle={onToggle} guards={{ engL: !!guards.engL, engR: !!guards.engR }} onGuardToggle={onGuard} mode={mode} block={block} open={shelf} annunciators={view.annunciators} />
         {shelf !== 'closed' && (
           <button type="button" className="cjcs-card" data-bay={bay?.at ?? 'corner'} style={bay ? { left: bay.left, top: bay.top, width: bay.width, height: bay.height, right: 'auto', bottom: 'auto' } : undefined} aria-haspopup="dialog" aria-expanded={pamphlet !== 'closed'} aria-label={`Pilot checklist${step ? `, step ${step.code.replace(/^(\d+)([a-z])$/, '$1 $2')}, ${step.index} of ${step.total}: ${step.text}` : ''}`} onClick={() => setPamphlet(pamphlet === 'closed')}>
@@ -382,18 +393,18 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
             {pamphlet === 'open' ? (
               <div className="cjcs-pages">
                 <div className="cjcs-startup">
-                  <CjPamphlet plan={plan} title={ckTitle(mode)} cursor={view.cursor} size={size} />
-                  <p>Or lift QUICK START and press it once.</p>
+                  <CjPamphlet plan={plan} title={ckTitle(mode)} cursor={view.cursor} size={size} page={page ?? undefined} onPage={setPage} />
+                  <p>{page === 'SHUTDOWN' ? 'Our own wording · not for real aircraft' : 'Or lift QUICK START and press it once.'}</p>
                 </div>
-                <section aria-label="Shutdown">
-                  <h3>SHUTDOWN</h3>
-                  <ol>{lines(checklist.shutdown)}</ol>
-                  <p>EMERGENCY: pull the red EMER STOP handle down past the line.</p>
-                  <p className="cjcs-foot">Our own wording · not for real aircraft</p>
-                </section>
               </div>
             ) : (
-              <div className="cjcs-cover" aria-hidden="true"><small>REVFORGE</small><strong>CARRIER JET PILOT CHECKLIST</strong><small>NORMAL PROCEDURES</small></div>
+              // cover (seen while the card lifts): name + the next step's badge code, which a closed guard hides on the shelf
+              <div className="cjcs-cover" aria-hidden="true">
+                <small>REVFORGE</small>
+                <strong>MATRIX PILOT CHECKLIST</strong>
+                {step && !live && <b className="cjcs-cover-next" data-code={step.code}>NEXT <span>{step.code}</span></b>}
+                <small>NORMAL PROCEDURES</small>
+              </div>
             )}
             <button type="button" className="cjcs-pclose" aria-label="Close checklist" onClick={() => setPamphlet(false)}>✕</button>
           </div>

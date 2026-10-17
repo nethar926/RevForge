@@ -248,6 +248,9 @@
 /* compass readout: Meghan's HeadingLegend over the HSD rose's top digit box (HDG 047 M / HDG 040 T) */
 .cjv2 > .cjv2-hdgcell { pointer-events: none; }
 .cjv2-hdgro { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); padding: 1px 6px; background: #041009; border: 1px solid #2f7a48; border-radius: 4px; white-space: nowrap; }
+/* COMPASS shows one heading (sheet panel 7): Meghan's legend draws the other reference as a second line; hidden here
+   (the legend's role=group name already reads one reference). TRUE: CONFIG › TLM › HDG REF. */
+.cjv2-hdgro[data-one] .cj-hdg-legend > span + span { display: none; }
 
 /* Guarded SHUTDOWN (Meghan's ShutdownGuard, 108.67x48): portaled into .rev-dock while the engine runs, on the host
    Shutdown chip's own rule (same rect at 1280 / 1256 / 773); the chip keeps its box but is hidden meanwhile. Engine
@@ -301,16 +304,6 @@
 .cjv2-hsd .cjv2-scope > .cjv2-corner { background: rgb(4 16 9 / 0.82); padding: 0 3px; border-radius: 3px; }
 .cjv2-hsd .cjv2-scope > .cjv2-br { color: #8fb59a; }
 
-/* APU START lock legend in Drive (data-apu-park, csView apu.parkLegend): the skin's ApuBlock draws START / OFF next to
-   the lock (it has no legend prop), so the host hides that word and engraves PARK in its place, as the switches read
-   (BatToggle disabled: lock at x 2, legend at x 14 / baseline 88 of the 60×96 toggle, 11 units, unlit #ccd2d6). */
-.cjcs-shelf[data-apu-park] .cjp-apu .cjp-toggle[data-sys='apu'] { position: relative; container-type: inline-size; }
-.cjcs-shelf[data-apu-park] .cjp-apu .cjp-toggle[data-sys='apu'] g.cjp-unlit text { fill: transparent; }
-.cjcs-shelf[data-apu-park] .cjp-apu .cjp-toggle[data-sys='apu']::after {
-  content: 'PARK'; position: absolute; left: calc(14 / 60 * 100cqw); top: calc((88 - 8.2) / 60 * 100cqw); pointer-events: none;
-  font: 700 calc(11 / 60 * 100cqw) / 1 'B612', 'Barlow Semi Condensed', system-ui, sans-serif; letter-spacing: 0; color: #ccd2d6;
-}
-
 /* SEAT BELT lamp (Meghan's sheet panel 5): its own dock spot whenever the cold start is on (seatbeltLamp.ts), dock
    row 2, centred in the gap between the SHELF key and the Shutdown slot: gap = guard − shelf − 108.67 (Shutdown) =
    146.3 px, lamp 104×52 (her 96×44 lens + bezel) → 21 px clear each side; bottom-aligned with the row (SHELF key,
@@ -319,13 +312,11 @@
   position: absolute; left: calc(var(--cjv3-plate) + 8px + var(--cjv3-shelf) + (var(--cjv3-guard) - var(--cjv3-shelf) - 108.67px - 104px) / 2);
   bottom: -3px; margin: 0; display: flex; align-items: flex-end; z-index: 1;
 }
-/* a host chip in that gap (demo Hold to rev, manual shift chips): the lamp takes the Shutdown slot, free while running
-   (panel 6: data-sd-off); engine stopped too (the chip there is Ignition / Resume): after EMER STOP / QUICK START */
+/* a host chip in that gap (demo Hold to rev, manual shift chips): the lamp takes the Shutdown slot, free while the host
+   runs (panel 6: data-sd-off). The host stays running through the whole cold start, EMER STOP included (it switches the
+   seat belt off, the lamp stays put and goes dark), so there is no docked stopped state needing a second spot. */
 .rev-dock:has(> .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window'])):has(> .rev-chip:not(.rev-stop)) > .cjm-sbl[data-sd-off] {
   left: calc(var(--cjv3-plate) + 8px + var(--cjv3-guard)); translate: -100% 0;
-}
-.rev-dock:has(> .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window'])):has(> .rev-chip:not(.rev-stop)) > .cjm-sbl:not([data-sd-off]) {
-  position: relative; left: auto; bottom: auto; order: 4; align-self: flex-end; margin: 0 0 -6px 8px;
 }
 /* the host Shutdown chip hides only where panel 6 removes it (engine running); stopped, it is Ignition / Resume */
 .rev-dock:has(> .cjm-sbl[data-sd-off]) > .rev-stop { visibility: hidden !important; }
@@ -362,3 +353,21 @@
 
 /* The open pamphlet lies above everything on the shelf, MASTER CAUTION included (it sits on the CAUT RST cell). */
 .cjcs-shelf > .cjcs-pamph { z-index: 3; }
+
+/* Paged pamphlet (port polish): one card + its page tabs (PRE-START · START · BEFORE TAXI · SHUTDOWN). The pages box no
+   longer scrolls; only the card does, so the tabs never move or clip (GND AIR at 773 used to scroll them to "E-START").
+   Tabs are 44 px page buttons (Meghan's tab look, 11 px text). Wide: the card is centred, capped like a printed card. */
+.cjcs-pamph .cjcs-pages { display: flex; flex-direction: column; overflow: hidden; }
+.cjcs-pages > .cjcs-startup { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; width: min(100%, 860px); margin: 0 auto; }
+.cjcs-startup > .ckp[data-paged] { flex: 1 1 auto; min-height: 0; }
+.cjcs-startup > .ckp[data-paged] > .ckp-card { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.cjcs-startup > .ckp[data-paged] > .ckp-tabs { flex: none; min-height: 0; overflow: visible; padding-top: 12px; }
+.ckp[data-paged] .ckp-tab { box-sizing: border-box; min-width: 44px; min-height: 44px; margin: 0; padding: 8px 4px; border: 0; font: inherit; font-size: 11px; line-height: 13px; letter-spacing: .06em; cursor: pointer; }
+.ckp[data-paged] .ckp-tab:focus-visible { outline: 2px solid #1b1d1f; outline-offset: -3px; }
+/* SHUTDOWN page: same sections, two columns so the whole page fits the card at 1256 and 773 */
+.ckp-sdpage { columns: 2; column-gap: 18px; }
+.ckp-sdpage > .ckp-sec { break-inside: avoid; margin-top: 0; margin-bottom: 6px; }
+.ckp-sdpage > .ckp-sdemer { break-inside: avoid; margin: 2px 0 0; }
+/* cover: the next step's badge code (a closed guard hides it on the shelf), in the badge's amber on a dark chip */
+.cjcs-cover > .cjcs-cover-next { align-self: flex-start; padding: 3px 8px; border-radius: 3px; background: #1b1d1f; color: #e8e2d2; font-size: 12px; letter-spacing: .08em; }
+.cjcs-cover > .cjcs-cover-next > span { color: #ffc35a; }

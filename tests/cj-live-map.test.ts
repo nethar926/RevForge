@@ -56,15 +56,16 @@ test('MAG = TRUE − declination (east positive) at the fix; Jacksonville ≈ �
   assert.doesNotMatch(live + src('packs/carrier-jet/liveMap.ts'), /6\.97|\bdecl\w*\s*[:=]\s*-?\d/);
 });
 
-test('T/M pref: TLM › UNITS › HDG, default M (magnetic), persisted with the CJ prefs', () => {
+test('T/M pref: TLM › UNITS › HDG REF, default M (magnetic), persisted with the CJ prefs', () => {
   assert.equal(CJ_PREFS_DEFAULT.hdgRef, 'M');
   assert.equal(parseCjPrefs(null).hdgRef, 'M');
   assert.equal(parseCjPrefs('{"hdgRef":"T"}').hdgRef, 'T');
   assert.equal(parseCjPrefs('{"hdgRef":"x"}').hdgRef, 'M');
   const it = CJ_CONFIG.telemetry.items.find((i) => i.id === 'hdg')!;
   assert.equal(it.group, 'UNITS');
+  assert.equal(it.label, 'HDG REF');
   assert.equal(it.value!(ctx()), 'MAG');
-  assert.equal(it.aria!(ctx()), 'Heading reference, magnetic');
+  assert.equal(it.aria!(ctx()), 'Heading reference, magnetic. Compass shows magnetic heading');
   assert.deepEqual(runItem(it, ctx({ park: false })), { type: 'prefs', partial: { hdgRef: 'T' } }, 'a view setting: live while moving');
   const kv = mem();
   resetCjPrefsCache();

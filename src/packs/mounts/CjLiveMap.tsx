@@ -17,9 +17,10 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import type { Map as MlMap, StyleSpecification, MapLibreEvent } from 'maplibre-gl';
 import { buildCjMapStyle, cjMapStatus, CJ_MAP_MAX_STREET_LABELS, CJ_MAP_OPTIONS, CJ_MAP_REMOVE_AFTER_HIDDEN_MS, shouldRender, zoomForRangeMi, type CjMapStatus } from '../../skins/carrier-jet/map/style';
 import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
-import { radarAria, type MapView } from '../carrier-jet/mapView';
+import { type MapView } from '../carrier-jet/mapView';
+import { cjRadarScopeAria } from '../../skins/carrier-jet/map/radarAria';
 import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
-import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, headingPair, headingSpeech, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
+import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, compassSpeech, headingPair, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
 
 type Ml = typeof import('maplibre-gl');
 let mlPromise: Promise<Ml> | null = null;
@@ -68,7 +69,7 @@ export interface CjLiveMapProps {
    * RADAR on: the scope, drawn as a transparent overlay above the (dimmed) map and WX, under the street labels.
    * `scope(status)` renders it; the map follows the scope (heading-up, centred, outer ring = `range` mi).
    */
-  radar?: { range: 2 | 5 | 10; hdg: string; mode: 'map' | 'terr'; scope: (status: CjMapStatus) => ReactNode };
+  radar?: { range: 2 | 5 | 10; mode: 'map' | 'terr'; scope: (status: CjMapStatus) => ReactNode };
 }
 
 export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hidden = false, radar }: CjLiveMapProps) {
@@ -315,7 +316,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   const acq = status === 'GPS ACQ' || fixAt == null;
   // RADAR: the map shows under the scope once it exists and has tiles; else the scope alone on the dark CRT
   const mapShown = hasMap && status !== 'NO TILES' && status !== 'NO MAP DATA';
-  const aria = radar ? radarAria({ range: radar.range, mode: radar.mode }, radar.hdg, status, mapShown) : mapAria(view, status, null); // heading: once, on COMPASS (sheet panel 7)
+  const aria = radar ? cjRadarScopeAria({ range: radar.range, mode: radar.mode }, status, mapShown) : mapAria(view, status, null); // heading: once, on COMPASS (sheet panel 7)
   const boxStyle: CSSProperties | undefined = hidden ? { visibility: 'hidden' } : undefined;
   return (
     <div ref={boxRef} className="cjv2-hsd" role="img" aria-label={aria} style={boxStyle} data-status={status || 'ok'} data-radar={radar ? (mapShown ? 'over-map' : 'alone') : undefined}>
@@ -344,8 +345,10 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
 }
 
 /**
- * Compass-cell heading readout (HDG 047 M over HDG 040 T, the chosen reference leading), laid over the HSD rose's
- * top digit box. MAG uses the declination at the latest fix; no fix yet → TRUE only.
+ * Compass-cell heading readout: ONE heading in the CONFIG › HDG REF reference (default M, "HDG 047 M"; sheet panel 7:
+ * COMPASS shows magnetic, TRUE stays available in CONFIG › HDG REF), laid over the HSD rose's top digit box. MAG uses
+ * the declination at the latest fix; no fix yet → TRUE only. Meghan's CjHeadingLegend always draws the other reference
+ * as a second line; the mount hides that line (carrier-jet-v2.css, .cjv2-hdgro[data-one]) and names one reference.
  */
 export function CjHeadingReadout({ heading, headingStale, hdgRef }: { heading: number | undefined; headingStale: boolean; hdgRef: 'M' | 'T' }) {
   const [fix, setFix] = useState(() => latestGpsFix());
@@ -353,10 +356,10 @@ export function CjHeadingReadout({ heading, headingStale, hdgRef }: { heading: n
   const pos = fix ? { lat: fix.latitude, lon: fix.longitude } : null;
   const pair = useMemo(() => (heading == null ? null : headingPair(heading, pos)), [heading, fix]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!pair) return null;
-  const label = `Compass, ${headingSpeech(pair, hdgRef)}${headingStale ? ', held' : ''}`;
+  const label = `Compass, ${compassSpeech(pair, hdgRef)}${headingStale ? ', held' : ''}`;
   return (
     // the accessible name sits on Meghan's legend (ariaLabel → role=group); the wrapper carries none
-    <div className="cjv2-hdgro">
+    <div className="cjv2-hdgro" data-one={hdgRef}>
       {pair.m != null ? <CjHeadingLegend trueHdg={pair.t} magHdg={pair.m} lead={hdgRef} stale={headingStale} ariaLabel={label} /> : <span role="img" aria-label={label} data-stale={headingStale || undefined}>{`HDG ${String(Math.round(pair.t) % 360).padStart(3, '0')} T`}</span>}
     </div>
   );

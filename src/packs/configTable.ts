@@ -7,7 +7,7 @@
  * Root: RTN · ROLE · TLM · SND · MAP · OPT. K1 = RTN on every page (SPEED cell); tiles are also tapped directly.
  *   ROLE  VEHICLE (OPAC · BRT⚑ · SCAN⚑ · BEZEL⚑ · SCALE⚑ · FONTS P⚑ · COLORS P⚑) + DYNAMICS (TOP SPD · IDLE LO ·
  *         IDLE HI · JITTER · JIT % · MEDIA — all P)
- *   TLM   LOOK (the theme's looks) · UNITS (SPEED · HDG M/T · DIST⚑ · TEMP⚑ · PRESS⚑) · READOUT (DENSITY⚑)
+ *   TLM   LOOK (the theme's looks) · UNITS (SPEED · HDG REF M/T · DIST⚑ · TEMP⚑ · PRESS⚑) · READOUT (DENSITY⚑)
  *   SND   PACK ▸ P · AUDIO (MUTE · VOL = SYS read-only · SW SND · AUTO LAUNCH · BKGND) · ALERTS (CALLS · HI-SPD · AB UNARM — REQ)
  *   MAP   GPS P · FIX + RETRY · COMPASS (phones) · RADAR · STYLE · RNG · MODE · (i) MAP CREDIT (REQ)
  *   OPT   ENGINE STARTUP P (APU / STANDARD) · MOTION (REQ) · ALERTS ▸ · TIP · DIAG ▸ P · ABOUT · RESET ▸ P
@@ -164,7 +164,7 @@ export function buildConfig(spec: PackConfigSpec): Record<PageId, ConfigPage> {
         RTN,
         ...looks,
         { id: 'speed', group: 'UNITS', label: 'SPEED', needsUi: true, value: (c) => (c.ui!.speedUnit === 'mph' ? 'MPH' : 'KM/H'), aria: (c) => `Speed units, ${c.ui!.speedUnit === 'mph' ? 'miles per hour' : 'kilometres per hour'}`, effect: (c) => ({ type: 'ui', partial: { speedUnit: c.ui!.speedUnit === 'mph' ? 'kph' : 'mph' } }) },
-        { id: 'hdg', group: 'UNITS', label: 'HDG', value: (c) => (c.prefs.hdgRef === 'M' ? 'MAG' : 'TRUE'), aria: (c) => `Heading reference, ${c.prefs.hdgRef === 'M' ? 'magnetic' : 'true'}`, effect: (c) => ({ type: 'prefs', partial: { hdgRef: c.prefs.hdgRef === 'M' ? 'T' : 'M' } }) },
+        { id: 'hdg', group: 'UNITS', label: 'HDG REF', value: (c) => (c.prefs.hdgRef === 'M' ? 'MAG' : 'TRUE'), aria: (c) => `Heading reference, ${c.prefs.hdgRef === 'M' ? 'magnetic' : 'true'}. Compass shows ${c.prefs.hdgRef === 'M' ? 'magnetic' : 'true'} heading`, effect: (c) => ({ type: 'prefs', partial: { hdgRef: c.prefs.hdgRef === 'M' ? 'T' : 'M' } }) },
         { id: 'dist', group: 'UNITS', label: 'DIST', flag: 'stored; no readout uses it yet', value: (c) => UP(c.prefs.distUnit), aria: (c) => `Distance units, ${c.prefs.distUnit === 'mi' ? 'miles' : 'kilometres'}`, effect: (c) => ({ type: 'prefs', partial: { distUnit: c.prefs.distUnit === 'mi' ? 'km' : 'mi' } }) },
         { id: 'temp', group: 'UNITS', label: 'TEMP', flag: 'stored; no readout uses it yet', value: (c) => (c.prefs.tempUnit === 'f' ? '°F' : '°C'), aria: (c) => `Temperature, ${c.prefs.tempUnit === 'f' ? 'Fahrenheit' : 'Celsius'}`, effect: (c) => ({ type: 'prefs', partial: { tempUnit: c.prefs.tempUnit === 'f' ? 'c' : 'f' } }) },
         { id: 'press', group: 'UNITS', label: 'PRESS', flag: 'stored; no readout uses it yet', value: (c) => UP(c.prefs.pressUnit), aria: (c) => `Pressure, ${c.prefs.pressUnit === 'psi' ? 'P S I' : 'bar'}`, effect: (c) => ({ type: 'prefs', partial: { pressUnit: c.prefs.pressUnit === 'psi' ? 'bar' : 'psi' } }) },
