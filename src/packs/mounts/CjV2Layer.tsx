@@ -8,7 +8,7 @@ import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompa
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
 import { board2Cells, board2CellsMapFirst, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
-import { applyMapKey, getMapView, radarCue, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
+import { applyMapKey, getMapView, radarAria, radarCue, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
 import { getCjPrefs, reducedMotion, setCjPrefs, subscribeCjPrefs, type CjPrefs } from '../carrier-jet/cjPrefs';
 import { closeCjConfig, getCjConfig, registerCjConfigHost, setCjConfig, subscribeCjConfig } from '../carrier-jet/configStore';
 import { CELL_ORDER, TILE_SLOTS } from '../carrier-jet/configCells';
@@ -209,6 +209,40 @@ function AccelCell({ box, demo, reduced }: { box: Box; demo: boolean; reduced: b
 }
 
 /* ------------------------------------------------------------------ MAP / RADAR */
+/**
+ * The phosphor radar scope: no background of its own (transparent over the map). Layers, bottom up: range rings →
+ * sweep (its own HTML-level svg, rotated as an element) → heading bug + own-ship → corners. The accessible name is on
+ * the MAP cell (CjLiveMap: "Radar scope over map, …"), so the scope itself is aria-hidden. BR: the map's status when
+ * it has one (GPS ACQ / DEMO / NO TILES), else NO RETURNS.
+ */
+function RadarScope({ view, hdg, headingStale, reduced, status, label }: { view: MapView; hdg: string; headingStale: boolean; reduced: boolean; status: string; label?: string }) {
+  return (
+    <div className="cjv2-scope" data-motion={reduced ? 'static' : 'live'} {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}>
+      <svg viewBox="-50 -50 100 100" aria-hidden="true">
+        <circle r="46" className="cjv2-ring-edge" />
+        {rangeRings(view.range).map((r) => (
+          <circle key={r.mi} r={46 * r.r} className="cjv2-ring" />
+        ))}
+      </svg>
+      {/* sweep: its own HTML-level svg (same viewBox + inset), rotated as an element about its CSS box centre = the
+          viewBox centre under meet. No CSS transform on SVG children (transform-box: view-box put the pivot at a
+          corner, Wilson Oct 16). Reduce Motion: static beam, no trail. */}
+      <svg className="cjv2-sweepsvg" viewBox="-50 -50 100 100" aria-hidden="true">
+        {!reduced && <path className="cjv2-trail" d="M0 0 L0 -46 A46 46 0 0 0 -32.5 -32.5 Z" />}
+        <line x1="0" y1="0" x2="0" y2="-46" className="cjv2-beam" />
+      </svg>
+      {/* heading bug + own-ship above the sweep */}
+      <svg className="cjv2-scopetop" viewBox="-50 -50 100 100" aria-hidden="true">
+        <path d="M0 -50 L-4 -43 L4 -43 Z" className="cjv2-bug" />
+        <path d="M0 -4 L3 4 L0 2 L-3 4 Z" className="cjv2-own" />
+      </svg>
+      <span className="cjv2-corner cjv2-tl" data-cjmap-ob>{view.mode === 'map' ? 'MAP' : 'TERR'}</span>
+      <span className="cjv2-corner cjv2-tr" data-cjmap-ob data-stale={headingStale}>{hdg}</span>
+      <span className="cjv2-corner cjv2-bl" data-cjmap-ob>{view.range} MI</span>
+      <span className="cjv2-corner cjv2-br" data-cjmap-ob>{status || 'NO RETURNS'}</span>
+    </div>
+  );
+}
 type LiveMapCtx = { demo: boolean; park: boolean; hdgRef: 'M' | 'T' };
 function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx; wx?: WxView | null; wxRadar?: boolean }) {
   const [info, setInfo] = useState(false);
@@ -219,31 +253,13 @@ function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar 
       <div className="cjv2-crt">
         {/* Alerts: reserved top third (no alert source on base) */}
         <div className="cjv2-alerts" role="status" aria-live="polite" />
-        {view.radar ? (
-          <div className="cjv2-scope" data-motion={reduced ? 'static' : 'live'} role="img" aria-label={`Radar scope, ${view.range} mile range, ${view.mode === 'map' ? 'map' : 'terrain'} mode, heading ${hdg}, no returns`}>
-            <svg viewBox="-50 -50 100 100" aria-hidden="true">
-              <circle r="46" className="cjv2-ring-edge" />
-              {rangeRings(view.range).map((r) => (
-                <circle key={r.mi} r={46 * r.r} className="cjv2-ring" />
-              ))}
-              <path d="M0 -50 L-4 -43 L4 -43 Z" className="cjv2-bug" />
-              <path d="M0 -4 L3 4 L0 2 L-3 4 Z" className="cjv2-own" />
-            </svg>
-            {/* sweep: its own HTML-level svg (same viewBox + inset), rotated as an element about its CSS box centre = the
-                viewBox centre under meet. No CSS transform on SVG children (transform-box: view-box put the pivot at a
-                corner, Wilson Oct 16). Reduce Motion: static beam, no trail. */}
-            <svg className="cjv2-sweepsvg" viewBox="-50 -50 100 100" aria-hidden="true">
-              {!reduced && <path className="cjv2-trail" d="M0 0 L0 -46 A46 46 0 0 0 -32.5 -32.5 Z" />}
-              <line x1="0" y1="0" x2="0" y2="-46" className="cjv2-beam" />
-            </svg>
-            <span className="cjv2-corner cjv2-tl">{view.mode === 'map' ? 'MAP' : 'TERR'}</span>
-            <span className="cjv2-corner cjv2-tr" data-stale={headingStale}>{hdg}</span>
-            <span className="cjv2-corner cjv2-bl">{view.range} MI</span>
-            <span className="cjv2-corner cjv2-br">NO RETURNS</span>
-          </div>
-        ) : null}
-        {/* live map (lazy MapLibre, CjLiveMap.tsx); kept mounted under RADAR so it pauses, then is removed after 30 s */}
-        <Suspense fallback={null}><CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} hidden={view.radar} wxRadar={!!wxRadar} /></Suspense>
+        {/* RADAR (Wilson, Oct 16 "Radar overlay should stack atop maps"): the scope is a transparent overlay ON the
+            live map, inside CjLiveMap between the dimmed map (+ WX rain under the roads) and the street labels. Until
+            the map chunk loads, or with no map (no fix / offline / Park without GPS), the scope stands alone on the CRT. */}
+        <Suspense fallback={view.radar ? <RadarScope view={view} hdg={hdg} headingStale={headingStale} reduced={reduced} status="" label={radarAria(view, hdg, '', false)} /> : null}>
+          <CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} wxRadar={!!wxRadar}
+            radar={view.radar ? { range: view.range, hdg, mode: view.mode, scope: (st) => <RadarScope view={view} hdg={hdg} headingStale={headingStale} reduced={reduced} status={st} /> } : undefined} />
+        </Suspense>
         <button type="button" className="cjv2-info" aria-expanded={info} aria-label="Map credit" onClick={() => setInfo((v) => !v)}>i</button>
         {info && (
           <p className="cjv2-attr" role="note" data-wx={wxRadar ? 'radar' : wx ? true : undefined}>

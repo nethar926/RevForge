@@ -1,6 +1,6 @@
 /**
  * Carrier Jet v2 MAP cell view state (framework; pure store, persisted). RADAR (the bat toggle on the GPS+RADAR plate)
- * swaps the MAP cell between the HSD map and the round radar scope; the MAP edge keys follow it:
+ * lays the round radar scope over the live map (dimmed, heading-up; mock, Wilson Oct 16); the MAP edge keys follow it:
  *   RADAR off: ZM+ / ZM− (live map range 1 · 2 · 5 · 10 mi) · N/TRK-UP (north-up ↔ track-up) · MAP/TERR (4th key:
  *              the live map's hillshade off ↔ on; the same `mode` the radar's MODE key sets)
  *   RADAR on:  RNG+ / RNG− (scope range 2 · 5 · 10 mi) · MODE (MAP ↔ TERR returns)
@@ -8,6 +8,7 @@
  */
 import { storageKey } from '../../lib/storageKey.ts';
 import type { KV } from '../abArmed.ts';
+import type { CjMapStatus } from '../../skins/carrier-jet/map/style.ts';
 
 export const RANGES = [2, 5, 10] as const;
 export type RangeMi = (typeof RANGES)[number];
@@ -86,6 +87,14 @@ export function applyMapKey(v: MapView, id: MapKeyId): MapView {
 /** Range rings drawn for a scope range: 2 / 5 / 10 mi, those within range, as fractions of the scope radius. */
 export function rangeRings(range: RangeMi): { mi: number; r: number }[] {
   return RANGES.filter((m) => m <= range).map((m) => ({ mi: m, r: m / range }));
+}
+
+/** MAP cell aria-label in RADAR mode: names both layers, then the scope state, then the map underneath. */
+export function radarAria(v: Pick<MapView, 'range' | 'mode'>, hdg: string, status: CjMapStatus, mapShown: boolean): string {
+  const scope = `${v.range} mile range, ${v.mode === 'map' ? 'map' : 'terrain'} mode, heading ${hdg}, no returns`;
+  const st = status === 'GPS ACQ' ? 'acquiring GPS' : status === 'NO TILES' ? 'no tiles, offline' : status.toLowerCase();
+  if (!mapShown) return `Radar scope, ${scope}. Map unavailable${st ? `, ${st}` : ''}`;
+  return `Radar scope over map, ${scope}. Map track up, dimmed${st ? `, ${st}` : ''}`;
 }
 
 /** Sweep angle (deg, clockwise from 12 o'clock) at time t (ms): ~4 s a revolution. Reduce Motion: fixed at 0. */
