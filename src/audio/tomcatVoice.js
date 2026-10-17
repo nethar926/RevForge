@@ -651,12 +651,36 @@ export function tomcatTimeScale(params = {}) {
 /**
  * Cruise thrust floor (GPS drive). The car sim's GPS throttle is ≈ 0.12 + accel/5, so a steady
  * speed sounded like idle and thrust bass only came in while speed was rising. When the caller
- * supplies `acceleration` (m/s²) the command is held at least at `base + perSpeed × speed` while
- * the car is moving and not slowing; it opens at accel ≥ `onAccel`, closes below `offAccel`
- * (hysteresis against GPS noise) and glides with `tau`; a harder pull rides on top. The afterburner still
- * stages from load only.
+ * supplies `acceleration` (the GPS drive chain does), the command is held at least at
+ * `base + perSpeed × speed` while the car is moving and not slowing. "Slowing" is not the per-frame
+ * acceleration (GPS noise spikes it): the held speed is sampled every `sampleS` and the
+ * least-squares slope over the last `windowS` decides it. The floor closes below `offMphs` (or at
+ * once when the last `fastS` drops faster than `fastOffMphs`, a real brake) and reopens at
+ * ≥ `onMphs`; it glides with `tau` and a harder pull rides on top. The afterburner still stages
+ * from load only.
  */
-export const TC_CRUISE_FLOOR = { base: 0.42, perSpeed: 0.25, minSpeed: 0.025, onAccel: -0.15, offAccel: -0.45, tau: 0.35 };
+export const TC_CRUISE_FLOOR = { base: 0.42, perSpeed: 0.25, minSpeed: 0.025, sampleS: 0.25, windowS: 5, fastS: 1.5, onMphs: -0.12, offMphs: -0.35, fastOffMphs: -2, tau: 0.35 };
+
+const lsSlope = (h, from) => {
+  let n = 0, mt = 0, mv = 0;
+  for (let k = from; k < h.length; k++) { mt += h[k][0]; mv += h[k][1]; n++; }
+  if (n < 3) return null;
+  mt /= n; mv /= n;
+  let a = 0, b = 0;
+  for (let k = from; k < h.length; k++) { a += (h[k][0] - mt) * (h[k][1] - mv); b += (h[k][0] - mt) ** 2; }
+  return b > 1e-9 ? a / b : 0;
+};
+/** [long-window slope, short-window slope] in mph/s of the held GPS speed (null until filled). */
+function cruiseSlopes(state, mph, now) {
+  const F = TC_CRUISE_FLOOR;
+  const h = state.cruiseHist || (state.cruiseHist = []);
+  if (!h.length || now - h[h.length - 1][0] >= F.sampleS - 1e-9) h.push([now, mph]);
+  while (h.length && h[0][0] < now - F.windowS) h.shift();
+  if (!h.length || h[h.length - 1][0] - h[0][0] < F.windowS * 0.6) return [null, null];
+  let k = h.length - 1;
+  while (k > 0 && h[k - 1][0] >= now - F.fastS) k--;
+  return [lsSlope(h, 0), lsSlope(h, k)];
+}
 
 /**
  * One drive step (dt seconds). Input: DrivingInput (speed, throttle, load?, shifting?).
@@ -678,11 +702,13 @@ export function stepTomcatDrive(state, input, dt, params = {}) {
   const demand = tomcatAbDemand(d);
   const thr = clip(num(d.throttle, 0));
   let cmd = loadGiven ? Math.max(thr, demand) : thr;
-  const acc = Number(d.acceleration);
-  if (d.acceleration !== undefined && d.acceleration !== null && Number.isFinite(acc)) {
+  if (d.acceleration !== undefined && d.acceleration !== null && Number.isFinite(Number(d.acceleration))) {
     const F = TC_CRUISE_FLOOR;
     const v = clip(num(d.speed, 0));
-    const want = v < F.minSpeed || acc < F.offAccel ? 0 : acc >= F.onAccel ? 1 : state.cruiseGate >= 0.5 ? 1 : 0;
+    const [slope, fast] = cruiseSlopes(state, v * 120, state.time);
+    const open = !!state.cruiseWant;
+    const want = v < F.minSpeed || (fast !== null && fast < F.fastOffMphs) ? 0 : slope === null ? (open ? 1 : 1) : slope < F.offMphs ? 0 : slope >= F.onMphs ? 1 : open ? 1 : 0;
+    state.cruiseWant = want;
     state.cruiseGate = lag(num(state.cruiseGate, 0), want, clip(num(dt, 1 / 60), 0, 0.25), F.tau);
     // pulling harder than cruise rides on top of the floor (half the GPS throttle's rise above its cruise 0.12)
     cmd = Math.max(cmd, state.cruiseGate * (F.base + F.perSpeed * v + 0.5 * Math.max(0, thr - 0.12)));
