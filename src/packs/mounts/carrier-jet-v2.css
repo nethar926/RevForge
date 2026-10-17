@@ -95,6 +95,18 @@
 .cjm[data-cjm-v2] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs { flex-wrap: wrap; min-width: 0; max-width: 100%; }
 .cjm[data-cjm-v2] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs .cj-tab { flex: 0 1 136px; min-width: 44px; width: 136px; min-height: 44px; height: 44px; box-sizing: border-box; }
 .cjm[data-cjm-v2][data-rf-layout='window'] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs .cj-tab { flex-basis: 112px; width: 112px; }
+/* Phone widths (every case where the row can wrap: Look + 3 keys needs ~467px): wrapped keys start at MATRIX's left
+   edge, never under the LOOK label (Meghan's dd3db1a nit). The label leaves the flex flow and sits in the row's left
+   padding (36px B612 / 29px Barlow = the label's measured 35.3 / 28.3px, + the 4px gap), centred on the first 44px row,
+   so every line of keys starts at the same x. Keys keep 136px (112 in window) but may shrink so two fit per wrapped row
+   (320 portrait: 132px), never below 44px. 844 / 773 / 1280 never match this query (pixel-identical). Layout only. */
+@media (max-width: 480px) {
+  .cjm[data-cjm-v2] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs { --cjm-look-cap: 29px; position: relative; padding-left: calc(var(--cjm-look-cap) + 4px); }
+  .cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-tabs { --cjm-look-cap: 36px; }
+  .cjm[data-cjm-v2] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs > .cj-tabs-cap { position: absolute; left: 0; top: 0; height: 44px; display: flex; align-items: center; }
+  .cjm[data-cjm-v2] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs > .cj-tab { flex-basis: min(136px, calc(50% - 2.5px)); }
+  .cjm[data-cjm-v2][data-rf-layout='window'] .cj:is([data-layout='reflow'], [data-layout='full']) .cj-tabs > .cj-tab { flex-basis: min(112px, calc(50% - 2.5px)); }
+}
 .cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-body {
   position: relative;
   grid-template-columns: minmax(0, 96fr) minmax(0, 88fr) minmax(0, 96fr) minmax(0, 196fr) minmax(0, 176fr);
