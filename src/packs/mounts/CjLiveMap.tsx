@@ -8,7 +8,7 @@
  *    then the loop stops (MapLibre redraws only on change). Position glides prev fix → latest fix over one interval;
  *    bearing = the v3 eased heading (CjHeadingEase, shortest arc). Reduce Motion: jump per fix, nothing animates.
  *  - RADAR (Wilson, Oct 16): the scope is a transparent overlay ON the live map (`radar` prop, drawn between the map
- *    and the labels). Under it the base map + roads are dimmed (CJ_RADAR_MAP_DIM, paint colours), heading-up, centred, scaled to the scope range.
+ *    and the labels). Under it the base map + roads are dimmed (CJ_RADAR_MAP_DIM, paint colours; WX rain stays full strength), heading-up, centred, scaled to the scope range.
  *  - Pause: hidden (IntersectionObserver / tab hidden) or Park with no live GPS → no updates + map.stop();
  *    30 s hidden → map.remove(), recreated on show. Other looks unmount the cell (map removed).
  *  - MAP / TERR (the mode key): the hillshade layer's visibility, no map rebuild; DEM tiles load only for TERR.
@@ -21,7 +21,7 @@ import { type MapView } from '../carrier-jet/mapView';
 import { cjRadarScopeAria } from '../../skins/carrier-jet/map/radarAria';
 import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, compassSpeech, headingPair, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
-import { attachWxRadar, WX_SRC } from './cjWxRadarLayer';
+import { attachWxRadar, setWxScopeTint, WX_SRC } from './cjWxRadarLayer';
 
 type Ml = typeof import('maplibre-gl');
 let mlPromise: Promise<Ml> | null = null;
@@ -299,18 +299,19 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       off?.();
     };
   }, [wxRadar, hasMap]);
-  // RADAR: dim the base map + roads (paint colours × CJ_RADAR_MAP_DIM). Restored when RADAR goes off. No rebuild, no
-  // tile reload for the base map. (The WX rain layer + its scope tint live on the weather branch.)
+  // RADAR: dim the base map + roads (paint colours × CJ_RADAR_MAP_DIM; WX rain untouched) and switch the rain to the
+  // scope tint (teal + hatched light rain). Restored when RADAR goes off. No rebuild, no tile reload for the base map.
   const radarOn = !!radar;
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !hasMap) return;
     const apply = () => {
       for (const c of radarDimPaint(buildCjMapStyle({ terrain: true }).layers, radarOn ? CJ_RADAR_MAP_DIM : 1)) if (map.getLayer(c.id)) map.setPaintProperty(c.id, c.prop, c.value);
+      setWxScopeTint(map, radarOn);
     };
     if (map.isStyleLoaded()) apply();
     else map.once('styledata', apply);
-  }, [radarOn, hasMap]);
+  }, [radarOn, hasMap, wxRadar]);
   useEffect(() => {
     if (online) setTiles((p) => (p === 'network' ? false : p));
   }, [online]);
