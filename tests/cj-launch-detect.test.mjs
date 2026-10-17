@@ -115,3 +115,11 @@ test('±0.4 mph GPS noise at steady speed and normal pulls at 1 Hz-ish never fir
     for (const fps of [60, 10]) assert.equal(runFixes(a, fps, [0.72, 0.9, 0.8, 0.75, 0.88], 30), -1, `${a} mph/s`);
   }
 });
+
+test('from a stop: 0–60 in ~2 s at exact 1 Hz fires on the 2nd fix; 4 mph/s does not', () => {
+  const plaid = [0, 0, 0, 30, 60, 60, 60, 60];
+  const on = run(plaid);
+  assert.equal(on[3], false);
+  assert.equal(on[4], true, 'Plaid-class launch is not mistaken for a GPS jump');
+  assert.ok(!run([0, 0, 0, 4, 8, 12, 16, 20, 24]).includes(true), '4 mph/s from a stop');
+});

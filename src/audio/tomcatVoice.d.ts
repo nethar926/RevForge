@@ -134,7 +134,7 @@ export const TC_LAUNCH_WINDOW_S: number;
 export const TC_LAUNCH_STALE_S: number;
 export const TC_LAUNCH_MAX_MPHS: number;
 export const TC_LAUNCH_GLITCH_HOLDOFF_S: number;
-export interface LaunchDetector { t: number; hist: [number, number][]; period: number; on: boolean; holdFrom: number; dropFrom: number; accel: number; holdoffUntil: number; }
+export interface LaunchDetector { t: number; hist: [number, number][]; period: number; base: [number, number]; holdBase: [number, number] | null; on: boolean; holdFrom: number; dropFrom: number; accel: number; holdoffUntil: number; }
 export function createLaunchDetector(): LaunchDetector;
 export function resetLaunchDetector(det: LaunchDetector): void;
 /** GPS-speed carrier-launch detector step; returns whether a launch is active. */
