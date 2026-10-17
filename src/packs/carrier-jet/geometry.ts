@@ -7,7 +7,8 @@ export type CellId = 'speed' | 'mach' | 'accel' | 'vdi' | 'sweep' | 'eng' | 'map
 export const TOP_CELLS: readonly CellId[] = ['speed', 'mach', 'accel', 'vdi', 'sweep'];
 export const BOTTOM_CELLS: readonly CellId[] = ['eng', 'map', 'compass'];
 
-/** Raw skin rects (relative to the board) → Board 2 cells. ACCEL and MAP are the empty grid areas between them. */
+/** Raw skin rects (relative to the board) → Board 2 cells. ACCEL and MAP are the empty grid areas between them.
+ * SPEED has the whole first column; RPM sits under MACH, so the MACH cell runs down to RPM's bottom. */
 export function board2Cells(r: {
   speed: Box; rpm: Box; mach: Box; vdi: Box; sweep: Box; eng: Box; compass: Box;
 }): Record<CellId, Box> {
@@ -16,8 +17,8 @@ export function board2Cells(r: {
   const cg = Math.max(0, r.mach.left - (r.speed.left + r.speed.width));
   const accel: Box = { left: r.mach.left + r.mach.width + cg, top: r.mach.top, width: Math.max(0, col - 2 * cg), height: r.mach.height };
   return {
-    speed: { left: r.speed.left, top: r.speed.top, width: r.speed.width, height: r.rpm.top + r.rpm.height - r.speed.top },
-    mach: r.mach,
+    speed: r.speed,
+    mach: { left: r.mach.left, top: r.mach.top, width: r.mach.width, height: r.rpm.top + r.rpm.height - r.mach.top },
     accel,
     vdi: r.vdi,
     sweep: r.sweep,
@@ -26,6 +27,34 @@ export function board2Cells(r: {
     compass: r.compass,
   };
 }
+
+/** Map-first Drive gate: v2 board, Tesla layouts (board 1280/1256 · window 773), not in Park. Park → Board 2. */
+export const cjMapFirst = (s: { v2: boolean; tesla: boolean; park: boolean }): boolean => s.v2 && s.tesla && !s.park;
+
+/**
+ * Map-first DRIVE (Meghan's mock, ported). Host CSS (carrier-jet-v2.css, .cjm[data-cj-mapfirst='drive'])
+ * moves the skin's VDI into column 3 of the top row (beside MACH); ACCEL goes under it in the second row (column 3,
+ * beside a narrower AOA/ENG in columns 1-2). MAP then spans the centre column over both rows (VDI's old cell + its own,
+ * including the top key row it no longer needs). ACCEL is measured from VDI's column and COMPASS's row.
+ */
+export function board2CellsMapFirst(r: {
+  speed: Box; rpm: Box; mach: Box; vdi: Box; sweep: Box; eng: Box; compass: Box;
+}): Record<CellId, Box> {
+  const cg = Math.max(0, r.mach.left - (r.speed.left + r.speed.width));
+  const mapLeft = r.vdi.left + r.vdi.width + cg, mapRight = r.sweep.left - cg;
+  return {
+    speed: r.speed,
+    mach: { left: r.mach.left, top: r.mach.top, width: r.mach.width, height: r.rpm.top + r.rpm.height - r.mach.top },
+    accel: { left: r.vdi.left, top: r.compass.top, width: r.vdi.width, height: r.compass.height },
+    vdi: r.vdi,
+    sweep: r.sweep,
+    eng: r.eng,
+    map: { left: mapLeft, top: r.mach.top, width: Math.max(0, mapRight - mapLeft), height: r.compass.top + r.compass.height - r.mach.top },
+    compass: r.compass,
+  };
+}
+/** Map-first: the cells whose key strip sits under the top row (ACCEL is a bottom-row cell there). */
+export const TOP_CELLS_MAP_FIRST: readonly CellId[] = ['speed', 'mach', 'vdi', 'sweep'];
 
 /** Meghan's BezelKey frame: 52×66 (18px legend slot + 44×44 cap). */
 export const KEY_W = 52;

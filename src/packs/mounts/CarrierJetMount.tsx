@@ -24,6 +24,7 @@ import { getMapView, setRadar, subscribeMapView } from '../carrier-jet/mapView';
 import { getCjPrefs, reducedMotion, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
 import { useCjPark, useColdStart } from './CjColdStart';
 import { CjV2Layer } from './CjV2Layer';
+import { cjMapFirst } from '../carrier-jet/geometry';
 import { getPackJet, subscribePackJet } from '../jetBridge';
 import { LAUNCH_OFF, launchAbZone, launchStep, readLaunchActive } from '../carrier-jet/launchLight';
 
@@ -76,6 +77,7 @@ const subSysReduced = (f: () => void) => {
   m.addEventListener?.('change', f);
   return () => m.removeEventListener?.('change', f);
 };
+
 
 export function CarrierJetMount(props: PackHudProps) {
   const { ref, fit } = useFitBox(1280, 520, 740, 720);
@@ -181,6 +183,10 @@ export function CarrierJetMount(props: PackHudProps) {
   // CJ v3 cold start: one Park for the shelf and CONFIG's Park-only tiles (≤ 0.5 mph for 1.5 s; leaves above 2).
   const speedMph = props.unit === 'kph' ? props.speed / 1.609344 : props.speed;
   const park = useCjPark(speedMph);
+  // Map-first Drive (Wilson-approved, Meghan's mock): the Drive default on the Tesla layouts (board / window); Park keeps
+  // Board 2. Instant swap on P/D (CSS grid areas, carrier-jet-v2.css); the one MapLibre map moves with its cell and
+  // resizes from its own ResizeObserver (CjLiveMap), no remount.
+  const mapFirst = cjMapFirst({ v2, tesla, park });
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const sysReduced = useSyncExternalStore(subSysReduced, readSysReduced, () => false);
   const reduced = reducedMotion(prefs, sysReduced || !props.motion);
@@ -257,6 +263,7 @@ export function CarrierJetMount(props: PackHudProps) {
       data-box={driveWindow ? 'drive' : undefined}
       data-rf-layout={layout}
       data-cjm-v2={v2 || undefined}
+      data-cj-mapfirst={mapFirst ? 'drive' : undefined}
       style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}
     >
       {/* CJ v3: GPS-only heading (~1 Hz in the car) eased on the shortest arc between fixes; Reduce Motion snaps. */}
