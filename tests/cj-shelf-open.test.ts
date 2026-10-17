@@ -1,9 +1,12 @@
 // Shelf reachable at all times (Wilson): after both engines run (step 12) the shelf stays open so steps 13..N (incl.
-// the step-14 APU-off cue) can be reached; SHELF toggles in Park and Drive, before or after the start; the only
-// auto-close is the edge into a completed sequence, and SHELF reopens it.
+// the step-14 APU-off cue) can be reached; SHELF toggles in Park and Drive, before or after the start. Auto-close is
+// edge-only: once on the shift into Drive (even mid-sequence) and once on completing in Park; SHELF reopens it and it
+// stays open. Header reads COLD START; locked-by-Park switches with a step ahead carry a PARK legend.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { getJetChecklist, getJetSystemList } from '../src/audio/jetColdStart.js';
 import { CS_DARK, csSequence, csVariant, csView, shelfAutoClose, shelfToggle, type CsInput, type CsMode } from '../src/packs/carrier-jet/coldStart.ts';
 
@@ -75,7 +78,7 @@ for (const mode of ['apu', 'gndAir'] as const) {
     h.press(); assert.equal(h.shelf, 'open', 'SHELF reopens after completion');
     for (let i = 0; i < 5; i++) h.tick(after(mode, N));
     assert.equal(h.shelf, 'open', 'and it stays open');
-    // drive away: the Park → Drive edge after completion closes once…
+    // drive away: the shift into Drive closes once…
     h.tick(after(mode, N, false));
     assert.equal(h.shelf, 'closed');
     // …and SHELF reopens it while driving, where it stays
@@ -85,31 +88,98 @@ for (const mode of ['apu', 'gndAir'] as const) {
     h.press(); assert.equal(h.shelf, 'closed', 'and closes it again');
   });
 
-  test(`${mode}: driving before / mid start: SHELF toggles and nothing auto-closes while steps are left`, () => {
-    for (const n of [0, 5, 12]) {
-      const h = host();
+  test(`${mode}: shift to D mid-sequence tucks the shelf once; SHELF reopens it and it stays open while driving`, () => {
+    for (const n of [0, 5, 12, 13]) {
+      const h = host('open');
       h.tick(after(mode, n, true));
-      h.tick(after(mode, n, false)); // Park → Drive mid-sequence: no close
-      h.press(); assert.equal(h.shelf, 'open', `SHELF opens in Drive at step ${n + 1}`);
-      h.tick(after(mode, n, false)); h.tick(after(mode, n, true)); h.tick(after(mode, n, false));
-      assert.equal(h.shelf, 'open');
+      assert.equal(h.shelf, 'open', `open in Park at step ${n + 1}`);
+      h.tick(after(mode, n, false)); // Park → D
+      assert.equal(h.shelf, 'closed', `tucked once on the shift to D at step ${n + 1}`);
+      h.press(); assert.equal(h.shelf, 'open', `SHELF reopens in D at step ${n + 1}`);
+      for (let i = 0; i < 6; i++) h.tick(after(mode, n, false));
+      assert.equal(h.shelf, 'open', 'stays open while driving');
+      // a drive-away auto-finish completing while driving doesn't close it either
+      const N = csSequence(getJetSystemList(csVariant(mode)), mode).length;
+      h.tick(after(mode, N, false)); assert.equal(h.shelf, 'open', 'completion while driving: stays open');
+      h.press(); assert.equal(h.shelf, 'closed', 'until the user closes it');
     }
+    // back in Park with steps left: nothing closes it repeatedly
+    const h = host();
+    h.tick(after(mode, 5, false)); h.tick(after(mode, 5, true));
+    h.press(); for (let i = 0; i < 6; i++) h.tick(after(mode, 5, true));
+    assert.equal(h.shelf, 'open');
   });
 }
 
-test('shelfAutoClose: never with steps left; only the completion / Park→Drive-after-completion edges, or no cold start', () => {
-  for (const park of [true, false]) for (const pp of [true, false]) for (const pc of [true, false]) {
-    assert.equal(shelfAutoClose({ park: pp, complete: pc }, { park, complete: false, on: true }), false);
+test('shelfAutoClose: edges only (shift into D, completion in Park), or no cold start; never repeatedly', () => {
+  for (const pc of [true, false]) for (const c of [true, false]) {
+    assert.equal(shelfAutoClose({ park: true, complete: pc }, { park: false, complete: c, on: true }), true, 'shift to D');
+    assert.equal(shelfAutoClose({ park: false, complete: pc }, { park: false, complete: c, on: true }), false, 'driving: never');
+    assert.equal(shelfAutoClose({ park: false, complete: pc }, { park: true, complete: pc, on: true }), false, 'back in Park: no close');
   }
-  assert.equal(shelfAutoClose({ park: true, complete: false }, { park: true, complete: true, on: true }), true);
+  assert.equal(shelfAutoClose({ park: true, complete: false }, { park: true, complete: false, on: true }), false, 'steps left in Park');
+  assert.equal(shelfAutoClose({ park: true, complete: false }, { park: true, complete: true, on: true }), true, 'completion in Park');
   assert.equal(shelfAutoClose({ park: true, complete: true }, { park: true, complete: true, on: true }), false);
-  assert.equal(shelfAutoClose({ park: true, complete: true }, { park: false, complete: true, on: true }), true);
-  assert.equal(shelfAutoClose({ park: false, complete: true }, { park: false, complete: true, on: true }), false);
-  assert.equal(shelfAutoClose({ park: false, complete: true }, { park: true, complete: true, on: true }), false);
   assert.equal(shelfAutoClose({ park: true, complete: false }, { park: true, complete: false, on: false }), true);
   assert.equal(shelfToggle('closed'), 'opening');
   assert.equal(shelfToggle('open'), 'closed');
   assert.equal(shelfToggle('opening'), 'closed');
+});
+
+test('PARK legend: only on a switch locked for Park with its step ahead; CRANK / RUN / CLOSED / OPEN keep priority', () => {
+  for (const mode of ['apu', 'gndAir'] as const) {
+    const d0 = csView(after(mode, 0, false));
+    assert.equal(d0.switches.batt.legend, 'PARK');
+    assert.equal(d0.switches.batt.disabledReason, 'Available in Park');
+    assert.equal(d0.switches.canopy.legend, 'OPEN', 'canopy keeps OPEN');
+    assert.equal(d0.switches.engL.legend, 'PARK');
+    const p0 = csView(after(mode, 0, true));
+    assert.ok(Object.values(p0.switches).every((v) => v.legend !== 'PARK'), 'never in Park');
+    // after step 12: running engines read RUN, done switches keep ON / OFF, switches with steps ahead read PARK
+    const d12 = csView(after(mode, 12, false));
+    assert.equal(d12.switches.engL.legend, 'RUN');
+    assert.equal(d12.switches.engR.legend, 'RUN');
+    assert.equal(d12.switches.batt.legend, undefined, 'done switch: ON');
+    assert.equal(d12.switches.seatbelt.legend, 'PARK');
+    assert.equal(d12.switches.masterCaution.legend, 'PARK');
+    const N = csSequence(getJetSystemList(csVariant(mode)), mode).length;
+    const dn = csView(after(mode, N, false));
+    assert.deepEqual(Object.entries(dn.switches).filter(([, v]) => v.legend === 'PARK').map(([k]) => k), [], 'complete: no PARK');
+  }
+});
+
+async function bundleParts() {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const { rolldown } = await import('rolldown');
+  const b = await rolldown({
+    input: join(root, 'src/skins/carrier-jet/parts/index.ts'),
+    external: (id: string) => id === 'react' || id.startsWith('react/') || id.startsWith('react-dom'),
+    plugins: [{ name: 'empty-css', resolveId: (id: string) => (/\.(css|woff2|svg)$/.test(id) ? '\0so-empty' : null), load: (id: string) => (id === '\0so-empty' ? 'export default ""' : null) }],
+    transform: { jsx: 'react-jsx' },
+    logLevel: 'silent',
+  } as never);
+  const { output } = await b.generate({ format: 'esm' });
+  const dir = mkdtempSync(join(root, 'node_modules/.so-test-'));
+  const file = join(dir, 'm.mjs');
+  writeFileSync(file, output[0].code);
+  const mod = await import(pathToFileURL(file).href);
+  rmSync(dir, { recursive: true, force: true });
+  return mod as Record<string, unknown>;
+}
+
+test('shelf header reads COLD START (amber engraving), and a locked switch draws PARK at the 11-unit floor', async () => {
+  const parts = await bundleParts();
+  const React = await import('react');
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const inp = after('apu', 0, false);
+  const v = csView(inp);
+  const h = renderToStaticMarkup(React.createElement(parts.SwitchShelf as never, { systems: inp.list, switches: v.switches, onToggle: () => {}, mode: 'apu', open: 'open', guards: { engL: false, engR: false } } as never));
+  assert.match(h, /<span class="cjp-eng cjp-eng--amber">COLD START<\/span>/);
+  assert.doesNotMatch(h, /PARK ONLY/);
+  const batt = h.slice(h.lastIndexOf('<button', h.indexOf('data-sys="batt"')));
+  const btn = batt.slice(0, batt.indexOf('</button>'));
+  assert.match(btn, /aria-disabled="true"/);
+  assert.match(btn, /data-text-floor="11"[^>]*>PARK<\/text>/);
 });
 
 test('mount: SHELF has no Park gate, the level-triggered close is gone, the key never reads PARK', () => {

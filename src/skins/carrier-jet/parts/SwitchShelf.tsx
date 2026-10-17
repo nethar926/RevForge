@@ -76,7 +76,7 @@ export function SwitchShelf({ systems, switches, onToggle, guards, onGuardToggle
         <i className="cjp-screw" data-pos="br" aria-hidden="true" />
         <header className="cjp-shelf-head">
           <span className="cjp-eng cjp-shelf-title">SWITCH SHELF</span>
-          <span className="cjp-eng cjp-eng--amber">PARK ONLY</span>
+          <span className="cjp-eng cjp-eng--amber">COLD START</span>
           {annunciators.length ? (
             <span className="cjp-anns" role="list" aria-label="Annunciators">
               {annunciators.map((a) => <span role="listitem" key={a.id}><Ann a={a} /></span>)}
