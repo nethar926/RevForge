@@ -4,8 +4,8 @@
  * pamphlet on the shelf, the SHELF key, the EMER STOP PULL handle and the guarded QUICK START.
  *  - State machine / lockouts / step numbers: packs/carrier-jet/coldStart.ts (pure). PULL gesture: pullGesture.ts.
  *  - Park: speed ≤ 0.5 for 1.5 s; leaving Park: speed > 2 (parkStep). The full sequence runs only in Park, but the
- *    shelf is reachable at all times: SHELF toggles it in Park or Drive, and it only closes itself on the edge into a
- *    completed sequence (shelfAutoClose). Leaving Park mid-sequence auto-finishes (jetQuickStart),
+ *    shelf is reachable at all times: SHELF toggles it in Park or Drive; it tucks away once on the shift into Drive and
+ *    once on completing in Park (shelfAutoClose), never repeatedly. Leaving Park mid-sequence auto-finishes (jetQuickStart),
  *    and QUICK START works while driving, so the engine is never locked out.
  *  - Hold switches (APU START, L / R ENG) start on a tap (VoiceOver-safe) and show CRANK / busy until READY / RUN.
  *  - PULL fires only on a ≥ 40 px pull of the grip (pointer captured) or the VoiceOver "Emergency stop" button; a tap
@@ -142,7 +142,7 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     setCautionReset(false);
     setGuards({});
   }, [sys.on.batt, sys.engines.L, sys.engines.R]);
-  // Shelf auto-close: only once the sequence is complete (edge), never while steps are left; SHELF reopens it.
+  // Shelf auto-close (shelfAutoClose): edges only (shift into Drive, completion in Park), never repeatedly; SHELF reopens it.
   // (Was: closed whenever out of Park or both engines ran, level-triggered, so after step 12 it shut and SHELF couldn't hold it open.)
   const prevShelfCtx = useRef({ park, complete: view.complete });
   useEffect(() => {

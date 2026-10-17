@@ -269,6 +269,9 @@ export function csView(inp: CsInput): CsView {
       else if (eng === 'run') v.legend = 'RUN';
     }
     if (id === 'canopy') v.legend = on ? 'CLOSED' : 'OPEN';
+    // PARK legend (Meghan's concept sheet, panel 1): a switch that still has its step ahead and is locked only because
+    // the car isn't in Park. CRANK / RUN / CLOSED / OPEN keep priority; done switches keep ON / OFF.
+    if (lock === CS_PARK_REASON && !held && !v.legend && seq.some((st, i) => i >= cursor && st.id === id && st.on && !csStepDone(st, inp))) v.legend = 'PARK';
     if (lock && !held) {
       v.disabled = true;
       v.disabledReason = lock;
@@ -442,14 +445,17 @@ export function shelfAutoStep(armed: boolean, s: { park: boolean; live: boolean;
   return { armed, open: false };
 }
 /**
- * Shelf auto-close (Wilson: the shelf is reachable at all times). Never while steps are left: it closes only on the
- * edge into a completed sequence (or a Park → Drive edge after completion), or when there's no cold start to show.
- * Edge-triggered, so SHELF reopens it afterwards in Park or Drive and it stays open.
+ * Shelf auto-close (Wilson: the shelf is reachable at all times). Edge-triggered only, never repeatedly:
+ *  - once on the shift into Drive (Park → not Park), even with steps left;
+ *  - once on completing the sequence in Park;
+ *  - or when there's no cold start to show.
+ * SHELF reopens it afterwards and it stays open (while driving too, incl. a drive-away auto-finish completing) until
+ * the user closes it.
  */
 export function shelfAutoClose(prev: { park: boolean; complete: boolean }, cur: { park: boolean; complete: boolean; on: boolean }): boolean {
   if (!cur.on) return true;
-  if (!cur.complete) return false;
-  return !prev.complete || (prev.park && !cur.park);
+  if (prev.park && !cur.park) return true;
+  return cur.park && cur.complete && !prev.complete;
 }
 /** SHELF key: always toggles, Park or Drive, before or after the start. */
 export const shelfToggle = (s: 'closed' | 'opening' | 'open'): 'closed' | 'opening' => (s === 'closed' ? 'opening' : 'closed');
