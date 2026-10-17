@@ -2,22 +2,24 @@
  * CJ MATRIX · MAP cell live map (non-radar view): a MapLibre canvas under the HSD overlay (own-ship, heading bug,
  * corners, ≤ 2 street names). Spec: drivesynth-skins/carrier-jet/live-map/BUILD.md + Meghan's
  * skins/carrier-jet/map (style, status, zoom, heading legend, WMM2025 declination).
- *  - maplibre-gl is LAZY: `import()` only once this cell is visible (MATRIX look, RADAR off), so the main bundle and
+ *  - maplibre-gl is LAZY: `import()` only once this cell is visible (MATRIX look), so the main bundle and
  *    the root build don't carry it.
  *  - Camera: jumpTo only (never easeTo), from rAF capped at ~12 fps while the shown fix / heading is still moving,
  *    then the loop stops (MapLibre redraws only on change). Position glides prev fix → latest fix over one interval;
  *    bearing = the v3 eased heading (CjHeadingEase, shortest arc). Reduce Motion: jump per fix, nothing animates.
- *  - Pause: hidden (IntersectionObserver / RADAR / tab hidden) or Park with no live GPS → no updates + map.stop();
+ *  - RADAR (Wilson, Oct 16): the scope is a transparent overlay ON the live map (`radar` prop, drawn between the map
+ *    and the labels). Under it the map is dimmed (CJ_RADAR_MAP_DIM), heading-up, centred, scaled to the scope range.
+ *  - Pause: hidden (IntersectionObserver / tab hidden) or Park with no live GPS → no updates + map.stop();
  *    30 s hidden → map.remove(), recreated on show. Other looks unmount the cell (map removed).
  *  - MAP / TERR (the mode key): the hillshade layer's visibility, no map rebuild; DEM tiles load only for TERR.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Map as MlMap, StyleSpecification, MapLibreEvent } from 'maplibre-gl';
 import { buildCjMapStyle, cjMapStatus, CJ_MAP_MAX_STREET_LABELS, CJ_MAP_OPTIONS, CJ_MAP_REMOVE_AFTER_HIDDEN_MS, shouldRender, zoomForRangeMi, type CjMapStatus } from '../../skins/carrier-jet/map/style';
 import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
-import type { MapView } from '../carrier-jet/mapView';
-import { bugPoint, classifyMapError, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, headingPair, headingSpeech, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
+import { radarAria, type MapView } from '../carrier-jet/mapView';
+import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, headingPair, headingSpeech, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
 
 type Ml = typeof import('maplibre-gl');
 let mlPromise: Promise<Ml> | null = null;
@@ -60,11 +62,16 @@ export interface CjLiveMapProps {
   demo: boolean;
   park: boolean;
   hdgRef: 'M' | 'T';
-  /** RADAR on: the map is hidden (paused, removed after 30 s). */
-  hidden: boolean;
+  /** Map hidden (paused, removed after 30 s). RADAR no longer hides it (see `radar`). */
+  hidden?: boolean;
+  /**
+   * RADAR on: the scope, drawn as a transparent overlay above the (dimmed) map and WX, under the street labels.
+   * `scope(status)` renders it; the map follows the scope (heading-up, centred, outer ring = `range` mi).
+   */
+  radar?: { range: 2 | 5 | 10; hdg: string; mode: 'map' | 'terr'; scope: (status: CjMapStatus) => ReactNode };
 }
 
-export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hdgRef, hidden }: CjLiveMapProps) {
+export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hdgRef, hidden = false, radar }: CjLiveMapProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const glRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -121,8 +128,10 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
   const active = shouldRender({ cellVisible, parked: park, gpsLive });
 
   // --- camera target (read by the rAF loop through refs)
-  const cam = useRef({ northUp: view.northUp, zoomMi: view.zoom, heading, reduced, h: size.h, w: size.w });
-  cam.current = { northUp: view.northUp, zoomMi: view.zoom, heading, reduced, h: size.h, w: size.w };
+  // RADAR: heading-up, centred on own-ship (padding 0), zoom so the scope's outer ring = radar.range
+  const camOf = () => ({ northUp: view.northUp, zoomMi: view.zoom, heading, reduced, h: size.h, w: size.w, radar: radar ? radar.range : 0 });
+  const cam = useRef(camOf());
+  cam.current = camOf();
   const lastApplied = useRef<{ lat: number; lon: number; bearing: number; zoom: number; top: number } | null>(null);
   const raf = useRef(0);
   const lastJump = useRef(0);
@@ -141,9 +150,9 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
       raf.current = requestAnimationFrame(frame);
       return;
     }
-    const bearing = c.northUp ? 0 : (c.heading ?? lastApplied.current?.bearing ?? 0);
-    const zoom = zoomForRangeMi(c.zoomMi, pos.lat, c.h);
-    const top = c.northUp ? 0 : Math.round(c.h * TRK_PAD);
+    const bearing = c.northUp && !c.radar ? 0 : (c.heading ?? lastApplied.current?.bearing ?? 0);
+    const zoom = c.radar ? zoomForRangeMi(c.radar, pos.lat, 2 * Math.max(1, scopeRingPx(c.w, c.h))) : zoomForRangeMi(c.zoomMi, pos.lat, c.h);
+    const top = c.northUp || c.radar ? 0 : Math.round(c.h * TRK_PAD);
     const p = lastApplied.current;
     const moved = !p || Math.abs(p.lat - pos.lat) > 1e-7 || Math.abs(p.lon - pos.lon) > 1e-7 || Math.abs(((p.bearing - bearing + 540) % 360) - 180) > 0.05 || Math.abs(p.zoom - zoom) > 1e-4 || p.top !== top;
     if (moved) {
@@ -163,7 +172,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
   };
   const activeRef = useRef(active);
   activeRef.current = active;
-  useEffect(() => kick.current(), [heading, view.northUp, view.zoom, size.h, size.w, active, reduced]);
+  useEffect(() => kick.current(), [heading, view.northUp, view.zoom, size.h, size.w, active, reduced, radar?.range]);
 
   // --- street labels: BUILD.md collision walk, on idle and ≤ 2 Hz while moving
   relabel.current = () => {
@@ -171,14 +180,14 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
     const c = cam.current;
     if (!map || !box || !c.h) return;
     labelAt.current = performance.now();
-    const o = ownShip(c.w, c.h, c.northUp);
+    const o = ownShip(c.w, c.h, c.northUp || !!c.radar);
     const b0 = box.getBoundingClientRect();
     const obstacles: Rect[] = [...(box.parentElement?.querySelectorAll<HTMLElement>('[data-cjmap-ob], .cjv2-info') ?? [])].map((e) => {
       const r = e.getBoundingClientRect();
       return { x: r.left - b0.left, y: r.top - b0.top, w: r.width, h: r.height };
     });
     obstacles.push({ x: o.x - 12, y: o.y - 12, w: 24, h: 24 });
-    const bp = bugPoint(c.w, c.h, c.northUp, c.northUp ? (c.heading ?? 0) : 0);
+    const bp = c.radar ? scopeBugPoint(c.w, c.h) : bugPoint(c.w, c.h, c.northUp, c.northUp ? (c.heading ?? 0) : 0);
     obstacles.push({ x: bp.x - 9, y: bp.y - 9, w: 18, h: 18 });
     // OpenMapTiles keeps road names in `transportation_name` (no layer of ours draws it), so read the loaded tiles of
     // that source-layer for the classes the labelled layers draw (primary / secondary / tertiary; trunk with primary).
@@ -224,7 +233,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
       const c = cam.current;
       const map = new ml.Map({
         container: glRef.current, style: style as unknown as StyleSpecification, ...CJ_MAP_OPTIONS,
-        center: [pos.lon, pos.lat], zoom: zoomForRangeMi(c.zoomMi, pos.lat, c.h || 100), bearing: c.northUp ? 0 : (c.heading ?? 0),
+        center: [pos.lon, pos.lat], zoom: c.radar ? zoomForRangeMi(c.radar, pos.lat, 2 * Math.max(1, scopeRingPx(c.w, c.h || 100))) : zoomForRangeMi(c.zoomMi, pos.lat, c.h || 100), bearing: c.northUp && !c.radar ? 0 : (c.heading ?? 0),
       });
       map.on('error', (e: MapLibreEvent & { error?: { status?: number; message?: string }; tile?: unknown; sourceId?: string }) => {
         const k = classifyMapError(e, navigator.onLine !== false);
@@ -286,7 +295,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
   // corners change (status pill, TRK-UP legend): re-run the collision walk even while the map is paused
   useEffect(() => {
     if (hasMap) queueMicrotask(() => relabel.current());
-  }, [status, view.northUp, hasMap, size.w, size.h]);
+  }, [status, view.northUp, hasMap, size.w, size.h, !!radar]);
   const pos = fixes.current.last ? { lat: fixes.current.last.lat, lon: fixes.current.last.lon } : null;
   const declKey = pos ? `${pos.lat.toFixed(2)},${pos.lon.toFixed(2)}` : '';
   const pair = useMemo(() => (heading == null ? null : headingPair(heading, pos)), [heading, declKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -296,11 +305,18 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
   const shipRot = view.northUp ? (heading ?? 0) : 0;
   const acq = status === 'GPS ACQ' || fixAt == null;
   const speech = pair ? headingSpeech(pair, hdgRef) : null;
+  // RADAR: the map shows under the scope once it exists and has tiles; else the scope alone on the dark CRT
+  const mapShown = hasMap && status !== 'NO TILES' && status !== 'NO MAP DATA';
+  const aria = radar ? radarAria({ range: radar.range, mode: radar.mode }, radar.hdg, status, mapShown) : mapAria(view, status, speech);
+  const boxStyle: CSSProperties | undefined = hidden ? { visibility: 'hidden' } : radar ? ({ '--cjv2-radar-dim': CJ_RADAR_MAP_DIM } as CSSProperties) : undefined;
   return (
-    <div ref={boxRef} className="cjv2-hsd" role="img" aria-label={mapAria(view, status, speech)} style={hidden ? { visibility: 'hidden' } : undefined} data-status={status || 'ok'}>
+    <div ref={boxRef} className="cjv2-hsd" role="img" aria-label={aria} style={boxStyle} data-status={status || 'ok'} data-radar={radar ? (mapShown ? 'over-map' : 'alone') : undefined}>
       <div ref={glRef} className="cjv2-mapgl" aria-hidden="true" />
       <div className="cjv2-scan" aria-hidden="true" />
-      {w > 0 && (
+      {/* RADAR: the scope (transparent) above map + WX + roads, under the street labels; it draws its own bug, own-ship
+          and corners (the HSD's are off so nothing doubles up) */}
+      {radar?.scope(status)}
+      {w > 0 && !radar && (
         <svg className="cjv2-hsd-ov" viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
           {heading != null && <path d="M0 -6 L-6 4 L6 4 Z" className="cjv2-bug" data-stale={headingStale || undefined} transform={`translate(${bp.x} ${bp.y + (view.northUp ? 0 : 1)}) rotate(${bp.rot})`} />}
           <path d="M0 -9 L7 9 L0 4.5 L-7 9 Z" className="cjv2-own" data-acq={acq || undefined} transform={`translate(${o.x} ${o.y}) rotate(${shipRot})`} />
@@ -309,6 +325,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
       {labels.map((l) => (
         <span key={l.name} className="cjv2-street" style={{ left: l.x, top: l.y, width: l.w }} aria-hidden="true">{l.name}</span>
       ))}
+      {!radar && <>
       <span className="cjv2-corner cjv2-tl" data-cjmap-ob aria-hidden="true">{view.northUp ? 'N-UP' : w > 0 && w < 300 ? 'TRK' : 'TRK-UP'}</span>
       {!view.northUp && pair && (
         <span className="cjv2-corner cjv2-tr cjv2-hdg" data-cjmap-ob aria-hidden="true">
@@ -317,6 +334,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
       )}
       <span className="cjv2-corner cjv2-bl" data-cjmap-ob aria-hidden="true">{view.zoom} MI · {view.mode === 'terr' ? 'TERR' : 'MAP'}</span>
       {status && <span className="cjv2-corner cjv2-br" data-cjmap-ob aria-hidden="true">{status}</span>}
+      </>}
     </div>
   );
 }

@@ -58,6 +58,26 @@ export function mapAria(v: Pick<MapView, 'northUp' | 'zoom' | 'mode'>, status: C
   return `Map, ${v.northUp ? 'north up' : 'track up'}, ${v.mode === 'terr' ? 'terrain' : 'map'}, ${v.zoom} ${v.zoom === 1 ? 'mile' : 'miles'} range, ${st}${heading ? `, ${heading}` : ''}`;
 }
 
+/**
+ * RADAR over the map (Wilson, Oct 16: "Radar overlay should stack atop maps"). The scope is a transparent overlay on
+ * the live map: map base → WX rain → roads (MapLibre) → dim → scope (rings, sweep) → bug, own-ship, labels. The map
+ * under the scope is heading-up and centred on own-ship (the scope's bug is fixed at 12 o'clock) and scaled so the
+ * scope's outer ring is the RNG range. No map (no fix / offline / Park without GPS): the scope alone on the dark CRT.
+ */
+/** Map brightness under the scope (CSS brightness()): roads stay readable, the phosphor sweep stays dominant. */
+export const CJ_RADAR_MAP_DIM = 0.62;
+/** Scope geometry inside the MAP cell: the scope svg is inset 14px × 8px, square viewBox ±50 (meet), outer ring r 46. */
+export const SCOPE_INSET = { x: 8, y: 14 } as const;
+export const SCOPE_RING_UNITS = 46;
+export function scopeRingPx(w: number, h: number): number {
+  return (Math.max(0, Math.min(w - 2 * SCOPE_INSET.x, h - 2 * SCOPE_INSET.y)) * SCOPE_RING_UNITS) / 100;
+}
+/** The scope's heading bug (top of the scope square, fixed: heading-up) in cell px. */
+export function scopeBugPoint(w: number, h: number): { x: number; y: number } {
+  const side = Math.max(0, Math.min(w - 2 * SCOPE_INSET.x, h - 2 * SCOPE_INSET.y));
+  return { x: w / 2, y: h / 2 - side / 2 + (side * 3.5) / 100 };
+}
+
 /** MapLibre `error` event → tile state. 'network': offline / fetch failed; 'error': style / source error; null: ignore (a missing tile). */
 export function classifyMapError(e: { error?: { status?: number; message?: string } | null; tile?: unknown; sourceId?: string }, online: boolean): 'network' | 'error' | null {
   if (!online) return 'network';
