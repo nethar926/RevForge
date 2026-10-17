@@ -20,6 +20,7 @@ import {
   type CarrierJetVariant,
   type SweepMode,
   MACH_MAX,
+  isSupersonic,
   machLabel,
   machText,
   mphToMach,
@@ -162,12 +163,12 @@ function SpeedBlock({ v, row = false }: { v: View; row?: boolean }) {
 }
 /**
  * MACH readout in the old gear slot: `M 0.85` (number from speed) over a small sound-barrier tape with a
- * fixed M 1.0 barrier mark. The vapor cone and SUPERSONIC tag follow the afterburner zone (abZone > 0),
- * not road speed, so they move with the sound. Static art, no animation.
+ * fixed M 1.0 barrier mark. The vapor cone, SUPERSONIC tag and `, supersonic` label show only at
+ * Mach >= 1.0 (isSupersonic, from MACH_ONE_MPH), never from the AB zone (a carrier launch lights zone 1 at low speed). Static art, no animation.
  */
 function MachTape({ v }: { v: View }) {
   const P = v.P;
-  const sup = v.ab > 0;
+  const sup = isSupersonic(v.mach);
   const x = (q: number) => 6 + (Math.max(0, Math.min(MACH_MAX, q)) / MACH_MAX) * 88;
   const px = x(v.mach);
   const b = x(1);
@@ -194,7 +195,7 @@ function MachTape({ v }: { v: View }) {
   );
 }
 function MachBlock({ v }: { v: View }) {
-  const sup = v.ab > 0;
+  const sup = isSupersonic(v.mach);
   return (
     <div className="cj-mach" data-cj-el="mach" data-supersonic={sup ? 'true' : 'false'} role="img" aria-label={machLabel(v.mach, sup)}>
       <span className="cj-lab" aria-hidden="true">MACH</span>

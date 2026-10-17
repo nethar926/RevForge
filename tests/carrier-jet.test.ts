@@ -14,6 +14,8 @@ import {
   SWEEP_MAX_DEG,
   SWEEP_MIN_DEG,
   SWEEP_RATE_DEG_S,
+  MACH_ONE_MPH,
+  isSupersonic,
   machLabel,
   machText,
   mphToMach,
@@ -144,6 +146,12 @@ async function renderVariants(): Promise<Record<string, string>> {
   out.loadNoZone = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 90, rpm: 5650, gear: 6, load: 0.99, throttle: 0.99, variant: 'tomcat', onVariantChange: () => {} }));
   out.zoneLowLoad = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 80, rpm: 3000, load: 0.05, throttle: 0.05, abZone: 5, compact: true, variant: 'carrier-jet', onVariantChange: () => {} }));
   out.zoneSlow = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 50, rpm: 3000, load: 0.3, abZone: 2, variant: 'tomcat', onVariantChange: () => {} }));
+  // Carrier launch: the mount raises the zone to >= 1 at walking pace (M 0.15 = 0.15 x MACH_ONE_MPH).
+  for (const v of CARRIER_JET_VARIANTS) for (const c of [false, true]) {
+    out[`launch:${v.id}${c ? ':compact' : ''}`] = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: 0.15 * MACH_ONE_MPH, rpm: 2400, load: 0.6, throttle: 0.6, abZone: 1, compact: c, driveWindow: true, variant: v.id, onVariantChange: () => {} }));
+    out[`mach1:${v.id}${c ? ':compact' : ''}`] = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: MACH_ONE_MPH, rpm: 5000, load: 0.5, abZone: 0, compact: c, variant: v.id, onVariantChange: () => {} }));
+  }
+  out.belowMach1 = renderToStaticMarkup(React.createElement(mod.CarrierJetHud, { speed: MACH_ONE_MPH - 0.5, rpm: 5000, load: 0.9, abZone: 5, variant: 'carrier-jet', onVariantChange: () => {} }));
   return out;
 }
 
@@ -204,7 +212,7 @@ const machOf = (h: string) => {
   const m = h.match(/<div class="cj-mach" data-cj-el="mach" data-supersonic="(true|false)" role="img" aria-label="([^"]+)">/);
   return m ? { sup: m[1] === 'true', label: m[2], text: h.match(/class="cj-k-num cj-mach-num"[^>]*>([^<]*)</)?.[1], tag: h.match(/data-cj-el="supersonic" data-on="(true|false)"/)?.[1], cone: /data-cj-el="vapor-cone"/.test(h), n: (h.match(/data-cj-el="mach"/g) ?? []).length } : null;
 };
-test('rendered: MACH slot in every look and layout; SUPERSONIC tag + vapor cone follow abZone, not speed', async () => {
+test('rendered: MACH slot in every look and layout; SUPERSONIC tag + vapor cone + label only at Mach >= 1.0, not from abZone', async () => {
   const html = await renderVariants();
   for (const v of CARRIER_JET_VARIANTS) for (const k of [v.id, `compact:${v.id}`, `dwc:${v.id}`]) {
     const m = machOf(html[k]);
@@ -218,15 +226,42 @@ test('rendered: MACH slot in every look and layout; SUPERSONIC tag + vapor cone 
   const on = machOf(html.dw)!;
   assert.deepEqual([on.text, on.label, on.sup, on.tag, on.cone], ['M 1.43', 'Mach 1.43, supersonic', true, 'true', true], '90 mph + zone 4');
   const fast = machOf(html.loadNoZone)!;
-  assert.deepEqual([fast.text, fast.label, fast.sup, fast.tag, fast.cone], ['M 1.43', 'Mach 1.43', false, 'false', false], '90 mph without an AB zone: number only, no tag');
+  assert.deepEqual([fast.text, fast.label, fast.sup, fast.tag, fast.cone], ['M 1.43', 'Mach 1.43, supersonic', true, 'true', true], '90 mph without an AB zone: still supersonic (Mach gate, not zone)');
   const slow = machOf(html.zoneSlow)!;
-  assert.deepEqual([slow.text, slow.label, slow.sup, slow.tag, slow.cone], ['M 0.67', 'Mach 0.67, supersonic', true, 'true', true], 'zone on at 50 mph: tag follows the zone');
+  assert.deepEqual([slow.text, slow.label, slow.sup, slow.tag, slow.cone], ['M 0.67', 'Mach 0.67', false, 'false', false], 'zone 2 at 50 mph: subsonic, no tag');
+  for (const v of CARRIER_JET_VARIANTS) for (const c of ['', ':compact']) {
+    const k = `launch:${v.id}${c}`;
+    const l = machOf(html[k])!;
+    assert.deepEqual([l.text, l.label, l.sup, l.tag, l.cone], ['M 0.15', 'Mach 0.15', false, 'false', false], `${k}: carrier launch zone 1 at M 0.15 → no tag, no cone, no supersonic label`);
+    assert.doesNotMatch(html[k], /supersonic"[^>]*data-on="true"|, supersonic/, `${k}: nothing says supersonic`);
+    assert.equal((html[k].match(/class="cj-ab" data-lit="true"/g) ?? []).length, 1, `${k}: AB light 1 still follows the zone`);
+    assert.match(html[k], /AB 1 · SWEEP AUTO/, `${k}: AB readout still follows the zone`);
+    const m1 = machOf(html[`mach1:${v.id}${c}`])!;
+    assert.deepEqual([m1.text, m1.label, m1.sup, m1.tag, m1.cone], ['M 1.00', 'Mach 1.00, supersonic', true, 'true', true], `mach1:${v.id}${c}: M 1.00 (MACH_ONE_MPH) with zone 0 → tag`);
+  }
+  const below = machOf(html.belowMach1)!;
+  assert.deepEqual([below.sup, below.tag, below.cone, below.label.endsWith('supersonic')], [false, 'false', false, false], 'just under MACH_ONE_MPH with zone 5: no tag');
   const z5 = machOf(html.zoneLowLoad)!;
   assert.deepEqual([z5.text, z5.sup], ['M 1.14', true], 'compact 80 mph + zone 5');
   // static: no animation or transition anywhere on the MACH slot
   const css = readFileSync(join(SKIN, 'carrier-jet.css'), 'utf8');
   for (const m of css.matchAll(/[^{}]*cj-mach[^{]*\{([^}]*)\}/g)) assert.doesNotMatch(m[1], /animation|transition/, 'MACH slot is static');
-  assert.match(readFileSync(join(SKIN, 'CarrierJetHud.tsx'), 'utf8'), /mach: mphToMach\(mph\)/, 'number from speed');
+  const hud = readFileSync(join(SKIN, 'CarrierJetHud.tsx'), 'utf8');
+  assert.match(hud, /mach: mphToMach\(mph\)/, 'number from speed');
+  assert.doesNotMatch(hud, /sup = v\.ab/, 'SUPERSONIC never keyed off the AB zone');
+  assert.equal((hud.match(/const sup = isSupersonic\(v\.mach\);/g) ?? []).length, 2, 'tape (cone) and block (tag + label) share the Mach gate');
+});
+
+test('isSupersonic: Mach >= 1.0 from MACH_ONE_MPH (not hardcoded mph)', () => {
+  assert.equal(isSupersonic(mphToMach(MACH_ONE_MPH)), true);
+  assert.equal(isSupersonic(mphToMach(MACH_ONE_MPH - 0.01)), false);
+  assert.equal(isSupersonic(mphToMach(0.15 * MACH_ONE_MPH)), false);
+  assert.equal(isSupersonic(0.15), false);
+  assert.equal(isSupersonic(1), true);
+  assert.equal(isSupersonic(MACH_MAX), true);
+  assert.equal(isSupersonic(Number.NaN), false);
+  const model = readFileSync(join(SKIN, 'model.ts'), 'utf8');
+  assert.match(model, /isSupersonic = \(mach: number\) => finite\(mach\) && mach >= mphToMach\(MACH_ONE_MPH\)/);
 });
 
 test('compact CSS: container units, >= 11px floors, >= 44px tabs, no transform scale', () => {

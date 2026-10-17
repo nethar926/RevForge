@@ -23,7 +23,7 @@ import { CarrierJetHud, CARRIER_JET_VARIANTS } from '../skins/carrier-jet';
   There is no gear readout in any look or layout (`gear` is accepted and ignored; no shift indicator or animation).
   The old gear slot holds a MACH readout (`M 0.85`, number from speed via `mphToMach`: 0..75 mph → M 0..1.00,
   75..120 mph → M 1.00..2.30, clamped) over a small sound-barrier tape with a fixed M 1.0 barrier mark. The vapor cone
-  and SUPERSONIC tag follow `abZone > 0` (Audio's zone), not road speed. Screen readers get `Mach 0.85` (+ `, supersonic`).
+  and SUPERSONIC tag show only at Mach >= 1.0 (`isSupersonic`, from `MACH_ONE_MPH`), not from the AB zone. Screen readers get `Mach 0.85` (+ `, supersonic`).
   Static art, no animation.
 - `variant?: 'carrier-jet' | 'tomcat' | 'swing-wing'` with `onVariantChange?(v)`. Without a handler the skin persists
   the choice itself under `storageKey('revforge.pack.carrier-jet.variant')`, which becomes `rf.preview.carrier-jet.…` on the preview build.

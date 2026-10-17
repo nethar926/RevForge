@@ -94,15 +94,20 @@ export function resolveAbZone(abZone: number | undefined): number {
 export const MACH_ONE_MPH = 75;
 export const MACH_CAP_MPH = 120;
 export const MACH_MAX = 2.3;
-/** Piecewise linear: 0..75 mph → M = mph / 75; 75..120 mph → M 1.00..2.30; clamped at 2.30 (and at 0). Number only; the SUPERSONIC tag follows abZone. */
+/** Piecewise linear: 0..75 mph → M = mph / 75; 75..120 mph → M 1.00..2.30; clamped at 2.30 (and at 0). */
 export function mphToMach(mph: number): number {
   const v = finite(mph) ? Math.max(0, mph) : 0;
   if (v <= MACH_ONE_MPH) return v / MACH_ONE_MPH;
   return Math.min(MACH_MAX, 1 + ((v - MACH_ONE_MPH) / (MACH_CAP_MPH - MACH_ONE_MPH)) * (MACH_MAX - 1));
 }
+/**
+ * SUPERSONIC gate for the MACH slot (tag, vapor cone, `, supersonic` label): display Mach >= 1.0, i.e. road speed
+ * at or above MACH_ONE_MPH. Deliberately NOT the AB zone: a carrier launch raises the zone to >= 1 at walking pace.
+ */
+export const isSupersonic = (mach: number) => finite(mach) && mach >= mphToMach(MACH_ONE_MPH);
 /** Readout text, two decimals: `M 0.85`. */
 export const machText = (mach: number) => `M ${mach.toFixed(2)}`;
-/** Screen-reader label: `Mach 0.85`, plus `, supersonic` while the afterburner zone is on. */
+/** Screen-reader label: `Mach 0.85`, plus `, supersonic` at Mach >= 1.0 (isSupersonic). */
 export const machLabel = (mach: number, supersonic: boolean) => `Mach ${mach.toFixed(2)}${supersonic ? ', supersonic' : ''}`;
 
 /** Secondary cues (decorative, aria-hidden). AoA 0..30 = load × 30; on-speed 15. */

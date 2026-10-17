@@ -94,7 +94,7 @@
 .cj-spd-unit { font-size: max(14px, calc(20 * var(--k))); font-weight: 600; letter-spacing: 0.16em; color: var(--cj-unit); }
 .cj-spd-src { font-size: max(12px, calc(13 * var(--k))); font-weight: 600; letter-spacing: 0.12em; color: var(--cj-src); }
 .cj-mach, .cj-rpm { display: flex; flex-direction: column; justify-content: flex-start; }
-/* MACH slot (old gear box): readout, sound-barrier tape, SUPERSONIC tag (abZone > 0). Static, no animation. */
+/* MACH slot (old gear box): readout, sound-barrier tape, SUPERSONIC tag (Mach >= 1.0). Static, no animation. */
 .cj-mach { min-width: 0; }
 .cj .cj-mach b.cj-mach-num { font-size: calc(var(--cj-mach-fs, 32) * var(--k)); line-height: 0.95; }
 .cj-mach-tape { display: block; flex: none; width: 100%; height: max(14px, calc(var(--cj-mach-tape, 26) * var(--k))); margin-top: calc(4 * var(--k)); }
@@ -448,13 +448,24 @@
   .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-rpm > .cj-k-num { grid-column: 2; grid-row: 1; margin: 0; font-size: max(11px, min(calc(100cqh - 8px), 28cqw)); line-height: 1; white-space: nowrap; }
   .cj[data-layout='reflow'][data-variant='carrier-jet'] .cj-rpm > .cj-rpm-bar { grid-column: 1 / 3; grid-row: 2; height: 6px; margin-top: 2px; }
 }
-/* OVER · DECK / AUTO: sits left of the SWEEP digits, bottom on the digits' baseline, clear of the tape and its caret
-   (it used to hang under the digits, over the tape's right end). The chip keeps its box in the flow, so the digits
-   do not move. In the 773 cell it wraps to two lines (OVER · / DECK) to fit between the planform and the digits. */
-.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-mode { transform: translate(calc(-100% - 6px), calc(-100% - 4px)); }
+/* OVER · DECK / AUTO (WING SWEEP card): out of the flow, right edge 8px left of the SWEEP digits' box, on the SWEEP
+   caption's line (top row of the card). It used to be translated to the digits' bottom-left, which put it on the
+   tape's right end (bar + 68..75 hatch) and against the digits ("AUTO62°") at 1256x706. The caption row is above the
+   tape's caret and left of the digits, so the chip clears the bar, the caret and the readout at 1280, 1256 and 773.
+   Out of the flow, so the digits and caption do not move. Font size unchanged (>= 11px floors above). Phone portrait
+   (static .cj-swd row) is reverted below to its previous in-flow chip + v2 translate (--cj-v2-mode-nudge). */
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) { --cj-v2-mode-nudge: translate(calc(-100% - 6px), calc(-100% - 4px)); }
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-mode,
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-mode.is-over {
+  position: absolute; right: calc(100% + 8px); top: 0; margin: 0; transform: none; width: auto; white-space: nowrap; line-height: 1.2;
+}
+/* 773 cell: OVER · DECK wraps to two lines (OVER · / DECK) so it stays clear of the planform on its left. */
 @container cj (max-width: 1000px) {
   .cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-mode.is-over { width: calc(4.6em + 12px); white-space: normal; text-align: center; line-height: 1.15; }
 }
+[data-rf-layout="portrait"] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-sweep .cj-swd > .cj-mode.is-over,
+[data-rf-layout="portrait"] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-sweep .cj-swd > .cj-mode.cj-mode { position: static; right: auto; top: auto; margin: 2px 0 0; transform: var(--cj-v2-mode-nudge, none); }
+[data-rf-layout="portrait"] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-sweep .cj-swd > .cj-mode:not(.is-over) { line-height: inherit; }
 /* AOA legend: when its viewBox shrinks enough that the >= 11.2px floor pushes the glyphs above the cell top (773),
    move it down into view and left (into the meet letterbox), clear of the '30' scale label. Zero at 1280. */
 .cjm[data-cjm-v2] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-eng [data-cj-el='aoa'] > text:first-child {
