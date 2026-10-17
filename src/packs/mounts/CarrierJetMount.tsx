@@ -242,7 +242,7 @@ export function CarrierJetMount(props: PackHudProps) {
   // launch: the skin's AB ARMED plate reads LAUNCH via .cjm-bank[data-ab-launch] (carrier-jet-controls.css; no skin edit)
   const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />;
   const bank = (
-    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined}>
+    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined}>
       {plate}
       <div className="cjm-bank-ab">{guard}</div>
       {spds ? coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div> : <div className="cjm-bank-nav" ref={setNavSlot} />}
@@ -263,7 +263,7 @@ export function CarrierJetMount(props: PackHudProps) {
     </div>
   ) : null;
   const bankB = spds && coldOn && vp.dock ? (
-    <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} role="group" aria-label="Engine start and stop">
+    <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} data-rf-reduce-motion={reduced || undefined} role="group" aria-label="Engine start and stop">
       {cold.render.pullQs(layout === 'board' ? 'wide' : 'narrow')}
     </div>
   ) : null;

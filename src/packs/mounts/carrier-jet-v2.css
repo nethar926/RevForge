@@ -331,3 +331,20 @@
 .cjcs-pages > .cjcs-startup { min-width: 0; }
 .cjcs-pages > .cjcs-startup > p { margin: 6px 0 0 4px; }
 .cjcs-pamph[data-size='narrow'] .cjcs-pages { grid-template-columns: minmax(0, 1fr); padding: 8px 52px 8px 8px; gap: 10px; }
+
+/* Unified guard animation (Meghan's sheet panel 2): every guard cover (shelf ENG / APU ARM covers, QUICK START,
+   AFTERBURNER, guarded SHUTDOWN) shares one timing token pair: LIFT 220 ms ease-out, CLOSE 180 ms ease-in, 0 → 100,
+   no bounce. The skins move their lids with transitions on data-open (not keyframes), so the pair is applied as the
+   transition into each state. Reduce Motion (OS or the app's toggle): the cover jumps open / closed. */
+:root { --cj-guard-lift: 220ms cubic-bezier(0, 0, 0.58, 1); --cj-guard-close: 180ms cubic-bezier(0.42, 0, 1, 1); }
+.cjp-guarded > :is(.cjp-lid, .cjp-under), .cjg :is(.cjg-lid, .cjg-strip), .cjp-sdg > :is(.cjp-sdg-lid, .cjp-sdg-under) {
+  transition: transform var(--cj-guard-close), opacity var(--cj-guard-close);
+}
+.cjp-guarded[data-open='true'] > :is(.cjp-lid, .cjp-under), .cjg[data-open='true'] :is(.cjg-lid, .cjg-strip), .cjp-sdg[data-open='true'] > :is(.cjp-sdg-lid, .cjp-sdg-under) {
+  transition: transform var(--cj-guard-lift), opacity var(--cj-guard-lift);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cjp-guarded > :is(.cjp-lid, .cjp-under), .cjg :is(.cjg-lid, .cjg-strip), .cjp-sdg > :is(.cjp-sdg-lid, .cjp-sdg-under) { transition: none !important; }
+}
+[data-rf-reduce-motion] :is(.cjp-guarded > .cjp-lid, .cjp-guarded > .cjp-under, .cjg .cjg-lid, .cjg .cjg-strip, .cjp-sdg > .cjp-sdg-lid, .cjp-sdg > .cjp-sdg-under),
+.cjp-sdg[data-rf-reduce-motion] > :is(.cjp-sdg-lid, .cjp-sdg-under) { transition: none !important; }

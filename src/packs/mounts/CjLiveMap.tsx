@@ -16,9 +16,9 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Map as MlMap, StyleSpecification, MapLibreEvent } from 'maplibre-gl';
 import { buildCjMapStyle, cjMapStatus, CJ_MAP_MAX_STREET_LABELS, CJ_MAP_OPTIONS, CJ_MAP_REMOVE_AFTER_HIDDEN_MS, shouldRender, zoomForRangeMi, type CjMapStatus } from '../../skins/carrier-jet/map/style';
-import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { radarAria, type MapView } from '../carrier-jet/mapView';
+import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { bugPoint, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, scopeRingPx, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, headingPair, headingSpeech, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
 
 type Ml = typeof import('maplibre-gl');
@@ -71,7 +71,7 @@ export interface CjLiveMapProps {
   radar?: { range: 2 | 5 | 10; hdg: string; mode: 'map' | 'terr'; scope: (status: CjMapStatus) => ReactNode };
 }
 
-export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hdgRef, hidden = false, radar }: CjLiveMapProps) {
+export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hidden = false, radar }: CjLiveMapProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const glRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -308,18 +308,14 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
   useEffect(() => {
     if (hasMap) queueMicrotask(() => relabel.current());
   }, [status, view.northUp, hasMap, size.w, size.h, !!radar]);
-  const pos = fixes.current.last ? { lat: fixes.current.last.lat, lon: fixes.current.last.lon } : null;
-  const declKey = pos ? `${pos.lat.toFixed(2)},${pos.lon.toFixed(2)}` : '';
-  const pair = useMemo(() => (heading == null ? null : headingPair(heading, pos)), [heading, declKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const { w, h } = size;
   const o = ownShip(w, h, view.northUp);
   const bp = bugPoint(w, h, view.northUp, view.northUp ? (heading ?? 0) : 0);
   const shipRot = view.northUp ? (heading ?? 0) : 0;
   const acq = status === 'GPS ACQ' || fixAt == null;
-  const speech = pair ? headingSpeech(pair, hdgRef) : null;
   // RADAR: the map shows under the scope once it exists and has tiles; else the scope alone on the dark CRT
   const mapShown = hasMap && status !== 'NO TILES' && status !== 'NO MAP DATA';
-  const aria = radar ? radarAria({ range: radar.range, mode: radar.mode }, radar.hdg, status, mapShown) : mapAria(view, status, speech);
+  const aria = radar ? radarAria({ range: radar.range, mode: radar.mode }, radar.hdg, status, mapShown) : mapAria(view, status, null); // heading: once, on COMPASS (sheet panel 7)
   const boxStyle: CSSProperties | undefined = hidden ? { visibility: 'hidden' } : undefined;
   return (
     <div ref={boxRef} className="cjv2-hsd" role="img" aria-label={aria} style={boxStyle} data-status={status || 'ok'} data-radar={radar ? (mapShown ? 'over-map' : 'alone') : undefined}>
@@ -339,11 +335,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hd
       ))}
       {!radar && <>
       <span className="cjv2-corner cjv2-tl" data-cjmap-ob aria-hidden="true">{view.northUp ? 'N-UP' : w > 0 && w < 300 ? 'TRK' : 'TRK-UP'}</span>
-      {!view.northUp && pair && (
-        <span className="cjv2-corner cjv2-tr cjv2-hdg" data-cjmap-ob aria-hidden="true">
-          {pair.m != null ? <CjHeadingLegend trueHdg={pair.t} magHdg={pair.m} lead={hdgRef} stale={headingStale} /> : <span data-stale={headingStale || undefined}>{`HDG ${String(Math.round(pair.t) % 360).padStart(3, '0')} T`}</span>}
-        </span>
-      )}
+      {/* Meghan's sheet panel 7, one heading readout: no HDG / MAG legend on the map (COMPASS carries it; the bug stays) */}
       <span className="cjv2-corner cjv2-bl" data-cjmap-ob aria-hidden="true">{view.zoom} MI · {view.mode === 'terr' ? 'TERR' : 'MAP'}</span>
       {status && <span className="cjv2-corner cjv2-br" data-cjmap-ob aria-hidden="true">{status}</span>}
       </>}
