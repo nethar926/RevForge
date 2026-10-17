@@ -466,6 +466,27 @@
 [data-rf-layout="portrait"] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-sweep .cj-swd > .cj-mode.is-over,
 [data-rf-layout="portrait"] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-sweep .cj-swd > .cj-mode.cj-mode { position: static; right: auto; top: auto; margin: 2px 0 0; transform: var(--cj-v2-mode-nudge, none); }
 [data-rf-layout="portrait"] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-sweep .cj-swd > .cj-mode:not(.is-over) { line-height: inherit; }
+/* WING SWEEP readout vs the sweep tape (bar + CMD caret): the cell is a size container (its grid rows are fixed fr
+   tracks, so containment changes nothing). The digits sit a little higher (top 4px, VT323's empty ascent trimmed) so
+   the tall cells (1280, 773) keep the stacked SWEEP / digits look with room above the caret. A wide, short cell (1256x706
+   Tesla: ~321x133, width >= 2x height) cannot stack them over a full-width tape, so there the caption moves beside
+   the digits (AUTO · SWEEP · 62°, one top line) and the tape is capped to the height left under the digits (it
+   letterboxes, centred, a little narrower); the digits keep their size. SVG text keeps its >= 11.2px floor.
+   --cj-swf (digits size) is built from the pinned --cj-k-cell, so it is the board's size, not the cell's. */
+@property --cj-k-cell { syntax: '<length>'; inherits: true; initial-value: 1px; }
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep { container: cjsw / size; --cj-k-cell: var(--k); --cj-swf: max(28px, calc(76 * var(--cj-k-cell))); }
+/* --k is cq-based (board container); pin it to the board's value so the new cell container does not rescale the text. */
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep > * { --k: var(--cj-k-cell); }
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-swd { top: 4px; }
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-sw-num { font-size: var(--cj-swf); margin-top: -0.08em; }
+@container cjsw (min-aspect-ratio: 2 / 1) {
+  .cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-swd { flex-direction: row; align-items: flex-start; column-gap: 8px; top: 4px; }
+  .cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-swd > .cj-lab { margin-top: 3px; }
+  .cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep .cj-a-tape { max-height: calc(100cqh - 0.66 * var(--cj-swf) - 4px); }
+}
+/* Phone portrait keeps its own WING SWEEP grid: no size container (its rows are content-sized), digits unmoved. */
+[data-rf-layout="portrait"] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-sweep { container: none; }
+[data-rf-layout="portrait"] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-sweep .cj-swd > .cj-sw-num { margin-top: 0; }
 /* AOA legend: when its viewBox shrinks enough that the >= 11.2px floor pushes the glyphs above the cell top (773),
    move it down into view and left (into the meet letterbox), clear of the '30' scale label. Zero at 1280. */
 .cjm[data-cjm-v2] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-eng [data-cj-el='aoa'] > text:first-child {
