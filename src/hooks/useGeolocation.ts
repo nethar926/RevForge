@@ -3,6 +3,7 @@ import { speedFromFix, type Fix } from "./gpsSpeed";
 import { kphToMph } from "../audio";
 import { publishGpsFix, publishGpsStatus } from "./gpsFixes";
 import { startGeolocation } from "./geoStart";
+import { createRepeatGate } from "./gpsRepeat";
 
 /** Wall-clock gap after last successful watch callback before marking stale. */
 const STALE_MS = 10000;
@@ -66,6 +67,7 @@ export function useGeolocation(enabled: boolean) {
       return;
     }
     const request = generation.current;
+    const repeat = createRepeatGate();
     setState((s) => ({
       ...s,
       status: "requesting",
@@ -78,6 +80,8 @@ export function useGeolocation(enabled: boolean) {
     const options: PositionOptions = { enableHighAccuracy: true, maximumAge: 500, timeout: 8000 };
     const onFix = (pos: GeolocationPosition) => {
       if (request !== generation.current) return;
+      // the same fix delivered twice (equal position.timestamp): drop it, no new information
+      if (!repeat.accept(pos.timestamp)) return;
       const wallNow = Date.now();
       // Continuous watch is alive as soon as a callback arrives — do not
       // mark stale solely because pos.timestamp is clock-skewed / old.
