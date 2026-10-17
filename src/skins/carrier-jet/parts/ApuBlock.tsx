@@ -12,8 +12,10 @@ const READY_W = APU_BLOCK_MIN.w - START_W - 4;
 /**
  * Option A start block (128×140): striped guard over the APU START bat toggle (lift = ARM, lever up = START,
  * flip down = OFF) beside the APU READY lamp (dark · amber steady while spooling · green steady when ready).
+ * `legend` replaces the START switch's START / OFF throw legend (e.g. 'PARK'); with `disabled` it is drawn in the
+ * locked style like every shelf switch: lock + the legend engraved unlit grey, no glow.
  */
-export function ApuBlock({ arm, start, ready, onArmToggle, onStartToggle, id = 'apu', guardId = 'apuGuard', startPressHandlers, disabled, disabledReason, step }: CjApuBlockProps) {
+export function ApuBlock({ arm, start, ready, onArmToggle, onStartToggle, id = 'apu', guardId = 'apuGuard', startPressHandlers, disabled, disabledReason, step, legend }: CjApuBlockProps) {
   const p = useSvgPrefix('a');
   const H = APU_BLOCK_MIN.h;
   const tone = ready === 'ready' ? 'green' : ready === 'spooling' ? 'amber' : 'off';
@@ -28,7 +30,7 @@ export function ApuBlock({ arm, start, ready, onArmToggle, onStartToggle, id = '
             state={start ? 'on' : 'off'}
             lit={start}
             ariaLabel="APU start"
-            legend={start ? 'START' : 'OFF'}
+            legend={legend || (start ? 'START' : 'OFF')}
             onToggle={onStartToggle}
             step={step}
             pressHandlers={startPressHandlers}
