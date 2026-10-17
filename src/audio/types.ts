@@ -544,6 +544,10 @@ export type JetCue =
   | 'abGuardClose'
   | 'chime'
   | 'warning'
+  /** SEAT BELT on: single low annunciator tone */
+  | 'seatbeltTone'
+  /** O2 on: three hi-lo chimes */
+  | 'o2Chimes'
   /** cockpit display config menu (bezel buttons) */
   | 'bezelPress'
   | 'cursorStep'

@@ -83,6 +83,9 @@ export const JET_CUES = [
   'abGuardClose',
   'chime',
   'warning',
+  // host shelf cues (hostCues.ts): SEAT BELT on, O2 on
+  'seatbeltTone',
+  'o2Chimes',
   // cockpit display config menu (bezel buttons)
   'bezelPress',
   'cursorStep',
@@ -300,6 +303,7 @@ export const JET_COLD_LEVEL = {
   foley: 0.55,
   chime: 0.035,
   warning: 0.032,
+  annunciator: 0.03, // SEAT BELT tone + O2 hi-lo chimes
   radarHum: 0.006,
   pump: 0.006,
   pumpAir: 0.012,
@@ -887,6 +891,12 @@ export class JetColdStartVoice {
       case 'warning':
         this.warning(t, s);
         return true;
+      case 'seatbeltTone':
+        this.seatbeltTone(t, s);
+        return true;
+      case 'o2Chimes':
+        this.o2Chimes(t, s);
+        return true;
       default:
         return false;
     }
@@ -1037,6 +1047,34 @@ export class JetColdStartVoice {
       const tk = t + k * 0.2;
       this.tone(tk, { hz: 760, type: 'triangle', peak: L, a: 0.008, hold: 0.11, r: 0.025, lp: 2400 });
       this.tone(tk, { hz: 1140, type: 'triangle', peak: L * 0.6, a: 0.008, hold: 0.11, r: 0.025, lp: 2400 });
+    }
+  }
+
+  /**
+   * SEAT BELT on: one low cockpit annunciator tone (≈ 0.6 s, G4). A flat-topped square + triangle
+   * through a low-pass with a hard-ish on/off, like a panel tone generator, not a mallet ding, so
+   * it never reads as the car's own seat-belt chime.
+   */
+  seatbeltTone(t, s = 1) {
+    const L = JET_COLD_LEVEL.annunciator * s;
+    this.tone(t, { hz: 392, type: 'triangle', peak: L, a: 0.012, hold: 0.55, r: 0.06, lp: 1500 });
+    this.tone(t, { hz: 392, type: 'square', peak: L * 0.22, a: 0.012, hold: 0.55, r: 0.06, lp: 900 });
+    this.tone(t, { hz: 196, peak: L * 0.35, a: 0.02, hold: 0.52, r: 0.08 });
+  }
+
+  /**
+   * O2 on: three hi-lo chimes (C6 → G5 pairs, ≈ 2.1 s). Tone-generator voice (triangle + soft
+   * square edge, short flat holds, no bell ring) so it sounds like jet avionics, not a car chime.
+   */
+  o2Chimes(t, s = 1) {
+    const L = JET_COLD_LEVEL.annunciator * s * 0.85;
+    for (let k = 0; k < 3; k++) {
+      const tk = t + k * 0.72;
+      [1046.5, 784].forEach((hz, j) => {
+        const tj = tk + j * 0.26;
+        this.tone(tj, { hz, type: 'triangle', peak: L, a: 0.008, hold: 0.19, r: 0.05, lp: 2600 });
+        this.tone(tj, { hz, type: 'square', peak: L * 0.12, a: 0.008, hold: 0.19, r: 0.05, lp: 1800 });
+      });
     }
   }
 

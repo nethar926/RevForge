@@ -2804,7 +2804,7 @@ export class EngineSynthImpl implements EngineSynth {
       if (!quiet) {
         const side = system.endsWith('R') ? 0.5 : system.endsWith('L') ? -0.5 : 0;
         if (system === 'batt') jv.cue('relay', { when: now + 0.035, level: on ? 1 : 0.7 });
-        else if (system === 'seatbelt') jv.cue('chime', { when: now + 0.09, down: !on });
+        // seatbelt: no auto chime here; the host fires seatbeltTone (hostCues.ts) so it never sounds twice
         else if (system === 'aircart') jv.cue(on ? 'hoseConnect' : 'hoseRelease', { when: now + (on ? 0.12 : 0.3), pan: 0.4 });
         else if (system === 'crossbleed') jv.cue('xbValve', { when: now + 0.05, level: on ? 1 : 0.6, down: !on });
         else if ((system === 'ignL' || system === 'ignR') && on) jv.cue('igniterArm', { when: now + 0.03, pan: side });
