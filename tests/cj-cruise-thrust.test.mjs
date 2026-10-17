@@ -5,18 +5,38 @@ import * as T from '../src/audio/tomcatVoice.js';
 
 const hold = (st, s, secs, d) => { for (let i = 0; i < secs * 60; i++) T.stepTomcatDrive(st, d, 1 / 60); return st.thrCmd; };
 
-test('GPS cruise (accel ≈ 0) holds thrust at the cruise floor; a pull adds on top; slowing drops it', () => {
+// 1 Hz GPS fixes with ±0.5 mph noise; acceleration spikes the way the car sim's per-frame derivative does
+const drive = (st, secs, mphAt, extra = {}, seed = 7) => {
+  let r = seed, fix = -1, gps = 0, prev = 0, lo = Infinity, drops = 0, wasHi = st.thrCmd >= 0.3;
+  for (let i = 0; i < secs * 60; i++) {
+    const t = i / 60;
+    if (Math.floor(t) !== fix) { fix = Math.floor(t); r = (r * 16807) % 2147483647; const m = mphAt(t); prev = gps; gps = m > 0.5 ? m + (r / 2147483647 - 0.5) : m; }
+    const acc = (gps - prev) * 0.447 * (i % 60 < 6 ? 6 : 0.1);
+    T.stepTomcatDrive(st, { speed: gps / 120, throttle: 0.12, load: 0.12, acceleration: acc, ...extra }, 1 / 60);
+    const hi = st.thrCmd >= 0.3; if (wasHi && !hi) drops++; wasHi = hi; if (t > secs - 1) lo = Math.min(lo, st.thrCmd);
+  }
+  return { drops, end: st.thrCmd, lo };
+};
+
+test('GPS cruise holds thrust through noise spikes; a pull adds on top; slowing drops it once', () => {
+  for (const seed of [3, 7, 11, 19, 23]) {
+    const st = T.createTomcatDriveState('running');
+    const c = drive(st, 60, () => 45, {}, seed);
+    assert.equal(c.drops, 0, `seed ${seed} cruise drops`);
+    assert.ok(c.end >= 0.5, `cruise ${c.end}`);
+    const g = drive(st, 15, (t) => 45 - 0.5 * t, {}, seed);
+    assert.equal(g.drops, 1, `seed ${seed} gentle slowdown should drop once`);
+    assert.ok(g.lo < 0.15, `gentle end ${g.lo}`);
+    const back = drive(st, 8, () => 37.5, {}, seed);
+    assert.ok(back.end >= 0.45, `cruise again ${back.end}`);
+  }
   const st = T.createTomcatDriveState('running');
-  const cruise = hold(st, null, 4, { speed: 0.375, throttle: 0.12, load: 0.12, acceleration: 0 });
-  assert.ok(cruise >= 0.5, `cruise ${cruise}`);
-  const pull = hold(st, null, 4, { speed: 0.375, throttle: 0.42, load: 0.42, acceleration: 1.5 });
+  const cruise = drive(st, 8, () => 45).end;
+  const pull = drive(st, 3, (t) => 45 + 3 * t, { throttle: 0.42, load: 0.42 }).end;
   assert.ok(pull > cruise + 0.1, `pull ${pull}`);
-  // GPS noise just under zero keeps it (hysteresis)
-  assert.ok(hold(st, null, 3, { speed: 0.36, throttle: 0.08, load: 0.08, acceleration: -0.3 }) >= 0.5);
-  const slow = hold(st, null, 3, { speed: 0.3, throttle: 0, load: 0, acceleration: -1.5 });
-  assert.ok(slow < 0.02, `slowing ${slow}`);
-  // parked: no floor
-  assert.ok(hold(st, null, 3, { speed: 0, throttle: 0, load: 0, acceleration: 0 }) < 0.02);
+  const brake = drive(st, 1.5, (t) => Math.max(0, 54 - 10 * t));
+  assert.ok(brake.end < 0.15, `brake ${brake.end}`);
+  assert.ok(drive(st, 3, () => 0, { throttle: 0, load: 0 }).end < 0.02, 'parked');
 });
 
 test('no acceleration supplied (other callers): command unchanged; AB demand still from load only', () => {
