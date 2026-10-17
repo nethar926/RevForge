@@ -347,8 +347,8 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
 /**
  * Compass-cell heading readout: ONE heading in the CONFIG › HDG REF reference (default M, "HDG 047 M"; sheet panel 7:
  * COMPASS shows magnetic, TRUE stays available in CONFIG › HDG REF), laid over the HSD rose's top digit box. MAG uses
- * the declination at the latest fix; no fix yet → TRUE only. Meghan's CjHeadingLegend always draws the other reference
- * as a second line; the mount hides that line (carrier-jet-v2.css, .cjv2-hdgro[data-one]) and names one reference.
+ * the declination at the latest fix; no fix yet → TRUE only. Meghan's CjHeadingLegend `single` draws the lead reference
+ * only (no second line), and the VoiceOver name reads that one reference.
  */
 export function CjHeadingReadout({ heading, headingStale, hdgRef }: { heading: number | undefined; headingStale: boolean; hdgRef: 'M' | 'T' }) {
   const [fix, setFix] = useState(() => latestGpsFix());
@@ -359,8 +359,8 @@ export function CjHeadingReadout({ heading, headingStale, hdgRef }: { heading: n
   const label = `Compass, ${compassSpeech(pair, hdgRef)}${headingStale ? ', held' : ''}`;
   return (
     // the accessible name sits on Meghan's legend (ariaLabel → role=group); the wrapper carries none
-    <div className="cjv2-hdgro" data-one={hdgRef}>
-      {pair.m != null ? <CjHeadingLegend trueHdg={pair.t} magHdg={pair.m} lead={hdgRef} stale={headingStale} ariaLabel={label} /> : <span role="img" aria-label={label} data-stale={headingStale || undefined}>{`HDG ${String(Math.round(pair.t) % 360).padStart(3, '0')} T`}</span>}
+    <div className="cjv2-hdgro">
+      {pair.m != null ? <CjHeadingLegend trueHdg={pair.t} magHdg={pair.m} lead={hdgRef} stale={headingStale} ariaLabel={label} single /> : <span role="img" aria-label={label} data-stale={headingStale || undefined}>{`HDG ${String(Math.round(pair.t) % 360).padStart(3, '0')} T`}</span>}
     </div>
   );
 }

@@ -48,9 +48,11 @@ test('2 COMPASS: one heading in the HDG REF reference (default M); TRUE lives in
   const live = src('src/packs/mounts/CjLiveMap.tsx');
   const ro = live.slice(live.indexOf('export function CjHeadingReadout'));
   assert.match(ro, /const label = `Compass, \$\{compassSpeech\(pair, hdgRef\)\}/);
-  assert.match(ro, /<div className="cjv2-hdgro" data-one=\{hdgRef\}>/);
+  assert.match(ro, /<div className="cjv2-hdgro">/);
+  assert.match(ro, /<CjHeadingLegend [^>]*lead=\{hdgRef\}[^>]*ariaLabel=\{label\} single \/>/, "Meghan's single prop: lead line only");
+  assert.doesNotMatch(ro, /data-one/);
   assert.doesNotMatch(ro, /headingSpeech/);
-  assert.match(nc(src('src/packs/mounts/carrier-jet-v2.css')), /\.cjv2-hdgro\[data-one\] \.cj-hdg-legend > span \+ span \{ display: none; \}/);
+  assert.doesNotMatch(src('src/packs/mounts/carrier-jet-v2.css'), /data-one|cj-hdg-legend > span/, 'no mount-side hiding rule');
   const it = CJ_CONFIG.telemetry.items.find((i) => i.id === 'hdg')!;
   assert.equal(it.label, 'HDG REF');
   assert.equal(it.group, 'UNITS');

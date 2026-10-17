@@ -64,7 +64,8 @@ test('pre-start: dark when the sign is off; lit when on; VoiceOver "Seat belt li
   // legend ≥ 11px (Meghan's concept.css), backlit only when on
   const concept = src('src/skins/carrier-jet/concept/concept.css');
   assert.match(concept, /\.sbl-lens \{[^}]*font: 700 11px\/14px/);
-  assert.match(concept, /\.sbl\[data-on\] \.sbl-lens \{[^}]*color: #f4f1e6/);
+  // Meghan's 71b887a: lit reads as backlit (warm lens glow, legend bloom), unlit unchanged
+  assert.match(concept, /\.sbl\[data-on\] \.sbl-lens \{[^}]*color: #fff6dc;[^}]*text-shadow: 0 0 3px/);
 });
 
 test('spot: dock row 2 between the SHELF key and the Shutdown slot, clear of both at 1256 (board) and 773 (window)', () => {

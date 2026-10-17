@@ -87,8 +87,8 @@ test('AUTO LAUNCH persists, default ON (also for saved prefs without the key)', 
 
 test("compass readout: name on Meghan's CjHeadingLegend ariaLabel, wrapper unlabelled", () => {
   const l = src('packs/mounts/CjLiveMap.tsx');
-  assert.match(l, /<div className="cjv2-hdgro" data-one=\{hdgRef\}>/);
-  assert.match(l, /<CjHeadingLegend trueHdg=\{pair\.t\} magHdg=\{pair\.m\} lead=\{hdgRef\} stale=\{headingStale\} ariaLabel=\{label\} \/>/);
+  assert.match(l, /<div className="cjv2-hdgro">/);
+  assert.match(l, /<CjHeadingLegend trueHdg=\{pair\.t\} magHdg=\{pair\.m\} lead=\{hdgRef\} stale=\{headingStale\} ariaLabel=\{label\} single \/>/);
   assert.doesNotMatch(l, /className="cjv2-hdgro" role=/);
 });
 
