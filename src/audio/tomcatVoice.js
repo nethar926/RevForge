@@ -416,6 +416,10 @@ export const TC_LAUNCH_OFF_MPHS = 3.4;
 export const TC_LAUNCH_KEEP_MPHS = 4.2;
 /** Second hard change must come at least this long after the first (≈ the next GPS fix). */
 export const TC_LAUNCH_HOLD_S = 0.6;
+/** A confirm shorter than this (from the hold's base) must clear ON plus TC_LAUNCH_NOISE_MPH over the span, so speed noise on fast fixes can't fake a launch. */
+export const TC_LAUNCH_CONFIRM_SPAN_S = 2.0;
+/** Speed swing (mph, peak to peak) a short confirm must clear: ±0.5 mph GPS noise can't fake ON over a short span. */
+export const TC_LAUNCH_NOISE_MPH = 1.0;
 export const TC_LAUNCH_DROP_S = 2.0;
 /** Look-back window for the speed slope; ~1 s matches the car's ~1 Hz GPS fixes. */
 export const TC_LAUNCH_WINDOW_S = 1.0;
@@ -517,6 +521,9 @@ export function stepLaunchDetector(det, speedNorm, nowS) {
     // start on any change at ≥ KEEP; confirm on a later change (≥ HOLD later, ≈ the next fix) when
     // the slope across the whole hold (two fixes, so GPS noise averages out) is ≥ ON
     // a hold started on a guessed span is re-based once the confirming fix has taught the period
+    // a fix after a long silence (assumed span) ends any hold from before it: that hold's base is
+    // stale, so it could neither confirm nor die cleanly and would block a fresh launch
+    if (changed && det.assumed && det.holdFrom >= 0 && det.holdFrom < t) { det.holdFrom = -1; det.holdBase = null; }
     if (changed && det.holdBase && det.holdBase[2] && det.learned) det.holdBase[0] = det.holdFrom - det.period;
     const overall = det.holdBase ? (mph - det.holdBase[1]) / Math.max(1e-3, t - det.holdBase[0]) : 0;
     // A hold that started on a jump after a long hold (assumed span: a stop, a steady stretch, or a
@@ -532,7 +539,7 @@ export function stepLaunchDetector(det, speedNorm, nowS) {
     if (changed && !held && det.holdFrom < 0 && det.accel >= TC_LAUNCH_KEEP_MPHS) {
       det.holdFrom = t;
       det.holdBase = [det.base[0], det.base[1], det.assumed, mph - det.base[1], det.accel];
-    } else if (changed && det.holdFrom >= 0 && t - det.holdFrom >= TC_LAUNCH_HOLD_S && overall >= TC_LAUNCH_ON_MPHS && det.accel >= (suspect ? TC_LAUNCH_KEEP_MPHS : TC_LAUNCH_OFF_MPHS)) {
+    } else if (changed && det.holdFrom >= 0 && t - det.holdFrom >= TC_LAUNCH_HOLD_S && overall >= TC_LAUNCH_ON_MPHS && (t - det.holdBase[0] >= TC_LAUNCH_CONFIRM_SPAN_S || overall >= TC_LAUNCH_ON_MPHS + TC_LAUNCH_NOISE_MPH / Math.max(1e-3, t - det.holdBase[0])) && det.accel >= (suspect ? TC_LAUNCH_KEEP_MPHS : TC_LAUNCH_OFF_MPHS)) {
       det.on = true;
       det.dropFrom = -1;
     }
