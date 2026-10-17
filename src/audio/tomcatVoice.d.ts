@@ -127,12 +127,14 @@ export function tomcatSetAbSpeeds(state: TomcatDriveState, engageMph?: number, d
 export function tomcatSetAfterburnerLaunch(state: TomcatDriveState, launch: boolean): boolean;
 export const TC_LAUNCH_ON_MPHS: number;
 export const TC_LAUNCH_OFF_MPHS: number;
+export const TC_LAUNCH_KEEP_MPHS: number;
 export const TC_LAUNCH_HOLD_S: number;
 export const TC_LAUNCH_DROP_S: number;
 export const TC_LAUNCH_WINDOW_S: number;
+export const TC_LAUNCH_STALE_S: number;
 export const TC_LAUNCH_MAX_MPHS: number;
 export const TC_LAUNCH_GLITCH_HOLDOFF_S: number;
-export interface LaunchDetector { t: number; hist: [number, number][]; on: boolean; holdFrom: number; dropFrom: number; accel: number; holdoffUntil: number; }
+export interface LaunchDetector { t: number; hist: [number, number][]; period: number; on: boolean; holdFrom: number; dropFrom: number; accel: number; holdoffUntil: number; }
 export function createLaunchDetector(): LaunchDetector;
 export function resetLaunchDetector(det: LaunchDetector): void;
 /** GPS-speed carrier-launch detector step; returns whether a launch is active. */

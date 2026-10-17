@@ -407,62 +407,91 @@ export function tomcatSetAfterburnerLaunch(state, launch) {
 /* ── carrier-launch detector (GPS speed only; the Tesla browser has no accelerometer) ── */
 
 /**
- * ≈0.25 g (mph gained per second, over a ~1 s window) held ≥ TC_LAUNCH_HOLD_S → launch;
+ * ≈0.23 g (mph gained per second, over a ~1 s window) held ≥ TC_LAUNCH_HOLD_S → launch;
  * < ≈0.15 g for TC_LAUNCH_DROP_S → off. Dips between the two thresholds don't restart the hold.
  */
-export const TC_LAUNCH_ON_MPHS = 5.5;
+export const TC_LAUNCH_ON_MPHS = 5.0;
 export const TC_LAUNCH_OFF_MPHS = 3.4;
-export const TC_LAUNCH_HOLD_S = 1.0;
+/** The confirming (next) fix only needs this much, so GPS speed noise can't split a real launch. */
+export const TC_LAUNCH_KEEP_MPHS = 4.2;
+/** Second hard change must come at least this long after the first (≈ the next GPS fix). */
+export const TC_LAUNCH_HOLD_S = 0.6;
 export const TC_LAUNCH_DROP_S = 2.0;
 /** Look-back window for the speed slope; ~1 s matches the car's ~1 Hz GPS fixes. */
 export const TC_LAUNCH_WINDOW_S = 1.0;
+/** No speed change for this long reads as steady (0 slope). Longer than the slowest GPS gap. */
+export const TC_LAUNCH_STALE_S = 1.6;
 /** Faster than any car (≈1.6 g): a GPS reacquire / glitch, not a launch. Hold off a moment. */
 export const TC_LAUNCH_MAX_MPHS = 35;
 export const TC_LAUNCH_GLITCH_HOLDOFF_S = 3.0;
 
 export function createLaunchDetector() {
-  return { t: 0, hist: [], on: false, holdFrom: -1, dropFrom: -1, accel: 0, holdoffUntil: -1 };
+  return { t: 0, hist: [], period: 0.8, on: false, holdFrom: -1, dropFrom: -1, accel: 0, holdoffUntil: -1 };
 }
 
 /** Clear the detector (disarm, disable, pack change). */
 export function resetLaunchDetector(det) {
-  det.t = 0; det.hist.length = 0; det.on = false; det.holdFrom = -1; det.dropFrom = -1; det.accel = 0;
-  det.holdoffUntil = -1;
+  det.t = 0; det.hist.length = 0; det.period = 0.8; det.on = false; det.holdFrom = -1; det.dropFrom = -1;
+  det.accel = 0; det.holdoffUntil = -1;
 }
 
 /**
  * One step at absolute time nowS (seconds, monotonic). speedNorm is DrivingInput.speed
- * (0..1 of TC_SPEED_FULL_MPH). Works whether the caller sends raw ~1 Hz fixes or eased speed
- * every frame, at any frame rate. Returns whether a launch is active.
+ * (0..1 of TC_SPEED_FULL_MPH). Works whether the caller sends raw held ~1 Hz fixes or eased
+ * speed every frame, at any frame rate. Returns whether a launch is active.
+ *
+ * The slope is measured only when the speed changes (a new fix, or each eased frame): the gain
+ * since the previous fix (raw ~1 Hz fixes, fix period tracked) or over a ~1 s window (eased speed).
+ * It is held until the next change, so frames between fixes never read as a dip. A launch needs a
+ * hard slope on two changes at least TC_LAUNCH_HOLD_S apart (two GPS fixes), so a single jump
+ * can't fire it; no change for TC_LAUNCH_STALE_S reads as steady speed.
  */
 export function stepLaunchDetector(det, speedNorm, nowS) {
   const t = num(nowS, det.t);
   if (t < det.t) resetLaunchDetector(det);
   det.t = t;
   const mph = clip(num(speedNorm, 0)) * TC_SPEED_FULL_MPH;
-  const last = det.hist[det.hist.length - 1];
-  const prev = det.hist[det.hist.length - 1];
-  if (!prev || prev[1] !== mph || t - prev[0] >= 0.04) det.hist.push([t, mph]);
-  while (det.hist.length > 2 && det.hist[1][0] <= t - TC_LAUNCH_WINDOW_S) det.hist.shift();
-  if (det.hist.length > 1 && t - det.hist[0][0] > 3) det.hist.splice(0, det.hist.length - 1);
   const W = TC_LAUNCH_WINDOW_S;
-  const [t0, v0] = det.hist[0];
-  let vBack = v0;
-  if (det.hist.length > 1 && t0 < t - W) {
-    // speed exactly one window ago (between the two oldest samples), so step cadence adds no jitter
-    const [t1, v1] = det.hist[1];
-    vBack = v0 + (v1 - v0) * Math.min(1, (t - W - t0) / Math.max(1e-6, t1 - t0));
+  const last = det.hist[det.hist.length - 1];
+  let changed = false;
+  if (!last || Math.abs(mph - last[1]) > 1e-6) {
+    changed = true;
+    const gap = last ? t - last[0] : 0;
+    if (last && gap >= 0.3) {
+      // a raw GPS fix (held between updates): slope since the previous fix. A value held longer
+      // than the usual fix period (car was steady) only counts from one period back, so the first
+      // hard fix after a steady stretch reads its true slope.
+      if (gap <= TC_LAUNCH_STALE_S) det.period = 0.7 * det.period + 0.3 * gap;
+      const span = gap > det.period * 1.15 ? det.period : gap;
+      det.accel = (mph - last[1]) / span;
+      det.hist.length = 0;
+      det.hist.push([t - span, last[1]], [t, mph]);
+    } else {
+      // eased speed (changes every frame): gain since one window earlier, linear between samples
+      det.hist.push([t, mph]);
+      while (det.hist.length > 2 && det.hist[1][0] <= t - W) det.hist.shift();
+      const [t0, v0] = det.hist[0];
+      let vBack = v0;
+      if (det.hist.length > 1 && t0 < t - W) {
+        const [t1, v1] = det.hist[1];
+        vBack = v0 + (v1 - v0) * Math.min(1, (t - W - t0) / Math.max(1e-6, t1 - t0));
+      }
+      const span = t - t0;
+      det.accel = span >= W * 0.5 ? (mph - vBack) / Math.min(span, W) : 0;
+    }
+  } else if (t - last[0] > TC_LAUNCH_STALE_S) {
+    det.accel = 0; // steady speed (or GPS stopped updating)
   }
-  const span = t - t0;
-  det.accel = span >= W * 0.5 ? (mph - vBack) / Math.min(span, W) : 0;
   // steeper than any car (GPS reacquire / glitch, raw or eased): stay out until the holdoff ends
   if (det.accel > TC_LAUNCH_MAX_MPHS) det.holdoffUntil = Math.max(det.holdoffUntil, t + TC_LAUNCH_GLITCH_HOLDOFF_S);
   const held = t < det.holdoffUntil;
   if (!det.on) {
-    if (!held && det.accel >= TC_LAUNCH_ON_MPHS) {
-      if (det.holdFrom < 0) det.holdFrom = t;
-    } else if (held || det.accel < TC_LAUNCH_OFF_MPHS) det.holdFrom = -1;
-    if (det.holdFrom >= 0 && t - det.holdFrom >= TC_LAUNCH_HOLD_S) { det.on = true; det.dropFrom = -1; }
+    if (held || det.accel < TC_LAUNCH_OFF_MPHS) det.holdFrom = -1;
+    else if (changed && det.holdFrom < 0 && det.accel >= TC_LAUNCH_ON_MPHS) det.holdFrom = t;
+    else if (changed && det.holdFrom >= 0 && t - det.holdFrom >= TC_LAUNCH_HOLD_S && det.accel >= TC_LAUNCH_KEEP_MPHS) {
+      det.on = true;
+      det.dropFrom = -1;
+    }
   } else if (det.accel < TC_LAUNCH_OFF_MPHS) {
     if (det.dropFrom < 0) det.dropFrom = t;
     if (t - det.dropFrom >= TC_LAUNCH_DROP_S) { det.on = false; det.holdFrom = -1; }

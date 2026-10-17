@@ -74,3 +74,44 @@ test('GPS reacquire jump (0 → 90 in one fix) never fires, raw or eased', () =>
 test('a real very hard launch (0–60 in ~2.2 s) still fires', () => {
   assert.ok(run([0, 0, 27, 54, 60, 62, 62]).includes(true));
 });
+
+/** Raw held GPS fixes at irregular periods, stepped at a steady fps; seconds from first hard fix to on. */
+function runFixes(accelMphs, fps, periods, startMph = 0) {
+  const d = createLaunchDetector();
+  const fixes = [];
+  let ft = 0, v = startMph, k = 0;
+  while (ft < 3) fixes.push([ft, v]), (ft += periods[k++ % periods.length]);
+  const launchT = ft;
+  while (ft < launchT + 8) {
+    // car starts pulling one fix before the first hard fix; ±0.4 mph GPS speed noise
+    v = startMph + accelMphs * (ft - launchT + 0.8) + 0.4 * Math.sin(k * 2.1);
+    fixes.push([ft, Math.min(v, 119)]);
+    ft += periods[k++ % periods.length];
+  }
+  let i = 0;
+  for (let n = 0; n < fps * (launchT + 8); n++) {
+    const t = n / fps;
+    while (i + 1 < fixes.length && fixes[i + 1][0] <= t) i++;
+    if (stepLaunchDetector(d, fixes[i][1] / FULL, t)) return t - launchT;
+  }
+  return -1;
+}
+
+test('held 1 Hz-ish fixes at a steady 60 fps: 5.5–7 mph/s fires ~1 s after the first hard fix', () => {
+  for (const periods of [[1], [0.72, 0.9, 0.8, 0.75, 0.88], [0.9, 1.0, 0.85]]) {
+    for (const a of [5.6, 7, 12]) {
+      for (const fps of [60, 30, 7]) {
+        for (const start of [0, 45]) {
+          const lag = runFixes(a, fps, periods, start);
+          assert.ok(lag >= 0 && lag <= 1.4, `${a} mph/s @${fps} fps periods ${periods} from ${start}: ${lag}`);
+        }
+      }
+    }
+  }
+});
+
+test('±0.4 mph GPS noise at steady speed and normal pulls at 1 Hz-ish never fire', () => {
+  for (const a of [0, 3, 3.5]) {
+    for (const fps of [60, 10]) assert.equal(runFixes(a, fps, [0.72, 0.9, 0.8, 0.75, 0.88], 30), -1, `${a} mph/s`);
+  }
+});
