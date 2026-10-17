@@ -247,3 +247,61 @@ export function shelfScale(m: CjShelfMetrics, w: number, h: number): number {
 
 /** Shelf slot boxes from the placement sheets (the reflow board box). */
 export const SHELF_SLOTS = { w1280: { w: 1248, h: 641 }, w773: { w: 757, h: 376 } } as const;
+
+/* ------------------------------------------------------------------ SHUTDOWN guard */
+
+/**
+ * Guarded SHUTDOWN toggle: the bottom-row Shutdown plate's footprint (host `.rev-dock > .rev-stop` under the
+ * hardware look, 108.67×48 CSS px at 1280×800, 1256×706 and 773×601; the bank is unscaled at all three).
+ * Fixed CSS px, 1 SVG unit = 1px, so the bottom row layout does not move when the guard replaces the plate.
+ */
+export const SHUTDOWN_GUARD_MIN: CjSize = { w: 108.67, h: 48 };
+/** Measured SHUTDOWN plate rect per bottom-row viewport (CSS px, scale 1). */
+export const SHUTDOWN_PLATE_AT: Readonly<Record<'1280x800' | '1256x706' | '773x601', CjSize>> = {
+  '1280x800': { w: 108.67, h: 48 },
+  '1256x706': { w: 108.67, h: 48 },
+  '773x601': { w: 108.67, h: 48 },
+};
+/** Strip column on the hinge side: the cover's tap target while open (Dzus leaf + hinge + folded lid). */
+export const SHUTDOWN_GUARD_STRIP_W = 46;
+/** Cover button rect: closed = the whole part, open = the strip column. Never transformed. */
+export const SHUTDOWN_GUARD_COVER: Readonly<Record<'closed' | 'open', CjSize>> = {
+  closed: { w: SHUTDOWN_GUARD_MIN.w, h: SHUTDOWN_GUARD_MIN.h },
+  open: { w: SHUTDOWN_GUARD_STRIP_W, h: SHUTDOWN_GUARD_MIN.h },
+};
+/** Switch button rect (right of the strip). */
+export const SHUTDOWN_GUARD_SWITCH: CjSize = { w: +(SHUTDOWN_GUARD_MIN.w - SHUTDOWN_GUARD_STRIP_W).toFixed(2), h: SHUTDOWN_GUARD_MIN.h };
+/** Lift / fold time (transform + opacity only); 0 under Reduce Motion (static swap). */
+export const SHUTDOWN_GUARD_LIFT_MS = 160;
+/** Description of the switch while the cover is down. */
+export const SHUTDOWN_GUARD_REASON = 'Lift the guard to use the switch';
+
+export interface CjShutdownGuardView {
+  cover: { 'aria-label': string; 'aria-expanded': boolean; 'aria-disabled'?: true };
+  sw: { role: 'switch'; 'aria-checked': boolean; 'aria-label': string; 'aria-disabled'?: true; tabIndex: 0 | -1 };
+  /** The switch takes taps (cover up and not disabled). */
+  operable: boolean;
+  /** Text the switch's aria-describedby points at while it is not operable (undefined when operable). */
+  reason?: string;
+  /** Legends drawn unlit (class cjp-unlit, grey, no glow): every switch legend while closed or disabled. */
+  unlit: boolean;
+  /** Lever position: up = RUN (engine on), down = OFF. */
+  lever: 'up' | 'down';
+}
+
+/** Pure view of the guarded SHUTDOWN toggle (what ShutdownGuard draws). */
+export function shutdownGuardView(on: boolean, guardOpen: boolean, disabled?: boolean, disabledReason?: string): CjShutdownGuardView {
+  const operable = guardOpen && !disabled;
+  return {
+    cover: {
+      'aria-label': guardOpen ? 'Shutdown guard, open' : 'Shutdown, guarded',
+      'aria-expanded': guardOpen,
+      ...(disabled ? { 'aria-disabled': true as const } : {}),
+    },
+    sw: { role: 'switch', 'aria-checked': on, 'aria-label': 'Engine run', ...(operable ? {} : { 'aria-disabled': true as const }), tabIndex: operable ? 0 : -1 },
+    operable,
+    reason: operable ? undefined : disabled ? (disabledReason ?? 'Not available right now') : SHUTDOWN_GUARD_REASON,
+    unlit: !operable,
+    lever: on ? 'up' : 'down',
+  };
+}

@@ -14,5 +14,6 @@ export { GpsPlate } from './GpsPlate';
 export { RadarToggle } from './RadarToggle';
 export { GpsRadarPlate } from './GpsRadarPlate';
 export { BezelKey } from './BezelKey';
+export { ShutdownGuard } from './ShutdownGuard';
 export * from './tokens';
 export type * from '../types';

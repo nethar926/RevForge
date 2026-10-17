@@ -1,11 +1,11 @@
 /* Dev-only gallery: every cold-start part in every state. Not linked from the app; open with
  * `npx vite` → /src/skins/carrier-jet/parts/gallery/index.html. */
-import { StrictMode, type ReactNode } from 'react';
+import { StrictMode, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  ApuBlock, BatToggle, BezelKey, GndAirBlock, GpsPlate, GpsRadarPlate, GuardedCover, PullHandle, QuickStartGuard, RadarToggle, SwitchShelf,
+  ApuBlock, BatToggle, BezelKey, GndAirBlock, GpsPlate, GpsRadarPlate, GuardedCover, PullHandle, QuickStartGuard, RadarToggle, ShutdownGuard, SwitchShelf,
   APU_BLOCK_MIN, BEZEL_KEY_MIN, GND_AIR_MIN, GPS_RADAR_PLATE_MIN, GPS_RADAR_PLATE_MIN_NARROW, PLATE_MIN, PLATE_MIN_NARROW, PULL_MIN, PULL_MIN_NARROW,
-  QUICK_START_MIN, QUICK_START_MIN_NARROW, RADAR_MIN, RADAR_MIN_NARROW, SHELF_SLOTS, TOGGLE_MIN, GUARDED_TOGGLE_MIN,
+  QUICK_START_MIN, QUICK_START_MIN_NARROW, RADAR_MIN, RADAR_MIN_NARROW, SHELF_SLOTS, SHUTDOWN_GUARD_MIN, TOGGLE_MIN, GUARDED_TOGGLE_MIN,
   type CjAnnunciator, type CjGps,
 } from '../index';
 import { CarrierJetAfterburnerGuard } from '../../AfterburnerGuard';
@@ -39,6 +39,13 @@ function Shelf({ mode, open, w, h }: { mode: 'apu' | 'gndAir'; open: 'closed' | 
       <SwitchShelf systems={list} switches={sw} onToggle={noop} guards={{ engL: true, engR: false }} onGuardToggle={noop} mode={mode} block={block} open={open} annunciators={anns(mode)} />
     </div>
   );
+}
+
+/** Live guarded SHUTDOWN (the host's state machine in miniature): lift, flip, fold. */
+function LiveShutdown() {
+  const [guardOpen, setGuardOpen] = useState(false);
+  const [on, setOn] = useState(true);
+  return <ShutdownGuard guardOpen={guardOpen} onGuardToggle={() => setGuardOpen((o) => !o)} on={on} onToggle={() => setOn((x) => !x)} />;
 }
 
 function Gallery() {
@@ -140,6 +147,27 @@ function Gallery() {
         <Item cap="INERT" w={BEZEL_KEY_MIN.w}><BezelKey active={false} /></Item>
         <Item cap="ROW · RADAR ON (773)">
           <div style={{ display: 'flex', gap: 2 }}>{['RNG +', 'RNG −', 'MODE'].map((l, i) => <div key={l} style={{ width: BEZEL_KEY_MIN.w }}><BezelKey legend={l} active={i === 2} onPress={noop} /></div>)}<div style={{ width: BEZEL_KEY_MIN.w }}><BezelKey active={false} /></div></div>
+        </Item>
+      </Sec>
+
+      <Sec id="shutdown" title="SHUTDOWN GUARD · 108.67×48 (BOTTOM ROW, SHUTDOWN PLATE FOOTPRINT)">
+        <Panel>
+          <Item cap="CLOSED" id="sdg-closed" w={SHUTDOWN_GUARD_MIN.w}><ShutdownGuard guardOpen={false} onGuardToggle={noop} on onToggle={noop} /></Item>
+          <Item cap="OPEN · RUN" id="sdg-open" w={SHUTDOWN_GUARD_MIN.w}><ShutdownGuard guardOpen onGuardToggle={noop} on onToggle={noop} /></Item>
+          <Item cap="OPEN · OFF" id="sdg-open-off" w={SHUTDOWN_GUARD_MIN.w}><ShutdownGuard guardOpen onGuardToggle={noop} on={false} onToggle={noop} /></Item>
+          <Item cap="CLOSED · OFF" id="sdg-closed-off" w={SHUTDOWN_GUARD_MIN.w}><ShutdownGuard guardOpen={false} onGuardToggle={noop} on={false} onToggle={noop} /></Item>
+          <Item cap="DISABLED" id="sdg-disabled" w={SHUTDOWN_GUARD_MIN.w}><ShutdownGuard guardOpen={false} onGuardToggle={noop} on onToggle={noop} disabled disabledReason="Engine starting" /></Item>
+          <Item cap="YELLOW/BLACK" id="sdg-yb" w={SHUTDOWN_GUARD_MIN.w}><ShutdownGuard guardOpen={false} onGuardToggle={noop} on onToggle={noop} stripe="yellow-black" /></Item>
+          <Item cap="RM · OPEN" id="sdg-rm" w={SHUTDOWN_GUARD_MIN.w}><ShutdownGuard guardOpen onGuardToggle={noop} on onToggle={noop} reduceMotion /></Item>
+          <Item cap="LIVE (TAP)" id="sdg-live" w={SHUTDOWN_GUARD_MIN.w}><LiveShutdown /></Item>
+        </Panel>
+        <Item cap="BESIDE THE AB GUARD (COMPACT)" id="sdg-beside">
+          <div className="gal-bank" style={{ alignItems: 'flex-end', gap: 18 }}>
+            <CarrierJetAfterburnerGuard armed={false} onArm={noop} guardOpen={false} onGuardToggle={noop} variant="compact" />
+            <ShutdownGuard guardOpen={false} onGuardToggle={noop} on onToggle={noop} />
+            <CarrierJetAfterburnerGuard armed onArm={noop} guardOpen onGuardToggle={noop} variant="compact" />
+            <ShutdownGuard guardOpen onGuardToggle={noop} on onToggle={noop} />
+          </div>
         </Item>
       </Sec>
 

@@ -250,6 +250,29 @@ export interface CjPullHandleProps {
 }
 
 /** QUICK START: striped guard over the START push-light. 118×118 ('narrow' 96×118). */
+/**
+ * Guarded SHUTDOWN toggle (bottom row): a flip-up striped cover over a bat-handle toggle, AB-guard API.
+ * 108.67×48 CSS px (the Shutdown plate's footprint). Stores nothing; the host flips every value.
+ */
+export interface CjShutdownGuardProps {
+  /** Cover lifted (true) or down (false). Default false: closed. The host keeps it closed on load. */
+  guardOpen?: boolean;
+  /** Tap on the cover (closed → lift) or on the folded strip (open → close). Escape on the switch also calls it. */
+  onGuardToggle: () => void;
+  /** Switch position: true = lever up, RUN (engine running); false = lever down, OFF. */
+  on: boolean;
+  /** Switch tap (only while the cover is up and not disabled). The host decides what it does (shutdown / restart). */
+  onToggle: () => void;
+  /** Whole part unavailable (e.g. engine starting): cover and switch aria-disabled, stripes dull, legends unlit. */
+  disabled?: boolean;
+  /** Why it is unavailable; accessible description of both buttons while disabled. */
+  disabledReason?: string;
+  /** Force the static swap (the app's own Reduce Motion pref). The OS setting and any [data-rf-reduce-motion] ancestor already do it. */
+  reduceMotion?: boolean;
+  /** Default 'red-yellow' (same paint as the AB guard). */
+  stripe?: CjGuardStripe;
+}
+
 export interface CjQuickStartGuardProps {
   guardOpen: boolean;
   /** Cover tap. Called with `guardId`. */
