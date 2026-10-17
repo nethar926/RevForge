@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { compassSpeech } from '../src/packs/carrier-jet/liveMap.ts';
 import { CJ_SHUTDOWN_PLAN, SD_ACTIONS, SD_EMERGENCY, sdLineLabel } from '../src/packs/carrier-jet/shutdownPlan.ts';
 import { CJ_CHECKLIST_PLAN, ckItems } from '../src/packs/carrier-jet/checklistPlan.ts';
-import { ckPlan, ckTitle } from '../src/packs/carrier-jet/checklistModes.ts';
+import { CK_BOOK_TITLE, ckPlan, ckTitle } from '../src/packs/carrier-jet/checklistModes.ts';
 import { CJ_CONFIG } from '../src/packs/carrier-jet/configPages.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -116,7 +116,8 @@ test('4 page tabs: 4 fixed 44 px buttons outside the card scroll, 11 px text; st
 
 test('5 + 6 cover: MATRIX PILOT CHECKLIST with the next badge code', () => {
   const cs = src('src/packs/mounts/CjColdStart.tsx');
-  assert.match(cs, /<strong>MATRIX PILOT CHECKLIST<\/strong>/);
+  assert.match(cs, /<strong>\{CK_BOOK_TITLE\}<\/strong>/);
+  assert.equal(CK_BOOK_TITLE, 'MATRIX PILOT CHECKLIST');
   assert.doesNotMatch(cs, /CARRIER JET PILOT CHECKLIST|REVFORGE JET/);
   // NEXT only while the step's badge is under a closed guard (tests/cj-cover-next.test.ts)
   assert.match(cs, /const coverNext = csCoverNext\(view, inp\);/);

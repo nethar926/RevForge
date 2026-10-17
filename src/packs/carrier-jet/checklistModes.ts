@@ -45,6 +45,17 @@ export const CJ_CHECKLIST_PLAN_GND_AIR: readonly CkSection[] = [
 
 export type CkMode = 'apu' | 'gndAir';
 export const ckPlan = (mode: CkMode): readonly CkSection[] => (mode === 'apu' ? CJ_CHECKLIST_PLAN : CJ_CHECKLIST_PLAN_GND_AIR);
+/**
+ * Pamphlet name, printed on the cover and on the tucked tag (one source). The tag drops the MATRIX brand word only
+ * where the full title doesn't fit its width (never clipped, no ellipsis); VoiceOver always gets the full name.
+ */
+export const CK_BOOK_BRAND = 'MATRIX';
+export const CK_BOOK_SHORT = 'PILOT CHECKLIST';
+export const CK_BOOK_TITLE = `${CK_BOOK_BRAND} ${CK_BOOK_SHORT}`;
+export const CK_BOOK_SPOKEN = 'MATRIX pilot checklist';
+/** Tag / card VoiceOver name: "MATRIX pilot checklist, step 7 b, 17 of 22: HYD, OFF" (code spelled "7 b", not "7b"). */
+export const ckBookAria = (step: { code: string; index: number; total: number; text: string } | null) =>
+  `${CK_BOOK_SPOKEN}${step ? `, step ${step.code.replace(/^(\d+)([a-z])$/, '$1 $2')}, ${step.index} of ${step.total}: ${step.text}` : ''}`;
 export const ckTitle = (mode: CkMode) => `NORMAL PROCEDURES · COLD START (${mode === 'apu' ? 'APU' : 'GND AIR'})`;
 
 /** Plan items aligned to a step-key sequence, or null if the plan doesn't cover it 1:1 (then the host keeps numbers). */

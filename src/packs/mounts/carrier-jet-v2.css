@@ -204,13 +204,17 @@
 .cjm > .cjcs-shelf { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
 .cjm > .cjcs-shelf[data-open='closed'] { display: none; }
 .cjcs-shelf > .cjp-shelf { pointer-events: auto; }
-.cjcs-shelf > .cjcs-card { position: absolute; right: 14px; bottom: 14px; width: 132px; height: 64px; pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 8px;
+.cjcs-shelf > .cjcs-card { position: absolute; right: 14px; bottom: 14px; width: 136px; height: 54px; pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 5px 8px; box-sizing: border-box; overflow: hidden;
   border: 0; border-radius: 3px; text-align: left; color: #1d2022; background: linear-gradient(160deg, #f5f0e2, #e6dfcc); box-shadow: 1px 2px 4px rgb(0 0 0 / 0.55); font-family: 'B612', system-ui, sans-serif; transform: rotate(-3deg); }
-.cjcs-card strong { font-size: 12px; line-height: 13px; letter-spacing: 0.04em; overflow-wrap: anywhere; }
-.cjcs-card[data-bay='row1'] { transform: rotate(-2deg); justify-content: flex-start; padding-top: 10px; }
-.cjcs-card[data-bay='head'] { transform: rotate(-1deg); padding-block: 4px; gap: 0; }
-.cjcs-card[data-bay='head'] strong { line-height: 12px; }
-.cjcs-card small { font-size: 11px; line-height: 12px; color: #3f4549; }
+/* tucked tag (tagSpot.ts): 192/136 × 54/44 in measured free space; the cover's title on one line, MATRIX dropped only
+   where it doesn't fit that width (data-title, measured), + the STEP line; never clipped, no ellipsis */
+.cjcs-card strong { font-size: 12px; line-height: 13px; letter-spacing: 0.04em; white-space: nowrap; }
+.cjcs-card[data-title='short'] .cjcs-card-mx { display: none; }
+.cjcs-card[data-bay='row1'], .cjcs-card[data-bay='gap'] { transform: rotate(-2deg); }
+.cjcs-card[data-bay='head'] { transform: rotate(-1deg); }
+/* nothing free anywhere: no tag rather than one over a switch */
+.cjcs-card[data-bay='none'] { display: none; }
+.cjcs-card small { font-size: 11px; line-height: 12px; color: #3f4549; white-space: nowrap; }
 .cjcs-card:focus-visible { outline: 2px solid #8dffad; outline-offset: 2px; }
 .cjcs-shelf > .cjcs-pamph { position: absolute; inset: 12px; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: rgb(4 8 10 / 0.55); border-radius: 8px; perspective: 900px; }
 .cjcs-cover, .cjcs-pages { background: linear-gradient(160deg, #f5f0e2, #e6dfcc); color: #1d2022; border-radius: 3px; box-shadow: 2px 4px 10px rgb(0 0 0 / 0.6); font-family: 'B612', system-ui, sans-serif; }
