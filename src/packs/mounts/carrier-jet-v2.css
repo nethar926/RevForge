@@ -348,3 +348,6 @@
 }
 [data-rf-reduce-motion] :is(.cjp-guarded > .cjp-lid, .cjp-guarded > .cjp-under, .cjg .cjg-lid, .cjg .cjg-strip, .cjp-sdg > .cjp-sdg-lid, .cjp-sdg > .cjp-sdg-under),
 .cjp-sdg[data-rf-reduce-motion] > :is(.cjp-sdg-lid, .cjp-sdg-under) { transition: none !important; }
+
+/* The open pamphlet lies above everything on the shelf, MASTER CAUTION included (it sits on the CAUT RST cell). */
+.cjcs-shelf > .cjcs-pamph { z-index: 3; }

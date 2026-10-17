@@ -155,6 +155,8 @@ test('MASTER CAUTION: dark without power, lit with power, press resets it (step 
   assert.match(tsx, /<MasterCaution lit=\{view\.caution\.lit\} step=\{view\.caution\.step\} onPress=\{\(\) => onToggle\('masterCaution', 'momentary'\)\} \/>/);
   assert.match(tsx, /if \(it\.system === 'masterCaution'\) setCautionReset\(true\);/);
   const css = src('src/packs/mounts/carrier-jet-v2.css');
+  assert.match(css, /\.cjcs-shelf > \.cjcs-mc \{[^}]*z-index: 2;/);
+  assert.match(css, /\.cjcs-shelf > \.cjcs-pamph \{ z-index: 3; \}/, 'open pamphlet covers the button');
   assert.match(css, /\.cjcs-shelf\[data-mc\] \.cjp-cell:has\(> \.cjp-toggle\[data-sys='masterCaution'\]\) > \* \{ visibility: hidden; \}/);
 });
 
