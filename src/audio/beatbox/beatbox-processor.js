@@ -204,6 +204,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
     this.offK = 0;
 
     // ── idle hunt / cam lope ──
+    this.lopeNow = 0;
     this.hunt = 0; this.huntV = 0; this.lopePh = this.rand() * TWO_PI;
 
     // ── turbo ──
@@ -288,6 +289,8 @@ class BeatboxProcessor extends AudioWorkletProcessor {
       const imb = sp.imbalance * (0.35 + 1.3 * chr) * (1 - 0.65 * rn);
       A *= 1 + this.cylDev[c] * imb;
       A *= this.cycleGain;
+      // big-overlap cam: rich / lean side of the cycle hunt
+      if (this.lopeNow) A *= 1 + 0.45 * this.lopeNow;
       const jit = sp.ampJitter * (0.5 + chr) * (1 - 0.5 * rn);
       A *= 1 + jit * (this.rand() * 2 - 1);
       // off-throttle burble: lazy, irregular weak fires (soft, never a transient)
@@ -452,6 +455,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
         if (this.lopePh > TWO_PI) this.lopePh -= TWO_PI;
         lope = sp.camLope * (0.4 + 1.2 * s.tone) * idleish * Math.sin(this.lopePh);
       }
+      this.lopeNow = lope;
       const dDeg = ((rpm * 6) / sr) * (1 + this.hunt * sp.hunt * idleish * 1.5 + lope * 0.06);
       if (dDeg > 0 && rpm > 40) {
         const th = this.theta;
@@ -541,7 +545,8 @@ class BeatboxProcessor extends AudioWorkletProcessor {
       // ── turbo ──
       let tb = 0;
       if (turbo) {
-        const tgt = L * clip((rpm - turbo.spoolRpm * 0.55) / (turbo.spoolRpm * 0.9));
+        // no road load (standing, free-revving) → little boost builds
+        const tgt = L * clip((rpm - turbo.spoolRpm * 0.55) / (turbo.spoolRpm * 0.9)) * (0.3 + 0.7 * clip(s.speed / 8));
         const up = tgt > this.boost;
         this.boost += (tgt - this.boost) * (1 - Math.exp(-1 / ((up ? turbo.lagS : 0.35) * sr)));
         const shT = 0.08 + 0.18 * rn + 0.74 * Math.pow(this.boost, 0.8);

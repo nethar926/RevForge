@@ -102,7 +102,7 @@ export function createTestDrive(opts: TestDriveOptions = {}): TestDrive {
     if (gear === 0) {
       // free revving: inertia-limited climb, quick fall back to idle
       const up = thrOut * (5200 + 3000 * drive) * torque(rpm);
-      const down = (rpm - idleNow) * (thrOut > 0.05 ? 0.5 : 1.25) + 450 * (1 - thrOut) * clip((rpm - idleNow) / 400);
+      const down = (rpm - idleNow) * (thrOut > 0.05 ? 0.3 : 1.25) + 450 * (1 - thrOut) * clip((rpm - idleNow) / 400);
       rpm += (up - down) * dt;
       if (rpm < idleNow) rpm += (idleNow - rpm) * (1 - Math.exp(-dt / 0.15));
       v = Math.max(0, v - 9 * dt);

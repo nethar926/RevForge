@@ -7,7 +7,7 @@
  *   eng.start();
  *   eng.update({ rpm: 3200, throttle: 0.8 });       // every frame (or from createTestDrive)
  *
- * Fully procedural; never touches localStorage / sessionStorage / IndexedDB.
+ * Fully procedural; uses no browser storage of any kind.
  * Param ranges: docs/beatbox-audio.md.
  */
 import { BEATBOX_ENGINES, getBeatboxEngine, type BeatboxEngineId, type BeatboxEngineInfo } from './engines.ts';
