@@ -24,6 +24,7 @@ import { storageKey } from '../../lib/storageKey';
 import { CjWxReadout } from './CjWxReadout';
 import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
 import { wxCreditRows } from '../carrier-jet/wxCredits';
+import { CONFIG_HEADER_CELLS, configCellHeader, type ConfigHeaderCell } from '../carrier-jet/configHeaders';
 // live map + compass legend: a lazy chunk (CjLiveMap.tsx, Meghan's style + WMM2025); maplibre-gl is a further lazy chunk
 const CjLiveMap = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjLiveMap })));
 const CjHeadingReadout = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjHeadingReadout })));
@@ -173,6 +174,12 @@ function useGeo(selfRef: RefObject<HTMLElement | null>, layout: RfLayout): Geo |
 }
 const boxStyle = (b: Box): CSSProperties => ({ left: b.left, top: b.top, width: b.width, height: b.height });
 
+/** A host cell header. CONFIG open: `header` = the page under it (configHeaders); '' = blank, same box (zero shift). */
+function CellLab({ text, header }: { text: string; header?: string }) {
+  const t = header ?? text;
+  return <span className="cjv2-lab" data-blank={t ? undefined : true} aria-hidden="true">{t || '\u00a0'}</span>;
+}
+
 /* ------------------------------------------------------------------ ACCEL BALL (GPS) */
 function useAccel(demo: boolean, reduced: boolean) {
   const st = useRef<AccelState>(ACCEL_INIT);
@@ -201,7 +208,7 @@ function useAccel(demo: boolean, reduced: boolean) {
   return view;
 }
 
-function AccelCell({ box, demo, reduced }: { box: Box; demo: boolean; reduced: boolean }) {
+function AccelCell({ box, demo, reduced, header }: { box: Box; demo: boolean; reduced: boolean; header?: string }) {
   const a = useAccel(demo, reduced);
   const W = 100, H = 60;
   const cx = 50 + a.x * 38;
@@ -209,7 +216,7 @@ function AccelCell({ box, demo, reduced }: { box: Box; demo: boolean; reduced: b
   const cy = 30 + Math.pow(a.x, 2) * 12;
   return (
     <div className="cjv2-cell cjv2-acc" data-live={a.live} style={boxStyle(box)}>
-      <span className="cjv2-lab" aria-hidden="true">ACCEL</span>
+      <CellLab text="ACCEL" header={header} />
       <div className="cjv2-crt" role="img" aria-label={accelText(a)}>
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
           <path d="M8 26 Q50 50 92 26" fill="none" stroke="currentColor" strokeOpacity=".35" strokeWidth="14" strokeLinecap="round" />
@@ -260,12 +267,12 @@ function RadarScope({ view, reduced, status, label }: { view: MapView; reduced: 
   );
 }
 type LiveMapCtx = { demo: boolean; park: boolean; hdgRef: 'M' | 'T' };
-function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx; wx?: WxView | null; wxRadar?: boolean }) {
+function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar, header }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx; wx?: WxView | null; wxRadar?: boolean; header?: string }) {
   const [info, setInfo] = useState(false);
   const credits = wxCreditRows(wx?.source ?? null, !!wxRadar);
   return (
     <div className="cjv2-cell cjv2-map" data-radar={view.radar} style={boxStyle(box)}>
-      <span className="cjv2-lab" aria-hidden="true">{view.radar ? 'RADAR' : 'MAP'}</span>
+      <CellLab text={view.radar ? 'RADAR' : 'MAP'} header={header} />
       <div className="cjv2-crt">
         {/* Alerts: reserved top third (no alert source on base) */}
         <div className="cjv2-alerts" role="status" aria-live="polite" />
@@ -416,6 +423,12 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
   const slotBoxes: Box[] = geo?.board2 && geo.cells ? CELL_ORDER.map((id) => geo.cells![id]) : geo ? gridBoxes(geo.board, Math.min(items.length + 1, 12)) : [];
   const slots = geo?.board2 ? TILE_SLOTS : slotBoxes.length;
   const paged = pageTiles(items, Math.max(2, slots), cfg.sub);
+  // CONFIG headers: each relabelled cell names the page its tile opens (blank if not a page; Drive name if no tile)
+  const hdr: Partial<Record<ConfigHeaderCell, string>> = {};
+  if (cfg.open) for (const c of CONFIG_HEADER_CELLS) {
+    const h = configCellHeader(paged.tiles[CELL_ORDER.indexOf(c)], CJ_CONFIG);
+    if (h !== undefined) hdr[c] = h;
+  }
 
   const apply = (e: ConfigEffect) => {
     switch (e.type) {
@@ -507,17 +520,20 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
   // weather: Board 2 only (MATRIX look), in the COMPASS cell's top-left corner
   const wx = geo.board2 && !phone ? wxView(wxValue, oatTempUnit(prefs)) : null;
   return (
-    <div ref={selfRef} className="cjv2" data-config={cfg.open || undefined} data-motion={reduced ? 'static' : 'live'}>
+    <div ref={selfRef} className="cjv2" data-config={cfg.open || undefined} data-hdr-sweep={hdr.sweep !== undefined || undefined} data-hdr-compass={hdr.compass !== undefined || undefined} data-motion={reduced ? 'static' : 'live'}>
       {cells && (
         <>
-          <AccelCell box={cells.accel} demo={demo} reduced={reduced} />
-          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} wx={wx} wxRadar={edge ? wxRadar : false} />
+          <AccelCell box={cells.accel} demo={demo} reduced={reduced} header={hdr.accel} />
+          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} wx={wx} wxRadar={edge ? wxRadar : false} header={hdr.map} />
           <div className="cjv2-hdgcell" style={boxStyle(cells.compass)}><Suspense fallback={null}><CjHeadingReadout heading={heading} headingStale={headingStale} hdgRef={prefs.hdgRef} /></Suspense></div>
           {wx && <CjWxReadout box={cells.compass} view={wx} />}
         </>
       )}
       {cfg.open && (
         <div className="cjv2-config" role="dialog" aria-label={`Config, ${page.title}${paged.subs > 1 ? `, ${cfg.sub % paged.subs + 1} of ${paged.subs}` : ''}`}>
+          {cells && (['sweep', 'compass'] as const).map((c) => hdr[c] !== undefined && (
+            <span key={c} className="cjv2-lab cjv2-config-hdr" data-cell={c} data-blank={hdr[c] ? undefined : true} style={{ left: cells[c].left + 4, top: cells[c].top - 16 }} aria-hidden="true">{hdr[c] || '\u00a0'}</span>
+          ))}
           {cells && <span className="cjv2-config-title" style={{ left: cells.mach.left, top: cells.mach.top - 16, width: cells.accel.left + cells.accel.width - cells.mach.left }} aria-hidden="true">{cfg.page === 'home' ? 'CONFIG' : `CONFIG › ${page.title}`}</span>}
           {paged.tiles.map((t, i) =>
             slotBoxes[i] ? <Tile key={t === 'next' ? 'next' : t.id} it={t} c={ctx} box={slotBoxes[i]} onRun={runTile} next={`${(((cfg.sub % paged.subs) + paged.subs) % paged.subs) + 1} of ${paged.subs}`} /> : null,
@@ -534,7 +550,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
           const xs = keyXs(b, n);
           const top = b.top + b.height + geo.gap;
           return (
-            <div key={cell} className="cjv2-keys" data-cell={cell} role="group" aria-label={`${cell} keys`}>
+            <div key={cell} className="cjv2-keys" data-cell={cell} role="group" aria-label={`${(hdr as Partial<Record<CellId, string>>)[cell]?.toLowerCase() || cell} keys`}>
               {keys.map((k, i) => (
                 <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k?.id} data-reason={k?.reason ? true : cell === RIGHT_BANK && i >= SPARE_INDEX && !k ? 'spare' : undefined} data-unlit={k?.unlit || undefined}>
                   <BezelKey legend={k?.legend} active={!!k?.active} ariaLabel={k?.ariaLabel} onPress={k ? () => onKey(cell, k) : undefined} />
