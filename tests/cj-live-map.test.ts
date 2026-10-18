@@ -174,7 +174,7 @@ test('own-ship, bug, ≤2 street labels with the BUILD.md collision walk', () =>
 test('edge keys: every inert key under COMPASS after DRIVE · MORE is a dim spare (data-reason=spare), incl. the 4th at 1280 / 1256', () => {
   const k = cellKeys(RIGHT_BANK, 4, { map: MAP_VIEW_DEFAULT, config: null });
   assert.deepEqual(k.map((x) => x?.id ?? null), ['drive', 'more', null, null]);
-  assert.match(src('packs/mounts/CjV2Layer.tsx'), /cell === bank && i >= SPARE_INDEX && !k \? 'spare'/);
+  assert.match(src('packs/mounts/CjV2Layer.tsx'), /data-rail=\"\" data-reason=\{cell === bank && i >= SPARE_INDEX \? 'spare'/);
   assert.equal(SPARE_INDEX, 2);
 });
 

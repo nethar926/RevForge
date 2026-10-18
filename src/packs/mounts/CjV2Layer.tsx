@@ -553,11 +553,19 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
           const xs = keyXs(b, n);
           const top = b.top + b.height + geo.gap;
           return (
-            <div key={cell} className="cjv2-keys" data-cell={cell} role="group" aria-label={`${(hdr as Partial<Record<CellId, string>>)[cell]?.toLowerCase() || cell} keys`}>
+            <div key={cell} className="cjv2-keys" data-cell={cell} {...(keys.some((k) => k?.legend) ? { role: 'group', 'aria-label': `${(hdr as Partial<Record<CellId, string>>)[cell]?.toLowerCase() || cell} keys` } : { 'aria-hidden': true })}>
               {keys.map((k, i) => (
-                <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k?.id} data-reason={k?.reason ? true : cell === bank && i >= SPARE_INDEX && !k ? 'spare' : undefined} data-unlit={k?.unlit || undefined}>
-                  <BezelKey legend={k?.legend} active={!!k?.active} ariaLabel={k?.ariaLabel} onPress={k ? () => onKey(cell, k) : undefined} />
-                </div>
+                // no action (no key or no legend): no cap, just the slot rail in the same box (zero shift), not focusable,
+                // hidden from VoiceOver (Meghan: dead caps under FLIGHT / AOA / VDI / COMPASS / WING SWEEP read as broken keys)
+                k?.legend ? (
+                  <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k.id} data-reason={k.reason ? true : undefined} data-unlit={k.unlit || undefined}>
+                    <BezelKey legend={k.legend} active={!!k.active} ariaLabel={k.ariaLabel} onPress={() => onKey(cell, k)} />
+                  </div>
+                ) : (
+                  <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-rail="" data-reason={cell === bank && i >= SPARE_INDEX ? 'spare' : undefined} aria-hidden="true">
+                    <span className="cjv2-rail" />
+                  </div>
+                )
               ))}
             </div>
           );

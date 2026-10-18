@@ -38,7 +38,7 @@ test('wiring: host labels take the header, skin WING SWEEP / COMPASS / VDI label
   assert.match(layer, /data-hdr-sweep=\{hdr\.sweep !== undefined \|\| undefined\}/);
   assert.match(layer, /data-hdr-compass=\{hdr\.compass !== undefined \|\| undefined\}/);
   assert.match(layer, /className="cjv2-lab cjv2-config-hdr"[^>]*style=\{\{ left: cells\[c\]\.left \+ 4, top: cells\[c\]\.top - 16 \}\}/);
-  assert.match(layer, /aria-label=\{`\$\{\(hdr as [^`]+\)\[cell\]\?\.toLowerCase\(\) \|\| cell\} keys`\}/);
+  assert.match(layer, /'aria-label': `\$\{\(hdr as [^`]+\)\[cell\]\?\.toLowerCase\(\) \|\| cell\} keys`/);
   assert.match(css, /\.cjv2-lab\[data-blank\] \{ visibility: hidden; \}/);
   assert.match(css, /\.cjm:has\(> \.cjv2\[data-config\]\) [^{]*\.cj-a-mid > \.cj-plab:not\(\.cj-plab-2\),/);
   assert.match(css, /\.cjm:has\(> \.cjv2\[data-hdr-sweep\]\) [^{]*\.cj-a-right > \.cj-plab,/);

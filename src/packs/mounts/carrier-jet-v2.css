@@ -181,6 +181,9 @@
 .cjv2-key { position: absolute; }
 .cjv2-key > .cjp-bezel { width: 100%; height: 100%; }
 .cjv2-key[data-reason] > .cjp-bezel { opacity: 0.75; }
+/* Dead slot (no action): the CRT edge slot only (BezelKey's 18px slot strip, same colours), no cap; box unchanged. */
+.cjv2-key[data-rail] { pointer-events: none; }
+.cjv2-key > .cjv2-rail { position: absolute; left: 0; right: 0; top: 0; height: calc(100% * 18 / 66); box-sizing: border-box; border-radius: 2px; background: #041009; border: 1px solid #000; }
 
 /* CONFIG (SPDS-style pages): tiles over the Board 2 cells; SPEED, its keys and the AB guard stay live */
 .cjv2-config-title { position: absolute; }

@@ -74,6 +74,6 @@ test('wx radar layer: clamped to RainViewer max zoom 7 (overzoomed above), under
   assert.match(src('packs/mounts/CjLiveMap.tsx'), /if \(e\.sourceId === WX_SRC\) return;/);
   // the key is labelled with its state and is a 52×66 bezel key
   const v2 = src('packs/mounts/CjV2Layer.tsx');
-  assert.match(v2, /data-unlit=\{k\?\.unlit \|\| undefined\}/);
+  assert.match(v2, /data-unlit=\{k\.unlit \|\| undefined\}/);
   assert.match(src('packs/mounts/carrier-jet-v2.css'), /\.cjv2-key\[data-unlit\] \.cjp-bezel text \{ fill: #ccd2d6; \}/);
 });
