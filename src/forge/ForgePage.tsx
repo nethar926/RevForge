@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type PointerEvent,
 } from "react";
@@ -37,6 +38,7 @@ import type { useThemes } from "../themes/useThemes";
 import { useVehicleMedia } from "./useVehicleMedia";
 import { NativeStudio } from "./NativeStudio";
 import { useDriveSimulation } from "./useDriveSimulation";
+import { effectiveMuted, getMediaPaused, mutedKey, setMediaPaused, subscribeMediaPaused } from "./mediaPause";
 import { audioChannelsLine, readOutputChannels } from "./audioChannels";
 import "./forge.css";
 import "./viewport.css";
@@ -186,6 +188,13 @@ export function ForgePage({
     activePackId===CARRIER_JET_IDENTITY.id,
   );
   const revReady = audio.running && source === "demo";
+  // car-pause mute is transient (mediaPause.ts, in memory); the saved Mute is prefs.masterMuted. Either one mutes the
+  // engine and shows the Muted key next to Shutdown.
+  const mediaPaused = useSyncExternalStore(subscribeMediaPaused, getMediaPaused, getMediaPaused);
+  const engineMuted = effectiveMuted(prefs.masterMuted, mediaPaused);
+  const mutedChip = mutedKey(prefs.masterMuted, mediaPaused, audio.running);
+  // Mute controls (CJ nav / pack shell): a car-pause mute is cleared (never written); otherwise toggle the saved Mute
+  const toggleMute = () => { if (mediaPaused && !prefs.masterMuted) setMediaPaused(false); else update({ masterMuted: !prefs.masterMuted }); };
   // car-test diagnostics (Options): output channel count, null → '—' until audio starts; re-read when audio starts
   const audioCh = useMemo(() => audioChannelsLine(readOutputChannels(audio)), [audio, audio.running]);
 
@@ -269,7 +278,7 @@ export function ForgePage({
   useEffect(() => {
     packShellRef.current = (a) => {
       if (a.type === 'shutdown') { if (audio.running) stop(); }
-      else if (a.type === 'toggle-mute') update({ masterMuted: !prefs.masterMuted });
+      else if (a.type === 'toggle-mute') toggleMute();
       else if (a.type === 'open-panel') setPanel(a.panel);
       else if (a.type === 'nav') onCjNav(a.action);
       else if (a.type === 'retry-gps') gps.start();
@@ -286,7 +295,7 @@ export function ForgePage({
     };
   });
   useEffect(() => connectPackShell((a) => packShellRef.current(a)), []);
-  useEffect(() => setPackShellState({ muted: prefs.masterMuted, engineName: audio.patchName ?? '' }), [prefs.masterMuted, audio.patchName]);
+  useEffect(() => setPackShellState({ muted: engineMuted, engineName: audio.patchName ?? '' }), [engineMuted, audio.patchName]);
   // CJ v2 CONFIG (preview only) reads the current Drive settings from the shell state.
   useEffect(() => {
     if (!FEATURES.cjV2) return;
@@ -294,6 +303,7 @@ export function ForgePage({
   });
   const start = () => {
     setIgnited(true);
+    setMediaPaused(false); // Ignition is always audible (unless the user's own saved Mute is on)
     media.arm();
     if(source === "gps") onGpsEnabled(true);
     void audio.start().then(() => {
@@ -305,9 +315,10 @@ export function ForgePage({
     setBrake(false);
     audio.playShutoff?.();
     audio.stop();
+    setMediaPaused(false); // Shutdown ends a car pause: the next start is audible
     reset();
   };
-  const media = useVehicleMedia({blasters:patch?.kind==='scifi',fire:()=>audio.triggerUiCue('ion-cannon'),getMediaElement:audio.getMediaElement,enabled:mediaEnabled,running:audio.running,manual:hasGears && driveMode==='manual' && config.gears>1,gearbox:hasGears,pauseShifts,name:audio.patchName,start:()=>{void audio.start().then(()=>audio.playStarter?.());if(source==='gps')onGpsEnabled(true);},stop,mute:()=>update({masterMuted:true}),unmute:()=>update({masterMuted:false}),paused:prefs.masterMuted,shift:(d:number)=>{if(hasGears)shift(d);}});
+  const media = useVehicleMedia({blasters:patch?.kind==='scifi',fire:()=>audio.triggerUiCue('ion-cannon'),getMediaElement:audio.getMediaElement,enabled:mediaEnabled,running:audio.running,manual:hasGears && driveMode==='manual' && config.gears>1,gearbox:hasGears,pauseShifts,name:audio.patchName,start:()=>{setMediaPaused(false);void audio.start().then(()=>audio.playStarter?.());if(source==='gps')onGpsEnabled(true);},stop,mute:()=>setMediaPaused(true),unmute:()=>setMediaPaused(false),paused:engineMuted,shift:(d:number)=>{if(hasGears)shift(d);}});
   const sourceChange = (next: "demo" | "gps") => {
     setSource(next);
     setPedal(0);
@@ -343,7 +354,7 @@ export function ForgePage({
   const dashLabListed=isThemeListed('custom-grid');
   // Carrier Jet pack (after IGNITION; the splash keeps Tuner): Visual Skins' switch row replaces the Tuner button.
   const cjNav=ignited&&packForThemeId(theme.id)?.id===CARRIER_JET_IDENTITY.id;
-  const onCjNav=(a:CjNavAction)=>{if(a.type==='route')navigate(a.to);else if(a.type==='panel'&&a.panel==='garage'&&!FEATURES.garage)setPanelRaw('garage');else if(a.type==='panel')setPanel(a.panel);else if(a.type==='drive')setPanel(null);else if(a.type==='mute')update({masterMuted:!prefs.masterMuted});};
+  const onCjNav=(a:CjNavAction)=>{if(a.type==='route')navigate(a.to);else if(a.type==='panel'&&a.panel==='garage'&&!FEATURES.garage)setPanelRaw('garage');else if(a.type==='panel')setPanel(a.panel);else if(a.type==='drive')setPanel(null);else if(a.type==='mute')toggleMute();};
   const panelTitle=panel==='tuner'?'TUNE':panel==='tune'?'Options':panel==='themes'||panel==='scenes'?'Visuals':panel==='garage'?(FEATURES.garage?'Revs':'Pack'):panel==='account'?'Account':'Lab';
   return (
     <div
@@ -354,7 +365,7 @@ export function ForgePage({
         <section className="rev-scene" aria-label="Full-screen dashboard">
           <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={()=>audio.triggerUiCue('time-jump')} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
         </section>
-        <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{(FEATURES.account?garage.active?.name:undefined)??theme.name}</small>}</div>{cjNav?<CjNavRow current={currentCjPage('/drive',panel)} muted={prefs.masterMuted} labPanel={dashLabListed?'dashlab':'studio'} onAction={onCjNav}/>:<button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button>}</header>
+        <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{(FEATURES.account?garage.active?.name:undefined)??theme.name}</small>}</div>{cjNav?<CjNavRow current={currentCjPage('/drive',panel)} muted={engineMuted} labPanel={dashLabListed?'dashlab':'studio'} onAction={onCjNav}/>:<button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button>}</header>
         {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>
           {source==='demo'&&<label className="rev-throttle">Throttle <span>{Math.round(pedal*100)}%</span><input aria-label="Throttle" type="range" min="0" max="1" step=".01" disabled={!revReady} value={pedal} onChange={e=>setPedal(Number(e.target.value))}/></label>}
           <footer className="rev-dock" aria-label="Drive controls">
@@ -363,7 +374,7 @@ export function ForgePage({
             {source==='demo'&&<button className="rev-chip" disabled={!revReady} onPointerDown={e=>hold(e,'throttle')} onPointerUp={()=>setPedal(0)} onPointerCancel={()=>setPedal(0)} onLostPointerCapture={()=>setPedal(0)}>Hold to rev</button>}
             {patch?.kind==='scifi'&&<button className="rev-chip rev-blaster" disabled={!audio.running} onClick={()=>audio.triggerUiCue('ion-cannon')}>Pulse Burst</button>}
             <button className="rev-chip rev-stop" disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Shutdown':'Ignition'}</button>
-            {prefs.masterMuted&&<button type="button" className="rev-chip rev-muted" aria-pressed="true" aria-label={audio.running?'Engine sound muted, engine still running. Unmute':'Engine sound muted. Unmute'} onClick={()=>update({masterMuted:false})}>Muted</button>}
+            {mutedChip&&<button type="button" className="rev-chip rev-muted" aria-pressed="true" aria-label={mutedChip.aria} onClick={()=>{setMediaPaused(false);if(prefs.masterMuted)update({masterMuted:false});}}>{mutedChip.text}</button>}
           </footer>
         </>}
         {audio.error&&<p className="rev-message" role="alert">{audio.error}</p>}

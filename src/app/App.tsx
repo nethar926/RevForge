@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { useAudioEngine } from "../hooks/useAudioEngine";
@@ -19,6 +19,7 @@ import { packForEngineId, packForThemeId, resolveVisibleEnginePatch } from "../p
 import CARRIER_JET from "../packs/carrier-jet.identity";
 import { FALLBACK_ENGINE_ID } from "../themes/visibility";
 import { FEATURES } from "../features";
+import { effectiveMuted, getMediaPaused, setMediaPaused, subscribeMediaPaused } from "../forge/mediaPause";
 
 export default function App() {
   const { prefs, update, reset } = useUiPrefs();
@@ -27,6 +28,7 @@ export default function App() {
   const audio = useAudioEngine(prefs.selectedEngineId, userPatches);
   const [gpsEnabled, setGpsEnabled] = useState(false);
   const gps = useGeolocation(gpsEnabled);
+  const mediaPaused = useSyncExternalStore(subscribeMediaPaused, getMediaPaused, getMediaPaused);
 
   useEffect(() => {
     const eng = audio.getEngine();
@@ -34,8 +36,9 @@ export default function App() {
     // Mute via output node so patch masterGain stays intact
     const out = eng.output;
     // Engines gate their own running bus; keep the shared volume bus open for shutdown tails.
+    // the user's saved Mute or a transient car-pause mute (mediaPause.ts, never persisted)
     const target =
-      prefs.masterMuted
+      effectiveMuted(prefs.masterMuted, mediaPaused)
         ? 0
         : Math.max(0, Math.min(1, prefs.masterVolume ?? 0.65));
     const now = eng.context.currentTime;
@@ -45,7 +48,7 @@ export default function App() {
     } catch {
       out.gain.value = target;
     }
-  }, [prefs.masterMuted, prefs.masterVolume, audio]);
+  }, [prefs.masterMuted, mediaPaused, prefs.masterVolume, audio]);
 
   const onSelectEngine = useCallback(
     (patch: EnginePatch) => {
@@ -81,7 +84,8 @@ export default function App() {
     [deletePatch, audio, prefs.selectedEngineId, update],
   );
 
-  const onMuteToggle = () => update({ masterMuted: !prefs.masterMuted });
+  // a transient car-pause mute is cleared by the Mute control (never written); otherwise toggle the saved Mute
+  const onMuteToggle = () => (mediaPaused && !prefs.masterMuted ? setMediaPaused(false) : update({ masterMuted: !prefs.masterMuted }));
 
   return (
     <Routes>
@@ -111,7 +115,7 @@ export default function App() {
       <Route
         element={
           <AppShell
-            prefs={prefs}
+            prefs={mediaPaused ? { ...prefs, masterMuted: effectiveMuted(prefs.masterMuted, mediaPaused) } : prefs}
             engineName={audio.patchName}
             running={audio.running}
             onMuteToggle={onMuteToggle}

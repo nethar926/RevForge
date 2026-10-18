@@ -141,9 +141,9 @@ test('useVehicleMedia + ForgePage: car pause mutes through the app mute (never s
   const page = src('forge/ForgePage.tsx');
   const at = page.indexOf('useVehicleMedia({');
   const call = page.slice(at, page.indexOf('});', at));
-  assert.match(call, /mute:\(\)=>update\(\{masterMuted:true\}\),unmute:\(\)=>update\(\{masterMuted:false\}\),paused:prefs\.masterMuted/, 'the app mute (output gain 0 in App.tsx)');
-  assert.match(page, /\{prefs\.masterMuted&&<button type="button" className="rev-chip rev-muted" aria-pressed="true" aria-label=\{audio\.running\?'Engine sound muted, engine still running\. Unmute':'Engine sound muted\. Unmute'\} onClick=\{\(\)=>update\(\{masterMuted:false\}\)\}>Muted<\/button>\}/);
-  assert.match(src('app/App.tsx'), /prefs\.masterMuted\s*\? 0/, 'mute = output gain 0, engine keeps running');
+  assert.match(call, /mute:\(\)=>setMediaPaused\(true\),unmute:\(\)=>setMediaPaused\(false\),paused:engineMuted/, 'transient mute (mediaPause.ts), never the saved pref');
+  assert.match(page, /\{mutedChip&&<button type="button" className="rev-chip rev-muted" aria-pressed="true" aria-label=\{mutedChip\.aria\}/);
+  assert.match(src('app/App.tsx'), /effectiveMuted\(prefs\.masterMuted, mediaPaused\)\s*\? 0/, 'mute = output gain 0, engine keeps running');
 });
 
 test('Options hints match the media mapping: pause mutes (engine keeps running), never "pause stops"', () => {

@@ -1,7 +1,7 @@
 export type VehicleMediaAction = 'play'|'pause'|'stop'|'nexttrack'|'previoustrack';
 /**
  * Car media button → Drive command. A car pause is a real PAUSE: 'mute' silences the engine output through the app's
- * mute (UI prefs masterMuted → output gain 0) and keeps the engine and the sim running (no stop(), no shutoff, the
+ * transient mute (mediaPause.ts, in memory, never the saved masterMuted → output gain 0) and keeps the engine and the sim running (no stop(), no shutoff, the
  * <audio> element is never paused). 'play' unmutes ('unmute', or 'start' when the engine is off). Only a car 'stop',
  * the on-screen Shutdown, the shutdown guard or a pack shutdown end the sound. The opt-in "pause shifts" (manual
  * gearbox) and the Twin-Ion blasters keep their pause mapping.
