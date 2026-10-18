@@ -130,8 +130,8 @@ test('RADAR 3-position: position from state, apply, one step at a time with end-
   for (const p of ['up', 'mid', 'dn'] as const) { const a = radarApply(p); assert.equal(radarPos(a.radar, a.wx), p); }
   assert.deepEqual(radarStep('dn', 1), { pos: 'mid' });
   assert.deepEqual(radarStep('mid', 1), { pos: 'up' });
-  assert.deepEqual(radarStep('up', 1), { pos: 'up', reason: 'Radar already up' });
-  assert.deepEqual(radarStep('dn', -1), { pos: 'dn', reason: 'Radar already down' });
+  assert.deepEqual(radarStep('up', 1), { pos: 'up', reason: 'Radar already at MX' });
+  assert.deepEqual(radarStep('dn', -1), { pos: 'dn', reason: 'Radar already at OFF' });
 });
 
 test('START bank: rail v2 order, GEN follows the engines, no cold start mirrors running', () => {

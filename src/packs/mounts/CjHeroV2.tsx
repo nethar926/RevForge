@@ -224,12 +224,12 @@ export function HeroRail(p: HeroRailProps) {
 
       <Mod kind="radar" title="RADAR" label={`Radar, ${RADAR_SPOKEN[p.radar]}`}>
         <div className="cjhv-sw cjhv-sw3" data-pos={p.radar}>
-          <span className="cjhv-lg cjhv-sw-up" aria-hidden="true">UP</span>
+          <span className="cjhv-lg cjhv-sw-up" aria-hidden="true">MX</span>
           <ToggleArt pos={p.radar} w={44} />
-          <span className="cjhv-lg cjhv-sw-mid" aria-hidden="true">{narrow ? 'MID' : <>MID<br />SCOPE</>}</span>
-          <span className="cjhv-lg cjhv-sw-dn" aria-hidden="true">DN</span>
-          <button type="button" className="cjhv-hit cjhv-hit-up" aria-label={`Radar: move up one position, now ${RADAR_SPOKEN[p.radar]}`} onClick={() => radarTap(1)} />
-          <button type="button" className="cjhv-hit cjhv-hit-dn" aria-label={`Radar: move down one position, now ${RADAR_SPOKEN[p.radar]}`} onClick={() => radarTap(-1)} />
+          <span className="cjhv-lg cjhv-sw-mid" aria-hidden="true">WX</span>
+          <span className="cjhv-lg cjhv-sw-dn" aria-hidden="true">OFF</span>
+          <button type="button" className="cjhv-hit cjhv-hit-up" aria-label={`Radar: move up one position, toward MX, now ${RADAR_SPOKEN[p.radar]}`} onClick={() => radarTap(1)} />
+          <button type="button" className="cjhv-hit cjhv-hit-dn" aria-label={`Radar: move down one position, toward OFF, now ${RADAR_SPOKEN[p.radar]}`} onClick={() => radarTap(-1)} />
         </div>
       </Mod>
 

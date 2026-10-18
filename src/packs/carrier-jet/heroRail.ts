@@ -145,7 +145,8 @@ export function splitCap(id: string, c: CapCtx): SplitCap | null {
 
 /* ------------------------------------------------------------------ RADAR 3-position lever lock */
 
-/** UP = radar scope on · MID = scope with weather returns (rail v2: "weather on the scope only") · DN = off. */
+/** Legends (Wilson): MX = up = radar scope on · WX = mid = scope with weather returns (rail v2: "weather on the scope only") ·
+ *  OFF = down = radar off. The position ids stay up / mid / dn. */
 export type RadarPos = 'up' | 'mid' | 'dn';
 export function radarPos(radar: boolean, wx: boolean): RadarPos {
   return !radar ? 'dn' : wx ? 'mid' : 'up';
@@ -157,11 +158,11 @@ export function radarApply(pos: RadarPos): { radar: boolean; wx: boolean } {
 export function radarStep(pos: RadarPos, dir: 1 | -1): { pos: RadarPos; reason?: string } {
   const order: RadarPos[] = ['dn', 'mid', 'up'];
   const i = order.indexOf(pos) + dir;
-  if (i < 0) return { pos, reason: 'Radar already down' };
-  if (i > 2) return { pos, reason: 'Radar already up' };
+  if (i < 0) return { pos, reason: 'Radar already at OFF' };
+  if (i > 2) return { pos, reason: 'Radar already at MX' };
   return { pos: order[i] };
 }
-export const RADAR_SPOKEN: Readonly<Record<RadarPos, string>> = { up: 'up, scope on', mid: 'middle, weather on the scope', dn: 'down, off' };
+export const RADAR_SPOKEN: Readonly<Record<RadarPos, string>> = { up: 'MX, scope on', mid: 'WX, weather on the scope', dn: 'OFF' };
 
 /* ------------------------------------------------------------------ START bank */
 

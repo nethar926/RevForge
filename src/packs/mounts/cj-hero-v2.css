@@ -112,7 +112,7 @@ div.cjhv-cap { cursor: default; }
 /* start-order cue: only the next switch, a static green legend (rail v2) */
 .cjhv-sw[data-cue] .cjhv-sw-up { color: #8dffad; text-shadow: 0 0 1px rgba(141, 255, 173, 0.6), 0 -1px 0 rgba(0, 0, 0, 0.55); }
 
-/* RADAR 3-position: toggle left, MID / SCOPE to its right */
+/* RADAR 3-position: MX above, OFF below, toggle left, WX to its right */
 .cjhv-mod-radar { width: 92px; }
 .cjhv-sw3 { flex: 1 1 auto; }
 .cjhv-sw3 .cjhv-sw-up, .cjhv-sw3 .cjhv-sw-dn { right: auto; width: 44px; left: 4px; }
