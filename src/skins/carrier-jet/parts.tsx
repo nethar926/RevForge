@@ -15,12 +15,14 @@ const f1 = (n: number) => Math.round(n * 10) / 10;
 type Pt = [number, number];
 
 // ------------------------------------------------------------------ SVG frame + text
-/** Rendered px per viewBox unit of the nearest <Svg> (1 until measured, and on the server), for parts that change
- * their layout, not just their text size, when the cell is small (the narrow compass rose). */
-export const SvgScale = createContext(1);
+/** Nearest <Svg>'s rendered px per viewBox unit (`s`) and the px from its parent cell's top edge to the drawing's top
+ * (`top`, the svg's own offset plus the meet letterbox). s = 1 / top = 0 until measured and on the server. For parts
+ * that change their layout, not just their text size, when the cell is small (the narrow compass rose). */
+export type SvgFit = { s: number; top: number };
+export const SvgScale = createContext<SvgFit>({ s: 1, top: 0 });
 export function Svg({ w, h, className = '', children, align = 'xMidYMid' }: { w: number; h: number; className?: string; children: ReactNode; align?: string }) {
   const ref = useRef<SVGSVGElement>(null);
-  const [scale, setScale] = useState(1);
+  const [fit, setFit] = useState<SvgFit>({ s: 1, top: 0 });
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -31,16 +33,19 @@ export function Svg({ w, h, className = '', children, align = 'xMidYMid' }: { w:
       const s = Math.min(r.width / w, r.height / h);
       const v = String(Math.round(s * 1000) / 1000);
       if (el.style.getPropertyValue('--cj-sv') !== v) el.style.setProperty('--cj-sv', v);
-      setScale((p) => (Math.abs(p - s) < 0.01 ? p : s));
+      const par = el.parentElement?.getBoundingClientRect();
+      const slack = r.height - h * s;
+      const top = (par ? r.top - par.top : 0) + (align.includes('YMin') ? 0 : align.includes('YMax') ? slack : slack / 2);
+      setFit((p) => (Math.abs(p.s - s) < 0.01 && Math.abs(p.top - top) < 1 ? p : { s, top }));
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [w, h]);
+  }, [w, h, align]);
   return (
     <svg ref={ref} className={`cj-svg ${className}`} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio={`${align} meet`} aria-hidden="true" focusable="false">
-      <SvgScale.Provider value={scale}>{children}</SvgScale.Provider>
+      <SvgScale.Provider value={fit}>{children}</SvgScale.Provider>
     </svg>
   );
 }
@@ -267,8 +272,8 @@ export function Rose({ x, y, w, h, P, heading, stale = false }: { x: number; y: 
   const hd = heading ?? 0;
   const dim = stale && heading !== undefined;
   const tone = staleTones(P, dim);
-  const sv = useContext(SvgScale);
-  if (sv < ROSE_NARROW_SCALE) return <RoseNarrow x={x} y={y} w={w} h={h} P={P} hd={hd} heading={heading} dim={dim} tone={tone} id={id} sv={sv} />;
+  const { s: sv, top: svTop } = useContext(SvgScale);
+  if (sv < ROSE_NARROW_SCALE) return <RoseNarrow x={x} y={y} w={w} h={h} P={P} hd={hd} heading={heading} dim={dim} tone={tone} id={id} sv={sv} svTop={svTop} />;
   const cx = x + w / 2, R = Math.min(w * 0.46, h * 0.9), cy = y + R + 34;
   return (
     <g data-cj-el="heading" data-stale={dim ? 'true' : undefined}>
@@ -306,21 +311,24 @@ export function Rose({ x, y, w, h, P, heading, stale = false }: { x: number; y: 
  * Narrow compass (COMPASS in the small bottom cell after the COMPASS / ACCEL swap: about 99 / 174 / 159 px wide at
  * 773 / 1256 / 1280). Below ROSE_NARROW_SCALE rendered px per unit the 12px text floor makes the full rose collide, so
  * the layout is worked out in rendered px (u = viewBox units per px):
- * - a 34px band on top holds the digit box (and the host's HTML HDG chip laid over it); the arc starts 6px under it;
+ * - a band on top holds the digit box (and the host HTML HDG chip laid over it), measured from the cell top so it just
+ *   clears the chip whatever the letterbox (never under 26px); the arc starts 4px under it;
  * - the ring's centre sits on the cell floor; card labels sit 17px inside it; N / E / S / W always, the 30° numbers
- *   only when neighbours are >= 22px apart (1256 / 1280: yes; 773: cardinals only);
+ *   only when neighbours are >= 20px apart;
  * - ticks every 10° (7px at 30°, 4px otherwise), strokes kept >= 1px rendered;
  * - the digit box is 46x22px and tagged .cj-rose-box so the host chip can hide it (see carrier-jet.css).
  */
 export const ROSE_NARROW_SCALE = 0.6;
-const ROSE_BAND_PX = 34;
-function RoseNarrow({ x, y, w, h, P, hd, heading, dim, tone, id, sv }: { x: number; y: number; w: number; h: number; P: CjPalette; hd: number; heading?: number; dim: boolean; tone: { line: string; text: string; edge: string }; id: string; sv: number }) {
+/** Cell-top px the host HDG chip can reach (4px inset + chip + 4px gap): 18px lead in wide cells, 13px under 130px. */
+const chipFloor = (cellW: number) => (cellW < 130 ? 28 : 34);
+function RoseNarrow({ x, y, w, h, P, hd, heading, dim, tone, id, sv, svTop }: { x: number; y: number; w: number; h: number; P: CjPalette; hd: number; heading?: number; dim: boolean; tone: { line: string; text: string; edge: string }; id: string; sv: number; svTop: number }) {
   const u = 1 / sv;
-  const band = ROSE_BAND_PX * u, top = y + band + 6 * u;
+  // band: from the drawing's top down to just under the chip (less the letterbox above the drawing), never under 26px
+  const band = Math.max(26, chipFloor(w * sv) - svTop - y * sv) * u, top = y + band + 4 * u;
   // the ring's centre sits on the cell floor, so the whole upper half (and its labels) is in view
   const cx = x + w / 2, R = Math.min(w * 0.46, y + h - top - 2 * u), cy = top + R;
   const inset = 17 * u, lr = R - inset;
-  const showNums = 2 * lr * Math.sin(Math.PI / 12) * sv >= 22;
+  const showNums = 2 * lr * Math.sin(Math.PI / 12) * sv >= 20;
   const bw = 46 * u, bh = 22 * u;
   return (
     <g data-cj-el="heading" data-stale={dim ? 'true' : undefined} data-cj-rose="narrow">

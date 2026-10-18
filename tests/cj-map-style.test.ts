@@ -158,6 +158,8 @@ test('CjHeadingLegend: lead default M, stale dims, text >= 11px, CJ green', () =
   assert.match(src, /lead = 'M'/);
   assert.match(src, /opacity: stale \? CJ_HEADING_STALE_OPACITY : 1/);
   const sizes = [...src.matchAll(/fontSize: (\d+)/g)].map((m) => Number(m[1]));
+  // narrow compass: the lead value steps between two literal sizes (setSize(... ? 13 : 18))
+  for (const m of src.matchAll(/\? (\d+) : (\d+)\);/g)) sizes.push(Number(m[1]), Number(m[2]));
   assert.ok(sizes.length >= 2 && sizes.every((s) => s >= 11), `${sizes}`);
   assert.match(src, /#8dffad/);
   assert.doesNotMatch(readFileSync(new URL('../src/skins/carrier-jet/map/heading.ts', import.meta.url), 'utf8'), /from 'react'/, 'heading.ts stays React-free');

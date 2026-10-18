@@ -23,7 +23,7 @@ export type CjHeadingLegendProps = {
 export function CjHeadingLegend({ trueHdg, magHdg, lead = 'M', stale = false, ariaLabel, single = false }: CjHeadingLegendProps) {
   const [primary, secondary] = headingLegendLines(trueHdg, magHdg, lead);
   const ref = useRef<HTMLDivElement>(null);
-  const [lead18, setSize] = useState(18);
+  const [leadPx, setSize] = useState(18);
   // Narrow compass: the chip must fit inside its cell (about 99px at 773). Measure the host cell (the chip wrapper's
   // parent) and step the lead value 18 -> 13px under 130px (>= 11px floor; ~84px chip incl. padding).
   useLayoutEffect(() => {
@@ -48,7 +48,7 @@ export function CjHeadingLegend({ trueHdg, magHdg, lead = 'M', stale = false, ar
       aria-label={ariaLabel || undefined}
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, fontWeight: 700, lineHeight: 1.15, opacity: stale ? CJ_HEADING_STALE_OPACITY : 1 }}
     >
-      <span style={{ fontSize: lead18, color: PRIMARY }}>{primary}</span>
+      <span style={{ fontSize: leadPx, color: PRIMARY }}>{primary}</span>
       {single ? null : <span style={{ fontSize: 11, color: SECONDARY }}>{secondary}</span>}
     </div>
   );
