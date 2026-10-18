@@ -73,7 +73,7 @@ test('NAV → SPDS: Tesla bank has no NAV panel; DRIVE acts like RTN; MORE sheet
   const row = src('packs/mounts/CjNavRow.tsx');
   assert.match(mount, /\{row \? null : spds \? shelf : /);
   assert.match(row, /if \(spds\) return null;|getCjNavSpds/);
-  assert.match(layer, /data-rail=\"\" data-reason=\{cell === bank && i >= SPARE_INDEX \? 'spare'/);
+  assert.match(layer, /data-rail="" data-reason=\{cell === bank && i >= SPARE_INDEX \? 'spare'/);
   assert.match(layer, /className="cjv2-more"[^>]*role="dialog"/);
   assert.match(layer, /role=\{it\.id === 'mute' \? 'switch' : undefined\} aria-checked=\{it\.id === 'mute' \? !!it\.on\?\.\(c\) : undefined\}/);
   assert.match(layer, /case 'drive':/);

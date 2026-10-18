@@ -252,8 +252,13 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   const terrRef = useRef(view.mode === 'terr');
   terrRef.current = view.mode === 'terr';
   const contours = useRef<CjContours | null>(null);
-  const contourInit = useRef({ rangeMi: radar ? radar.range : view.zoom, dim: radar ? CJ_RADAR_MAP_DIM : 1 });
-  contourInit.current = { rangeMi: radar ? radar.range : view.zoom, dim: radar ? CJ_RADAR_MAP_DIM : 1 };
+  // the contour range / dim the next map creation starts with: synced in an effect (declared before the create effect,
+  // so it runs first in the same commit), never written during render
+  const contourInitRange = radar ? radar.range : view.zoom, contourInitDim = radar ? CJ_RADAR_MAP_DIM : 1;
+  const contourInit = useRef({ rangeMi: contourInitRange, dim: contourInitDim });
+  useEffect(() => {
+    contourInit.current = { rangeMi: contourInitRange, dim: contourInitDim };
+  }, [contourInitRange, contourInitDim]);
   const haveFix = fixAt != null;
   useEffect(() => {
     if (!active || !haveFix) return;
