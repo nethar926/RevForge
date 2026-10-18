@@ -138,7 +138,7 @@ export const BEATBOX_ENGINES: readonly BeatboxEngineInfo[] = [
       cabin: { boomHz: 80, lpHz: 7000, boom: 0.3 },
       hpHz: 32,
       refl: 0.04,
-      pop: 1.0,
+      pop: 0.8,
       exGain: 1,
       width: 0.45,
       trim: 0.48,

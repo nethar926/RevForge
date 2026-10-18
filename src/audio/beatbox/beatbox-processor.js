@@ -186,8 +186,15 @@ class BeatboxProcessor extends AudioWorkletProcessor {
     this.metal = (sp.metal || []).map((m) => new Biquad().set('bp', m[0], m[1], sr));
     this.turboBp = new Biquad(); this.turboBp2 = new Biquad(); this.hiss = new Biquad().set('bp', 2600, 0.8, sr);
     this.bovBp = new Biquad(); this.bovHp = new Biquad().set('hp', 400, 0.7, sr);
-    this.crackBp = new Biquad().set('bp', 2400, 0.9, sr);
-    this.thumpLp = new Biquad().set('lp', 260, 0.8, sr);
+    // afterfire voice (v2): one band-limited bang per event = low-mid thump (damped, slightly falling
+    // sine 80–400 Hz) + a brief bright snap (band-passed noise, ~2 ms) + a short ring at the pipe's
+    // third quarter-wave mode. No dense micro-crackle, no long noisy tail.
+    this.crackBp = new Biquad().set('bp', 2600, 1.1, sr);
+    this.crackHp = new Biquad().set('hp', 1200, 0.7, sr);
+    this.thumpLp = new Biquad().set('lp', 400, 0.7, sr);
+    this.popRing = new Biquad().set('bp', clip(3000 / (4 * sp.pipe.lenMsA), 180, 900), 5, sr);
+    this.thA = 0; this.thF = 120; this.thPh = 0; this.snA = 0;
+    this.thD = Math.exp(-1 / (0.009 * sr)); this.snD = Math.exp(-1 / (0.0022 * sr)); this.thFd = Math.exp(-1 / (0.03 * sr));
     // optional per-engine output high-pass (default 28 Hz DC guard); a higher corner trims sub flab
     const hpHz = sp.hpHz || 28;
     this.dcL1 = new Biquad().set('hp', hpHz, 0.707, sr); this.dcR1 = new Biquad().set('hp', hpHz, 0.707, sr);
@@ -227,7 +234,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
     // ── lift-off pop gate (overrunBurst.js logic, per block) ──
     this.g = { thrPeak: 0, armed: false, age: 99, liftRpm: 0, amp: 0, env: 0, bursts: 0 };
     this.popAcc = 0; this.popNext = 0.3; this.popArmed = false; this.popDouble = 0; this.popDoubleBank = 0;
-    this.micro = 0; this.microNext = 0.2;
+    // (v2: the dense micro-crackle layer was removed; afterfire is sparse bangs only)
     this.pops = 0;
     this.pEnv = 0;
     this.popTail = 0;
@@ -237,7 +244,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
     this.laL = new Float32Array(this.laN + 1); this.laR = new Float32Array(this.laN + 1); this.laI = 0;
     this.limG = 1;
     this.limRel = 1 - Math.exp(-1 / (0.12 * sr));
-    this.limAtt = 1 - Math.exp(-1 / (0.0005 * sr));
+    this.limAtt = 1 - Math.exp(-1 / (0.00025 * sr)); // ~6 time constants inside the look-ahead, so sharp bangs are caught
     this.peakHold = 0; this.peakAge = 0;
 
     this.port.onmessage = (e) => {
@@ -277,11 +284,17 @@ class BeatboxProcessor extends AudioWorkletProcessor {
   firePop(bank, strength) {
     const sr = this.sr;
     const s = this.s;
-    const lvl = (0.35 + 0.65 * s.pops) * strength;
-    const tp = (0.00018 + 0.00022 * this.rand()) * sr;
-    this.spawn(0, lvl * (1.4 + 0.9 * this.rand()) * this.sp.pop, tp, 0, 6, lvl * this.sp.pop * (1.1 + 0.8 * this.rand()), (0.003 + 0.006 * this.rand()) * sr, 3, bank, 1);
+    const lvl = 0.7 * (0.45 + 0.55 * s.pops) * strength * this.sp.pop;
+    // pressure kick into the pipe (short, little gas noise) so the bang still colours the exhaust
+    const tp = (0.00025 + 0.0002 * this.rand()) * sr;
+    this.spawn(0, lvl * (1.0 + 0.5 * this.rand()), tp, 0, 4, lvl * 0.2, 0.0012 * sr, 2, bank, 1);
+    // the bang itself: thump + snap, bypassing the muffler
+    this.thA = Math.max(this.thA, lvl * (0.9 + 0.4 * this.rand()));
+    this.thF = 110 + 170 * this.rand();
+    this.thPh = 0;
+    this.snA = Math.max(this.snA, lvl * (0.8 + 0.5 * this.rand()));
     this.pops++;
-    if (this.rand() < 0.22 + 0.25 * s.pops) { this.popDouble = Math.round((0.012 + 0.03 * this.rand()) * sr); this.popDoubleBank = 1 - bank; this.popDoubleAmp = strength * 0.6; }
+    if (this.rand() < 0.08 + 0.12 * s.pops) { this.popDouble = Math.round((0.04 + 0.05 * this.rand()) * sr); this.popDoubleBank = 1 - bank; this.popDoubleAmp = strength * 0.55; }
   }
 
   onEvent(e, dDeg) {
@@ -443,16 +456,10 @@ class BeatboxProcessor extends AudioWorkletProcessor {
       // ── pop clock (only while a burst is open and crackle > 0) ──
       const ge = this.g.env;
       if (ge > 0.02 && s.pops > 0.001) {
-        this.popAcc += (ge * (1.5 + 8 * s.pops) * s.pops) / sr;
-        if (this.popAcc >= this.popNext) { this.popAcc = 0; this.popNext = 0.15 - Math.log(1 - this.rand() * 0.98) * 0.6; this.popArmed = true; }
-        this.micro += (ge * 12 * s.pops * s.pops) / sr;
-        if (this.micro >= this.microNext) {
-          this.micro = 0; this.microNext = -Math.log(1 - this.rand() * 0.98) * 0.5;
-          const a = (0.12 + 0.2 * this.rand()) * (0.35 + 0.65 * s.pops) * ge * sp.pop;
-          this.spawn(0, a, (0.00012 + 0.0001 * this.rand()) * sr, 0, 5, a * 1.4, (0.0015 + 0.002 * this.rand()) * sr, 2, this.rand() < 0.5 ? 0 : 1, 1);
-          this.pops++;
-        }
-      } else { this.popAcc = 0; this.popArmed = false; this.micro = 0; }
+        // sparse afterfire: ~1–4 bangs per second at most, never a dense crackle
+        this.popAcc += (ge * (0.9 + 3.1 * s.pops) * s.pops) / sr;
+        if (this.popAcc >= this.popNext) { this.popAcc = 0; this.popNext = 0.35 - Math.log(1 - this.rand() * 0.98) * 0.5; this.popArmed = true; }
+      } else { this.popAcc = 0; this.popArmed = false; }
       if (this.popDouble > 0 && --this.popDouble === 0 && s.pops > 0.001) this.firePop(this.popDoubleBank, this.popDoubleAmp * (ge > 0 ? 1 : 0.5));
 
       // ── crank ──
@@ -529,8 +536,20 @@ class BeatboxProcessor extends AudioWorkletProcessor {
         ya += mt; yb += mt;
       }
       // afterfire bangs happen at the pipe exit: broadband crack + body thump bypass the muffler
-      if (popP !== 0 || popN !== 0 || this.popTail > 0) {
-        const crack = this.crackBp.run(popN) * 1.6 + this.thumpLp.run(popP) * 0.9;
+      if (popP !== 0 || popN !== 0 || this.popTail > 0 || this.thA > 1e-5 || this.snA > 1e-5) {
+        let bang = 0;
+        if (this.thA > 1e-5) {
+          this.thPh += (TWO_PI * this.thF) / sr;
+          this.thF = 70 + (this.thF - 70) * this.thFd; // slight pitch drop = 'bang', not 'beep'
+          bang += Math.sin(this.thPh) * this.thA;
+          this.thA *= this.thD;
+        } else this.thA = 0;
+        if (this.snA > 1e-5) {
+          bang += this.crackHp.run(this.crackBp.run((this.rand() * 2 - 1) * this.snA * 10));
+          this.snA *= this.snD;
+        } else { this.snA = 0; this.crackHp.run(this.crackBp.run(0)); }
+        const ring = this.popRing.run(bang) * 0.6;
+        const crack = bang * 1.3 + ring + this.thumpLp.run(popP) * 0.5 + popN * 0.3;
         ya += crack; yb += crack;
         this.popTail = popP !== 0 || popN !== 0 ? 2048 : this.popTail - 1;
       }
