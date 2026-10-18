@@ -284,14 +284,14 @@ class BeatboxProcessor extends AudioWorkletProcessor {
       const idleish = clip(1 - (s.rpm - idle) / (idle * 1.6)) * clip(1 - L * 2);
       // combustion strength: idle floor + load; fuel-cut overrun = pumping only
       // combustion follows the pedal at once (shift cuts / limiter are audible dips), timbre follows load
-      let A = (0.3 + 0.7 * (0.55 * s.thrC + 0.45 * L)) * (1 - 0.72 * this.offK);
+      let A = (0.3 + 0.7 * (0.55 * s.thrC + 0.45 * L)) * (1 - 0.6 * this.offK);
       const imb = sp.imbalance * (0.35 + 1.3 * chr) * (1 - 0.65 * rn);
       A *= 1 + this.cylDev[c] * imb;
       A *= this.cycleGain;
       const jit = sp.ampJitter * (0.5 + chr) * (1 - 0.5 * rn);
       A *= 1 + jit * (this.rand() * 2 - 1);
       // off-throttle burble: lazy, irregular weak fires (soft, never a transient)
-      if (this.offK > 0.05) A *= 1 - this.offK * 0.55 * this.rand();
+      if (this.offK > 0.05) { const r = this.rand(); A *= 1 - this.offK * (0.75 * r * r + 0.15); }
       // big-cam idle: occasional lazy fire
       if (sp.lazyFire > 0 && this.rand() < sp.lazyFire * (0.4 + chr) * idleish) A *= 0.3 + 0.3 * this.rand();
       // rotary 'brap': low-rpm peripheral-port overlap → strong/weak chamber fires
@@ -303,7 +303,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
       const tpMs = clip((sp.pulse.riseDeg / Math.max(60, s.rpm * 6)) * 1000, sp.pulse.minMs, sp.pulse.maxMs) * (1 - 0.3 * L) * this.cylTau[c];
       const tp = tpMs * 0.001 * sr;
       const tJit = sp.timingJitterDeg * (0.4 + 1.2 * chr) * (1 - 0.6 * rn) * (this.rand()) / Math.max(1e-3, dDeg);
-      const nA = A * sp.pulse.noise * (0.55 + 0.9 * chr) * (0.25 + 1.0 * L) * (0.7 + 0.6 * s.drv) * (1 - 0.5 * this.offK);
+      const nA = A * sp.pulse.noise * (0.55 + 0.9 * chr) * (0.25 + 1.0 * L) * (0.7 + 0.6 * s.drv) + A * this.offK * sp.pulse.noise * 1.6; // fuel-cut: gas rush + irregular burble
       const tauN = tp * sp.pulse.noiseTau;
       this.spawn(this.primary[c] + tJit, A, tp, sp.pulse.k2, sp.pulse.neg, nA, tauN, tp * 0.4, this.bank[c]);
       // afterfire: an armed pop is released on the next exhaust stroke
@@ -421,7 +421,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
       const rn = clip(rpm / red);
       const L = s.load;
       // closed throttle above idle → fuel-cut overrun
-      const offT = clip(1 - L / 0.1) * clip((rpm - idle * 1.35) / (idle * 1.2));
+      const offT = clip(1 - s.thrC / 0.08) * clip((rpm - idle * 1.35) / (idle * 1.2));
       this.offK += (offT - this.offK) * 0.0004;
 
       // ── pop clock (only while a burst is open and crackle > 0) ──
@@ -553,7 +553,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
         const nb = this.turboBp.run(this.rand() * 2 - 1);
         const nb2 = this.turboBp2.run(this.rand() * 2 - 1);
         const tone = Math.sin(TWO_PI * this.tPh) * (0.55 + 4 * nb) + 0.3 * Math.sin(TWO_PI * this.tPh2) * (0.5 + 4 * nb2);
-        const wl = turbo.whine * Math.pow(this.shaft, 1.6) * (0.35 + 0.65 * L) * (0.6 + 0.5 * s.drv);
+        const wl = turbo.whine * 1.6 * Math.pow(Math.max(0, this.shaft - 0.14), 1.4) * (0.35 + 0.65 * L) * (0.6 + 0.5 * s.drv);
         const hiss = this.hiss.run(this.rand() * 2 - 1) * turbo.hiss * this.boost * (0.4 + 0.6 * L);
         // blow-off: lift with boost
         this.bovThrPeak = Math.max(s.thr, this.bovThrPeak * 0.99997);
@@ -568,7 +568,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
           const flutter = 1 - turbo.flutter * (0.3 + 0.9 * s.tone) * 0.5 * (1 + Math.cos(TWO_PI * this.bovPh));
           bov = this.bovHp.run(this.bovBp.run(this.rand() * 2 - 1)) * this.bovEnv * turbo.bov * Math.max(0, flutter);
         }
-        tb = tone * wl * 0.05 + hiss + bov;
+        tb = tone * wl * 0.16 + hiss + bov;
         // the turbine eats pulse energy: soften the exhaust slightly with boost
         const soft = 1 - turbo.muffle * this.boost;
         ya *= soft; yb *= soft;

@@ -1,7 +1,7 @@
 /**
  * Beat Box offline demo renderer (node-web-audio-api OfflineAudioContext + the real worklet).
  *
- *   node scripts/beatbox-render.mjs <engineId|all> [outDir] [--scene drive|crackle-off|crackle-full]
+ *   node tests/beatbox-render.mjs <engineId|all> [outDir] [--scene drive|crackle-off|crackle-full]
  *
  * Writes float renders as 16-bit WAVs, loudness-matched to −16 LUFS integrated with a −1 dBFS
  * sample-peak ceiling (gentle post limiter only if the gain would push peaks past it).
@@ -10,7 +10,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { OfflineAudioContext, AudioWorkletNode } from 'node-web-audio-api';
-import { integratedLufs, samplePeakDb } from './loudness.mjs';
+import { integratedLufs, samplePeakDb } from '../scripts/loudness.mjs';
 
 globalThis.AudioWorkletNode ??= AudioWorkletNode;
 const BB = await import('../src/audio/beatbox/index.ts');
