@@ -160,13 +160,19 @@ class BeatboxProcessor extends AudioWorkletProcessor {
     // ── pipes / filters (two chains: L = bank A side, R = bank B side) ──
     const ms = (x) => Math.max(2, Math.round(x * 0.001 * sr));
     const pp = sp.pipe;
+    // bank B is detuned from bank A (tail length, modes, muffler, rasp) for a wider image; bankDetune
+    // scales that offset (unset = the original offsets; 0 = identical banks, no L/R beating)
+    const bd = sp.bankDetune;
+    const det = (orig, d) => (bd === undefined ? orig : 1 + d * bd);
+    this.det = { mode: det(1.03, 0.03), lp: det(1.04, 0.04), lp2: det(1.65, 0.05), rasp: det(1.06, 0.06) };
+    if (bd !== undefined) this.det.lp2 = 1.6 + 0.05 * bd;
     this.pipeA = new Pipe(ms(pp.lenMsA));
     this.pipeB = new Pipe(ms(pp.lenMsB));
     this.tailA = new Pipe(ms(pp.tailMs));
-    this.tailB = new Pipe(ms(pp.tailMs * 1.07));
+    this.tailB = new Pipe(ms(pp.tailMs * det(1.07, 0.07)));
     this.modesA = (sp.modes || []).map(() => new Biquad());
     this.modesB = (sp.modes || []).map(() => new Biquad());
-    (sp.modes || []).forEach((m, i) => { this.modesA[i].set('bp', m[0], m[1], sr); this.modesB[i].set('bp', m[0] * 1.03, m[1], sr); });
+    (sp.modes || []).forEach((m, i) => { this.modesA[i].set('bp', m[0], m[1], sr); this.modesB[i].set('bp', m[0] * this.det.mode, m[1], sr); });
     this.lpA = new Biquad(); this.lpB = new Biquad();
     this.lp2A = new Biquad(); this.lp2B = new Biquad();
     this.raspA = new Biquad(); this.raspB = new Biquad();
@@ -182,7 +188,14 @@ class BeatboxProcessor extends AudioWorkletProcessor {
     this.bovBp = new Biquad(); this.bovHp = new Biquad().set('hp', 400, 0.7, sr);
     this.crackBp = new Biquad().set('bp', 2400, 0.9, sr);
     this.thumpLp = new Biquad().set('lp', 260, 0.8, sr);
-    this.dcL1 = new Biquad().set('hp', 28, 0.707, sr); this.dcR1 = new Biquad().set('hp', 28, 0.707, sr);
+    // optional per-engine output high-pass (default 28 Hz DC guard); a higher corner trims sub flab
+    const hpHz = sp.hpHz || 28;
+    this.dcL1 = new Biquad().set('hp', hpHz, 0.707, sr); this.dcR1 = new Biquad().set('hp', hpHz, 0.707, sr);
+    // optional high-pass on the blowdown gas noise before the pipes: keeps the turbulence as
+    // edge and stops it filling the low-mids with mush (unset = full-band noise, as before)
+    this.nzHp = sp.pulse.noiseHpHz ? [new Biquad().set('hp', sp.pulse.noiseHpHz, 0.6, sr), new Biquad().set('hp', sp.pulse.noiseHpHz, 0.6, sr)] : null;
+    this.reflAmt = sp.refl ?? 0.16;
+    this.boomAmt = sp.cabin?.boom ?? 0.45;
     const bo = (sp.body && sp.body.orders) || [];
     this.bodyOrd = new Float64Array(bo.map((x) => x[0]));
     this.bodyAmp = new Float64Array(bo.map((x) => Math.pow(10, x[1] / 20)));
@@ -361,10 +374,10 @@ class BeatboxProcessor extends AudioWorkletProcessor {
     const chr = s.tone;
     const lp = sp.muffler;
     const fc = (lp.base + lp.load * L * (0.6 + 0.4 * s.drv) + lp.rpm * rn - lp.off * this.offK) * (0.62 + 0.76 * chr);
-    this.lpA.set('lp', fc, 0.65, sr); this.lpB.set('lp', fc * 1.04, 0.65, sr);
-    this.lp2A.set('lp', fc * 1.6, 0.6, sr); this.lp2B.set('lp', fc * 1.65, 0.6, sr);
+    this.lpA.set('lp', fc, 0.65, sr); this.lpB.set('lp', fc * this.det.lp, 0.65, sr);
+    this.lp2A.set('lp', fc * 1.6, 0.6, sr); this.lp2B.set('lp', fc * this.det.lp2, 0.6, sr);
     const rf = sp.rasp.hz + sp.rasp.rpmHz * rn;
-    this.raspA.set('bp', rf, sp.rasp.q, sr); this.raspB.set('bp', rf * 1.06, sp.rasp.q, sr);
+    this.raspA.set('bp', rf, sp.rasp.q, sr); this.raspB.set('bp', rf * this.det.rasp, sp.rasp.q, sr);
     const ip = sp.intake;
     this.inBp.set('bp', ip.hz + ip.rpmHz * rn + ip.loadHz * L, ip.q, sr);
     this.honk.set('bp', ip.honkHz * (1 + 0.15 * rn), ip.honkQ, sr);
@@ -493,6 +506,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
         this.vAge[v] = age > this.vTn[v] * 14 && this.vNe[v] < 1e-4 ? 1e9 : age;
       }
 
+      if (this.nzHp) { nzA = this.nzHp[0].run(nzA); nzB = this.nzHp[1].run(nzB); }
       // ── pipes ──
       const inA = exA + cross * exB + (nzA + cross * nzB) * 0.6;
       const inB = exB + cross * exA + (nzB + cross * nzA) * 0.6;
@@ -597,10 +611,10 @@ class BeatboxProcessor extends AudioWorkletProcessor {
       // two short body reflections (decorrelation / space)
       const r1 = this.refl1.run(l), r2 = this.refl2.run(r);
       this.reflLp1 += 0.3 * (r1 - this.reflLp1); this.reflLp2 += 0.3 * (r2 - this.reflLp2);
-      l += this.reflLp2 * 0.16; r += this.reflLp1 * 0.16;
+      l += this.reflLp2 * this.reflAmt; r += this.reflLp1 * this.reflAmt;
       const gain = s.level * trim * Math.pow(10, (-9 + 9 * s.drv) / 20);
-      l = this.cabL.run(l + this.boomL.run(l) * 0.45);
-      r = this.cabR.run(r + this.boomR.run(r) * 0.45);
+      l = this.cabL.run(l + this.boomL.run(l) * this.boomAmt);
+      r = this.cabR.run(r + this.boomR.run(r) * this.boomAmt);
       l = this.dcL1.run(l) * gain;
       r = this.dcR1.run(r) * gain;
 

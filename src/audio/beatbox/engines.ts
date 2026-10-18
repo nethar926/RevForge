@@ -24,7 +24,8 @@ export interface BeatboxVoiceSpec {
   cycleDeg: number;
   fire: FireSlot[];
   intakeDeg?: number;
-  pulse: { riseDeg: number; minMs: number; maxMs: number; k2: boolean; neg: number; noise: number; noiseTau: number };
+  /** noiseHpHz: optional high-pass on the blowdown gas noise before the pipes (unset = full band). */
+  pulse: { riseDeg: number; minMs: number; maxMs: number; k2: boolean; neg: number; noise: number; noiseTau: number; noiseHpHz?: number };
   cycleVar: number;
   imbalance: number;
   ampJitter: number;
@@ -47,7 +48,14 @@ export interface BeatboxVoiceSpec {
   turbo?: { spoolRpm: number; lagS: number; whine: number; whineHz: number; whineRange: number; hiss: number; bov: number; flutter: number; muffle: number };
   /** Engine-order body partials: [order, dB]. */
   body: { orders: [number, number][]; lpHz: number; gain: number };
-  cabin?: { boomHz: number; lpHz: number };
+  /** boom: body-boom mix (default 0.45). */
+  cabin?: { boomHz: number; lpHz: number; boom?: number };
+  /** Scale of bank B's detune vs bank A (default 1 = original 3–7 % offsets; 0 = identical banks). */
+  bankDetune?: number;
+  /** Output high-pass corner (Hz, default 28 = DC guard only). */
+  hpHz?: number;
+  /** Short body-reflection mix (default 0.16); lower = drier, less comb colouring. */
+  refl?: number;
   pop: number;
   exGain: number;
   width: number;
@@ -93,7 +101,7 @@ export const BEATBOX_ENGINES: readonly BeatboxEngineInfo[] = [
   {
     id: 'crossplane-v8',
     name: 'Cross-plane V8',
-    description: 'Big-bore cross-plane V8 with a lumpy cam and true dual exhaust: uneven per-bank burble, deep thump.',
+    description: 'Big-bore cross-plane V8 with a lumpy cam and true dual exhaust: tight, dry uneven burble with a hard idle lope.',
     cylinders: 8,
     layout: 'V8 90°, cross-plane crank',
     firingOrder: '1-8-4-3-6-5-7-2',
@@ -106,29 +114,34 @@ export const BEATBOX_ENGINES: readonly BeatboxEngineInfo[] = [
       redline: 6400,
       cycleDeg: 720,
       fire: slots([1, 8, 4, 3, 6, 5, 7, 2], 90, (c) => (c % 2 ? 0 : 1), (c) => CROSS_PRIMARY[c], (c) => ({ 1: 1.08, 8: 0.9, 4: 1.12, 3: 0.86, 6: 1.04, 5: 0.82, 7: 1.15, 2: 0.95 })[c] ?? 1),
-      pulse: { riseDeg: 30, minMs: 0.5, maxMs: 1.6, k2: false, neg: 3.4, noise: 0.42, noiseTau: 2.4 },
-      cycleVar: 0.3,
+      // v2 "tight & dry": short, sharp blowdown lobes (k2, narrow rarefaction), gas noise high-passed so
+      // it adds edge instead of low-mid mush, short low-feedback pipes (no comb smear / 40 Hz tail
+      // mode), well-damped low resonances, firm 80–250 Hz body orders, less sub below ~50 Hz.
+      pulse: { riseDeg: 16, minMs: 0.32, maxMs: 0.75, k2: true, neg: 2.2, noise: 0.26, noiseTau: 1.1, noiseHpHz: 700 },
+      cycleVar: 0.2,
       imbalance: 0.9,
-      ampJitter: 0.2,
-      timingJitterDeg: 5,
-      lazyFire: 0.1,
+      ampJitter: 0.12,
+      timingJitterDeg: 2,
+      lazyFire: 0.12,
       brap: 0,
       hunt: 1,
-      camLope: 1.0,
-      pipe: { lenMsA: 5.6, lenMsB: 6.2, tailMs: 12.5, fb: 0.5, tailFb: 0.35, damp: 0.42, cross: 0.12 },
-      modes: [[95, 2.5, 0.55], [230, 3, 0.35], [560, 4, 0.25]],
-      muffler: { base: 1150, load: 3200, rpm: 1600, off: 350 },
-      rasp: { hz: 1300, rpmHz: 900, q: 1.2, amt: 0.35 },
-      drive: 1.6,
+      camLope: 1.35,
+      pipe: { lenMsA: 5.0, lenMsB: 5.5, tailMs: 7.2, fb: 0.2, tailFb: 0.1, damp: 0.7, cross: 0.06 },
+      modes: [[110, 1.8, 0.6], [200, 2.0, 0.5], [1800, 2.2, 0.3]],
+      muffler: { base: 1300, load: 3800, rpm: 1800, off: 350 },
+      rasp: { hz: 1700, rpmHz: 1000, q: 1.5, amt: 0.55 },
+      drive: 1.8,
       radHz: 45,
-      intake: { amt: 0.14, hz: 520, rpmHz: 900, loadHz: 700, q: 1.4, honkHz: 150, honkQ: 4, honk: 0.25, growl: 0.35 },
+      intake: { amt: 0.14, hz: 520, rpmHz: 900, loadHz: 700, q: 1.4, honkHz: 150, honkQ: 4, honk: 0.25, growl: 0.18 },
       mech: { tick: 0.035, tickHz: 2900, whir: 0.01, whirOrder: 21, bay: 0.012, bayHz: 1400 },
-      body: { orders: [[4, 0], [2, -12], [0.5, -20], [1, -16], [8, -9], [12, -16]], lpHz: 1200, gain: 0.07 },
-      cabin: { boomHz: 55, lpHz: 6000 },
+      body: { orders: [[4, 0], [2, -8], [8, -4], [12, -10], [3, -14], [6, -12]], lpHz: 900, gain: 0.1 },
+      cabin: { boomHz: 80, lpHz: 7000, boom: 0.3 },
+      hpHz: 32,
+      refl: 0.04,
       pop: 1.0,
       exGain: 1,
       width: 0.45,
-      trim: 0.44,
+      trim: 0.48,
     },
   },
   {

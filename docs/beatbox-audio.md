@@ -70,6 +70,10 @@ Pure TS with no DOM and no storage. Options: `engine` (id or info), or `idleRpm`
 - Pops: lift-off gate with the same rules as `overrunBurst.js` (pulling ≥ 0.3, fast close, high rpm, decays with time and rpm, back on the gas ends it). A Poisson clock arms afterfire on the next exhaust stroke (bank-correct), doubles are sometimes added, and small crackles sit in between. The broadband crack and body thump bypass the muffler.
 - Cabin: a gentle top roll-off plus a 55–75 Hz body boom.
 
+## v2 changes (after listening feedback)
+
+- Cross-plane V8 reworked to read tight and dry instead of wet. It now uses short `k2` blowdown lobes with a narrow rarefaction, gas noise high-passed at 700 Hz before the pipes (`pulse.noiseHpHz`), short low-feedback pipes (no 12.5 ms tail loop and its 40 Hz mode), damped 110/200 Hz resonances plus an 1.8 kHz bite mode, harder saturation, a firmer cam lope, an 80 Hz cabin boom instead of 55 Hz, a 32 Hz output high-pass (`hpHz`) and drier reflections (`refl`). New optional spec fields default to the previous behaviour, so the other engines are unchanged by this commit.
+
 ## Demos
 
 Run `node tests/beatbox-render.mjs <id|all> [outDir] [--scene drive|crackle-off|crackle-full]`. It writes 16-bit WAVs matched to −16 LUFS with a −1.2 dBFS peak ceiling. The MP3s are on the `demos-beatbox` branch.
