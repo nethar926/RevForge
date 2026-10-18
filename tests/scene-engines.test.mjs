@@ -139,8 +139,8 @@ test('bridge works with no scene: unknown / missing pack id keeps topology defau
   assert.equal(b.firingFamily, 1);
 });
 
-// --- Live-chain renders (createEngineSynth → CharacterEngine → EngineSynthImpl) ---
-const { renderLive, channelsOf } = await import(pathToFileURL(join(root, 'scripts/live-engine-render.mjs')).href);
+// --- Live-chain renders (createEngineSynth → CharacterEngine → EngineSynthImpl; scripts/live-render.mjs) ---
+const { renderLive, channels } = await import(pathToFileURL(join(root, 'scripts/live-render.mjs')).href);
 const PROFILES = {
   idle: { speed: 0, throttle: 0.05, load: 0.1 },
   pull: { speed: 0.7, throttle: 0.9, load: 0.8 },
@@ -151,9 +151,8 @@ for (const id of SCENE_IDS) {
     // the turbine / ion / EV graphs are cheap but have slow LF swells → longer DC window.
     const ice = scenes.SCENE_ENGINE_SPECS.find((s) => s.sceneId === id).kind === 'ice';
     for (const [name, prof] of Object.entries(PROFILES)) {
-      // static: steady-state (ICE packs run the pulse worklet; see live-engine-render.mjs)
-      const buf = await renderLive(() => prof, ice ? 3 : 6, { patchId: `revforge-${id}`, static: true, seed: 'scene-engines', settleSeconds: 3 });
-      const chans = channelsOf(buf, 1);
+      const buf = await renderLive(`revforge-${id}`, () => prof, ice ? 2.5 : 5, { seed: `scene-${id}-${name}` });
+      const chans = channels(buf, Math.floor(buf.sampleRate * 1));
       let peak = 0;
       let sum = 0;
       let sq = 0;
