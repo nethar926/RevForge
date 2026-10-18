@@ -66,16 +66,22 @@ export interface GridSpec<Id extends string = string, Ctx = unknown> {
   /** Theme id ("carrier-jet"). */
   id: string;
   /** useFitBox design box: fixed width, height between minH and maxH (fallbackH off the Drive stage). */
-  fit: { w: number; minH: number; maxH: number; fallbackH: number };
+  fit: GridFit;
+  /** A different design box per layout (a phone is not a 1280 board scaled to 0.3): rects for that layout are in it. */
+  fitFor?: Partial<Record<GridLayout, GridFit>>;
   cells: readonly CellDecl<Id>[];
   layouts: Record<GridLayout, LayoutRule<Id, Ctx>>;
   rail?: RailSpec;
 }
 
+export interface GridFit { w: number; minH: number; maxH: number; fallbackH: number }
 export type CellRects<Id extends string> = Record<Id, Rect>;
 
-/** The fit args in useFitBox order (designW, minH, maxH, fallbackH). */
-export const gridFitArgs = (s: Pick<GridSpec, 'fit'>): [number, number, number, number] => [s.fit.w, s.fit.minH, s.fit.maxH, s.fit.fallbackH];
+/** The fit args in useFitBox order (designW, minH, maxH, fallbackH) for a layout (fitFor[layout], else fit). */
+export function gridFitArgs(s: Pick<GridSpec, 'fit' | 'fitFor'>, layout?: GridLayout): [number, number, number, number] {
+  const f = (layout && s.fitFor?.[layout]) || s.fit;
+  return [f.w, f.minH, f.maxH, f.fallbackH];
+}
 
 /** True when the grid draws this layout (a non-null rule). */
 export const gridHandles = (s: Pick<GridSpec, 'layouts'>, layout: GridLayout): boolean => s.layouts[layout] != null;

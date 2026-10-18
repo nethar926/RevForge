@@ -75,13 +75,14 @@ export function GridCell<Id extends string>({ id, spec, className, style, childr
 }
 
 /**
- * Fit scaler + layout picker for a fixed-rect theme: useFitBox(spec.fit) sizes the box (pack-fit.css scales it),
- * useRfLayout picks the layout, `children` gets both. The box is the coordinate space of the spec's rects.
+ * Fit scaler + layout picker for a fixed-rect theme: useRfLayout picks the layout, useFitBox sizes that layout's
+ * design box (spec.fitFor[layout] or spec.fit; pack-fit.css scales it), `children` gets both. The box is the
+ * coordinate space of that layout's rects.
  */
 export function GridFrame<Id extends string>({ spec, driveWindow, className, children }: { spec: GridSpec<Id, never>; driveWindow: boolean; className?: string; children: (g: { layout: GridLayout; fit: FitBox }) => ReactNode }) {
-  const [w, minH, maxH, fallbackH] = gridFitArgs(spec);
-  const { ref, fit } = useFitBox(w, minH, maxH, fallbackH);
   const layout = useRfLayout(driveWindow);
+  const [w, minH, maxH, fallbackH] = gridFitArgs(spec, layout);
+  const { ref, fit } = useFitBox(w, minH, maxH, fallbackH);
   return (
     <div ref={ref} className={`rf-pack-fit${className ? ` ${className}` : ''}`} data-rf-layout={layout} data-grid={spec.id} style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}>
       <div className="rf-pack-box">{children({ layout, fit })}</div>
