@@ -33,7 +33,7 @@ test('wx radar: Universal Blue decodes to dBZ, ramp is green → amber → red a
   assert.equal(px[15], Math.round((rampForDbz(50)[3] * 128) / 255), 'source alpha kept (smoothed edges)');
 });
 
-test('wx key: 5th MAP key when it fits (1256/1280), right bank K3 at 773; lit when on, unlit when off; default off', () => {
+test('wx key: always the MAP strip\'s last key (5th at 1256/1280, swapped in for MAP/TERR at 773); lit when on, unlit when off; default off', () => {
   assert.equal(getWxRadar(), false, 'default off');
   setWxRadar(true);
   assert.equal(getWxRadar(), true);
@@ -52,14 +52,23 @@ test('wx key: 5th MAP key when it fits (1256/1280), right bank K3 at 773; lit wh
   assert.equal(cellKeys('map', 5, on)[4]!.ariaLabel, 'Weather radar, on');
   // radar scope keys (3) + WX
   assert.deepEqual(cellKeys('map', stripCount('map', 357, { ...wide, map: { ...m, radar: true } }), { ...wide, map: { ...m, radar: true } }).map((k) => k?.legend), ['RNG+', 'RNG−', 'MODE', 'WX']);
-  const narrow = { map: m, config: null, wx: { on: false, slot: wxSlot(219, m) } };
-  assert.equal(narrow.wx.slot, 'bank');
-  assert.equal(stripCount('map', 219, narrow), 3);
-  assert.ok(cellKeys('map', 3, narrow).every((k) => k?.id !== 'wx'));
-  assert.deepEqual(cellKeys('compass', 3, narrow).map((k) => k?.legend), ['DRIVE', 'MORE', 'WX']);
-  // CONFIG: no WX key (the bank K3 is the spare again)
-  const cfg = { map: m, config: { tiles: {}, subs: 1 }, wx: { on: false, slot: 'bank' as const } };
-  assert.equal(cellKeys('compass', 3, cfg)[2], null);
+  // 773 (MAP 231 px, 4 keys): WX swaps in for MAP/TERR, the strip's last key, as at 1256/1280; MAP/TERR moves to the
+  // right bank's K3 spare (still one tap); RADAR on: 3 scope keys + WX, nothing moves
+  const narrow = { map: m, config: null, wx: { on: false, slot: wxSlot(231, m) }, bank: 'accel' as const };
+  assert.equal(narrow.wx.slot, 'swap');
+  assert.equal(stripCount('map', 231, narrow), 4);
+  assert.deepEqual(cellKeys('map', 4, narrow).map((k) => k?.legend), ['ZM+', 'ZM−', 'N/TRK-UP', 'WX']);
+  assert.deepEqual(cellKeys('accel', 3, narrow).map((k) => k?.legend), ['DRIVE', 'MORE', 'MAP/TERR']);
+  assert.equal(cellKeys('accel', 3, narrow)[2]!.ariaLabel, 'Map, switch to terrain');
+  const nr = { ...narrow, map: { ...m, radar: true } };
+  assert.equal(wxSlot(231, nr.map), 'map');
+  const nrw = { ...nr, wx: { on: false, slot: wxSlot(231, nr.map) } };
+  assert.deepEqual(cellKeys('map', stripCount('map', 231, nrw), nrw).map((k) => k?.legend), ['RNG+', 'RNG−', 'MODE', 'WX']);
+  assert.equal(cellKeys('accel', 3, nrw)[2], null, 'bank K3 spare again');
+  // CONFIG: no WX key, nothing displaced (the bank K3 is the spare again)
+  const cfg = { map: m, config: { tiles: {}, subs: 1 }, wx: { on: false, slot: 'swap' as const }, bank: 'accel' as const };
+  assert.equal(cellKeys('accel', 3, cfg)[2], null);
+  assert.ok(cellKeys('map', 4, cfg).every((k) => k?.id !== 'wx'));
 });
 
 test('wx radar layer: clamped to RainViewer max zoom 7 (overzoomed above), under the roads, failures never flag the map', async () => {
@@ -76,4 +85,20 @@ test('wx radar layer: clamped to RainViewer max zoom 7 (overzoomed above), under
   const v2 = src('packs/mounts/CjV2Layer.tsx');
   assert.match(v2, /data-unlit=\{k\.unlit \|\| undefined\}/);
   assert.match(src('packs/mounts/carrier-jet-v2.css'), /\.cjv2-key\[data-unlit\] \.cjp-bezel text \{ fill: #ccd2d6; \}/);
+});
+
+test('WX key: the same place at every Tesla size (the MAP strip\'s last key, under the square map)', async () => {
+  const { keyCount } = await import('../src/packs/carrier-jet/geometry.ts');
+  const m = MAP_VIEW_DEFAULT;
+  // square MAP cell widths measured at 773 / 1256 / 1280 (cj-board-batch gate: 231 / 334 / 428)
+  for (const [size, w] of [['773', 231], ['1256', 334], ['1280', 428]] as const) {
+    for (const radar of [false, true]) {
+      const map = { ...m, radar };
+      const c = { map, config: null, wx: { on: true, slot: wxSlot(w, map) }, bank: 'accel' as const };
+      const keys = cellKeys('map', stripCount('map', w, c), c);
+      assert.equal(keys[keys.length - 1]?.id, 'wx', `${size} radar ${radar}: WX last under MAP`);
+      assert.ok(keys.length <= keyCount(w, 5));
+      for (const cell of ['speed', 'mach', 'vdi', 'sweep', 'eng', 'compass', 'accel'] as const) assert.ok(cellKeys(cell, 3, c).every((k) => k?.id !== 'wx'), `${size}: no WX under ${cell}`);
+    }
+  }
 });

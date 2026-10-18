@@ -9,8 +9,10 @@
  *   and CONFIG): K1 DRIVE (legend lit on the board, unlit inside CONFIG; press = RTN to the board), K2 MORE (the MORE
  *   sheet), K3 inert spare (data-reason=spare). OPTIONS = CONFIG › OPT, MUTE = CONFIG › SND › AUDIO MUTE. The COMPASS
  *   tile in CONFIG is tapped directly (its K1 is DRIVE).
- *   WX (weather radar overlay, board only): a 5th MAP key when the MAP cell is wide enough (1256/1280: ZM+ ZM−
- *   N/TRK-UP MAP/TERR WX), else the right bank's K3 spare (773: the key directly right of the MAP strip).
+ *   WX (weather radar overlay, board only): ALWAYS the MAP strip's last key, the same place at every size (Meghan,
+ *   Oct 18): a 5th MAP key where the MAP cell fits one (1256/1280: ZM+ ZM− N/TRK-UP MAP/TERR WX); else it swaps in
+ *   for the last map key, which moves to the right bank's K3 spare so it stays one tap away (773: ZM+ ZM− N/TRK-UP WX,
+ *   bank DRIVE MORE MAP/TERR). RADAR on (3 scope keys) leaves room for WX at every size: nothing moves.
  */
 import { CELL_ORDER } from './configCells.ts';
 import type { CellId } from './geometry.ts';
@@ -40,11 +42,20 @@ export interface EdgeCtx {
   bank?: CellId;
 }
 
-export type WxSlot = 'map' | 'bank';
-/** Where WX goes: a 5th key under MAP if the MAP strip fits one more key than it uses, else the right bank's K3. */
+/** 'map': WX in a free slot after the map keys (5th key, or RADAR's 4th); 'swap': WX takes the last map key's slot and
+ * that key moves to the right bank's K3 spare. WX is the MAP strip's last key either way. */
+export type WxSlot = 'map' | 'swap';
 export function wxSlot(mapWidth: number, map: MapView): WxSlot {
-  return keyCount(mapWidth, 5) > Math.min(keyCount(mapWidth), mapKeys(map).length) ? 'map' : 'bank';
+  return keyCount(mapWidth, 5) > Math.min(keyCount(mapWidth), mapKeys(map).length) ? 'map' : 'swap';
 }
+/** The map key WX displaces on a 'swap' strip (the last map key; null when nothing is displaced). */
+function wxDisplaced(c: EdgeCtx): EdgeKey | null {
+  if (c.config || c.wx?.slot !== 'swap') return null;
+  const ks = mapKeys(c.map);
+  const k = ks[ks.length - 1];
+  return k ? mapEdgeKey(k, c.map) : null;
+}
+const mapEdgeKey = (k: ReturnType<typeof mapKeys>[number], m: MapView): EdgeKey => ({ id: k.id, legend: k.legend, ariaLabel: k.disabledReason ? `${k.ariaLabel}. ${k.disabledReason}` : k.ariaLabel, reason: k.disabledReason, active: k.id === 'mode' ? m.mode === 'terr' : k.id === 'orient' ? !m.northUp : false });
 /** Keys in a cell's strip (MAP grows to 5 when it carries WX). */
 export function stripCount(cell: CellId, width: number, c: Pick<EdgeCtx, 'map' | 'config' | 'wx'>): number {
   if (cell === 'map' && !c.config && c.wx?.slot === 'map') return Math.min(keyCount(width, 5), mapKeys(c.map).length + 1);
@@ -65,11 +76,12 @@ export function cellKeys(cell: CellId, n: number, c: EdgeCtx): (EdgeKey | null)[
       { id: 'drive', legend: 'DRIVE', ariaLabel: c.config ? 'Drive, return to the board' : 'Drive, board showing', active: !c.config },
       { id: 'more', legend: 'MORE', ariaLabel: c.moreOpen ? 'More, open' : 'More', active: !!c.moreOpen },
     );
-    if (!c.config && c.wx?.slot === 'bank') keys.push(wxKey(c.wx.on));
+    const moved = wxDisplaced(c);
+    if (moved) keys.push(moved);
   } else if (!c.config) {
     if (cell === 'speed') keys.push({ id: 'config', legend: 'CONFIG', ariaLabel: 'Open config' });
-    if (cell === 'map') for (const k of mapKeys(c.map)) keys.push({ id: k.id, legend: k.legend, ariaLabel: k.disabledReason ? `${k.ariaLabel}. ${k.disabledReason}` : k.ariaLabel, reason: k.disabledReason, active: k.id === 'mode' ? c.map.mode === 'terr' : k.id === 'orient' ? !c.map.northUp : false });
-    if (cell === 'map' && c.wx?.slot === 'map') {
+    if (cell === 'map') for (const k of mapKeys(c.map)) keys.push(mapEdgeKey(k, c.map));
+    if (cell === 'map' && c.wx) {
       // WX is always the strip's last key (never pushed off by the cap)
       keys.length = Math.min(keys.length, n - 1);
       keys.push(wxKey(c.wx.on));
