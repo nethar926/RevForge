@@ -1,7 +1,6 @@
 [
   {
     "id": "copper-mile",
-    "custom": false,
     "scene": "copper-mile",
     "palette": {
       "skyTop": "#2a1a28",
@@ -14,34 +13,10 @@
       "fog": "#c4783a",
       "particle": "#d9b06a",
       "accent": "#e0a24a"
-    },
-    "engine": {
-      "voice": "combustion",
-      "cylinders": 8,
-      "firing": "crossplane",
-      "idleRpm": 780,
-      "redline": 6800,
-      "rumble": 0.82,
-      "growl": 0.7,
-      "metallic": 0.12,
-      "air": 0.35,
-      "exhaust": 0.78,
-      "rasp": 0.32,
-      "body": 0.7,
-      "turbo": 0,
-      "turboPitch": 0.45,
-      "blowoff": 0.35,
-      "crackle": 0.55,
-      "distortion": 0.34,
-      "gears": 6,
-      "shiftRpm": 6100,
-      "finalDrive": 3.31,
-      "hasManual": true
     }
   },
   {
     "id": "ember-dusk",
-    "custom": false,
     "scene": "warp",
     "palette": {
       "skyTop": "#05060c",
@@ -54,34 +29,10 @@
       "fog": "#241838",
       "particle": "#ffe8d0",
       "accent": "#ff4a32"
-    },
-    "engine": {
-      "voice": "combustion",
-      "cylinders": 8,
-      "firing": "even",
-      "idleRpm": 900,
-      "redline": 8200,
-      "rumble": 0.45,
-      "growl": 0.55,
-      "metallic": 0.72,
-      "air": 0.5,
-      "exhaust": 0.5,
-      "rasp": 0.66,
-      "body": 0.55,
-      "turbo": 0.4,
-      "turboPitch": 0.7,
-      "blowoff": 0.35,
-      "crackle": 0.2,
-      "distortion": 0.22,
-      "gears": 6,
-      "shiftRpm": 7600,
-      "finalDrive": 3.31,
-      "hasManual": true
     }
   },
   {
     "id": "violet-grid",
-    "custom": false,
     "scene": "grid",
     "palette": {
       "skyTop": "#090614",
@@ -94,34 +45,10 @@
       "fog": "#3a1860",
       "particle": "#7af0ff",
       "accent": "#4ae0ff"
-    },
-    "engine": {
-      "voice": "combustion",
-      "cylinders": 8,
-      "firing": "even",
-      "idleRpm": 850,
-      "redline": 8800,
-      "rumble": 0.28,
-      "growl": 0.4,
-      "metallic": 0.8,
-      "air": 0.7,
-      "exhaust": 0.35,
-      "rasp": 0.75,
-      "body": 0.3,
-      "turbo": 0.55,
-      "turboPitch": 0.82,
-      "blowoff": 0.35,
-      "crackle": 0.4,
-      "distortion": 0.18,
-      "gears": 6,
-      "shiftRpm": 8000,
-      "finalDrive": 3.31,
-      "hasManual": true
     }
   },
   {
     "id": "azure-bend",
-    "custom": false,
     "scene": "coast",
     "palette": {
       "skyTop": "#3a2a48",
@@ -134,34 +61,10 @@
       "fog": "#c89870",
       "particle": "#fff0d0",
       "accent": "#e07040"
-    },
-    "engine": {
-      "voice": "combustion",
-      "cylinders": 8,
-      "firing": "even",
-      "idleRpm": 900,
-      "redline": 9000,
-      "rumble": 0.38,
-      "growl": 0.62,
-      "metallic": 0.42,
-      "air": 0.58,
-      "exhaust": 0.55,
-      "rasp": 0.7,
-      "body": 0.4,
-      "turbo": 0,
-      "turboPitch": 0.45,
-      "blowoff": 0.35,
-      "crackle": 0.25,
-      "distortion": 0.16,
-      "gears": 7,
-      "shiftRpm": 8500,
-      "finalDrive": 4.1,
-      "hasManual": true
     }
   },
   {
     "id": "pink-current",
-    "custom": false,
     "scene": "pink-current",
     "palette": {
       "skyTop": "#081428",
@@ -174,34 +77,10 @@
       "fog": "#143050",
       "particle": "#f0d090",
       "accent": "#f0a020"
-    },
-    "engine": {
-      "voice": "combustion",
-      "cylinders": 8,
-      "firing": "crossplane",
-      "idleRpm": 700,
-      "redline": 6200,
-      "rumble": 0.88,
-      "growl": 0.78,
-      "metallic": 0.08,
-      "air": 0.35,
-      "exhaust": 0.85,
-      "rasp": 0.22,
-      "body": 0.8,
-      "turbo": 0.1,
-      "turboPitch": 0.45,
-      "blowoff": 0.15,
-      "crackle": 0.7,
-      "distortion": 0.4,
-      "gears": 6,
-      "shiftRpm": 5600,
-      "finalDrive": 3.15,
-      "hasManual": true
     }
   },
   {
     "id": "silver-run",
-    "custom": false,
     "scene": "silver-run",
     "palette": {
       "skyTop": "#0a1020",
@@ -214,34 +93,10 @@
       "fog": "#1a2838",
       "particle": "#d0e4f8",
       "accent": "#c8d4e0"
-    },
-    "engine": {
-      "voice": "combustion",
-      "cylinders": 8,
-      "firing": "even",
-      "idleRpm": 750,
-      "redline": 7800,
-      "rumble": 0.5,
-      "growl": 0.58,
-      "metallic": 0.35,
-      "air": 0.42,
-      "exhaust": 0.6,
-      "rasp": 0.48,
-      "body": 0.55,
-      "turbo": 0.25,
-      "turboPitch": 0.45,
-      "blowoff": 0.35,
-      "crackle": 0.3,
-      "distortion": 0.2,
-      "gears": 8,
-      "shiftRpm": 7200,
-      "finalDrive": 3.08,
-      "hasManual": true
     }
   },
   {
     "id": "lightline",
-    "custom": false,
     "scene": "surge",
     "palette": {
       "skyTop": "#0a0a0c",
@@ -254,34 +109,10 @@
       "fog": "#280808",
       "particle": "#ff6a30",
       "accent": "#ff4a14"
-    },
-    "engine": {
-      "voice": "electric",
-      "cylinders": 0,
-      "firing": "smooth",
-      "idleRpm": 400,
-      "redline": 16000,
-      "rumble": 0.12,
-      "growl": 0.2,
-      "metallic": 0.9,
-      "air": 0.65,
-      "exhaust": 0.08,
-      "rasp": 0.55,
-      "body": 0.15,
-      "turbo": 0,
-      "turboPitch": 0.45,
-      "blowoff": 0.35,
-      "crackle": 0,
-      "distortion": 0.04,
-      "gears": 1,
-      "shiftRpm": 16000,
-      "finalDrive": 9,
-      "hasManual": false
     }
   },
   {
     "id": "sandwake",
-    "custom": false,
     "scene": "sandwake",
     "palette": {
       "skyTop": "#4a2818",
@@ -294,34 +125,10 @@
       "fog": "#d09040",
       "particle": "#e8c070",
       "accent": "#f0a028"
-    },
-    "engine": {
-      "voice": "combustion",
-      "cylinders": 8,
-      "firing": "crossplane",
-      "idleRpm": 650,
-      "redline": 5400,
-      "rumble": 0.92,
-      "growl": 0.8,
-      "metallic": 0.1,
-      "air": 0.35,
-      "exhaust": 0.88,
-      "rasp": 0.18,
-      "body": 0.86,
-      "turbo": 0.55,
-      "turboPitch": 0.3,
-      "blowoff": 0.7,
-      "crackle": 0.45,
-      "distortion": 0.42,
-      "gears": 5,
-      "shiftRpm": 4600,
-      "finalDrive": 4.1,
-      "hasManual": true
     }
   },
   {
     "id": "frostpass",
-    "custom": false,
     "scene": "frostpass",
     "palette": {
       "skyTop": "#6a88a8",
@@ -334,34 +141,10 @@
       "fog": "#d0dce8",
       "particle": "#f4f8fc",
       "accent": "#7aa0c0"
-    },
-    "engine": {
-      "voice": "combustion",
-      "cylinders": 6,
-      "firing": "smooth",
-      "idleRpm": 800,
-      "redline": 7800,
-      "rumble": 0.32,
-      "growl": 0.55,
-      "metallic": 0.38,
-      "air": 0.62,
-      "exhaust": 0.48,
-      "rasp": 0.58,
-      "body": 0.42,
-      "turbo": 0.35,
-      "turboPitch": 0.55,
-      "blowoff": 0.5,
-      "crackle": 0.15,
-      "distortion": 0.12,
-      "gears": 6,
-      "shiftRpm": 7200,
-      "finalDrive": 3.31,
-      "hasManual": true
     }
   },
   {
     "id": "deep-transit",
-    "custom": false,
     "scene": "deep-transit",
     "palette": {
       "skyTop": "#02040c",
@@ -374,34 +157,10 @@
       "fog": "#102040",
       "particle": "#d8ecff",
       "accent": "#7ec8ff"
-    },
-    "engine": {
-      "voice": "turbine",
-      "cylinders": 0,
-      "firing": "smooth",
-      "idleRpm": 1200,
-      "redline": 14000,
-      "rumble": 0.22,
-      "growl": 0.3,
-      "metallic": 0.85,
-      "air": 0.8,
-      "exhaust": 0.12,
-      "rasp": 0.4,
-      "body": 0.2,
-      "turbo": 0.7,
-      "turboPitch": 0.9,
-      "blowoff": 0.35,
-      "crackle": 0,
-      "distortion": 0.06,
-      "gears": 1,
-      "shiftRpm": 14000,
-      "finalDrive": 3.31,
-      "hasManual": false
     }
   },
   {
     "id": "blossom-run",
-    "custom": false,
     "scene": "blossom-run",
     "palette": {
       "skyTop": "#241828",
@@ -414,34 +173,10 @@
       "fog": "#c87890",
       "particle": "#ffd0dc",
       "accent": "#f090a8"
-    },
-    "engine": {
-      "voice": "combustion",
-      "cylinders": 6,
-      "firing": "even",
-      "idleRpm": 950,
-      "redline": 7500,
-      "rumble": 0.4,
-      "growl": 0.6,
-      "metallic": 0.28,
-      "air": 0.5,
-      "exhaust": 0.58,
-      "rasp": 0.52,
-      "body": 0.55,
-      "turbo": 0.72,
-      "turboPitch": 0.62,
-      "blowoff": 0.85,
-      "crackle": 0.2,
-      "distortion": 0.22,
-      "gears": 6,
-      "shiftRpm": 7000,
-      "finalDrive": 3.55,
-      "hasManual": true
     }
   },
   {
     "id": "trenchlight",
-    "custom": false,
     "scene": "trench",
     "palette": {
       "skyTop": "#000000",
@@ -454,34 +189,10 @@
       "fog": "#0c1818",
       "particle": "#7cff90",
       "accent": "#5cff6a"
-    },
-    "engine": {
-      "voice": "starfighter",
-      "cylinders": 0,
-      "firing": "odd-fire",
-      "idleRpm": 900,
-      "redline": 11000,
-      "rumble": 0.55,
-      "growl": 0.45,
-      "metallic": 0.95,
-      "air": 0.88,
-      "exhaust": 0.2,
-      "rasp": 0.85,
-      "body": 0.18,
-      "turbo": 0.4,
-      "turboPitch": 0.95,
-      "blowoff": 0.2,
-      "crackle": 0.1,
-      "distortion": 0.3,
-      "gears": 4,
-      "shiftRpm": 9800,
-      "finalDrive": 5.2,
-      "hasManual": true
     }
   },
   {
     "id": "light-grid",
-    "custom": false,
     "scene": "grid",
     "palette": {
       "skyTop": "#020911",
@@ -494,29 +205,6 @@
       "fog": "#3a1860",
       "particle": "#ffb14c",
       "accent": "#4ef3ff"
-    },
-    "engine": {
-      "voice": "electric",
-      "cylinders": 0,
-      "firing": "smooth",
-      "idleRpm": 400,
-      "redline": 16000,
-      "rumble": 0.15,
-      "growl": 0.2,
-      "metallic": 0.6,
-      "air": 0.06,
-      "exhaust": 0.08,
-      "rasp": 0.55,
-      "body": 0.15,
-      "turbo": 0.7,
-      "turboPitch": 0.8,
-      "blowoff": 0.35,
-      "crackle": 0,
-      "distortion": 0.1,
-      "gears": 1,
-      "shiftRpm": 16000,
-      "finalDrive": 9,
-      "hasManual": false
     }
   }
 ]

@@ -5,7 +5,11 @@ import type { Drivetrain } from "./simulation";
 import { sceneLabel } from "./sceneLabels";
 import { RETIRED_SCENE_IDS } from "../packs/migrations";
 
-/** A scene preset: art + palette + voice from revforge-packs.json, display copy from sceneLabels.ts. */
+/**
+ * A scene preset: art id + palette from revforge-packs.json, display copy from sceneLabels.ts.
+ * Scene sound is audio-owned (src/audio/sceneEngines.ts, revforge-<sceneId> builtins); the JSON
+ * carries no voice or gear fields any more (dribe cleanup v2, Oct 18 2026).
+ */
 export type ScenePack = (typeof packs)[number] & { name: string; tagline: string };
 export const SCENES: ScenePack[] = packs.map((p) => ({ ...p, ...sceneLabel(p.id) }));
 /** Retired / legacy scene id → current scene (RETIRED_SCENE_IDS lives in packs/migrations.ts). */
@@ -23,7 +27,7 @@ export const sceneForId = (id: string | undefined) => {
  * simulation.gearRatio(), which for 6 gears gives 3.90 / 3.09 / 2.44 / 1.84 / 1.27 / 0.72.
  */
 export const DEFAULT_DRIVETRAIN = { gears: 6, finalDrive: 3.31 } as const;
-/** kind / topology / params for a RevForge voice (no scene needed; NativeStudio re-tunes with this). */
+/** kind / topology / params for a RevForge voice config (user / imported patches; NativeStudio re-tunes with this). */
 export function voicePatchParts(p: RevForgeVoiceConfig): Pick<EnginePatch, "kind" | "topology" | "params"> {
   const kind =
     p.voice === "electric"
@@ -74,23 +78,6 @@ export function voicePatchParts(p: RevForgeVoiceConfig): Pick<EnginePatch, "kind
     },
   };
 }
-export function scenePatch(scene: ScenePack): EnginePatch {
-  const p = scene.engine;
-  const parts = voicePatchParts(p);
-  return {
-    revforge: { ...p },
-    version: 0,
-    id: `revforge-${scene.id}`,
-    name: scene.name,
-    ...parts,
-    meta: {
-      author: "DriveSynth × RevForge",
-      blurb: scene.tagline,
-      tags: ["revforge", parts.kind, scene.scene],
-    },
-  };
-}
-export const REVFORGE_PATCHES = SCENES.map(scenePatch);
 function baseDrivetrain(patch: EnginePatch | undefined): Drivetrain {
   if (patch?.revforge) {
     const original = patch.revforge;

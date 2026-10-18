@@ -1,11 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { OfflineAudioContext } from "node-web-audio-api";
 import { RevForgeVoice } from "../src/forge/RevForgeVoice.js";
-const packs = JSON.parse(
-  readFileSync(new URL("../src/forge/revforge-packs.json", import.meta.url)),
-);
+// Voice configs live in a test fixture: revforge-packs.json is art + palette only (scene audio is
+// audio-owned in src/audio/sceneEngines.ts), so this test no longer reads the scene catalogue.
+import { REVFORGE_VOICE_FIXTURES, voiceFixture } from "./fixtures/revforge-voices.mjs";
 // Web Audio's offline renderer cannot resume before rendering. Only its state getter is adapted;
 // all oscillators, buffers, filters, waveshaping and compression run through the real renderer.
 const timers = new Set();
@@ -20,7 +19,7 @@ globalThis.window = {
     timers.delete(id);
   },
 };
-for (const pack of packs)
+for (const pack of REVFORGE_VOICE_FIXTURES)
   test(`native RevForge ${pack.id}: audible, finite, bounded output`, async () => {
     const offline = new OfflineAudioContext(2, 22050, 44100);
     const context = new Proxy(offline, {
@@ -73,12 +72,12 @@ test("changing voice architecture cleans the previous graph and timers", async (
     },
   });
   const voice = new RevForgeVoice(ctx, offline.destination);
-  await voice.start(packs.find((p) => p.id === "copper-mile").engine, {
+  await voice.start(voiceFixture("copper-mile"), {
     masterVolume: 0.85,
     engineVolume: 1,
     musicVolume: 0.45,
   });
-  voice.applyPatch(packs.find((p) => p.id === "ember-dusk").engine);
+  voice.applyPatch(voiceFixture("ember-dusk"));
   assert.equal(timers.size, 0);
   voice.update({
     rpm: 3000,
@@ -97,7 +96,7 @@ for(const mode of ['turbine-whir','turbine-afterburner','starfighter-on','starfi
   const ctx=new Proxy(offline,{get(t,k){if(k==='state')return 'running';const v=Reflect.get(t,k,t);return typeof v==='function'?v.bind(t):v;}});
   const voice=new RevForgeVoice(ctx,offline.destination);
   const jet=mode.startsWith('turbine');
-  const engine={...packs[0].engine,voice:jet?'turbine':'starfighter'};
+  const engine={...REVFORGE_VOICE_FIXTURES[0].engine,voice:jet?'turbine':'starfighter'};
   try{
    await voice.start(engine,{masterVolume:.8,engineVolume:1,musicVolume:0});
    voice.update({rpm:engine.redline*.95,load:1,accel:2,shifting:false,overrun:false,tieSignature:mode!=='starfighter-off',flight:{spool:.95,thrust:mode==='turbine-afterburner'?1:0,afterburner:mode==='turbine-afterburner'?1:0}});
