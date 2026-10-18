@@ -32,6 +32,8 @@ export interface BeatboxVoiceSpec {
   timingJitterDeg: number;
   lazyFire: number;
   brap: number;
+  /** rpm above idle over which the brap fades out (default 2600). */
+  brapRpm?: number;
   hunt: number;
   camLope: number;
   pipe: { lenMsA: number; lenMsB: number; tailMs: number; fb: number; tailFb: number; damp: number; cross: number };
@@ -329,23 +331,27 @@ export const BEATBOX_ENGINES: readonly BeatboxEngineInfo[] = [
       idleRpm: 1000,
       redline: 9000,
       cycleDeg: 720,
+      // one fire per rotor per eccentric-shaft turn → 2 evenly spaced pulses per turn (v2: equal primaries)
       fire: [
         { deg: 0, bank: 0, primaryMs: 0 },
-        { deg: 180, bank: 1, primaryMs: 0.25 },
+        { deg: 180, bank: 1, primaryMs: 0 },
         { deg: 360, bank: 0, primaryMs: 0 },
-        { deg: 540, bank: 1, primaryMs: 0.25 },
+        { deg: 540, bank: 1, primaryMs: 0 },
       ],
       intakeDeg: 250,
       pulse: { riseDeg: 9, minMs: 0.24, maxMs: 0.7, k2: false, neg: 6.5, noise: 0.7, noiseTau: 3.5 },
       cycleVar: 0.05,
       imbalance: 0.1,
-      ampJitter: 0.14,
+      ampJitter: 0.08,
       timingJitterDeg: 2,
       lazyFire: 0,
       brap: 0.6,
+      brapRpm: 1200,
       hunt: 0,
       camLope: 0,
-      pipe: { lenMsA: 3.1, lenMsB: 3.3, tailMs: 6.8, fb: 0.6, tailFb: 0.4, damp: 0.7, cross: 0.5 },
+      pipe: { lenMsA: 3.2, lenMsB: 3.25, tailMs: 6.8, fb: 0.4, tailFb: 0.28, damp: 0.75, cross: 0.3 },
+      bankDetune: 0.3,
+      refl: 0.08,
       modes: [[130, 3, 0.45], [800, 4, 0.45], [2100, 3, 0.35]],
       muffler: { base: 1600, load: 4500, rpm: 2600, off: 500 },
       rasp: { hz: 2600, rpmHz: 1200, q: 1, amt: 0.7 },

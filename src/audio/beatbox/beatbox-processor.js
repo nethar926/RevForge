@@ -325,7 +325,7 @@ class BeatboxProcessor extends AudioWorkletProcessor {
       if (sp.lazyFire > 0 && this.rand() < sp.lazyFire * (0.4 + chr) * idleish) A *= 0.3 + 0.3 * this.rand();
       // rotary 'brap': low-rpm peripheral-port overlap → strong/weak chamber fires
       if (sp.brap > 0) {
-        const lowK = clip(1 - (s.rpm - idle) / 2600) * sp.brap * (0.5 + chr);
+        const lowK = clip(1 - (s.rpm - idle) / (sp.brapRpm || 2600)) * sp.brap * (0.5 + chr);
         if (this.rand() < 0.35 * lowK) A *= 0.35; else A *= 1 + 0.25 * lowK;
       }
       // timing: rise from crank angle, clamped to gas-dynamic limits
