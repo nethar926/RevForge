@@ -63,10 +63,14 @@ function useWxPoller(active: boolean) {
     const offFix = subscribeGpsFixes(() => p.poke());
     const onVis = () => p.poke();
     document.addEventListener('visibilitychange', onVis);
+    // back online: re-poll (debounced; only if the poller had failed), as the radar re-reads its frame list
+    const onOnline = () => p.online();
+    window.addEventListener('online', onOnline);
     return () => {
       p.stop();
       offFix();
       document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('online', onOnline);
     };
   }, [active]);
 }

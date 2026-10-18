@@ -247,6 +247,10 @@ export class WxTileCache {
    reports to the status store (lastFailAt → the held state on the age label) and the next refresh is always scheduled
    (finally). One fetch at a time: refresh() while one is in flight does nothing. */
 export const WX_RADAR_FETCH_TIMEOUT_MS = 10_000;
+/** Back online: re-read the frame list after this quiet time (a flapping connection reads once). */
+export const WX_RADAR_ONLINE_DEBOUNCE_MS = 2000;
+/** ...unless the last list read was good this recently (and nothing failed since): no double polling. */
+export const WX_RADAR_ONLINE_FRESH_MS = 60_000;
 export class WxTimeoutError extends Error {
   constructor(what: string, ms: number) {
     super(`${what}: timed out after ${ms} ms`);
@@ -285,6 +289,8 @@ export function startWxRadarLoop(d: WxRadarLoopDeps) {
   let busy = false;
   let timer: unknown = null;
   let cur: AbortController | null = null;
+  /** Last frame-list read that succeeded (the 'online' re-read skips when it is this fresh). */
+  let lastListOkAt: number | null = null;
   const timeoutMs = d.timeoutMs ?? WX_RADAR_FETCH_TIMEOUT_MS;
   const refreshMs = d.refreshMs ?? WX_RADAR_REFRESH_MS;
   const tick = async (): Promise<void> => {
@@ -299,6 +305,7 @@ export function startWxRadarLoop(d: WxRadarLoopDeps) {
       let f: RvLatest | null = null;
       try {
         f = await fetchWxRadarFrames(d.fetch, ac.signal);
+        lastListOkAt = d.now();
         if (f) reportWxRadarFetch(true, d.now(), { host: f.host, path: f.frame.path, time: f.frame.time });
       } catch (e) {
         if (dead) throw e;
@@ -323,16 +330,32 @@ export function startWxRadarLoop(d: WxRadarLoopDeps) {
       if (!dead) timer = d.setTimeout(() => void tick(), refreshMs);
     }
   };
+  let onlineT: unknown = null;
+  const online = () => {
+    if (dead) return;
+    if (onlineT != null) d.clearTimeout(onlineT);
+    onlineT = d.setTimeout(() => {
+      onlineT = null;
+      const st = getWxRadarStatus();
+      const failedSince = st.lastFailAt != null && (lastListOkAt == null || st.lastFailAt > lastListOkAt);
+      if (!failedSince && lastListOkAt != null && d.now() - lastListOkAt < WX_RADAR_ONLINE_FRESH_MS) return;
+      void tick();
+    }, WX_RADAR_ONLINE_DEBOUNCE_MS);
+  };
   void tick();
   return {
-    /** Re-read now (QA hook / back online); a no-op while a fetch is in flight. */
+    /** Re-read now (QA hook); a no-op while a fetch is in flight. */
     refresh: () => tick(),
+    /** The window 'online' event: debounced re-read (skipped if the list was read fine within the last minute). */
+    online,
     busy: () => busy,
     stop() {
       dead = true;
       cur?.abort();
       if (timer != null) d.clearTimeout(timer);
       timer = null;
+      if (onlineT != null) d.clearTimeout(onlineT);
+      onlineT = null;
     },
   };
 }

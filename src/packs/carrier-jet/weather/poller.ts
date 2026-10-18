@@ -14,6 +14,8 @@ export const WX_JITTER_MS = 60000;
 export const WX_RETRY_MS = [30000, 120000, 300000] as const;
 export const WX_TICK_MS = 15000;
 export const WX_FETCH_TIMEOUT_MS = 12000;
+/** Back online ('online' event): re-poll after this quiet time (flapping connections poll once). */
+export const WX_ONLINE_DEBOUNCE_MS = 2000;
 
 export function km(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const r = Math.PI / 180;
@@ -30,6 +32,8 @@ export interface PollState {
   /** Earliest retry after a failure (0 = none). */
   retryAt: number;
   fails: number;
+  /** The last failure was HTTP 429/503 (its >= 5 min wait is kept even when the connection comes back). */
+  throttled?: boolean;
 }
 export const POLL_INIT: PollState = { lastAt: null, lastPos: null, dueAt: 0, retryAt: 0, fails: 0 };
 
@@ -49,7 +53,7 @@ export function wxFail(s: PollState, now: number, status: number | null): PollSt
   const fails = s.fails + 1;
   let wait: number = fails <= WX_RETRY_MS.length ? WX_RETRY_MS[fails - 1] : WX_REFRESH_MS;
   if (status === 429 || status === 503) wait = Math.max(wait, WX_MIN_GAP_MS);
-  return { ...s, fails, retryAt: now + wait };
+  return { ...s, fails, retryAt: now + wait, throttled: status === 429 || status === 503 };
 }
 
 export interface PollerDeps {
@@ -63,9 +67,12 @@ export interface PollerDeps {
   onObs(o: WxObs): void;
   setInterval(f: () => void, ms: number): unknown;
   clearInterval(t: unknown): void;
+  /** Debounce timer for online() (defaults to the global setTimeout / clearTimeout). */
+  setTimeout?(f: () => void, ms: number): unknown;
+  clearTimeout?(t: unknown): void;
 }
 
-/** Start polling; returns { poke (on a fix / visibility change), stop }. */
+/** Start polling; returns { poke (on a fix / visibility change), online (the window 'online' event), stop }. */
 export function startWxPoller(d: PollerDeps) {
   let s = POLL_INIT;
   let busy = false;
@@ -96,15 +103,34 @@ export function startWxPoller(d: PollerDeps) {
         busy = false;
       });
   };
+  // back online: after a quiet WX_ONLINE_DEBOUNCE_MS, a poller that failed (while offline) retries now instead of
+  // waiting out its backoff (up to 15 min). Not after a 429/503 (that wait stands), never while a fetch is in flight
+  // (poke's busy guard), and nothing when the last fetch was fine (the normal schedule stands): no double polling.
+  const st = d.setTimeout ?? ((f: () => void, ms: number) => setTimeout(f, ms));
+  const ct = d.clearTimeout ?? ((h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>));
+  let onlineT: unknown = null;
+  const online = () => {
+    if (dead) return;
+    if (onlineT != null) ct(onlineT);
+    onlineT = st(() => {
+      onlineT = null;
+      if (dead || busy) return;
+      if (s.fails > 0 && !s.throttled && s.retryAt > d.now()) s = { ...s, retryAt: d.now() };
+      poke();
+    }, WX_ONLINE_DEBOUNCE_MS);
+  };
   const t = d.setInterval(poke, WX_TICK_MS);
   poke();
   return {
     poke,
+    online,
     state: () => s,
     stop() {
       dead = true;
       ac?.abort();
       d.clearInterval(t);
+      if (onlineT != null) ct(onlineT);
+      onlineT = null;
     },
   };
 }

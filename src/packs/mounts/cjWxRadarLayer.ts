@@ -7,7 +7,7 @@
  * Offline / a failed fetch never blanks it: the frame list keeps the last good frame (wxRadar status store), a failed
  * tile is answered from the last good copy of that tile (WxTileCache, any frame), and every fetch reports to the
  * status store, which drives the 'RADAR · 12m' age label (CjLiveMap; shown whenever a frame is up). Back online →
- * re-read at once. Past 180 min since the last good fetch (OAT hide point) the frame, label and held tiles all go.
+ * re-read (debounced). Past 180 min since the last good fetch (OAT hide point) the frame, label and held tiles all go.
  */
 import type { Map as MlMap, RasterTileSource } from 'maplibre-gl';
 import { __setWxRadarStatus, expireWxRadarFrame, getWxRadarStatus, subscribeWxRadarStatus, wxRadarExpired, recolorRgba, reportWxRadarFetch, rvSourceTemplate, WxTileCache, WX_SCOPE_PREFIX, WX_RADAR_MAX_ZOOM, WX_RADAR_PROTOCOL, startWxRadarLoop, type RvLatest } from '../carrier-jet/wxRadar';
@@ -144,8 +144,9 @@ export function attachWxRadar(ml: Ml, map: MlMap): () => void {
   const tick = () => void loop.refresh();
   const offExpiry = subscribeWxRadarStatus(checkExpiry);
   const expiryTimer = window.setInterval(checkExpiry, 30_000);
-  // back online: re-read now instead of waiting out the 10 min
-  const onOnline = () => tick();
+  // back online: re-read (debounced 2 s, skipped if the list was read fine within the last minute) instead of waiting
+  // out the 10 min
+  const onOnline = () => loop.online();
   window.addEventListener('online', onOnline);
   // shots / QA hooks: stats, the status store (backdate the last good fetch), a refresh now
   Object.assign(window as unknown as Record<string, unknown>, {
