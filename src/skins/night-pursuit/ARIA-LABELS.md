@@ -14,8 +14,8 @@ Reid wires them only after Meghan approves.
 | ENGINE bar | meter, 0 to 100 | Engine speed | "{n} percent of redline" | `rpm`, n = round(clamp(rpm, 0, 1) x 100) |
 | CRT B screen | group | Sensor pods | none | wraps the three lines below |
 | CRT B line 1 | text | none | reads "System pursuit" in PURSUIT or POWER mode, otherwise "System monitor" | `pursuitHot` |
-| CRT B line 2 | text | none | reads "{n} percent throttle" | `thr` |
-| CRT B line 3 | text | none | reads "{n} percent load" | `load` |
+| CRT B line 2 | text | none | reads "{n} percent throttle"; aria-hidden while the THROTTLE bar is on screen | `thr` |
+| CRT B line 3 | text | none | reads "{n} percent load"; aria-hidden while the LOAD bar is on screen | `load` |
 
 Rules
 - Whole percents, rounded the same way as the visible CRT B text.
@@ -27,4 +27,4 @@ Rules
 - aria-valuetext is only for the meters. Speed, Engine RPM and Gear speak through a visually hidden span inside a labeled wrapper around each 7-seg, the same way CRT B does.
 - Unhide only the speed, RPM and gear wrappers, the bar stack and the CRT B screen from their pods' `aria-hidden`. In compact, the speed and gear wrappers and `np-c-thr` sit inside the hidden `np-c-speed` section and the RPM wrapper inside `np-c-tach`, so pull them out or unhide them on their own.
 - 844x390 has no bars and neither compact size has CRT B today; the new cell plans bring them back and these labels apply there too.
-- Open for Meghan: in full layout CRT B lines 2 and 3 repeat the THROTTLE and LOAD bars, so screen readers hear each value twice. Kept as written; the alternative is aria-hidden on lines 2 and 3.
+- Each value is spoken once (Meghan, 2026-10-18): whenever the matching THROTTLE or LOAD bar is rendered, its CRT B line is aria-hidden, so CRT B reads only "System monitor" or "System pursuit". If a layout drops a bar, unhide that bar's CRT B line so the value is still announced.
