@@ -201,3 +201,42 @@ div.cjhv-cap { cursor: default; }
   left: 50%; bottom: 4px; width: 76px; height: 4px; margin-left: -38px; border-radius: 1px; background: linear-gradient(180deg, #bfefff, #5fd3ff 60%, #2a8ebd);
 }
 .rev-viewport:has(.cjhv-rail) .cjm[data-cjm-v2][data-rf-layout='window'] .cj .cj-tab[aria-checked='true']::after { width: 60px; margin-left: -30px; }
+
+/* ---------------- v3.1 top plate (push 1; Meghan's v3.1-all-switches option A, NOTES.md): bonus switch row, MASTER
+   CAUTION / WARNING, lights row (FASTEN SEAT BELT bulb, AB ARMED, THEMES). Geometry inline from heroRail.ts HV_TOP. */
+.cjhv-top {
+  position: absolute; z-index: 13; box-sizing: border-box; border-radius: 3px;
+  --hv-paint: #2e3236; --hv-paint-lo: #25282b; --hv-edge: #15171a; --hv-cream: #e8e4d8; --hv-unlit: #a9afb4;
+  --hv-grain: url('./assets/cj-hero/grain-256.webp'); --hv-frost: url('./assets/cj-hero/frost-128.webp');
+  font-family: 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; -webkit-tap-highlight-color: transparent;
+  background: var(--hv-grain) 0 0 / 256px 256px, linear-gradient(170deg, #34383d, var(--hv-paint) 45%, var(--hv-paint-lo));
+  background-blend-mode: soft-light, normal; border: 1px solid var(--hv-edge);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.07), inset -1px -1px 0 rgba(0, 0, 0, 0.45), 0 1px 0 rgba(0, 0, 0, 0.5);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.cjhv-top-mod {
+  position: absolute; box-sizing: border-box; border-radius: 3px; pointer-events: none;
+  background: var(--hv-grain) 0 0 / 256px 256px, linear-gradient(165deg, #363a3f, var(--hv-paint) 40%, var(--hv-paint-lo));
+  background-blend-mode: soft-light, normal; border: 1px solid var(--hv-edge);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.08), inset -1px -1px 0 rgba(0, 0, 0, 0.5), 1px 2px 0 rgba(0, 0, 0, 0.5);
+}
+.cjhv-top-sw { position: absolute; top: 0; bottom: 0; }
+.cjhv-top-sw .cjhv-lg { position: absolute; left: 0; right: 0; line-height: 13px; }
+.cjhv-top-name { font-weight: 600; letter-spacing: 0.05em; }
+.cjhv-top[data-rf-layout='window'] .cjhv-top-name { letter-spacing: 0.03em; }
+.cjhv-top-tg { position: absolute; left: 50%; width: 44px; margin-left: -22px; height: 68px; pointer-events: none; }
+.cjhv-top-tg .cjhv-tg { position: static; translate: none; width: 44px; height: 68px; scale: var(--tg-k); transform-origin: 50% 50%; }
+.cjhv-top .cjhv-cap { position: absolute; border: 2px solid transparent; background-clip: padding-box; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.75), inset -1px -1px 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px #0c0d0e; padding-top: 5px; }
+.cjhv-top .cjhv-cap .cjhv-lg { line-height: 14px; }
+.cjhv-top-ab { padding-top: 4px !important; }
+.cjhv-top-themes .cjhv-lg { color: #c9cdd0; letter-spacing: 0.04em; text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6); }
+.cjhv-top-themes .cjhv-lg:first-child { font-size: 12px; }
+.cjhv-top[data-rf-layout='window'] .cjhv-top-themes .cjhv-lg:first-child { font-size: 11px; }
+.cjhv-top-bulb {
+  position: absolute; box-sizing: border-box; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 40% 35%, #3a3d40, #1b1d1f 70%); box-shadow: 0 0 0 2px #0d0e10, 0 0 0 3px #5d6368;
+}
+.cjhv-top-bulb[data-lit] { background: radial-gradient(circle at 40% 35%, #ffe2a6, #ffb347 45%, #b86b10); box-shadow: 0 0 0 2px #0d0e10, 0 0 0 3px #5d6368, 0 0 6px rgba(255, 179, 71, 0.55); }
+.cjhv-top-fsb { position: absolute; text-align: left; letter-spacing: 0.02em; line-height: 14px; }
+/* the plate takes the LOOK row: the skin's tabs are hidden (not removed from layout, so MATRIX keeps its place) */
+.rev-viewport:has(.cjhv-top) .cjm[data-cjm-v2] .cj .cj-tabs { visibility: hidden; }

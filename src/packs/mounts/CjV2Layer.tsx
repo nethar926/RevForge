@@ -155,7 +155,7 @@ function measureCj(host: HTMLElement, layout: RfLayout, hero: boolean): Measured
       const r = vp.querySelector<HTMLElement>(s)?.getBoundingClientRect();
       return r && r.width > 0 && r.height > 0 ? rel(r, o) : null;
     };
-    heroBoxes = { ann: box('.cjhv-ann'), rail: box('.cjhv-rail'), layout };
+    heroBoxes = { ann: box('.cjhv-top') ?? box('.cjhv-ann'), rail: box('.cjhv-rail'), layout };
   }
   return { board, gap, mapFirst, anchors, hero: heroBoxes };
 }

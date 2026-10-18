@@ -31,7 +31,7 @@ import { cjMapFirst } from '../carrier-jet/geometry';
 import { CJ_GRID } from '../carrier-jet/cells';
 import { getPackJet, subscribePackJet } from '../jetBridge';
 import { LAUNCH_OFF, launchAbZone, launchStep, readLaunchActive } from '../carrier-jet/launchLight';
-import { AnnunciatorPlate, HeroRail } from './CjHeroV2';
+import { HeroRail, TopPlate } from './CjHeroV2';
 import { clearsAfter, forcedLamps, heroFits, HV_LAMPS, HV_START, lampStates, radarApply, radarPos, startPositions, type HeroLayout, type LampId, type StartId } from '../carrier-jet/heroRail';
 import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
 
@@ -399,7 +399,19 @@ export function CarrierJetMount(props: PackHudProps) {
       {coldOn && <p className="cjcs-say" role="status" aria-live="polite">{cold.say}</p>}
       <p className="rf-sr-only cjm-launch-say" role="status" aria-live="polite">{launch.say}</p>
       {bankB && vp.dock && createPortal(bankB, vp.dock)}
-      {hero && topbar && createPortal(<AnnunciatorPlate lamps={lamps} layout={heroLayout} onClear={onClearLamp} />, topbar)}
+      {hero && topbar && vp.viewport && createPortal(
+        <TopPlate
+          layout={heroLayout}
+          lamps={lamps}
+          onClear={onClearLamp}
+          bonus={cold.sys.on as Record<string, boolean>}
+          onBonus={(sys, on) => cold.railTap(sys, on)}
+          armed={armed}
+          launch={launch.lit}
+          onThemes={() => void requestPackShell({ type: 'nav', action: { type: 'panel', panel: 'themes' } })}
+        />,
+        vp.viewport,
+      )}
       {shutdownGuard && vp.dock && createPortal(shutdownGuard, vp.dock)}
       {bankHost ? createPortal(layout === 'portrait' ? <div className="cjm-below">{bank}</div> : bank, bankHost) : layout !== 'portrait' && <div className="cjm-ab">{bank}</div>}
     </div>

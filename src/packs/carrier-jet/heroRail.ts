@@ -258,3 +258,67 @@ export const HV_RAIL_TARGETS: readonly { name: string; w: number; h: number }[] 
   { name: 'Hold to rev', w: 64, h: 48 },
   { name: 'Shutdown', w: 64, h: 48 },
 ];
+
+/* ------------------------------------------------------------------ v3.1 top plate (Meghan's v3.1-all-switches, option A) */
+
+/** Bonus switch row, left to right (NOTES.md): Dan's cold-start systems, ON / OFF, two targets each. */
+export interface BonusDecl { id: string; label: string; spoken: string; system: string }
+export const HV_BONUS: readonly BonusDecl[] = [
+  { id: 'avion', label: 'AVION', spoken: 'Avionics', system: 'avionics' },
+  { id: 'ins', label: 'INS', spoken: 'Inertial nav', system: 'inertialNav' },
+  { id: 'posLt', label: 'POS LT', spoken: 'Position lights', system: 'navLights' },
+  { id: 'beacon', label: 'BEACON', spoken: 'Beacon', system: 'anticollision' },
+  { id: 'idleL', label: 'L IDLE', spoken: 'Left throttle idle', system: 'throttleL' },
+  { id: 'idleR', label: 'R IDLE', spoken: 'Right throttle idle', system: 'throttleR' },
+  { id: 'hyd', label: 'HYD', spoken: 'Hydraulics', system: 'hydraulics' },
+  { id: 'canopy', label: 'CANOPY', spoken: 'Canopy', system: 'canopy' },
+  { id: 'oxy', label: 'OXY', spoken: 'Oxygen', system: 'oxygen' },
+];
+type R = { x: number; y: number; w: number; h: number };
+/**
+ * Plate geometry, plate-relative CSS px, from the v3.1 bake (bake/top-A-c-<size>.json) and the mock hit boxes
+ * (mock/A-c-<size>.html): plate 914x119 at (356, 8) at 1280 (right 10), 619x117 at (146, 9) at 773 (right 8).
+ * Bonus columns: name at nameY, ON at onY, OFF at offY, up target upY..+upH, down target dnY..+dnH, toggle pivot tgY.
+ */
+export interface TopGeo {
+  plate: { right: number; y: number; w: number; h: number };
+  mods: readonly { x: number; w: number }[]; modY: number; modH: number;
+  cols: readonly { x: number; w: number }[];
+  nameY: number; nameSize: number; onY: number; offY: number; upY: number; upH: number; dnY: number; dnH: number; tgY: number; tgScale: number;
+  mc: R; mw: R; masterHit: { dx: number; dy: number; w: number; h: number };
+  bulb: { cx: number; cy: number; r: number }; fsb: { x: number; y: number; w: number };
+  ab: R; themes: R; themesHit: R;
+}
+export const HV_TOP: Readonly<Record<HeroLayout, TopGeo>> = {
+  board: {
+    plate: { right: 10, y: 8, w: 914, h: 119 },
+    mods: [{ x: 8, w: 118 }, { x: 150.5, w: 128 }, { x: 303, w: 124 }, { x: 451.5, w: 60 }, { x: 536, w: 122 }], modY: 4, modH: 112,
+    cols: [{ x: 12, w: 58 }, { x: 70, w: 52 }, { x: 154.5, w: 58 }, { x: 212.5, w: 62 }, { x: 307, w: 58 }, { x: 365, w: 58 }, { x: 455.5, w: 52 }, { x: 540, w: 62 }, { x: 602, w: 52 }],
+    nameY: 7, nameSize: 12, onY: 22, offY: 102, upY: 18, upH: 46, dnY: 64, dnH: 52, tgY: 68, tgScale: 1.05,
+    mc: { x: 668, y: 7, w: 114, h: 40 }, mw: { x: 790, y: 7, w: 114, h: 40 }, masterHit: { dx: -2, dy: -2, w: 118, h: 44 },
+    bulb: { cx: 679, cy: 93, r: 10 }, fsb: { x: 693, y: 80, w: 65 },
+    ab: { x: 764, y: 73, w: 66, h: 40 }, themes: { x: 838, y: 73, w: 66, h: 40 }, themesHit: { x: 836, y: 71, w: 70, h: 44 },
+  },
+  window: {
+    plate: { right: 8, y: 9, w: 619, h: 117 },
+    mods: [{ x: 5, w: 409 }], modY: 4, modH: 108,
+    cols: HV_BONUS.map((_, i) => ({ x: 7 + 45 * i, w: 45 })),
+    nameY: 6, nameSize: 11, onY: 19, offY: 97, upY: 16, upH: 44, dnY: 60, dnH: 52, tgY: 62, tgScale: 0.9,
+    mc: { x: 429, y: 7, w: 88, h: 40 }, mw: { x: 525, y: 7, w: 88, h: 40 }, masterHit: { dx: -2, dy: -2, w: 92, h: 44 },
+    bulb: { cx: 438, cy: 89, r: 8 }, fsb: { x: 450, y: 76, w: 59 },
+    ab: { x: 515, y: 69, w: 44, h: 40 }, themes: { x: 567, y: 69, w: 46, h: 40 }, themesHit: { x: 565, y: 67, w: 50, h: 44 },
+  },
+};
+/** Every tap target on the plate (plate-relative), for the 44 pt floor check. */
+export function topTargets(l: HeroLayout): { name: string; w: number; h: number }[] {
+  const g = HV_TOP[l];
+  return [
+    ...HV_BONUS.flatMap((b, i) => [{ name: `${b.label} on`, w: g.cols[i].w, h: g.upH }, { name: `${b.label} off`, w: g.cols[i].w, h: g.dnH }]),
+    { name: 'Master caution, clear', w: g.masterHit.w, h: g.masterHit.h },
+    { name: 'Master warning, clear', w: g.masterHit.w, h: g.masterHit.h },
+    { name: 'Themes', w: g.themesHit.w, h: g.themesHit.h },
+  ];
+}
+export const bonusAria = (b: BonusDecl, on: boolean, pos: 'on' | 'off') => `${b.spoken} ${pos === 'on' ? 'on' : 'off'}, now ${on ? 'on' : 'off'}`;
+export const fsbAria = (lit: boolean) => `Fasten seat belt light, ${lit ? 'lit amber' : 'off'}`;
+export const abArmedAria = (armed: boolean, launch: boolean) => `A B armed light, ${launch ? 'launch, lit amber' : armed ? 'lit amber' : 'off'}`;

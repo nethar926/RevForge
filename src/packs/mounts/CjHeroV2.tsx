@@ -10,10 +10,10 @@
  * Nothing animates: no transitions or keyframes; a pulled EMER STOP handle follows the finger (direct manipulation)
  * and snaps back. No WebGL, no backdrop-filter, no CSS blur: everything here is CSS + inline SVG + two baked tiles.
  */
-import { useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
+import { useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { GpsPlate } from '../../skins/carrier-jet/parts/index';
 import type { CjGps } from '../../skins/carrier-jet/parts/index';
-import { HV_LAMPS, HV_START, lampAria, lampColor, RADAR_SPOKEN, radarStep, type HeroLayout, type LampId, type LampMark, type LampState, type RadarPos, type SplitCap, type StartId } from '../carrier-jet/heroRail';
+import { abArmedAria, bonusAria, fsbAria, HV_BONUS, HV_LAMPS, HV_START, HV_TOP, lampAria, lampColor, RADAR_SPOKEN, radarStep, type HeroLayout, type LampId, type LampMark, type LampState, type RadarPos, type SplitCap, type StartId } from '../carrier-jet/heroRail';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
 import './cj-hero-v2.css';
 
@@ -41,6 +41,73 @@ function Mark({ mark }: { mark: LampMark }) {
     case 'x': return <svg {...common}><path d="M1 1 L7 7 M7 1 L1 7" fill="none" strokeWidth="1.5" data-stroke /></svg>;
     default: return <svg {...common}><rect x="1" y="1" width="6" height="6" /></svg>;
   }
+}
+
+/**
+ * v3.1 top plate (Meghan's v3.1-all-switches, option A; push 1): the bonus switch row (AVION · INS | POS LT · BEACON |
+ * L IDLE · R IDLE | HYD | CANOPY · OXY, ON / OFF, two targets each), MASTER CAUTION / MASTER WARNING (tap to clear) and
+ * the lights row: FASTEN SEAT BELT bulb + AB ARMED lamp (indicators, follow their switches) and the THEMES key.
+ * Portaled into .rev-viewport, right-anchored; geometry in heroRail.ts HV_TOP (plate-relative px). All lamps steady.
+ */
+export interface TopPlateProps {
+  layout: HeroLayout;
+  lamps: LampState;
+  onClear: (id: LampId) => void;
+  bonus: Record<string, boolean>;
+  onBonus: (system: string, on: boolean) => void;
+  armed: boolean;
+  launch: boolean;
+  onThemes: () => void;
+}
+const px = (r: { x: number; y: number; w: number; h: number }): CSSProperties => ({ left: r.x, top: r.y, width: r.w, height: r.h });
+export function TopPlate(p: TopPlateProps) {
+  const g = HV_TOP[p.layout];
+  const master = (['masterCaution', 'masterWarning'] as const).map((id) => {
+    const d = HV_LAMPS.find((x) => x.id === id)!;
+    const r = id === 'masterCaution' ? g.mc : g.mw;
+    const lit = p.lamps[id];
+    return (
+      <button key={id} type="button" className="cjhv-cap cjhv-top-master" data-lamp={id} data-color={lampColor(id)} data-lit={lit || undefined}
+        style={{ left: r.x + g.masterHit.dx, top: r.y + g.masterHit.dy, width: g.masterHit.w, height: g.masterHit.h }} aria-label={lampAria(d, lit)} onClick={() => p.onClear(id)}>
+        <Mark mark={d.mark} />
+        <span className="cjhv-lg">{d.top}</span>
+        <span className="cjhv-lg">{d.bottom}</span>
+      </button>
+    );
+  });
+  return (
+    <div className="cjhv-top" data-rf-layout={p.layout} role="group" aria-label="Top plate" style={{ right: g.plate.right, top: g.plate.y, width: g.plate.w, height: g.plate.h, '--tg-k': g.tgScale } as CSSProperties}>
+      <ArtDefs />
+      {g.mods.map((m, i) => <span key={i} className="cjhv-top-mod" aria-hidden="true" style={{ left: m.x, top: g.modY, width: m.w, height: g.modH }} />)}
+      <div className="cjhv-top-bonus" role="group" aria-label="Bonus switches">
+        {HV_BONUS.map((b, i) => {
+          const c = g.cols[i];
+          const on = !!p.bonus[b.system];
+          return (
+            <div key={b.id} className="cjhv-top-sw" data-on={on || undefined} style={{ left: c.x, width: c.w }}>
+              <span className="cjhv-lg cjhv-top-name" aria-hidden="true" style={{ top: g.nameY, fontSize: g.nameSize }}>{b.label}</span>
+              <span className="cjhv-lg cjhv-top-pos" aria-hidden="true" style={{ top: g.onY }}>ON</span>
+              <span className="cjhv-top-tg" style={{ top: g.tgY - 34 }}><ToggleArt pos={on ? 'up' : 'dn'} w={44} /></span>
+              <span className="cjhv-lg cjhv-top-pos" aria-hidden="true" style={{ top: g.offY }}>OFF</span>
+              <button type="button" className="cjhv-hit" style={{ top: g.upY, height: g.upH }} aria-label={bonusAria(b, on, 'on')} aria-pressed={on} onClick={() => p.onBonus(b.system, true)} />
+              <button type="button" className="cjhv-hit" style={{ top: g.dnY, height: g.dnH }} aria-label={bonusAria(b, on, 'off')} aria-pressed={!on} onClick={() => p.onBonus(b.system, false)} />
+            </div>
+          );
+        })}
+      </div>
+      {master}
+      <span className="cjhv-top-bulb" data-lit={p.lamps.seatbelt || undefined} role="img" aria-label={fsbAria(p.lamps.seatbelt)} style={{ left: g.bulb.cx - g.bulb.r, top: g.bulb.cy - g.bulb.r, width: 2 * g.bulb.r, height: 2 * g.bulb.r }} />
+      <span className="cjhv-lg cjhv-top-fsb" aria-hidden="true" style={{ left: g.fsb.x, top: g.fsb.y, width: g.fsb.w }}>FASTEN<br />SEAT BELT</span>
+      <div className="cjhv-cap cjhv-top-ab" data-color="amber" data-lit={p.armed || undefined} role="img" aria-label={abArmedAria(p.armed, p.launch)} style={px(g.ab)}>
+        <span className="cjhv-lg">AB</span>
+        <span className="cjhv-lg">{p.launch ? 'LAUNCH' : 'ARMED'}</span>
+      </div>
+      <button type="button" className="cjhv-cap cjhv-top-themes" aria-label="Themes: opens the theme picker" style={px(g.themesHit)} onClick={p.onThemes}>
+        <span className="cjhv-lg">THEMES</span>
+        <span className="cjhv-lg">▸</span>
+      </button>
+    </div>
+  );
 }
 
 export function AnnunciatorPlate({ lamps, layout, onClear }: { lamps: LampState; layout: HeroLayout; onClear: (id: LampId) => void }) {

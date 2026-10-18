@@ -11,6 +11,7 @@ import {
   annSize, clearsAfter, heroFits, heroKeyActive, heroMinW, forcedLamps, GREEN_LAMPS, heroCells, HV_ANN_BORDER, HV_BRAND_W, HV_FIT, HV_ANN_CAP, HV_CONTRAST_TARGET, HV_LAMPS, HV_LEGEND, HV_RAIL_H, HV_RAIL_MIN_W,
   HV_RED_LEGEND_LIFT, HV_START, LAMPS_DARK, lampAria, lampColor, lampStates, orientCap, radarApply, radarPos, radarStep, RED_LAMPS, splitCap,
   startPositions, type CapCtx, type LampId, type LampInput,
+  HV_BONUS, HV_TOP, topTargets, bonusAria, fsbAria, abArmedAria,
 } from '../src/packs/carrier-jet/heroRail.ts';
 import { CJ_GRID, type CjAnchors } from '../src/packs/carrier-jet/cells.ts';
 import { board2CellsMapFirst } from '../src/packs/carrier-jet/geometry.ts';
@@ -249,4 +250,31 @@ test('width guard: hero only where the plate clears the brand and the rail fits 
   assert.match(mount, /addEventListener\('resize', check\)/);
   assert.match(css, /\.cjhv-ann \{[^}]*max-width: calc\(100% - 108px\)/);
   assert.equal(HV_BRAND_W + HV_FIT.brandGap, 108);
+});
+
+/* ---------------- v3.1 top plate (push 1) */
+
+test('v3.1 top plate: bonus row order, MASTER CAUTION/WARNING only, lights row, 44pt targets, no ENG WARN / APU READY', () => {
+  assert.deepEqual(HV_BONUS.map((b) => b.label), ['AVION', 'INS', 'POS LT', 'BEACON', 'L IDLE', 'R IDLE', 'HYD', 'CANOPY', 'OXY']);
+  for (const l of ['board', 'window'] as const) {
+    const g = HV_TOP[l];
+    assert.equal(g.cols.length, HV_BONUS.length, `${l}: one column per bonus switch`);
+    for (const t of topTargets(l)) assert.ok(t.w >= 44 && t.h >= 44, `${l}: ${t.name} is ${t.w}x${t.h}`);
+    // row order: switches, then the masters, then the lights row (bulb, FASTEN SEAT BELT, AB ARMED, THEMES) left to right
+    const lastCol = g.cols[g.cols.length - 1];
+    assert.ok(g.mc.x >= lastCol.x + lastCol.w && g.mw.x > g.mc.x, `${l}: masters right of the switches`);
+    assert.ok(g.bulb.cy > g.mc.y + g.mc.h && g.fsb.x > g.bulb.cx && g.ab.x > g.fsb.x && g.themes.x > g.ab.x, `${l}: lights row order`);
+  }
+  const p0 = tsx.indexOf('export function TopPlate');
+  const plate = tsx.slice(p0, tsx.indexOf('\nexport ', p0 + 10) >>> 0 || undefined);
+  assert.ok(plate.length > 100, 'TopPlate exists');
+  for (const gone of ['engWarnL', 'engWarnR', 'apuReady', 'engRunL', 'engRunR']) assert.ok(!plate.includes(gone), `plate has no ${gone}`);
+  assert.match(plate, /masterCaution/);
+  assert.match(plate, /masterWarning/);
+  assert.equal(bonusAria(HV_BONUS[0], false, 'on'), 'Avionics on, now off');
+  assert.equal(fsbAria(true), 'Fasten seat belt light, lit amber');
+  assert.equal(abArmedAria(true, false), 'A B armed light, lit amber');
+  assert.match(plate, /Themes: opens the theme picker/);
+  // the plate replaces the skin's LOOK row (pack CSS only, the skin is untouched)
+  assert.match(css, /\.rev-viewport:has\(\.cjhv-top\)[^{]*\.cj-tabs\s*\{\s*visibility:\s*hidden/);
 });
