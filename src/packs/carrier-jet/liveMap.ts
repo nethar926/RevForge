@@ -156,8 +156,9 @@ export interface PlacedLabel extends Rect { name: string }
 /**
  * ≤ max street labels. Roads by distance to own-ship; for each, the nearest candidate point whose label rect
  * (centred on it) clears every obstacle, the already placed labels and the 6px edge; else the road is dropped.
+ * `first`: the road the car is on (nearestRoad.ts) is placed before every other road.
  */
-export function placeLabels(roads: RoadCand[], o: { x: number; y: number }, cell: { w: number; h: number }, obstacles: Rect[], measure: (s: string) => number, max = 2, lineH = 13): PlacedLabel[] {
+export function placeLabels(roads: RoadCand[], o: { x: number; y: number }, cell: { w: number; h: number }, obstacles: Rect[], measure: (s: string) => number, max = 2, lineH = 13, first?: string | null): PlacedLabel[] {
   const EDGE = 6;
   const d = (p: { x: number; y: number }) => Math.hypot(p.x - o.x, p.y - o.y);
   const byName = new Map<string, { x: number; y: number }[]>();
@@ -166,7 +167,8 @@ export function placeLabels(roads: RoadCand[], o: { x: number; y: number }, cell
     if (!n) continue;
     byName.set(n, [...(byName.get(n) ?? []), ...r.pts]);
   }
-  const order = [...byName.entries()].map(([name, pts]) => ({ name, pts: pts.slice().sort((a, b) => d(a) - d(b)) })).filter((r) => r.pts.length).sort((a, b) => d(a.pts[0]) - d(b.pts[0]));
+  const lead = first?.trim().toUpperCase();
+  const order = [...byName.entries()].map(([name, pts]) => ({ name, pts: pts.slice().sort((a, b) => d(a) - d(b)) })).filter((r) => r.pts.length).sort((a, b) => Number(b.name === lead) - Number(a.name === lead) || d(a.pts[0]) - d(b.pts[0]));
   const out: PlacedLabel[] = [];
   for (const r of order) {
     if (out.length >= max) break;

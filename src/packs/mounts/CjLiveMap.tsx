@@ -27,6 +27,7 @@ import { attachContours, contourStats, type CjContours } from './cjContours';
 import { CJ_CONTOUR_SRC } from '../carrier-jet/contours';
 import { bugPoint, cameraMode, cameraZoom, removeWhenPaused, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, compassSpeech, headingPair, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
 import { attachWxRadar, setWxScopeTint, WX_SRC } from './cjWxRadarLayer';
+import { NEAREST_ROAD_INIT, nearestRoadRadiusM, nearestRoadStep, type NearestRoadState, type RoadFeature } from '../carrier-jet/nearestRoad';
 import { getWxRadarStatus, radarAgeView, subscribeWxRadarStatus, type WxRadarAgeView } from '../carrier-jet/wxRadar';
 
 type Ml = typeof import('maplibre-gl');
@@ -232,23 +233,33 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
     const bp = c.radar ? scopeBugPoint(c.w, c.h) : bugPoint(c.w, c.h, c.northUp, c.northUp ? (c.heading ?? 0) : 0);
     obstacles.push({ x: bp.x - 9, y: bp.y - 9, w: 18, h: 18 });
     // OpenMapTiles keeps road names in `transportation_name` (no layer of ours draws it), so read the loaded tiles of
-    // that source-layer for the classes the labelled layers draw (primary / secondary / tertiary; trunk with primary).
+    // that source-layer: every named road for the road the car is on (nearestRoad.ts, any class: a residential street
+    // counts), and the classes the labelled layers draw (primary / secondary / tertiary; trunk) for the other label.
     let feats: { properties?: Record<string, unknown>; geometry: { type: string; coordinates: unknown } }[] = [];
     try {
-      feats = map.querySourceFeatures('ofm', { sourceLayer: 'transportation_name', filter: ['match', ['get', 'class'], LABEL_CLASSES, true, false] }) as unknown as typeof feats;
+      feats = map.querySourceFeatures('ofm', { sourceLayer: 'transportation_name' }) as unknown as typeof feats;
     } catch {
       feats = [];
     }
-    const roads = feats.flatMap((f) => {
+    const named: (RoadFeature & { major: boolean })[] = feats.flatMap((f) => {
       const name = String(f.properties?.name ?? f.properties?.['name:latin'] ?? '');
       if (!name) return [];
+      const cls = String(f.properties?.class ?? '');
       const lines = (f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.type === 'MultiLineString' ? f.geometry.coordinates : []) as [number, number][][];
-      return lines.map((ln) => ({ name, pts: densify(ln.map(([x, y]) => map.project([x, y])).map((p) => ({ x: p.x, y: p.y }))) }));
+      return [{ name, cls, lines, major: LABEL_CLASSES.includes(cls) }];
     });
-    const next = placeLabels(roads, o, { w: c.w, h: c.h }, obstacles, measure, CJ_MAP_MAX_STREET_LABELS);
+    // the road under the car: nearest named road at the latest fix (small radius, heading breaks ties, 2 s hold)
+    const car = easedPosition(fixes.current, performance.now(), true);
+    road.current = nearestRoadStep(road.current, named, car, c.heading, performance.now(), { radiusM: car ? nearestRoadRadiusM(map.getZoom(), car.lat) : 40 });
+    const onRoad = road.current.shown?.name ?? null;
+    const roads = named.filter((r) => r.major || r.name === onRoad).flatMap((r) => r.lines.map((ln) => ({ name: r.name, pts: densify(ln.map(([x, y]) => map.project([x, y])).map((p) => ({ x: p.x, y: p.y }))) })));
+    const next = placeLabels(roads, o, { w: c.w, h: c.h }, obstacles, measure, CJ_MAP_MAX_STREET_LABELS, 13, onRoad);
     stats.current.labels = { feats: feats.length, roads: roads.length, placed: next.length };
+    Object.assign(stats.current, { onRoad }); // harness: the road under the car
     setLabels((p) => (JSON.stringify(p) === JSON.stringify(next) ? p : next));
   };
+
+  const road = useRef<NearestRoadState>(NEAREST_ROAD_INIT);
 
   // --- create / pause / remove
   const removeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
