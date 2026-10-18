@@ -45,7 +45,7 @@ export function mapSquareSide(r: { mach: Box; compass: Box }): number {
 /**
  * Map-first DRIVE (Meghan's mock, ported). Host CSS (carrier-jet-v2.css, .cjm[data-cj-mapfirst='drive'])
  * moves the skin's VDI into column 3 of the top row (beside MACH); ACCEL goes under it in the second row (column 3,
- * beside a narrower AOA/ENG in columns 1-2). MAP then spans the centre column over both rows (VDI's old cell + its own,
+ * beside a narrower AOA/ENG in columns 1-2; since Oct 17 COMPASS takes that narrow cell and ACCEL the wide bottom-right one). MAP then spans the centre column over both rows (VDI's old cell + its own,
  * including the top key row it no longer needs). ACCEL is measured from VDI's column and COMPASS's row.
  */
 export function board2CellsMapFirst(r: {
@@ -56,7 +56,9 @@ export function board2CellsMapFirst(r: {
   return {
     speed: r.speed,
     mach: { left: r.mach.left, top: r.mach.top, width: r.mach.width, height: r.rpm.top + r.rpm.height - r.mach.top },
-    accel: { left: r.vdi.left, top: r.compass.top, width: r.vdi.width, height: r.compass.height },
+    // COMPASS ⇄ ACCEL swap (Oct 17): the skin's COMPASS is moved (CSS) into column 3 of the bottom row; ACCEL (host)
+    // takes the bottom-right cell under WING SWEEP (WING SWEEP's column, COMPASS's row)
+    accel: { left: r.sweep.left, top: r.compass.top, width: r.sweep.width, height: r.compass.height },
     vdi: r.vdi,
     sweep: r.sweep,
     eng: r.eng,

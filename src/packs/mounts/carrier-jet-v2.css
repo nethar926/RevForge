@@ -302,6 +302,11 @@
 .cjm[data-cjm-v2][data-cj-mapfirst='drive'] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-abslot { grid-column: 1 / 3; }
 .cjm[data-cjm-v2][data-cj-mapfirst='drive'] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-mid > .cj-plab:not(.cj-plab-2) { grid-column: 3; grid-row: 1; }
 .cjm[data-cjm-v2][data-cj-mapfirst='drive'] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-mid > div:nth-of-type(1) { grid-column: 3; grid-row: 2 / 4; }
+/* COMPASS ⇄ ACCEL (Oct 17): COMPASS (skin) + its label into the narrow column-3 bottom cell; ACCEL (host) takes the
+   wide bottom-right cell (geometry.board2CellsMapFirst). The right bank (DRIVE / MORE) stays bottom-right (edgeKeys
+   rightBankFor). The skin's compass art scales in place; a narrow variant is Meghan's (skin). */
+.cjm[data-cjm-v2][data-cj-mapfirst='drive'] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-mid > div:nth-of-type(2) { grid-column: 3; grid-row: 6; }
+.cjm[data-cjm-v2][data-cj-mapfirst='drive'] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-mid > .cj-plab-2 { grid-column: 3; grid-row: 5; }
 /* the narrower AOA · ENG cell: a little more of it to the AOA tape, so the AOA legend's 773 left shift (above) stays
    inside the tape's letterbox; the RPM / AB / LOAD strips are height-limited and keep their size */
 .cjm[data-cjm-v2][data-cj-mapfirst='drive'] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-eng { grid-template-columns: minmax(0, 180fr) minmax(0, 250fr); }
