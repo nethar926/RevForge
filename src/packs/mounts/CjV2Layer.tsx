@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type RefObject } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { BezelKey } from '../../skins/carrier-jet/parts/index';
 import { useCarrierJetVariant, writeCarrierJetVariant, type CarrierJetVariant } from '../../skins/carrier-jet';
 import ID from '../carrier-jet.identity';
@@ -7,7 +7,11 @@ import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompass } from '../heading';
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
-import { board2Cells, board2CellsMapFirst, mapSquareSide, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
+import { mapSquareSide, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
+import { CJ_GRID, type CjAnchors } from '../carrier-jet/cells';
+import { GridLayer } from '../grid/GridLayer';
+import { rectStyle, useGrid, useGridMeasure, useSystemReducedMotion } from '../grid/useGrid';
+import { railTop } from '../grid/rail';
 import { applyMapKey, getMapView, radarCue, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
 import { cjRadarScopeAria } from '../../skins/carrier-jet/map/radarAria';
 import { getCjPrefs, reducedMotion, setCjPrefs, subscribeCjPrefs, type CjPrefs } from '../carrier-jet/cjPrefs';
@@ -77,14 +81,6 @@ function useWxPoller(active: boolean) {
   }, [active]);
 }
 
-const sysReduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-const subSysReduced = (f: () => void) => {
-  if (typeof matchMedia === 'undefined') return () => undefined;
-  const m = matchMedia('(prefers-reduced-motion: reduce)');
-  m.addEventListener?.('change', f);
-  return () => m.removeEventListener?.('change', f);
-};
-
 /** Guarded jet cue (engine playJetCue?.(); silent on the base engine). Switch sound off → no cue. */
 function cue(c: Extract<PackEngineCommand, { type: 'jet-cue' }>['cue']) {
   if (!getCjPrefs().switchSound && c !== 'radarOn') return;
@@ -102,78 +98,66 @@ interface Geo {
   /** Map-first Drive: the host is in the map-first DRIVE grid (.cjm[data-cj-mapfirst='drive']). */
   mapFirst?: boolean;
 }
-const rel = (r: DOMRect, o: DOMRect): Box => ({ left: r.left - o.left, top: r.top - o.top, width: r.width, height: r.height });
-
-/** `selfRef` is the layer's own root; the host (.cjm) is its parent (a parent's ref is not attached yet when a
- * child's layout effect first runs, so the mount's ref can't be read here). */
-function useGeo(selfRef: RefObject<HTMLElement | null>, layout: RfLayout): Geo | null {
-  const [geo, setGeo] = useState<Geo | null>(null);
-  useLayoutEffect(() => {
-    const host = selfRef.current?.parentElement ?? null;
-    if (!host) return;
-    let queued = false;
-    let dead = false;
-    const read = () => {
-      queued = false;
-      if (dead) return;
-      const root = host.querySelector<HTMLElement>('.cj');
-      if (!root) return setGeo(null);
-      const o = host.getBoundingClientRect();
-      const q = (s: string) => root.querySelector<HTMLElement>(s)?.getBoundingClientRect();
-      const board2 = root.dataset.variant === 'carrier-jet' && (root.dataset.layout === 'reflow' || root.dataset.layout === 'full') && (layout === 'board' || layout === 'window');
-      const board = rel(root.getBoundingClientRect(), o);
-      let cells: Cells | null = null;
-      let gap = 4;
-      let mapFirst = false;
-      const mf = board2 && host.dataset.cjMapfirst === 'drive';
-      // Square MAP: size the MAP column from the two-row span (rows only, so one pass settles), then measure.
-      // Not map-first: drop the side so Board 2 / phones keep their fr column.
-      if (mf) {
-        const m0 = q('.cj-a-gr > :first-child'), c0 = root.querySelectorAll<HTMLElement>(':scope .cj-a-mid > div.cj-crt')[1]?.getBoundingClientRect();
-        if (m0 && c0) {
-          const side = `${mapSquareSide({ mach: rel(m0, o), compass: rel(c0, o) })}px`;
-          if (host.style.getPropertyValue('--cjv2-map-side') !== side) host.style.setProperty('--cjv2-map-side', side);
-        }
-      } else if (host.style.getPropertyValue('--cjv2-map-side')) host.style.removeProperty('--cjv2-map-side');
-      if (board2) {
-        const speed = q('.cj-a-speed'), mach = q('.cj-a-gr > :first-child'), rpm = q('.cj-a-gr > :last-child');
-        const mids = root.querySelectorAll<HTMLElement>(':scope .cj-a-mid > div.cj-crt');
-        const vdi = mids[0]?.getBoundingClientRect(), compass = mids[1]?.getBoundingClientRect();
-        const sweep = q('.cj-a-sweep'), eng = q('.cj-a-eng');
-        if (speed && mach && rpm && vdi && compass && sweep && eng) {
-          mapFirst = mf;
-          cells = (mapFirst ? board2CellsMapFirst : board2Cells)({ speed: rel(speed, o), rpm: rel(rpm, o), mach: rel(mach, o), vdi: rel(vdi, o), sweep: rel(sweep, o), eng: rel(eng, o), compass: rel(compass, o) });
-          const body = root.querySelector<HTMLElement>('.cj-body');
-          gap = body ? parseFloat(getComputedStyle(body).rowGap) || 4 : 4;
-        }
-      }
-      setGeo((p) => {
-        const n = { board2: !!cells, cells, board, gap, mapFirst };
-        return p && JSON.stringify(p) === JSON.stringify(n) ? p : n;
-      });
-    };
-    // microtask, not rAF: measured after the DOM change settles, and works under paused animation clocks
-    const sched = () => {
-      if (queued) return;
-      queued = true;
-      queueMicrotask(read);
-    };
-    read();
-    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(sched);
-    ro?.observe(host);
-    const mo = typeof MutationObserver === 'undefined' ? null : new MutationObserver(sched);
-    mo?.observe(host, { subtree: true, attributes: true, attributeFilter: ['data-variant', 'data-layout', 'class', 'data-cj-mapfirst'], childList: true });
-    window.addEventListener('resize', sched);
-    return () => {
-      ro?.disconnect();
-      mo?.disconnect();
-      window.removeEventListener('resize', sched);
-      dead = true;
-    };
-  }, [selfRef, layout]);
-  return geo;
+/** What the host measures: the board, the strip gap and (Board 2) the seven skin anchors CJ_GRID derives its cells from. */
+interface Measured {
+  board: Box;
+  gap: number;
+  mapFirst: boolean;
+  anchors: CjAnchors | null;
 }
-const boxStyle = (b: Box): CSSProperties => ({ left: b.left, top: b.top, width: b.width, height: b.height });
+const rel = (r: DOMRect, o: DOMRect): Box => ({ left: r.left - o.left, top: r.top - o.top, width: r.width, height: r.height });
+/** Re-measure on these attribute changes under the host (look / layout / map-first swaps). */
+const GEO_OBSERVE = { attributeFilter: ['data-variant', 'data-layout', 'class', 'data-cj-mapfirst'] };
+
+/** Read the skin's Board 2 anchors off the host (.cjm). Pure DOM reads, plus the square-MAP column it sets first. */
+function measureCj(host: HTMLElement, layout: RfLayout): Measured | null {
+  const root = host.querySelector<HTMLElement>('.cj');
+  if (!root) return null;
+  const o = host.getBoundingClientRect();
+  const q = (s: string) => root.querySelector<HTMLElement>(s)?.getBoundingClientRect();
+  const board2 = root.dataset.variant === 'carrier-jet' && (root.dataset.layout === 'reflow' || root.dataset.layout === 'full') && (layout === 'board' || layout === 'window');
+  const board = rel(root.getBoundingClientRect(), o);
+  let anchors: CjAnchors | null = null;
+  let gap = 4;
+  let mapFirst = false;
+  const mf = board2 && host.dataset.cjMapfirst === 'drive';
+  // Square MAP: size the MAP column from the two-row span (rows only, so one pass settles), then measure.
+  // Not map-first: drop the side so Board 2 / phones keep their fr column.
+  if (mf) {
+    const m0 = q('.cj-a-gr > :first-child'), c0 = root.querySelectorAll<HTMLElement>(':scope .cj-a-mid > div.cj-crt')[1]?.getBoundingClientRect();
+    if (m0 && c0) {
+      const side = `${mapSquareSide({ mach: rel(m0, o), compass: rel(c0, o) })}px`;
+      if (host.style.getPropertyValue('--cjv2-map-side') !== side) host.style.setProperty('--cjv2-map-side', side);
+    }
+  } else if (host.style.getPropertyValue('--cjv2-map-side')) host.style.removeProperty('--cjv2-map-side');
+  if (board2) {
+    const speed = q('.cj-a-speed'), mach = q('.cj-a-gr > :first-child'), rpm = q('.cj-a-gr > :last-child');
+    const mids = root.querySelectorAll<HTMLElement>(':scope .cj-a-mid > div.cj-crt');
+    const vdi = mids[0]?.getBoundingClientRect(), compass = mids[1]?.getBoundingClientRect();
+    const sweep = q('.cj-a-sweep'), eng = q('.cj-a-eng');
+    if (speed && mach && rpm && vdi && compass && sweep && eng) {
+      mapFirst = mf;
+      anchors = { speed: rel(speed, o), rpm: rel(rpm, o), mach: rel(mach, o), vdi: rel(vdi, o), sweep: rel(sweep, o), eng: rel(eng, o), compass: rel(compass, o) };
+      const body = root.querySelector<HTMLElement>('.cj-body');
+      gap = body ? parseFloat(getComputedStyle(body).rowGap) || 4 : 4;
+    }
+  }
+  return { board, gap, mapFirst, anchors };
+}
+
+/**
+ * The layer's geometry on the shared grid: the host measures the skin's anchors (useGridMeasure; `selfRef` is the
+ * layer's own root, the host .cjm its parent) and CJ_GRID resolves the eight cells for the live layout
+ * (board2Cells / board2CellsMapFirst; phones: none).
+ */
+function useGeo(selfRef: RefObject<HTMLElement | null>, layout: RfLayout): Geo | null {
+  const read = useCallback((host: HTMLElement) => measureCj(host, layout), [layout]);
+  const m = useGridMeasure(selfRef, read, GEO_OBSERVE);
+  const ctx = useMemo(() => (m?.anchors ? { anchors: m.anchors, mapFirst: m.mapFirst } : null), [m]);
+  const cells = useGrid(CJ_GRID, layout, ctx);
+  return useMemo(() => (m ? { board2: !!cells, cells, board: m.board, gap: m.gap, mapFirst: m.mapFirst } : null), [m, cells]);
+}
+const boxStyle = rectStyle;
 
 /** A host cell header. CONFIG open: `header` = the page under it (configHeaders); '' = blank, same box (zero shift). */
 function CellLab({ text, header }: { text: string; header?: string }) {
@@ -368,7 +352,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
   const shell = useSyncExternalStore(onPackShellState, getPackShellState, getPackShellState);
   const compass = useSyncExternalStore(subscribeCompass, getCompassSnapshot, getCompassSnapshot);
   const preferTaps = useSyncExternalStore(subscribePreferTaps, getPreferTaps, getPreferTaps);
-  const sys = useSyncExternalStore(subSysReduced, sysReduced, () => false);
+  const sys = useSystemReducedMotion();
   const [look] = useCarrierJetVariant();
   const reduced = reducedMotion(prefs, sys || !motion);
   const [say, setSay] = useState('');
@@ -515,7 +499,8 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
 
   const wxValue = useWxValue();
   useWxPoller(!!geo?.board2 && !phone);
-  if (!geo) return <div ref={selfRef} className="cjv2" />;
+  // not measured yet: GridLayer renders the bare root (className only) so the host can be measured
+  if (!geo) return <GridLayer ref={selfRef} className="cjv2" spec={CJ_GRID} layout={layout} cells={null} ready={false} reduced={reduced} />;
   const cells = geo.cells;
   const tileFor = (cell: CellId) => {
     const t = paged.tiles[order.indexOf(cell)];
@@ -525,8 +510,10 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
   const edge = geo.board2 && cells && !phone;
   // weather: Board 2 only (MATRIX look), in the COMPASS cell's top-left corner
   const wx = geo.board2 && !phone ? wxView(wxValue, oatTempUnit(prefs)) : null;
+  // edge-key rails (grid rail slots): every key cell; the drive window drops the top row's strips but SPEED's (they sit in the ENG strip)
+  const railCells = KEY_CELLS.filter((c) => !(layout === 'window' && ((geo.mapFirst ? TOP_CELLS_MAP_FIRST : TOP_CELLS).includes(c) && c !== 'speed' || c === 'eng')));
   return (
-    <div ref={selfRef} className="cjv2" data-config={cfg.open || undefined} data-hdr-sweep={hdr.sweep !== undefined || undefined} data-hdr-compass={hdr.compass !== undefined || undefined} data-motion={reduced ? 'static' : 'live'}>
+    <GridLayer ref={selfRef} className="cjv2" spec={CJ_GRID} layout={layout} cells={cells} ready reduced={reduced} railCells={edge ? railCells : []} data-config={cfg.open || undefined} data-hdr-sweep={hdr.sweep !== undefined || undefined} data-hdr-compass={hdr.compass !== undefined || undefined}>
       {cells && (
         <>
           <AccelCell box={cells.accel} demo={demo} reduced={reduced} header={hdr.accel} />
@@ -547,14 +534,14 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
         </div>
       )}
       {edge &&
-        KEY_CELLS.filter((c) => !(layout === 'window' && ((geo.mapFirst ? TOP_CELLS_MAP_FIRST : TOP_CELLS).includes(c) && c !== 'speed' || c === 'eng'))).map((cell) => {
+        railCells.map((cell) => {
           // drive window: SPEED's keys sit in the ENG strip (no top key row; see carrier-jet-v2.css)
           const b = layout === 'window' && cell === 'speed' ? cells.eng : cells[cell];
           const kctx = { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(order.map((c) => [c, tileFor(c)])), subs: paged.subs } : null, wx: { on: wxRadar, slot: wxSlot(cells.map.width, view) }, bank };
           const n = stripCount(cell, b.width, kctx);
           const keys = cellKeys(cell, n, kctx);
           const xs = keyXs(b, n);
-          const top = b.top + b.height + geo.gap;
+          const top = railTop(b, geo.gap);
           return (
             <div key={cell} className="cjv2-keys" data-cell={cell} {...(keys.some((k) => k?.legend) ? { role: 'group', 'aria-label': `${(hdr as Partial<Record<CellId, string>>)[cell]?.toLowerCase() || cell} keys` } : { 'aria-hidden': true })}>
               {keys.map((k, i) => (
@@ -592,6 +579,6 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
         );
       })()}
       <p className="cjv2-say" role="status" aria-live="polite">{say}</p>
-    </div>
+    </GridLayer>
   );
 }

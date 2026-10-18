@@ -2,6 +2,9 @@
  * Carrier Jet v2 board geometry (framework; pure). The skin's cells are re-gridded by host CSS (carrier-jet-v2.css);
  * the host layer draws ACCEL, MAP, the edge keys and CONFIG over them, positioned from the measured skin cells.
  */
+import { railCount, railXs } from '../grid/rail.ts';
+
+/** Same shape as the shared grid's Rect (packs/grid/contract.ts). */
 export interface Box { left: number; top: number; width: number; height: number }
 export type CellId = 'speed' | 'mach' | 'accel' | 'vdi' | 'sweep' | 'eng' | 'map' | 'compass';
 export const TOP_CELLS: readonly CellId[] = ['speed', 'mach', 'accel', 'vdi', 'sweep'];
@@ -74,14 +77,13 @@ export const KEY_W = 52;
 export const KEY_H = 66;
 export const KEY_GAP = 4;
 /** Keys per cell by width (up to 4, or `max`; narrow cells get fewer, never 0). */
+const KEY = { w: KEY_W, h: KEY_H, gap: KEY_GAP };
 export function keyCount(width: number, max = 4): number {
-  return Math.max(1, Math.min(max, Math.floor((width + KEY_GAP) / (KEY_W + KEY_GAP))));
+  return railCount(width, KEY, max);
 }
-/** Left x of each key, centred under the cell. */
+/** Left x of each key, centred under the cell (the shared grid's rail slots). */
 export function keyXs(cell: Box, n: number): number[] {
-  const total = n * KEY_W + (n - 1) * KEY_GAP;
-  const x0 = cell.left + (cell.width - total) / 2;
-  return Array.from({ length: n }, (_, i) => Math.round(x0 + i * (KEY_W + KEY_GAP)));
+  return railXs(cell, n, KEY);
 }
 
 /** Overlap area of two boxes (gate helper). */
