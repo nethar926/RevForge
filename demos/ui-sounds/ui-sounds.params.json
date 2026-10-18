@@ -1,0 +1,856 @@
+{
+  "version": 1,
+  "sampleRate": 48000,
+  "master": {
+    "highpass": {
+      "f": 35,
+      "Q": 0.7071
+    },
+    "lowpass": [
+      {
+        "f": 7000,
+        "Q": 0.7071
+      },
+      {
+        "f": 7000,
+        "Q": 0.7071
+      }
+    ],
+    "peakDbfs": -6.0,
+    "loudnessWindow": 0.025,
+    "loudnessHighpassHz": 150,
+    "fadeIn": 0.0005,
+    "fadeOut": 0.01,
+    "leadIn": 0.002,
+    "sheetGap": 0.6
+  },
+  "sounds": {
+    "toggle-on": {
+      "label": "Toggle switch flip ON",
+      "length": 0.13,
+      "match": true,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 210,
+          "f1": 120,
+          "sweep_tau": 0.006,
+          "tau": 0.008,
+          "gain": 0.45
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.0002,
+          "tau": 0.0012,
+          "gain": 1.0,
+          "seed": 11,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 3300,
+              "Q": 4.0
+            }
+          ]
+        },
+        {
+          "type": "noise",
+          "t0": 0.0055,
+          "attack": 0.0002,
+          "tau": 0.0009,
+          "gain": 0.55,
+          "seed": 12,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 2450,
+              "Q": 6.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0055,
+          "attack": 0.0002,
+          "modes": [
+            [
+              1870,
+              0.028,
+              0.1
+            ],
+            [
+              3410,
+              0.018,
+              0.06
+            ],
+            [
+              5230,
+              0.009,
+              0.03
+            ]
+          ]
+        }
+      ]
+    },
+    "toggle-off": {
+      "label": "Toggle switch flip OFF (lower, softer)",
+      "length": 0.12,
+      "match": true,
+      "trimDb": -2.0,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 175,
+          "f1": 100,
+          "sweep_tau": 0.006,
+          "tau": 0.009,
+          "gain": 0.45
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.0003,
+          "tau": 0.0016,
+          "gain": 0.9,
+          "seed": 21,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 2650,
+              "Q": 3.0
+            }
+          ]
+        },
+        {
+          "type": "noise",
+          "t0": 0.0065,
+          "attack": 0.0003,
+          "tau": 0.0011,
+          "gain": 0.45,
+          "seed": 22,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 2050,
+              "Q": 5.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0065,
+          "attack": 0.0003,
+          "modes": [
+            [
+              1590,
+              0.022,
+              0.07
+            ],
+            [
+              2900,
+              0.014,
+              0.04
+            ],
+            [
+              4450,
+              0.007,
+              0.02
+            ]
+          ]
+        }
+      ]
+    },
+    "rotary-tick": {
+      "label": "Rotary detent tick (single)",
+      "length": 0.05,
+      "match": true,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 380,
+          "f1": 260,
+          "sweep_tau": 0.002,
+          "tau": 0.003,
+          "gain": 0.25
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.00015,
+          "tau": 0.0007,
+          "gain": 1.0,
+          "seed": 31,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 4100,
+              "Q": 5.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0,
+          "attack": 0.00015,
+          "modes": [
+            [
+              2870,
+              0.006,
+              0.08
+            ],
+            [
+              5060,
+              0.004,
+              0.035
+            ]
+          ]
+        }
+      ]
+    },
+    "rotary-sweep": {
+      "label": "Rotary sweep, 6 detent ticks (hand-turned timing)",
+      "length": 0.4,
+      "match": true,
+      "layers": [
+        {
+          "type": "sequence",
+          "of": "rotary-tick",
+          "times": [
+            0.0,
+            0.068,
+            0.131,
+            0.19,
+            0.252,
+            0.322
+          ],
+          "detune": [
+            1.0,
+            1.015,
+            0.99,
+            1.02,
+            0.985,
+            1.005
+          ],
+          "gains": [
+            1.0,
+            0.9,
+            0.95,
+            0.88,
+            0.93,
+            0.85
+          ]
+        }
+      ]
+    },
+    "magnetic-snap": {
+      "label": "Magnetic snap into detent",
+      "length": 0.12,
+      "match": true,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 150,
+          "f1": 85,
+          "sweep_tau": 0.008,
+          "tau": 0.013,
+          "gain": 0.8
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.0003,
+          "tau": 0.0022,
+          "gain": 0.8,
+          "seed": 41,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 1450,
+              "Q": 2.0
+            }
+          ]
+        },
+        {
+          "type": "noise",
+          "t0": 0.0004,
+          "attack": 0.0001,
+          "tau": 0.0006,
+          "gain": 0.35,
+          "seed": 42,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 3800,
+              "Q": 3.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0,
+          "attack": 0.0003,
+          "modes": [
+            [
+              960,
+              0.016,
+              0.06
+            ],
+            [
+              2210,
+              0.008,
+              0.02
+            ]
+          ]
+        }
+      ]
+    },
+    "guard-lift": {
+      "label": "Spring-loaded guard cover lift (release click + open stop + spring)",
+      "length": 0.15,
+      "match": true,
+      "layers": [
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.0002,
+          "tau": 0.0009,
+          "gain": 0.55,
+          "seed": 51,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 3100,
+              "Q": 4.0
+            }
+          ]
+        },
+        {
+          "type": "thump",
+          "t0": 0.024,
+          "f0": 260,
+          "f1": 170,
+          "sweep_tau": 0.005,
+          "tau": 0.007,
+          "gain": 0.4
+        },
+        {
+          "type": "noise",
+          "t0": 0.024,
+          "attack": 0.0002,
+          "tau": 0.0015,
+          "gain": 1.0,
+          "seed": 52,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 1900,
+              "Q": 3.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.024,
+          "attack": 0.0002,
+          "modes": [
+            [
+              1320,
+              0.04,
+              0.05
+            ],
+            [
+              2470,
+              0.03,
+              0.035
+            ],
+            [
+              3890,
+              0.015,
+              0.015
+            ]
+          ]
+        }
+      ]
+    },
+    "guard-close": {
+      "label": "Guard cover close (drop + latch)",
+      "length": 0.12,
+      "match": true,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 170,
+          "f1": 105,
+          "sweep_tau": 0.007,
+          "tau": 0.014,
+          "gain": 0.7
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.0003,
+          "tau": 0.0024,
+          "gain": 0.9,
+          "seed": 61,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 1400,
+              "Q": 2.5
+            }
+          ]
+        },
+        {
+          "type": "noise",
+          "t0": 0.012,
+          "attack": 0.0002,
+          "tau": 0.0008,
+          "gain": 0.6,
+          "seed": 62,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 3600,
+              "Q": 5.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.012,
+          "attack": 0.0002,
+          "modes": [
+            [
+              2150,
+              0.012,
+              0.04
+            ],
+            [
+              3720,
+              0.007,
+              0.02
+            ]
+          ]
+        }
+      ]
+    },
+    "lever-clunk": {
+      "label": "Heavy throttle/gear lever into gate",
+      "length": 0.18,
+      "match": true,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 100,
+          "f1": 55,
+          "sweep_tau": 0.012,
+          "tau": 0.03,
+          "gain": 1.0
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.0004,
+          "tau": 0.006,
+          "gain": 0.9,
+          "seed": 71,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 620,
+              "Q": 1.5
+            }
+          ]
+        },
+        {
+          "type": "noise",
+          "t0": 0.0008,
+          "attack": 0.0002,
+          "tau": 0.002,
+          "gain": 0.5,
+          "seed": 72,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 2200,
+              "Q": 3.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0,
+          "attack": 0.0004,
+          "modes": [
+            [
+              410,
+              0.035,
+              0.12
+            ],
+            [
+              1130,
+              0.024,
+              0.06
+            ],
+            [
+              2650,
+              0.011,
+              0.025
+            ]
+          ]
+        },
+        {
+          "type": "thump",
+          "t0": 0.022,
+          "f0": 120,
+          "f1": 70,
+          "sweep_tau": 0.006,
+          "tau": 0.012,
+          "gain": 0.25
+        },
+        {
+          "type": "noise",
+          "t0": 0.022,
+          "attack": 0.0003,
+          "tau": 0.0015,
+          "gain": 0.18,
+          "seed": 73,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 1800,
+              "Q": 3.0
+            }
+          ]
+        }
+      ]
+    },
+    "button-press": {
+      "label": "Backlit push-button press (tight, damped)",
+      "length": 0.06,
+      "match": true,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 300,
+          "f1": 240,
+          "sweep_tau": 0.002,
+          "tau": 0.004,
+          "gain": 0.5
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.0002,
+          "tau": 0.0008,
+          "gain": 1.0,
+          "seed": 81,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 2400,
+              "Q": 2.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0,
+          "attack": 0.0002,
+          "modes": [
+            [
+              1620,
+              0.005,
+              0.05
+            ]
+          ]
+        }
+      ]
+    },
+    "button-release": {
+      "label": "Backlit push-button release (higher, lighter)",
+      "length": 0.05,
+      "match": true,
+      "trimDb": -3.0,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 360,
+          "f1": 300,
+          "sweep_tau": 0.002,
+          "tau": 0.003,
+          "gain": 0.35
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.0002,
+          "tau": 0.0006,
+          "gain": 1.0,
+          "seed": 91,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 3100,
+              "Q": 2.5
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0,
+          "attack": 0.0002,
+          "modes": [
+            [
+              1980,
+              0.004,
+              0.04
+            ]
+          ]
+        }
+      ]
+    },
+    "relay-click": {
+      "label": "Relay click (armature pull-in + contact bounce)",
+      "length": 0.06,
+      "match": true,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 520,
+          "f1": 420,
+          "sweep_tau": 0.001,
+          "tau": 0.002,
+          "gain": 0.25
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.00012,
+          "tau": 0.0005,
+          "gain": 1.0,
+          "seed": 101,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 4400,
+              "Q": 6.0
+            }
+          ]
+        },
+        {
+          "type": "noise",
+          "t0": 0.0018,
+          "attack": 0.0001,
+          "tau": 0.0004,
+          "gain": 0.5,
+          "seed": 102,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 3800,
+              "Q": 5.0
+            }
+          ]
+        },
+        {
+          "type": "noise",
+          "t0": 0.0036,
+          "attack": 0.0001,
+          "tau": 0.0003,
+          "gain": 0.2,
+          "seed": 103,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 3900,
+              "Q": 5.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0,
+          "attack": 0.00012,
+          "modes": [
+            [
+              3300,
+              0.008,
+              0.04
+            ],
+            [
+              6100,
+              0.004,
+              0.015
+            ]
+          ]
+        }
+      ]
+    },
+    "theme-powerup": {
+      "label": "Carousel theme power-up (soft relay + quiet electrical hum swell)",
+      "length": 1.1,
+      "match": false,
+      "peakDbfs": -8.0,
+      "layers": [
+        {
+          "type": "thump",
+          "t0": 0.0,
+          "f0": 420,
+          "f1": 330,
+          "sweep_tau": 0.001,
+          "tau": 0.0025,
+          "gain": 0.22
+        },
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.0002,
+          "tau": 0.0006,
+          "gain": 0.8,
+          "seed": 111,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 3600,
+              "Q": 4.0
+            }
+          ]
+        },
+        {
+          "type": "noise",
+          "t0": 0.0021,
+          "attack": 0.0001,
+          "tau": 0.0004,
+          "gain": 0.35,
+          "seed": 112,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 3200,
+              "Q": 4.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0,
+          "attack": 0.0002,
+          "modes": [
+            [
+              2750,
+              0.008,
+              0.03
+            ]
+          ]
+        },
+        {
+          "type": "hum",
+          "t0": 0.03,
+          "attack": 0.38,
+          "hold": 0.12,
+          "release": 0.52,
+          "base": 120,
+          "harmonics": [
+            [
+              1,
+              0.35
+            ],
+            [
+              2,
+              1.0
+            ],
+            [
+              3,
+              0.3
+            ],
+            [
+              4,
+              0.18
+            ],
+            [
+              6,
+              0.06
+            ]
+          ],
+          "gain": 0.014,
+          "seed": 113,
+          "noiseGain": 0.006,
+          "noiseFilters": [
+            {
+              "type": "bandpass",
+              "f": 480,
+              "Q": 1.2
+            }
+          ],
+          "filters": [
+            {
+              "type": "lowpass",
+              "f": 900,
+              "Q": 0.7071
+            }
+          ]
+        }
+      ]
+    },
+    "theme-crossfade-tick": {
+      "label": "Theme-switch crossfade tick (very short, quiet)",
+      "length": 0.035,
+      "match": false,
+      "peakDbfs": -16.0,
+      "layers": [
+        {
+          "type": "noise",
+          "t0": 0.0,
+          "attack": 0.00015,
+          "tau": 0.0004,
+          "gain": 1.0,
+          "seed": 121,
+          "filters": [
+            {
+              "type": "bandpass",
+              "f": 4800,
+              "Q": 4.0
+            }
+          ]
+        },
+        {
+          "type": "modes",
+          "t0": 0.0,
+          "attack": 0.00015,
+          "modes": [
+            [
+              3700,
+              0.004,
+              0.04
+            ]
+          ]
+        }
+      ]
+    }
+  },
+  "sheetOrder": [
+    "toggle-on",
+    "toggle-off",
+    "rotary-tick",
+    "rotary-sweep",
+    "magnetic-snap",
+    "guard-lift",
+    "guard-close",
+    "lever-clunk",
+    "button-press",
+    "button-release",
+    "relay-click",
+    "theme-powerup",
+    "theme-crossfade-tick"
+  ]
+}
