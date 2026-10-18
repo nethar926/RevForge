@@ -24,10 +24,10 @@ import type { useGeolocation } from "../hooks/useGeolocation";
 import type { UiPrefs } from "../hooks/useUiPrefs";
 import { AppearanceKnobs } from "../components/visuals/AppearanceKnobs";
 import { DriveDynamicsPanel } from "../components/visuals/DriveDynamicsPanel";
-import { sceneForId, drivetrainFor } from "./catalog";
+import { drivetrainFor } from "./catalog";
 import { ThemeStage } from "../themes/ThemeStage";
 import { ThemePicker } from "../themes/ThemePicker";
-import { LISTED_THEMES, SPLASH_BACKDROP_THEME, isThemeListed, themeForId } from "../themes/catalog";
+import { LISTED_THEMES, SPLASH_ACCENT, SPLASH_BACKDROP_THEME, isThemeListed, themeForId } from "../themes/catalog";
 import type { useThemes } from "../themes/useThemes";
 import { useVehicleMedia } from "./useVehicleMedia";
 import { LEGACY_MEDIA_OPT_IN_KEY, MEDIA_BUTTONS_KEY, readMediaButtons } from "./mediaActions";
@@ -147,7 +147,7 @@ export function ForgePage({
     [audio, userPatches, revision],
   );
   const config = useMemo(() => {
-    const base = drivetrainFor(patch, sceneForId("road-66"));
+    const base = drivetrainFor(patch);
     const topFromGarage = garage.active ? garage.active.topSpeedKph / 3.6 : undefined;
     const topFromPrefs = prefs.maxTopSpeedMph / 2.2369362920544; // mph → m/s
     return {
@@ -315,7 +315,10 @@ export function ForgePage({
   // theme's stage (and accent) render the road backdrop, then the pack backdrop/HUD takes
   // over. Was pack-preview builds only; since the Oct 8 catalogue trim every visible theme
   // is a pack (fresh users start on Night Pursuit), so this now applies on every build.
-  const stageTheme=!ignited&&packForThemeId(theme.id)?themeForId(SPLASH_BACKDROP_THEME):theme;
+  // Before IGNITION a pack's stage shows SPLASH_BACKDROP_THEME; null (Oct 18 2026) = no backdrop at all,
+  // only the plain .rev-viewport background. The splash chrome below is unchanged.
+  const splashBackdrop=!ignited&&!!packForThemeId(theme.id);
+  const stageTheme=splashBackdrop?(SPLASH_BACKDROP_THEME?themeForId(SPLASH_BACKDROP_THEME):null):theme;
   // Catalogue trim: RoadView scenes and the DashLab custom grid are hidden unless allowlisted.
   const atmospheresListed=LISTED_THEMES.some(t=>t.family==='RoadView');
   const dashLabListed=isThemeListed('custom-grid');
@@ -323,11 +326,11 @@ export function ForgePage({
   return (
     <div
       className="forge"
-      style={{ "--forge-accent": stageTheme.accent } as CSSProperties}
+      style={{ "--forge-accent": stageTheme?.accent ?? SPLASH_ACCENT } as CSSProperties}
     >
       <main className={`rev-viewport ${!ignited&&source==='demo'?'is-launch':''}`} style={{'--hud-scale':scale,'--hud-opacity':opacity} as CSSProperties}>
         <section className="rev-scene" aria-label="Full-screen dashboard">
-          <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={onTimeJump} timeJumpActive={timeJumpActive} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
+          {stageTheme&&<ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={onTimeJump} timeJumpActive={timeJumpActive} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>}
         </section>
         <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{garage.active?.name??theme.name}</small>}</div><button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button></header>
         {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>

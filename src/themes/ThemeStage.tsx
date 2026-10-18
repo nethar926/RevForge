@@ -35,7 +35,7 @@ function Rail({value,label,segmented=false}:{value:number;label:string;segmented
  return <div className={`skin-rail ${segmented?'segmented':''}`}><span>{label}</span><div className="rail-track">{segmented?Array.from({length:32},(_,i)=><i key={i} className={i/32<value?'lit':''}/>):<i style={{width:`${Math.max(0,Math.min(1,value))*100}%`}}/>}</div></div>;
 }
 export function ThemeStage({maxSpeedMps,fonts,widgets=defaultCluster,theme,state,simulation,redline,unit,demo,motion,running,gpsLabel='GPS waiting',atmosphereId,warningRpm,colors={},sceneColors,onTimeJump,lockStage,timeJumpActive}:Props) {
- const scene=useMemo(()=>{const original=sceneForId(atmosphereId??theme.sceneId??'road-66');return sceneColors?{...original,palette:{...original.palette,...sceneColors}}:original;},[atmosphereId,theme.sceneId,sceneColors]);
+ const scene=useMemo(()=>{const original=sceneForId(atmosphereId??theme.sceneId);return sceneColors?{...original,palette:{...original.palette,...sceneColors}}:original;},[atmosphereId,theme.sceneId,sceneColors]);
  const palette={...instrumentDefaults,accent:theme.accent,secondary:theme.secondary,...colors};
  const speed=state.speedMps*(unit==='kph'?3.6:2.236936), rpm=running?state.rpm:0;
  const rev=Math.max(0,Math.min(1,rpm/redline)), speedPct=Math.min(1,speed/speedScale(maxSpeedMps,unit));
@@ -53,7 +53,7 @@ export function ThemeStage({maxSpeedMps,fonts,widgets=defaultCluster,theme,state
  const telemetry=<div className="skin-telemetry"><div><small className="skin-descriptor">ENGINE RPM</small><b className="skin-number" data-testid="rpm">{Math.round(rpm).toLocaleString()}</b></div><div><small className="skin-descriptor">GEAR</small><b className="skin-number" data-testid="gear">{state.gear===0?'N':state.gear}</b></div><div><small className="skin-descriptor">LOAD</small><b className="skin-number">{Math.round(state.load*100)}<em>%</em></b></div></div>;
  const radar=<div className="skin-radar" aria-hidden="true"><i/><b/><span/></div>;
  return <div ref={stageRef} className={`theme-stage layout-${theme.layout} theme-${theme.id} ${spaceFont?'galactic-type':''} ${fullscreen?'is-fullscreen':''} ${!motion?'motion-off':''} ${running&&rpm>=(warningRpm??redline*.9)?'at-redline':''}`} style={style} data-theme-id={theme.id} data-skin={theme.id==='f14'?'aerospace-f14':undefined} data-drive-window={driveWindow?'true':undefined}>
-  {!fullscreen&&(theme.layout==='road'||atmosphereId)&&<><SceneCanvas scene={scene} simulation={simulation} motion={motion}/><div className="road-atmosphere"/>{['neon-drive','miami','alpine'].includes(atmosphereId??theme.sceneId!)&&<div className={`road-weather ${(atmosphereId??theme.sceneId)==='alpine'?'snow':''}`} aria-hidden="true"/>}<div className="road-stream" aria-hidden="true"/></>}
+  {!fullscreen&&(theme.layout==='road'||atmosphereId)&&<><SceneCanvas scene={scene} simulation={simulation} motion={motion}/><div className="road-atmosphere"/>{['violet-grid','pink-current','frostpass'].includes(atmosphereId??theme.sceneId!)&&<div className={`road-weather ${(atmosphereId??theme.sceneId)==='frostpass'?'snow':''}`} aria-hidden="true"/>}<div className="road-stream" aria-hidden="true"/></>}
   {!fullscreen&&<div className="skin-ambient" aria-hidden="true"/>}
   {!fullscreen&&<div className="skin-heading"><small>{theme.family} / {theme.group}</small><h2>{theme.name}</h2><span className="skin-descriptor">{theme.feature}</span></div>}
   <div className="skin-body">

@@ -11,13 +11,13 @@ import {ThemePicker} from './ThemePicker';
 import {ThemeStage} from './ThemeStage';
 import {LISTED_THEMES,resolveThemeId,themeForId} from './catalog';
 import {createSimulation} from '../forge/simulation';
-import {drivetrainFor,sceneForId} from '../forge/catalog';
+import {drivetrainFor} from '../forge/catalog';
 import '../forge/forge.css';
 interface Props {themes:ReturnType<typeof useThemes>;audio:ReturnType<typeof useAudioEngine>;userPatches:EnginePatch[];onSelect:(p:EnginePatch)=>void;onLoadCombination:(skinId:string,p:EnginePatch,atmosphereId?:string)=>void;}
 export function ExperienceBuilder({themes,audio,userPatches,onSelect,onLoadCombination}:Props) {
  const [preview,setPreview]=useState(.42),[name,setName]=useState(''),[message,setMessage]=useState('');
  const garage=useVehicleGarage();
- const patch=audio.getPatch()??BUILTIN_PATCHES[0],config={...drivetrainFor(patch,sceneForId('road-66')),...(garage.active?{topSpeedMps:garage.active.topSpeedKph/3.6}:{})};
+ const patch=audio.getPatch()??BUILTIN_PATCHES[0],config={...drivetrainFor(patch),...(garage.active?{topSpeedMps:garage.active.topSpeedKph/3.6}:{})};
  const simulation=useRef(createSimulation(config));
  const state={...createSimulation(config),rpm:config.idleRpm+preview*(config.redline-config.idleRpm),speedMps:preview*42,load:preview,gear:Math.max(1,Math.round(preview*(config.gears-1)+1)),distance:preview*1000};
  useEffect(()=>{simulation.current=state;});

@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { EnginePatch } from "../audio";
 import type { RevForgeVoiceConfig } from "./voiceTypes";
 import architectures from "./architectures.json";
-import { sceneForId, scenePatch } from "./catalog";
+import { voicePatchParts } from "./catalog";
 
 const controls: [keyof RevForgeVoiceConfig, string, number, number, number][] =
   [
@@ -51,7 +51,7 @@ export function NativeStudio({
   const update = (changes: Partial<RevForgeVoiceConfig>) => {
     const engine = { ...voice, ...changes };
     engine.shiftRpm = Math.min(engine.shiftRpm, engine.redline * 0.97);
-    const converted = scenePatch({ ...sceneForId("road-66"), engine });
+    const converted = voicePatchParts(engine);
     onChange({
       ...patch,
       kind: converted.kind,

@@ -12,7 +12,7 @@ import { renderLive, throughMaster, channels } from './live-render.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { OfflineAudioContext } = await import('node-web-audio-api');
-const ids = process.argv.slice(2).length ? process.argv.slice(2) : ['chrono-coupe', 'v8-rumble', 'ev-whine', 'aerospace-f14', 'night-pursuit', 'revforge-apex-v8'];
+const ids = process.argv.slice(2).length ? process.argv.slice(2) : ['chrono-coupe', 'v8-rumble', 'ev-whine', 'aerospace-f14', 'night-pursuit', 'revforge-ember-dusk'];
 const PROFILES = {
   idle: () => ({ speed: 0, throttle: 0, load: 0 }),
   cruise: () => ({ speed: 0.5, throttle: 0.35, load: 0.3 }),

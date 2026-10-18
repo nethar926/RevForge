@@ -1,19 +1,30 @@
 import packs from "./revforge-packs.json";
 import type { EnginePatch } from "../audio/types";
+import type { RevForgeVoiceConfig } from "./voiceTypes";
 import type { Drivetrain } from "./simulation";
+import { sceneLabel } from "./sceneLabels";
+import { RETIRED_SCENE_IDS } from "../packs/migrations";
 
-export type ScenePack = (typeof packs)[number];
-export const SCENES = packs;
-/** Legacy RevForge scene ids retired with Tie Fighter rename. */
-const RETIRED_SCENE_IDS: Record<string, string> = {
-  'tie-fighter': 'trenchlight',
-};
-export const sceneForId = (id: string) => {
-  const resolved = RETIRED_SCENE_IDS[id] ?? id;
+/** A scene preset: art + palette + voice from revforge-packs.json, display copy from sceneLabels.ts. */
+export type ScenePack = (typeof packs)[number] & { name: string; tagline: string };
+export const SCENES: ScenePack[] = packs.map((p) => ({ ...p, ...sceneLabel(p.id) }));
+/** Retired / legacy scene id → current scene (RETIRED_SCENE_IDS lives in packs/migrations.ts). */
+export const resolveSceneId = (id: string) => RETIRED_SCENE_IDS[id] ?? id;
+/** Scene for an id (retired ids resolve first); unknown or missing ids get the first scene. */
+export const sceneForId = (id: string | undefined) => {
+  const resolved = id ? resolveSceneId(id) : "";
   return SCENES.find((p) => p.id === resolved) ?? SCENES[0];
 };
-export function scenePatch(scene: ScenePack): EnginePatch {
-  const p = scene.engine;
+/**
+ * Scene-free default drivetrain (dribe cleanup, Oct 18 2026). Replaces the hard-coded default
+ * scene the four callers passed: drivetrainFor() never read the scene, and these are exactly the
+ * values it already used for non-RevForge ICE patches (6 gears, 3.31 final drive), which also match
+ * the retired default scene (6 gears, 3.31). The per-gear ratios are not stored on scenes: they come from
+ * simulation.gearRatio(), which for 6 gears gives 3.90 / 3.09 / 2.44 / 1.84 / 1.27 / 0.72.
+ */
+export const DEFAULT_DRIVETRAIN = { gears: 6, finalDrive: 3.31 } as const;
+/** kind / topology / params for a RevForge voice (no scene needed; NativeStudio re-tunes with this). */
+export function voicePatchParts(p: RevForgeVoiceConfig): Pick<EnginePatch, "kind" | "topology" | "params"> {
   const kind =
     p.voice === "electric"
       ? "ev-whine"
@@ -35,10 +46,6 @@ export function scenePatch(scene: ScenePack): EnginePatch {
               ? "i4-zip"
               : "v8-rumble";
   return {
-    revforge: { ...p },
-    version: 0,
-    id: `revforge-${scene.id}`,
-    name: scene.name,
     kind,
     topology,
     params: {
@@ -65,18 +72,26 @@ export function scenePatch(scene: ScenePack): EnginePatch {
       spoolPitch: 80 + p.turboPitch * 80,
       afterburn: p.growl,
     },
+  };
+}
+export function scenePatch(scene: ScenePack): EnginePatch {
+  const p = scene.engine;
+  const parts = voicePatchParts(p);
+  return {
+    revforge: { ...p },
+    version: 0,
+    id: `revforge-${scene.id}`,
+    name: scene.name,
+    ...parts,
     meta: {
       author: "DriveSynth × RevForge",
       blurb: scene.tagline,
-      tags: ["revforge", kind, scene.scene],
+      tags: ["revforge", parts.kind, scene.scene],
     },
   };
 }
 export const REVFORGE_PATCHES = SCENES.map(scenePatch);
-function baseDrivetrain(
-  patch: EnginePatch | undefined,
-  _scene: ScenePack,
-): Drivetrain {
+function baseDrivetrain(patch: EnginePatch | undefined): Drivetrain {
   if (patch?.revforge) {
     const original = patch.revforge;
     return {
@@ -101,14 +116,14 @@ function baseDrivetrain(
   return {
     idleRpm,
     redline,
-    gears: ice ? 6 : 1,
+    gears: ice ? DEFAULT_DRIVETRAIN.gears : 1,
     shiftRpm: redline * 0.9,
-    finalDrive: 3.31,
+    finalDrive: DEFAULT_DRIVETRAIN.finalDrive,
   };
 }
 
-export function drivetrainFor(patch:EnginePatch|undefined,scene:ScenePack):Drivetrain {
- const c=baseDrivetrain(patch,scene),p=patch?.params??{};
+export function drivetrainFor(patch:EnginePatch|undefined):Drivetrain {
+ const c=baseDrivetrain(patch),p=patch?.params??{};
  const finite=(v:unknown,fallback:number)=>Number.isFinite(Number(v))?Number(v):fallback;
  const max=Math.max(c.idleRpm+500,Math.min(18000,finite(p.maxRpm,c.redline)));
  const top= p.topSpeedKph===undefined?undefined:Math.max(40,Math.min(500,finite(p.topSpeedKph,240)))/3.6;

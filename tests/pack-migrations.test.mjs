@@ -61,10 +61,13 @@ test('idempotent; visible themes untouched; hidden road theme → Night Pursuit;
   localStorage.setItem(THEME, 'chrono-coupe');
   assert.equal(m.runPackPrefMigrations(), '');
   assert.equal(localStorage.getItem(THEME), 'chrono-coupe');
-  // Catalogue trim (Oct 8 2026): road-road-66 is hidden → Night Pursuit (was: left untouched).
-  localStorage.setItem(THEME, 'road-road-66');
-  assert.equal(m.runPackPrefMigrations(), '');
-  assert.equal(localStorage.getItem(THEME), 'night-pursuit');
+  // Catalogue trim (Oct 8 2026): RoadView themes are hidden → Night Pursuit (was: left untouched).
+  // Oct 18 2026: the default road theme is road-copper-mile; its retired id goes the same way.
+  for (const road of ['road-copper-mile', 'road-road-66']) {
+    localStorage.setItem(THEME, road);
+    assert.equal(m.runPackPrefMigrations(), '');
+    assert.equal(localStorage.getItem(THEME), 'night-pursuit', road);
+  }
   localStorage.setItem(THEME, rev('redir-thgin'));
   assert.equal(m.runPackPrefMigrations(), '');
   assert.equal(localStorage.getItem(THEME), 'night-pursuit');
@@ -75,11 +78,12 @@ test('saved combinations on retired saffron themes move to stellar-helm', () => 
   localStorage.setItem('drivesynth.combinations.v1', JSON.stringify([
     { id: 'a', name: 'A', skinId: 'saffron-command', sound: { params: {} } },
     { id: 'b', name: 'B', skinId: rev('sdlrow-wen'), sound: { params: {} } },
-    { id: 'c', name: 'C', skinId: 'road-road-66', sound: { params: {} } },
+    { id: 'c', name: 'C', skinId: 'road-copper-mile', sound: { params: {} } },
+    { id: 'd', name: 'D', skinId: 'road-road-66', sound: { params: {} } },
   ]));
   m.runPackPrefMigrations();
   const combos = JSON.parse(localStorage.getItem('drivesynth.combinations.v1'));
   // Catalogue trim (Oct 8 2026): the hidden road theme combination now loads Night Pursuit.
-  assert.deepEqual(combos.map((c) => c.skinId), ['stellar-helm', 'stellar-helm', 'night-pursuit']);
+  assert.deepEqual(combos.map((c) => c.skinId), ['stellar-helm', 'stellar-helm', 'night-pursuit', 'night-pursuit']);
   assert.deepEqual(JSON.parse(localStorage.getItem(EXP)), ['stellar-helm']);
 });

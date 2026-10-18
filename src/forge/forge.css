@@ -608,104 +608,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
-.forge-scene-card {
-  text-align: left;
-  padding: 0;
-  border: 1px solid var(--line) !important;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #1a1d20;
-  transition:
-    border-color 0.2s,
-    transform 0.2s;
-}
-.forge-scene-card:hover {
-  transform: translateY(-3px);
-}
-.forge-scene-card.selected {
-  border-color: var(--card-accent) !important;
-}
-.forge-mini-art {
-  height: 84px;
-  background: linear-gradient(180deg, var(--card-top), var(--card-bottom));
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-}
-.forge-mini-sun {
-  position: absolute;
-  width: 25px;
-  height: 25px;
-  border-radius: 50%;
-  background: var(--card-accent);
-  left: 60%;
-  top: 20px;
-  box-shadow: 0 0 35px var(--card-accent);
-}
-.forge-mini-road {
-  position: absolute;
-  bottom: 0;
-  left: 15%;
-  width: 70%;
-  height: 55%;
-  background: linear-gradient(
-    90deg,
-    #1b2228 49%,
-    var(--card-accent) 50%,
-    #1b2228 51%
-  );
-  clip-path: polygon(48% 0, 52% 0, 100% 100%, 0 100%);
-}
-.art-grid {
-  background:
-    linear-gradient(0deg, #e452ed30, transparent),
-    repeating-linear-gradient(90deg, transparent 0 39px, #68d6eb30 40px 41px),
-    linear-gradient(180deg, var(--card-top), #25214a);
-}
-.art-trench {
-  background:
-    repeating-linear-gradient(90deg, transparent 0 39px, #59ff6920 40px 41px),
-    linear-gradient(180deg, #080d14, #1c3330);
-}
-.art-trench .forge-mini-sun {
-  width: 70px;
-  height: 2px;
-  transform: rotate(-20deg);
-  border-radius: 0;
-  left: 15%;
-  top: 40px;
-}
-.art-alpine:before {
-  content: "";
-  position: absolute;
-  inset: 15px 0 0;
-  background: #92a5ae;
-  clip-path: polygon(0 100%, 20% 20%, 35% 75%, 55% 0, 100% 100%);
-}
-.art-alpine .forge-mini-sun {
-  background: #d5e4e6;
-  box-shadow: none;
-  left: 75%;
-  width: 18px;
-  height: 18px;
-}
-.forge-scene-card-label {
-  display: flex;
-  justify-content: space-between;
-  padding: 13px 15px;
-  align-items: center;
-}
-.forge-scene-card-label small {
-  display: block;
-  font-size: 7px;
-  letter-spacing: 1.3px;
-  color: #8c9798;
-  margin-bottom: 5px;
-}
-.forge-scene-card-label strong {
-  font-size: 13px;
-  font-weight: 500;
-}
+
 .forge-card-arrow {
   font-size: 16px;
   color: #8c9798;
@@ -911,9 +814,6 @@
   .forge-world {
     min-height: 580px;
   }
-  .forge-mini-art {
-    height: 104px;
-  }
 }
 @media (max-width: 1000px) {
   .forge-header {
@@ -983,9 +883,6 @@
   }
   .forge-heading h1 {
     font-size: 26px;
-  }
-  .forge-scene-card-label {
-    padding: 13px 11px;
   }
 }
 @media (max-width: 720px) {
@@ -1109,9 +1006,6 @@
   .forge-scene-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-  }
-  .forge-mini-art {
-    height: 78px;
   }
   .forge-section-heading h2 {
     font-size: 22px;

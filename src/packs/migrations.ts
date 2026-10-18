@@ -40,6 +40,37 @@ export const PACK_THEME_MIGRATIONS: Record<string, string> = {
 };
 
 /**
+ * Retired dribe-derived RevForge scene ids → original ids (Wilson, Oct 18 2026; see
+ * product-research/dribe-derivation-audit-2026-10-18.md and dribe-rename-sheet-2026-10-18.md).
+ * Same migration-only exception and reversed storage as LEGACY_NIGHT_IDS: the old ids exist only
+ * to carry saved prefs, combinations, custom presets and deep links forward, are never displayed,
+ * and stay out of the shipped bundle as plain strings. One table drives all three id spaces:
+ * scene `<old>`, engine `revforge-<old>` and RoadView theme `road-<old>`.
+ */
+const DRIBE_SCENE_RENAMES: ReadonlyArray<readonly [string, string]> = [
+  [legacy('66-daor'), 'copper-mile'],
+  [legacy('8v-xepa'), 'ember-dusk'],
+  [legacy('evird-noen'), 'violet-grid'],
+  [legacy('ailati'), 'azure-bend'],
+  [legacy('imaim'), 'pink-current'],
+  [legacy('nhabotua'), 'silver-run'],
+  ['dual-surge', 'lightline'],
+  [legacy('rennur-enud'), 'sandwake'],
+  [legacy('enipla'), 'frostpass'],
+  [legacy('renilrats'), 'deep-transit'],
+  [legacy('rtg-arukas'), 'blossom-run'],
+];
+
+/**
+ * Retired RevForge scene ids → current scene id (forge/catalog sceneForId, theme sceneId).
+ * Includes the earlier Tie Fighter → Trenchlight rename (formerly local to forge/catalog.ts).
+ */
+export const RETIRED_SCENE_IDS: Record<string, string> = {
+  'tie-fighter': 'trenchlight',
+  ...Object.fromEntries(DRIBE_SCENE_RENAMES),
+};
+
+/**
  * Retired brand-named engine / patch ids → original replacements (Oct 2 2026).
  * Reversed like LEGACY_NIGHT_IDS. Folded into PACK_ENGINE_MIGRATIONS because
  * that map is what the audio catalog's legacy-id resolver spreads (saved
@@ -47,7 +78,9 @@ export const PACK_THEME_MIGRATIONS: Record<string, string> = {
  * Experimental opt-in.
  */
 const LEGACY_ENGINE_RENAMES: ReadonlyArray<readonly [string, string]> = [
-  [legacy('dialp-egrofver'), 'revforge-dual-surge'],
+  [legacy('dialp-egrofver'), 'revforge-lightline'],
+  // Dribe scene catalogue retired (Oct 18 2026): revforge-<old> → revforge-<new>.
+  ...DRIBE_SCENE_RENAMES.map(([from, to]) => [`revforge-${from}`, `revforge-${to}`] as const),
 ];
 
 /** Engine / patch ids → canonical (drivesynth.ui.v1 selectedEngineId, deep links). */
@@ -80,7 +113,9 @@ const LEGACY_THEME_RENAMES: ReadonlyArray<readonly [string, string]> = [
   [legacy('noivilbo'), 'white-spire'],
   [legacy('xofrats'), 'cobalt-vane'],
   [legacy('olah'), 'visor-arc'],
-  [legacy('dialp-daor'), 'road-dual-surge'],
+  [legacy('dialp-daor'), 'road-lightline'],
+  // Dribe scene catalogue retired (Oct 18 2026): road-<old> → road-<new>.
+  ...DRIBE_SCENE_RENAMES.map(([from, to]) => [`road-${from}`, `road-${to}`] as const),
   // Craft-named Theme Lab ids (formerly plain in themes/catalog.ts) → Galactic Enforcer.
   [legacy('eit'), 'galactic-enforcer'],
   [legacy('gniwx'), 'galactic-enforcer'],
@@ -103,14 +138,19 @@ const COMBINATIONS_KEY = 'drivesynth.combinations.v1';
 type Json = Record<string, unknown>;
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-/** Re-key a per-theme map (fonts / colors) from retired ids to canonical ids. */
+/**
+ * Re-key a per-theme map (fonts / colors) from retired ids to canonical ids. Also moves the
+ * `<atmosphereId>-scene` keys that hold a RoadView atmosphere's custom scene colors.
+ */
 function rekeyThemeMap(map: Json): boolean {
   let changed = false;
-  for (const [from, to] of Object.entries(THEME_ID_MIGRATIONS)) {
-    if (!(from in map)) continue;
-    if (!(to in map)) map[to] = map[from];
-    delete map[from];
-    changed = true;
+  for (const [base, baseTo] of Object.entries(THEME_ID_MIGRATIONS)) {
+    for (const [from, to] of [[base, baseTo], [`${base}-scene`, `${baseTo}-scene`]]) {
+      if (!(from in map)) continue;
+      if (!(to in map)) map[to] = map[from];
+      delete map[from];
+      changed = true;
+    }
   }
   return changed;
 }
@@ -171,6 +211,10 @@ function runThemeRenameMigrations(): void {
       // Catalogue trim (Oct 8 2026): a saved combination on a hidden skin loads Night Pursuit.
       if (typeof c.skinId === 'string' && !isThemeListed(c.skinId)) {
         c.skinId = FALLBACK_THEME_ID;
+        changed = true;
+      }
+      if (typeof c.atmosphereId === 'string' && THEME_ID_MIGRATIONS[c.atmosphereId]) {
+        c.atmosphereId = THEME_ID_MIGRATIONS[c.atmosphereId];
         changed = true;
       }
       if (isObject(c.fonts) && [rekeyThemeMap(c.fonts), migrateFontChoices(c.fonts)].some(Boolean)) changed = true;

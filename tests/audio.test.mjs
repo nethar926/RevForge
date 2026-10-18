@@ -21,7 +21,7 @@ globalThis.window = {
   },
 };
 for (const pack of packs)
-  test(`native RevForge ${pack.name}: audible, finite, bounded output`, async () => {
+  test(`native RevForge ${pack.id}: audible, finite, bounded output`, async () => {
     const offline = new OfflineAudioContext(2, 22050, 44100);
     const context = new Proxy(offline, {
       get(target, key) {
@@ -73,12 +73,12 @@ test("changing voice architecture cleans the previous graph and timers", async (
     },
   });
   const voice = new RevForgeVoice(ctx, offline.destination);
-  await voice.start(packs.find((p) => p.id === "road-66").engine, {
+  await voice.start(packs.find((p) => p.id === "copper-mile").engine, {
     masterVolume: 0.85,
     engineVolume: 1,
     musicVolume: 0.45,
   });
-  voice.applyPatch(packs.find((p) => p.id === "apex-v8").engine);
+  voice.applyPatch(packs.find((p) => p.id === "ember-dusk").engine);
   assert.equal(timers.size, 0);
   voice.update({
     rpm: 3000,

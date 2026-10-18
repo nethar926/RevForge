@@ -1,5 +1,6 @@
 import { PACK_THEME_MIGRATIONS, THEME_ID_MIGRATIONS } from '../packs/migrations';
 import type { PackIdentity } from '../packs/types';
+import { SCENE_LABELS } from '../forge/sceneLabels';
 import { FALLBACK_THEME_ID, FORCED_VISIBLE_IDS, isThemeListed, resolveListedThemeId } from './visibility';
 export { VISIBLE_THEME_IDS, FALLBACK_THEME_ID, isThemeListed } from './visibility';
 export type ThemeFamily = 'Minimal' | 'Gauge Cluster' | 'Cockpit' | 'RoadView' | 'Full Screen';
@@ -43,20 +44,36 @@ for (const m of Object.values(import.meta.glob<{ default: PackIdentity }>('../pa
   const p = m.default;
   if (p && !THEMES.some((t) => t.id === p.id)) THEMES.push({ id: p.id, name: p.displayName, family: 'Full Screen', group: 'Experimental', layout: 'pack', accent: p.theme.accent, secondary: p.theme.secondary, description: p.theme.description, feature: p.theme.feature });
 }
+// RoadView atmospheres. The 11 re-keyed scenes (dribe cleanup, Oct 18 2026) take their display
+// name from forge/sceneLabels.ts (PLACEHOLDERS until the rename sheet is approved).
 const roads = [
  ['light-grid','RF Light Grid','#4ef3ff','Night'],
- ['road-66','RF Copper Mile','#eda75d','Desert'],['apex-v8','RF Apex Dusk','#ec665d','Track'],['neon-drive','RF Violet Grid','#d286fa','Night'],['italia','RF Azure Bend','#efbe81','Coast'],['miami','RF Pink Current','#fa93c6','Night'],['autobahn','RF Silver Run','#8ecad9','Road'],['dual-surge','RF Lightline','#85d8ed','Road'],['dune-runner','RF Sandwake','#f0b569','Desert'],['alpine','RF Frostpass','#b8e4e9','Mountain'],['starliner','RF Deep Transit','#a3a2fb','Space'],['sakura-gtr','RF Blossom Run','#f0aeca','Coast'],['trenchlight','RF Trenchlight','#86dfb1','Space'],
+ ['copper-mile',SCENE_LABELS['copper-mile'].name,'#eda75d','Desert'],['ember-dusk',SCENE_LABELS['ember-dusk'].name,'#ec665d','Track'],['violet-grid',SCENE_LABELS['violet-grid'].name,'#d286fa','Night'],['azure-bend',SCENE_LABELS['azure-bend'].name,'#efbe81','Coast'],['pink-current',SCENE_LABELS['pink-current'].name,'#fa93c6','Night'],['silver-run',SCENE_LABELS['silver-run'].name,'#8ecad9','Road'],['lightline',SCENE_LABELS.lightline.name,'#85d8ed','Road'],['sandwake',SCENE_LABELS.sandwake.name,'#f0b569','Desert'],['frostpass',SCENE_LABELS.frostpass.name,'#b8e4e9','Mountain'],['deep-transit',SCENE_LABELS['deep-transit'].name,'#a3a2fb','Space'],['blossom-run',SCENE_LABELS['blossom-run'].name,'#f0aeca','Coast'],['trenchlight','RF Trenchlight','#86dfb1','Space'],
 ];
 for(const [id,name,accent,group] of roads) THEMES.push({...skin(`road-${id}`,name,'RoadView',group,'road',accent,'#9caac3','Procedural RevForge environment with speed-linked motion and atmospheric effects.','Reactive road atmosphere'),sceneId:id});
 export const FAMILIES: ThemeFamily[] = ['Minimal','Gauge Cluster','Cockpit','RoadView','Full Screen'];
 /**
- * Fresh-user theme. Was 'road-road-66'; that theme is hidden by the Oct 8 catalogue trim,
+ * Fresh-user theme. Was the old default RoadView theme; that theme is hidden by the Oct 8 catalogue trim,
  * so the default moved to Night Pursuit (the trim fallback).
  */
 export const DEFAULT_THEME = FALLBACK_THEME_ID;
-/** RoadView scene used for atmosphere defaults and behind the locked IGNITION splash (unchanged). */
-export const DEFAULT_ATMOSPHERE = 'road-road-66';
-export const SPLASH_BACKDROP_THEME = DEFAULT_ATMOSPHERE;
+/**
+ * No default atmosphere (Wilson, Oct 18 2026): the retired dribe-derived desert scene was the
+ * default and the IGNITION splash backdrop. A fresh profile now has no RoadView atmosphere ('' =
+ * no scene), and a saved one is kept (old road-<id> ids migrate in packs/migrations.ts).
+ */
+export const DEFAULT_ATMOSPHERE = '';
+/**
+ * Theme drawn behind the locked IGNITION splash while a pack is selected; null = no backdrop, just
+ * the plain viewport background (Meghan is mocking an original one). Only the backdrop changed:
+ * the splash chrome (.rev-launch) is untouched.
+ */
+export const SPLASH_BACKDROP_THEME: string | null = null;
+/**
+ * --forge-accent while the splash has no backdrop theme: the accent the splash always had (it came
+ * from the old backdrop theme), so the locked chrome (focus ring, Tuner panel accents) is unchanged.
+ */
+export const SPLASH_ACCENT = '#eda75d';
 /** Legacy Theme Lab ids → Trenchlight (craft-named Galactic Enforcer ids live reversed in packs/migrations.ts). */
 export const RETIRED_THEME_IDS: Record<string, string> = {
   'road-tie-fighter': 'road-trenchlight',

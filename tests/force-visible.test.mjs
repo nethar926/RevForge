@@ -28,8 +28,8 @@ async function build(env) {
   return { v, m };
 }
 // Built-in engines on this branch (src/audio/builtins.ts order) and theme ids (src/themes/catalog.ts).
-const BUILTINS = ['v8-rumble', 'i4-zip', 'i6-silk', 'rotary-hum', 'ev-whine', 'ev-inverter-climb', 'ev-regen-howl', 'ev-dual-motor', 'aerospace-f14', 'ion-twin', 'night-pursuit', 'revforge-road-66', 'revforge-apex-v8', 'revforge-neon-drive', 'revforge-italia', 'revforge-miami', 'revforge-autobahn', 'revforge-dual-surge', 'revforge-dune-runner', 'revforge-alpine', 'revforge-starliner', 'revforge-sakura-gtr', 'revforge-trenchlight', 'revforge-light-grid'];
-const THEME_IDS = ['custom-grid', 'lightbike', 'galactic-enforcer', 'minimal-numeric', 'f14', 'f22', 'night-pursuit', 'chrono-coupe', 'stellar-helm', 'road-road-66', 'road-trenchlight'];
+const BUILTINS = ['v8-rumble', 'i4-zip', 'i6-silk', 'rotary-hum', 'ev-whine', 'ev-inverter-climb', 'ev-regen-howl', 'ev-dual-motor', 'aerospace-f14', 'ion-twin', 'night-pursuit', 'revforge-copper-mile', 'revforge-ember-dusk', 'revforge-violet-grid', 'revforge-azure-bend', 'revforge-pink-current', 'revforge-silver-run', 'revforge-lightline', 'revforge-sandwake', 'revforge-frostpass', 'revforge-deep-transit', 'revforge-blossom-run', 'revforge-trenchlight', 'revforge-light-grid'];
+const THEME_IDS = ['custom-grid', 'lightbike', 'galactic-enforcer', 'minimal-numeric', 'f14', 'f22', 'night-pursuit', 'chrono-coupe', 'stellar-helm', 'road-copper-mile', 'road-trenchlight'];
 const isBuiltin = (id) => BUILTINS.includes(id);
 const revs = (v) => BUILTINS.filter((id) => v.isEngineListed(id)); // ForgePage: BUILTIN_PATCHES.filter(isEngineIdVisible → isEngineListed)
 const picker = (v) => THEME_IDS.filter((id) => v.isThemeListed(id)); // catalog LISTED_THEMES = THEMES.filter(isThemeListed)

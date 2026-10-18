@@ -31,7 +31,7 @@ const rev = (s) => s.split('').reverse().join('');
 const THEME = 'drivesynth.theme.v2';
 const PREFS = 'drivesynth.ui.v1';
 const RETIRED = { ...m.THEME_ID_MIGRATIONS, ...m.PACK_THEME_MIGRATIONS };
-const HIDDEN = ['road-road-66', 'galactic-enforcer', 'custom-grid', 'minimal-numeric', 'epoch-banks', 'cobalt-vane', 'gradient', 'sweep', 'twin-dial', 'ion-twin', 'road-trenchlight'];
+const HIDDEN = ['road-copper-mile', 'road-road-66', 'galactic-enforcer', 'custom-grid', 'minimal-numeric', 'epoch-banks', 'cobalt-vane', 'gradient', 'sweep', 'twin-dial', 'ion-twin', 'road-trenchlight'];
 
 test('allowlist is exactly the three packs', () => {
   assert.deepEqual([...v.VISIBLE_THEME_IDS].sort(), ['chrono-coupe', 'night-pursuit', 'stellar-helm']);
@@ -96,7 +96,7 @@ test('boot migration: saved combinations on hidden skins → night-pursuit, saff
 });
 
 // Engine allowlist (Oct 8 2026): only the three pack engines are listed; every other built-in moves to Night Pursuit's engine.
-const HIDDEN_ENGINES = ['v8-rumble', 'i4-zip', 'i6-silk', 'rotary-hum', 'ev-whine', 'ev-inverter-climb', 'ev-regen-howl', 'ev-dual-motor', 'aerospace-f14', 'ion-twin', 'revforge-road-66', 'revforge-apex-v8', 'revforge-neon-drive', 'revforge-italia', 'revforge-miami', 'revforge-autobahn', 'revforge-dual-surge', 'revforge-dune-runner', 'revforge-alpine', 'revforge-starliner', 'revforge-sakura-gtr', 'revforge-trenchlight', 'revforge-light-grid'];
+const HIDDEN_ENGINES = ['v8-rumble', 'i4-zip', 'i6-silk', 'rotary-hum', 'ev-whine', 'ev-inverter-climb', 'ev-regen-howl', 'ev-dual-motor', 'aerospace-f14', 'ion-twin', 'revforge-copper-mile', 'revforge-ember-dusk', 'revforge-violet-grid', 'revforge-azure-bend', 'revforge-pink-current', 'revforge-silver-run', 'revforge-lightline', 'revforge-sandwake', 'revforge-frostpass', 'revforge-deep-transit', 'revforge-blossom-run', 'revforge-trenchlight', 'revforge-light-grid'];
 const BUILTINS = new Set([...HIDDEN_ENGINES, 'night-pursuit']); // this branch: chrono-coupe / stellar-helm audio not merged yet
 const isBuiltin = (id) => BUILTINS.has(id);
 

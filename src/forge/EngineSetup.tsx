@@ -1,7 +1,7 @@
 import type {EnginePatch} from '../audio';
-import {drivetrainFor,sceneForId} from './catalog';
+import {drivetrainFor} from './catalog';
 export function EngineSetup({patch,onChange}:{patch:EnginePatch;onChange:(p:EnginePatch)=>void}){
- const c=drivetrainFor(patch,sceneForId('road-66'));
+ const c=drivetrainFor(patch);
  const speedUnit=patch.params.topSpeedUnit==='mph'?'mph':'kph';
  const speedFactor=speedUnit==='mph'?1.609344:1;
  const setSpeedUnit=(unit:'kph'|'mph')=>onChange({...patch,params:{...patch.params,topSpeedUnit:unit}});

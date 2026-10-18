@@ -40,28 +40,28 @@ function y(e, t, n, r) {
   let p = t * 0.5,
     m = n * (u === `trench` ? 0.46 : u === `grid` ? 0.44 : 0.42);
   {
-    if (u === `warp` || u === `starliner` || u === `trench`) {
+    if (u === `warp` || u === `deep-transit` || u === `trench`) {
       x(e, t, n, s, l, c.particle, u === `warp` ? 1.6 : 1);
     }
     if (u === `grid`) {
       S(e, t, n, p, m, c, s);
     }
-    if (u === `route66` || u === `coast` || u === `desert`) {
+    if (u === `copper-mile` || u === `coast` || u === `sandwake`) {
       b(e, t, n, c, u);
     }
-    if (u === `alpine`) {
+    if (u === `frostpass`) {
       T(e, t, n, m, c);
     }
-    if (u === `miami` || u === `autobahn`) {
-      E(e, t, n, m, c, u === `miami`);
+    if (u === `pink-current` || u === `silver-run`) {
+      E(e, t, n, m, c, u === `pink-current`);
     }
     if (u === `coast`) {
       D(e, t, n, m, c, s);
     }
-    if (u === `desert`) {
+    if (u === `sandwake`) {
       ee(e, t, n, m, c);
     }
-    if (u === `sakura`) {
+    if (u === `blossom-run`) {
       te(e, t, n, m, c, s);
     }
     if (u === `trench`) {
@@ -71,16 +71,16 @@ function y(e, t, n, r) {
       O(e, t, n, c, l);
     }
     C(e, t, n, p, m, c, i.distance, u);
-    if (u === `route66`) {
+    if (u === `copper-mile`) {
       w(e, t, n, p, m, i.distance, c);
     }
     if (u === `rain`) {
       k(e, t, n, l, c.particle);
     }
-    if (u === `sakura`) {
+    if (u === `blossom-run`) {
       A(e, t, n, s, l, c.particle);
     }
-    if (u === `desert`) {
+    if (u === `sandwake`) {
       re(e, t, n, s, l, c.particle);
     }
     if (u === `trench`) {
@@ -89,7 +89,7 @@ function y(e, t, n, r) {
     if (u === `warp`) {
       j(e, t, n, p, m, l, c.particle);
     }
-    if (u === `starliner`) {
+    if (u === `deep-transit`) {
       ae(e, t, n, c, s);
     }
   }
