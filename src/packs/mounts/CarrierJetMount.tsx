@@ -29,7 +29,6 @@ import { useCjPark, useColdStart } from './CjColdStart';
 import { CjV2Layer } from './CjV2Layer';
 import { cjMapFirst } from '../carrier-jet/geometry';
 import { CJ_GRID } from '../carrier-jet/cells';
-import { gridFitArgs } from '../grid/contract';
 import { getPackJet, subscribePackJet } from '../jetBridge';
 import { LAUNCH_OFF, launchAbZone, launchStep, readLaunchActive } from '../carrier-jet/launchLight';
 
@@ -86,7 +85,7 @@ const subSysReduced = (f: () => void) => {
 
 export function CarrierJetMount(props: PackHudProps) {
   // the fit box CJ declares on the shared grid (CJ_GRID.fit: 1280 wide, 520..740 tall, 720 off the Drive stage)
-  const { ref, fit } = useFitBox(...gridFitArgs(CJ_GRID));
+  const { ref, fit } = useFitBox(CJ_GRID.fit.w, CJ_GRID.fit.minH, CJ_GRID.fit.maxH, CJ_GRID.fit.fallbackH);
   const abZoneAudio = useSyncExternalStore(subscribePackAbZone, readPackAbZone, () => undefined);
   const driveWindow = !!props.driveWindow;
   const layout = useRfLayout(driveWindow);

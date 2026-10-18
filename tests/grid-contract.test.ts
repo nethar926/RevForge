@@ -240,5 +240,5 @@ test('CJ is on the grid: CjV2Layer measures through useGridMeasure, resolves CJ_
   assert.match(layer, /const top = railTop\(b, geo\.gap\);/);
   assert.doesNotMatch(layer, /new ResizeObserver|new MutationObserver/, 'observers live in the grid hook');
   assert.doesNotMatch(layer, /board2Cells(MapFirst)?\(/, 'cells come from CJ_GRID');
-  assert.match(src('packs/mounts/CarrierJetMount.tsx'), /useFitBox\(\.\.\.gridFitArgs\(CJ_GRID\)\)/);
+  assert.match(src('packs/mounts/CarrierJetMount.tsx'), /useFitBox\(CJ_GRID\.fit\.w, CJ_GRID\.fit\.minH, CJ_GRID\.fit\.maxH, CJ_GRID\.fit\.fallbackH\)/);
 });
