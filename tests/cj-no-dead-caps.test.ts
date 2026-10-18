@@ -9,14 +9,17 @@ import { MAP_VIEW_DEFAULT } from '../src/packs/carrier-jet/mapView.ts';
 const layer = readFileSync(new URL('../src/packs/mounts/CjV2Layer.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/packs/mounts/carrier-jet-v2.css', import.meta.url), 'utf8');
 
-test('cap only for a key with a legend; dead slot = rail, aria-hidden, no BezelKey, same box', () => {
+test('cap only for a key with a legend; dead slot = plain rail metal (no legend well), aria-hidden, no BezelKey, same box', () => {
   assert.match(layer, /k\?\.legend \? \(/);
-  const rail = layer.slice(layer.indexOf('data-rail=""') - 200, layer.indexOf('cjv2-rail') + 40);
+  const rail = layer.slice(layer.indexOf('data-rail=""') - 200, layer.indexOf('data-rail=""') + 200);
   assert.match(rail, /style=\{\{ left: xs\[i\], top, width: KEY_W, height: KEY_H \}\}/, 'same box as a capped key');
   assert.match(rail, /aria-hidden="true"/);
   assert.doesNotMatch(rail, /BezelKey|<button|tabIndex/);
   assert.match(css, /\.cjv2-key\[data-rail\] \{ pointer-events: none; \}/);
-  assert.match(css, /\.cjv2-key > \.cjv2-rail \{[^}]*height: calc\(100% \* 18 \/ 66\)/);
+  // Meghan, Oct 18: no dark recessed legend well on an empty slot (the old .cjv2-rail span), the board metal shows through
+  assert.match(rail, /data-rail=""[^\n]*aria-hidden="true" \/>\n/);
+  assert.doesNotMatch(layer + css, /cjv2-rail/);
+  assert.doesNotMatch(css, /\.cjv2-key\[data-rail\][^{]*\{[^}]*(background|border)/);
 });
 
 test('a key group with no live key is hidden from VoiceOver (no empty "vdi keys" group)', () => {

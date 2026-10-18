@@ -40,11 +40,11 @@
   position: absolute !important; left: calc(var(--cjv3-plate) + 8px + var(--cjv3-guard)) !important; translate: -100% 0; bottom: -3px !important; margin: 0 !important;
 }
 .rev-dock > .cjm-bank-b { order: 3; flex: none; display: flex; align-items: flex-end; gap: 8px; align-self: flex-end; margin-bottom: -6px; }
-.cjm-bank-b > .cjcs-pull { position: relative; display: flex; }
+.cjm-bank-es > .cjcs-pull { position: relative; display: flex; }
 .cjm-bank-b .cjp-pull { width: 76px; flex: none; }
 .cjm-bank-b[data-rf-layout='window'] .cjp-pull { width: 66px; }
 .cjm-bank-b .cjp-pull-grip { touch-action: none; }
-.cjm-bank-b > .cjcs-qs { display: flex; }
+.cjm-bank-es > .cjcs-qs { display: flex; }
 .cjm-bank-b .cjp-qs { width: 118px; flex: none; }
 .cjm-bank-b[data-rf-layout='window'] .cjp-qs { width: 96px; }
 .cjcs-shelfkey { box-sizing: border-box; width: 80px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0;
@@ -73,6 +73,28 @@
 .rev-dock > .cjm-bank[data-cjm-v2] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-sw { min-width: 48px; }
 .rev-dock > .cjm-bank[data-cjm-v2][data-rf-layout='board'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-label,
 .rev-dock > .cjm-bank[data-cjm-v2][data-rf-layout='board'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-legend { letter-spacing: 0.01em; }
+
+/* ---------------- ONE bottom row (Meghan's spec, Oct 18; William's gate). Tesla (board / window) with the cold start on
+   (CarrierJetMount bankRowOn → data-cjm-row): AFTERBURNER (guard at the left end, nearest the driver) · FASTEN SEAT
+   BELT · SHELF · [host chips] · EMER STOP · QUICK START · GPS/RADAR, bottom-aligned on the old row line (3px below the
+   dock line, 15px over the Tesla app bar), spread over the dock's full width (no dead space right of QUICK START).
+   .cjm-bank / .cjm-bank-b are display: contents (their children are the row's items, DOM = visual = VoiceOver order;
+   the role=group boxes .cjm-bank-plate and .cjm-bank-es stay boxes). The board box (padding below) is unchanged, so
+   every cell keeps its size, Park = Drive. 773 window: no room for the GPS/RADAR plate (row 697 of 725 px without
+   it), so it is not drawn there; GPS state stays on SPEED (GPS LIVE / ACQ), RADAR on CONFIG › MAP › RADAR. */
+.rev-dock:has(> .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window'])) {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; overflow: visible;
+}
+.rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window']),
+.rev-dock > .cjm-bank-b[data-cjm-row] { display: contents !important; }
+.rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window']) > *,
+.rev-dock > .cjm-bank-b[data-cjm-row] > *,
+.rev-dock:has(> .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window'])) > :is(.rev-chip, .rev-stop) {
+  position: static !important; inset: auto !important; translate: none !important; margin: 0 0 -3px !important; flex: none; align-self: flex-end; order: 0 !important;
+}
+.rev-dock > .cjm-bank-b[data-cjm-row] > .cjm-bank-es { display: flex; align-items: flex-end; gap: 8px; }
+.rev-dock > .cjm-bank-b[data-cjm-row] > .cjm-bank-plate { display: flex; }
+.rev-dock > .cjm-bank-b[data-cjm-row][data-rf-layout='window'] > .cjm-bank-plate { display: none; }
 
 /* ---------------- board box: clears the stack top (124 tall, bottom 6px below the dock line) + 8 */
 .rev-viewport:has(> .rev-dock > .cjm-bank[data-cjm-v2][data-rf-layout='board']) .rev-scene .theme-stage.is-fullscreen .skin-body:has(> .cjm) {
@@ -181,9 +203,9 @@
 .cjv2-key { position: absolute; }
 .cjv2-key > .cjp-bezel { width: 100%; height: 100%; }
 .cjv2-key[data-reason] > .cjp-bezel { opacity: 0.75; }
-/* Dead slot (no action): the CRT edge slot only (BezelKey's 18px slot strip, same colours), no cap; box unchanged. */
+/* Dead slot (no action; Meghan, Oct 18): plain rail metal (the board strip shows through), no legend well, no cap,
+   no dark box. The .cjv2-key box stays, so a key can come back without anything moving. */
 .cjv2-key[data-rail] { pointer-events: none; }
-.cjv2-key > .cjv2-rail { position: absolute; left: 0; right: 0; top: 0; height: calc(100% * 18 / 66); box-sizing: border-box; border-radius: 2px; background: #041009; border: 1px solid #000; }
 
 /* CONFIG (SPDS-style pages): tiles over the Board 2 cells; SPEED, its keys and the AB guard stay live */
 .cjv2-config-title { position: absolute; }
@@ -346,22 +368,10 @@
 .cjv2-hsd .cjv2-scope > .cjv2-corner { background: rgb(4 16 9 / 0.82); padding: 0 3px; border-radius: 3px; }
 .cjv2-hsd .cjv2-scope > .cjv2-br { color: #8fb59a; }
 
-/* SEAT BELT lamp (Meghan's sheet panel 5): its own dock spot whenever the cold start is on (seatbeltLamp.ts), dock
-   row 2, centred in the gap between the SHELF key and the Shutdown slot: gap = guard − shelf − 108.67 (Shutdown) =
-   146.3 px, lamp 104×52 (her 96×44 lens + bezel) → 21 px clear each side; bottom-aligned with the row (SHELF key,
-   host chips). 1256 board and 773 window use the same guard / shelf widths. */
-.rev-dock:has(> .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window'])) > .cjm-sbl {
-  position: absolute; left: calc(var(--cjv3-plate) + 8px + var(--cjv3-shelf) + (var(--cjv3-guard) - var(--cjv3-shelf) - 108.67px - 104px) / 2);
-  bottom: -3px; margin: 0; display: flex; align-items: flex-end; z-index: 1;
-}
-/* a host chip in that gap (demo Hold to rev, manual shift chips): the lamp takes the Shutdown slot, free while the host
-   runs (panel 6: data-sd-off). The host stays running through the whole cold start, EMER STOP included (it switches the
-   seat belt off, the lamp stays put and goes dark), so there is no docked stopped state needing a second spot. */
-.rev-dock:has(> .cjm-bank[data-cjm-v2]:is([data-rf-layout='board'], [data-rf-layout='window'])):has(> .rev-chip:not(.rev-stop)) > .cjm-sbl[data-sd-off] {
-  left: calc(var(--cjv3-plate) + 8px + var(--cjv3-guard)); translate: -100% 0;
-}
-/* the host Shutdown chip hides only where panel 6 removes it (engine running); stopped, it is Ignition / Resume */
-.rev-dock:has(> .cjm-sbl[data-sd-off]) > .rev-stop { visibility: hidden !important; }
+/* SEAT BELT lamp (Meghan's sheet panel 5): a flex item of the one bottom row (below), inside .cjm-bank between
+   AFTERBURNER and SHELF. The host Shutdown chip goes where panel 6 removes it (engine running; data-sd-off): out of
+   the row (display: none, so it leaves no hole); stopped, it is Ignition / Resume and takes its place in the row. */
+.rev-dock:has(> .cjm-bank > .cjm-sbl[data-sd-off]) > .rev-stop { display: none !important; }
 .cjm-sbl .sbl { display: block; }
 
 /* MASTER CAUTION (sheet panel 4) in place of CAUT RST: the skin cell keeps its box (layout unchanged) but is hidden

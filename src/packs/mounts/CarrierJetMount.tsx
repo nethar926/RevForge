@@ -6,7 +6,7 @@ import ID from '../carrier-jet.identity';
 import { readPackAbZone, requestPackShell, sendPackEngineCommand, subscribePackAbZone } from '../runtime';
 import { ShutdownGuard } from '../../skins/carrier-jet';
 import { SeatBeltLamp } from '../../skins/carrier-jet/concept/SeatBeltLamp';
-import { sbLampAria, sbLampShown, sdGuardShown } from '../carrier-jet/seatbeltLamp';
+import { bankRowOn, sbLampAria, sbLampShown, sdGuardShown } from '../carrier-jet/seatbeltLamp';
 import { playGuardCue, sdCoverTap, sdEngineStopped, sdLever, sdShown, type ShutdownGuardDeps } from '../carrier-jet/shutdownGuard';
 import { getAbArmed, setAbArmed, subscribeAbArmed } from '../abArmed';
 import type { PackHudProps } from '../types';
@@ -242,31 +242,40 @@ export function CarrierJetMount(props: PackHudProps) {
   ) : null;
   // launch: the skin's AB ARMED plate reads LAUNCH via .cjm-bank[data-ab-launch] (carrier-jet-controls.css; no skin edit)
   const guard = <CarrierJetAfterburnerGuard armed={armed} guardOpen={guardOpen} onArm={onArm} onGuardToggle={() => setGuardOpen((o) => !o)} variant={guardVariant} />;
-  const bank = (
-    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined}>
-      {plate}
-      <div className="cjm-bank-ab">{guard}</div>
-      {spds ? coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div> : <div className="cjm-bank-nav" ref={setNavSlot} />}
-    </div>
-  );
   const sdShow = sdShown({ v2, tesla, docked: !!vp.dock, running: props.running });
   // Meghan's sheet panel 6: with the cold start on, the guarded SHUTDOWN goes (EMER STOP PULL + the cold-start steps
-  // cover stopping). The SEAT BELT lamp (panel 5) has its own dock spot whenever the cold start is on, engine running
-  // or not, Park or Drive (seatbeltLamp.ts; spot in carrier-jet-v2.css). Cold start off: guarded SHUTDOWN as before.
+  // cover stopping). The SEAT BELT lamp (panel 5) shows whenever the cold start is on, engine running or not, Park or
+  // Drive (seatbeltLamp.ts). Cold start off: guarded SHUTDOWN as before.
   const sbCtx = { coldOn, spds, docked: !!vp.dock };
   const sbLamp = sbLampShown(sbCtx) ? (
     <div className="cjm-sbl" data-rf-layout={layout} data-sd-off={sdShow || undefined} role="img" aria-label={sbLampAria(cold.seatbelt)}>
       <div aria-hidden="true"><SeatBeltLamp on={cold.seatbelt} /></div>
     </div>
   ) : null;
+  // Bottom row (Meghan's spec, Oct 18; William's gate): Tesla with the cold start on = ONE aligned row along the bottom
+  // edge, DOM = visual = VoiceOver order: AFTERBURNER (guard at the left end, nearest the driver) · FASTEN SEAT BELT ·
+  // SHELF · [host chips] · EMER STOP · QUICK START · GPS/RADAR plate (right end; hidden in the 773 window, where the row
+  // has no room for it: GPS state stays on SPEED, RADAR on CONFIG › MAP › RADAR). Spacing in carrier-jet-v2.css.
+  const row = bankRowOn({ spds, coldOn, docked: !!vp.dock });
+  const bank = (
+    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined} data-cjm-row={row || undefined}>
+      {!row && plate}
+      <div className="cjm-bank-ab">{guard}</div>
+      {row && sbLamp}
+      {spds ? coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div> : <div className="cjm-bank-nav" ref={setNavSlot} />}
+    </div>
+  );
   const shutdownGuard = sdGuardShown(sdShow, sbCtx) ? (
     <div className="cjm-sdg" data-rf-layout={layout}>
       <ShutdownGuard guardOpen={sdOpen} onGuardToggle={() => setSdOpen((o) => sdCoverTap(o, sdDeps))} on={props.running} onToggle={() => setSdOpen((o) => sdLever(o, props.running, sdDeps).open)} reduceMotion={reduced} />
     </div>
   ) : null;
-  const bankB = spds && coldOn && vp.dock ? (
-    <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} data-rf-reduce-motion={reduced || undefined} role="group" aria-label="Engine start and stop">
-      {cold.render.pullQs(layout === 'board' ? 'wide' : 'narrow')}
+  const bankB = row ? (
+    <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} data-rf-reduce-motion={reduced || undefined} data-cjm-row>
+      <div className="cjm-bank-es" role="group" aria-label="Engine start and stop">
+        {cold.render.pullQs(layout === 'board' ? 'wide' : 'narrow')}
+      </div>
+      {plate}
     </div>
   ) : null;
   return (
@@ -296,7 +305,6 @@ export function CarrierJetMount(props: PackHudProps) {
       <p className="rf-sr-only cjm-launch-say" role="status" aria-live="polite">{launch.say}</p>
       {bankB && vp.dock && createPortal(bankB, vp.dock)}
       {shutdownGuard && vp.dock && createPortal(shutdownGuard, vp.dock)}
-      {sbLamp && vp.dock && createPortal(sbLamp, vp.dock)}
       {bankHost ? createPortal(layout === 'portrait' ? <div className="cjm-below">{bank}</div> : bank, bankHost) : layout !== 'portrait' && <div className="cjm-ab">{bank}</div>}
     </div>
   );

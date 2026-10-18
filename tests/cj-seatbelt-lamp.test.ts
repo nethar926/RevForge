@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { sbLampAria, sbLampShown, sdGuardShown } from '../src/packs/carrier-jet/seatbeltLamp.ts';
+import { bankRowOn, sbLampAria, sbLampShown, sdGuardShown } from '../src/packs/carrier-jet/seatbeltLamp.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = (p: string) => readFileSync(join(root, p), 'utf8');
@@ -48,7 +48,11 @@ test('shown on every cold-start dock: no engine-running or Park input; guarded S
   assert.equal(sdGuardShown(false, { coldOn: false, spds: true, docked: true }), false);
   // wiring: the lamp condition is the cold-start dock only (not props.running / sdShow / park)
   assert.match(mount, /const sbCtx = \{ coldOn, spds, docked: !!vp\.dock \};\s*const sbLamp = sbLampShown\(sbCtx\) \?/);
-  assert.match(mount, /\{sbLamp && vp\.dock && createPortal\(sbLamp, vp\.dock\)\}/);
+  assert.match(mount, /<div className="cjm-bank-ab">\{guard\}<\/div>\s*\{row && sbLamp\}/, 'in the bottom row, right of AFTERBURNER');
+  assert.doesNotMatch(mount, /createPortal\(sbLamp/);
+  assert.equal(bankRowOn({ coldOn: true, spds: true, docked: true }), true, 'row exactly where the lamp shows');
+  assert.equal(bankRowOn({ coldOn: false, spds: true, docked: true }), false);
+  assert.equal(bankRowOn({ coldOn: true, spds: false, docked: true }), false, 'phones: the old bank');
   assert.match(mount, /data-sd-off=\{sdShow \|\| undefined\} role="img" aria-label=\{sbLampAria\(cold\.seatbelt\)\}/);
   assert.match(src('src/packs/mounts/CjColdStart.tsx'), /seatbelt: !!sys\.on\.seatbelt,/);
 });
@@ -68,20 +72,13 @@ test('pre-start: dark when the sign is off; lit when on; VoiceOver "Seat belt li
   assert.match(concept, /\.sbl\[data-on\] \.sbl-lens \{[^}]*color: #fff6dc;[^}]*text-shadow: 0 0 3px/);
 });
 
-test('spot: dock row 2 between the SHELF key and the Shutdown slot, clear of both at 1256 (board) and 773 (window)', () => {
-  assert.match(css, /> \.cjm-sbl \{\s*position: absolute; left: calc\(var\(--cjv3-plate\) \+ 8px \+ var\(--cjv3-shelf\) \+ \(var\(--cjv3-guard\) - var\(--cjv3-shelf\) - 108\.67px - 104px\) \/ 2\);\s*bottom: -3px;/);
-  for (const [name, plate] of [['1256 board', 107], ['773 window', 89]] as const) {
-    const guard = 343, shelf = 88, key = 80, stopW = 108.67, lamp = 104;
-    const left = plate + 8 + shelf + (guard - shelf - stopW - lamp) / 2;
-    const keyRight = plate + 8 + key, stopLeft = plate + 8 + guard - stopW;
-    assert.ok(left - keyRight >= 16, `${name}: ${left - keyRight}px clear of SHELF`);
-    assert.ok(stopLeft - (left + lamp) >= 16, `${name}: ${stopLeft - left - lamp}px clear of the Shutdown slot`);
-  }
-  // Shutdown chip hidden only where panel 6 removes it (running); stopped it stays the Ignition / Resume path
-  assert.match(css, /\.rev-dock:has\(> \.cjm-sbl\[data-sd-off\]\) > \.rev-stop \{ visibility: hidden !important; \}/);
-  assert.doesNotMatch(css, /\.rev-dock:has\(> \.cjm-sbl\) > \.rev-stop/);
-  // a host chip in the gap (demo Hold to rev): the Shutdown slot (the host runs through the cold start, EMER STOP too)
-  assert.match(css, /:has\(> \.rev-chip:not\(\.rev-stop\)\) > \.cjm-sbl\[data-sd-off\] \{\s*left: calc\(var\(--cjv3-plate\) \+ 8px \+ var\(--cjv3-guard\)\); translate: -100% 0;/);
+test('spot: the one bottom row, between AFTERBURNER and SHELF (Meghan, Oct 18); Shutdown chip out of the row while running', () => {
+  assert.doesNotMatch(css, /\.cjm-sbl \{\s*position: absolute/, 'a row item, not an absolute overlay');
+  assert.match(css, /\.rev-dock > \.cjm-bank\[data-cjm-v2\]\[data-cjm-row\]:is\(\[data-rf-layout='board'\], \[data-rf-layout='window'\]\) > \*,/);
+  // Shutdown chip hidden only where panel 6 removes it (running) and with no hole in the row; stopped it stays the
+  // Ignition / Resume path, a row item
+  assert.match(css, /\.rev-dock:has\(> \.cjm-bank > \.cjm-sbl\[data-sd-off\]\) > \.rev-stop \{ display: none !important; \}/);
+  assert.doesNotMatch(css, /\.rev-dock:has\(> \.cjm-sbl/, 'no dead rule for the old dock-child lamp (William gate)');
   assert.doesNotMatch(css, /\.cjm-sbl:not\(\[data-sd-off\]\)/, 'no dead stopped-position rule (William gate)');
 });
 
