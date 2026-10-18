@@ -21,6 +21,9 @@
 /* ---------------- annunciator plate (top bar, right half; the top bar is already absolutely placed: its box is the plate's) */
 .cjhv-ann {
   position: absolute; right: 0; top: 50%; translate: 0 -50%; z-index: 2;
+  /* never over the brand: the top bar less the REVFORGE block (96px, heroRail.ts HV_BRAND_W) and the bar's 12px gap.
+     1280 / 773 have room (1124 / 617 ≥ 898 / 598); the mount's width guard keeps the hero off where they would not. */
+  max-width: calc(100% - 108px);
   display: flex; gap: 8px; padding: 4px; box-sizing: border-box; border-radius: 3px;
   background: var(--hv-grain) 0 0 / 256px 256px, linear-gradient(170deg, #34383d, var(--hv-paint) 45%, var(--hv-paint-lo));
   background-blend-mode: soft-light, normal;

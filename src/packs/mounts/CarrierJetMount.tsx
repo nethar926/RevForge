@@ -32,7 +32,7 @@ import { CJ_GRID } from '../carrier-jet/cells';
 import { getPackJet, subscribePackJet } from '../jetBridge';
 import { LAUNCH_OFF, launchAbZone, launchStep, readLaunchActive } from '../carrier-jet/launchLight';
 import { AnnunciatorPlate, HeroRail } from './CjHeroV2';
-import { clearsAfter, forcedLamps, HV_LAMPS, HV_START, lampStates, radarApply, radarPos, startPositions, type LampId, type StartId } from '../carrier-jet/heroRail';
+import { clearsAfter, forcedLamps, heroFits, HV_LAMPS, HV_START, lampStates, radarApply, radarPos, startPositions, type HeroLayout, type LampId, type StartId } from '../carrier-jet/heroRail';
 import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
 
 /**
@@ -85,6 +85,21 @@ const subSysReduced = (f: () => void) => {
   return () => m.removeEventListener?.('change', f);
 };
 
+/**
+ * Hero v2 width guard (heroRail.ts heroFits): does the viewport hold the annunciator plate (clear of the REVFORGE brand)
+ * and the start rail at their fixed design px? Re-read on resize only (one brand width read per event).
+ */
+function useHeroRoom(l: HeroLayout, viewport: HTMLElement | null): boolean {
+  const [room, setRoom] = useState(() => typeof window === 'undefined' || heroFits(window.innerWidth, l));
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+    const check = () => setRoom(heroFits(window.innerWidth, l, viewport?.querySelector<HTMLElement>(':scope > .rev-topbar > div')?.offsetWidth));
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [l, viewport]);
+  return room;
+}
 
 export function CarrierJetMount(props: PackHudProps) {
   // the fit box CJ declares on the shared grid (CJ_GRID.fit: 1280 wide, 520..740 tall, 720 off the Drive stage)
@@ -263,10 +278,12 @@ export function CarrierJetMount(props: PackHudProps) {
   // Spacing / heights in carrier-jet-v2.css.
   const row = bankRowOn({ spds, coldOn, docked: !!vp.dock });
   // Hero v2 (Meghan's cj-hero-2026/v2 + rail v2; CjHeroV2.tsx): with the one bottom row on (Tesla, cold start, docked),
-  // the row's parts become the start rail and the top bar's empty right half gets the annunciator plate.
-  const hero = row && tesla;
+  // the row's parts become the start rail and the top bar's empty right half gets the annunciator plate. Only when the
+  // viewport holds both at design size (a fine-pointer phone also reads board / window): else the pre-hero row bank.
+  const heroLayout: HeroLayout = layout === 'window' ? 'window' : 'board';
+  const heroRoom = useHeroRoom(heroLayout, viewport);
+  const hero = row && tesla && heroRoom;
   const topbar = hero ? vp.viewport?.querySelector<HTMLElement>(':scope > .rev-topbar') ?? null : null;
-  const heroLayout = layout === 'window' ? 'window' : 'board';
   const lampIn = { cold: coldOn, running: props.running, batt: !!cold.sys.on.batt, seatbelt: cold.seatbelt, engines: cold.sys.engines, apuOn: !!cold.sys.on.apu, apuReady: cold.sys.apuReady, caution: cold.caution, emergency: !!cold.sys.emergency };
   const rawLamps = lampStates(lampIn);
   const rawKey = JSON.stringify(rawLamps);

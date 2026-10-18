@@ -209,6 +209,28 @@ export const HV_RAIL_H = 118;
 export const HV_RAIL_MIN_W: Readonly<Record<HeroLayout, number>> = { board: 1040, window: 660 };
 
 /**
+ * Width guard (Meghan's mobile audit, Oct 18): the plate and the rail are fixed design px OUTSIDE the useFitBox scale,
+ * and pickRfLayout returns board / window for any fine pointer (desktop-site mode on a phone, a resized window). The
+ * hero only turns on when the viewport holds both at full size; otherwise the mount keeps the pre-hero bank.
+ *  - plate: annSize + its 1px border, plus the REVFORGE brand block (measured live; 96 px fallback = the measured
+ *    `.rev-topbar > div` at 1280 / 773), the top bar's 12px flex gap and its 24px side insets (forge/viewport.css).
+ *  - rail: HV_RAIL_MIN_W + the dock's 8px gap + the 80px SHELF key it shares the row with (carrier-jet-v2.css), plus
+ *    the dock's side insets (24px board, viewport.css; 8px window, carrier-jet-v2.css).
+ * board 1176 (rail-bound; plate 1054), window 764 (rail-bound; plate 754): 1280 and 773 keep the hero.
+ */
+export const HV_ANN_BORDER = 1;
+export const HV_BRAND_W = 96;
+export const HV_FIT = { topbarInset: 24, brandGap: 12, dockGap: 8, shelfKey: 80, dockInset: { board: 24, window: 8 } as Readonly<Record<HeroLayout, number>> } as const;
+export function heroMinW(l: HeroLayout, brandW: number = HV_BRAND_W): number {
+  const f = HV_FIT;
+  const plate = annSize(l).w + 2 * HV_ANN_BORDER + brandW + f.brandGap + 2 * f.topbarInset;
+  const rail = HV_RAIL_MIN_W[l] + f.dockGap + f.shelfKey + 2 * f.dockInset[l];
+  return Math.max(plate, rail);
+}
+/** True when a `vw`-wide viewport holds the hero plate (clear of the brand) and the rail at their design size. */
+export const heroFits = (vw: number, l: HeroLayout, brandW?: number) => vw >= heroMinW(l, brandW && brandW > 0 ? brandW : HV_BRAND_W);
+
+/**
  * The hero's two cells for CJ_GRID: the measured plate / rail boxes once they are on screen, else their reserved
  * slots (top-right above the board, and the dock band under it) so the board never half-draws before IGNITION
  * puts the dock on screen.

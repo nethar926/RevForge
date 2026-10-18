@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  annSize, clearsAfter, heroKeyActive, forcedLamps, GREEN_LAMPS, heroCells, HV_ANN_CAP, HV_CONTRAST_TARGET, HV_LAMPS, HV_LEGEND, HV_RAIL_H, HV_RAIL_MIN_W,
+  annSize, clearsAfter, heroFits, heroKeyActive, heroMinW, forcedLamps, GREEN_LAMPS, heroCells, HV_ANN_BORDER, HV_BRAND_W, HV_FIT, HV_ANN_CAP, HV_CONTRAST_TARGET, HV_LAMPS, HV_LEGEND, HV_RAIL_H, HV_RAIL_MIN_W,
   HV_RED_LEGEND_LIFT, HV_START, LAMPS_DARK, lampAria, lampColor, lampStates, orientCap, radarApply, radarPos, radarStep, RED_LAMPS, splitCap,
   startPositions, type CapCtx, type LampId, type LampInput,
 } from '../src/packs/carrier-jet/heroRail.ts';
@@ -229,4 +229,24 @@ test('no WebGL: the hero draws nothing with WebGL, and the map degrades to its N
   assert.ok(tail.indexOf(".catch(() => setTiles('error'))") > 0 && tail.indexOf(".catch(() => setTiles('error'))") < tail.indexOf('useEffect('), 'map construction is guarded');
   const { cjMapStatus } = await import('../src/skins/carrier-jet/map/style.ts');
   assert.equal(cjMapStatus({ gps: true, demo: false, online: true, tilesFailed: 'error' }), 'NO MAP DATA');
+});
+
+test('width guard: hero only where the plate clears the brand and the rail fits (1280 / 773 keep it; fine-pointer phones do not)', () => {
+  // plate = annSize + border + brand + gap + insets; rail = min width + gap + SHELF key + dock insets
+  assert.equal(annSize('board').w + 2 * HV_ANN_BORDER, 898);
+  assert.equal(annSize('window').w + 2 * HV_ANN_BORDER, 598);
+  assert.equal(heroMinW('board'), Math.max(898 + HV_BRAND_W + HV_FIT.brandGap + 48, HV_RAIL_MIN_W.board + 8 + 80 + 48));
+  assert.equal(heroMinW('board'), 1176);
+  assert.equal(heroMinW('window'), 764);
+  assert.ok(heroFits(1280, 'board') && heroFits(1256, 'board') && heroFits(773, 'window'));
+  for (const w of [390, 650, 667, 763]) assert.equal(heroFits(w, 'window'), false, `window ${w}`);
+  for (const w of [390, 650, 1024, 1175]) assert.equal(heroFits(w, 'board'), false, `board ${w}`);
+  // a wider measured brand raises the plate bound; a missing / zero measure falls back to HV_BRAND_W
+  assert.equal(heroFits(773, 'window', 200), false);
+  assert.equal(heroFits(773, 'window', 0), true);
+  const mount = src('packs/mounts/CarrierJetMount.tsx');
+  assert.match(mount, /const hero = row && tesla && heroRoom;/);
+  assert.match(mount, /addEventListener\('resize', check\)/);
+  assert.match(css, /\.cjhv-ann \{[^}]*max-width: calc\(100% - 108px\)/);
+  assert.equal(HV_BRAND_W + HV_FIT.brandGap, 108);
 });
