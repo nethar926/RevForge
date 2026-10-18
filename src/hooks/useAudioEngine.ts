@@ -283,9 +283,12 @@ export function useAudioEngine(
   useEffect(()=>{try{localStorage.setItem(storageKey("revforge.background"),String(background));}catch{}if(!background)mediaRef.current?.disable();},[background]);
   const setBackgroundEnabled=useCallback((value:boolean)=>{setBackground(value);if(value&&mediaRef.current)void mediaRef.current.enable().then(()=>setBackgroundStatus("Media output active · browser may still suspend playback")).catch(()=>setBackgroundStatus("Tap Ignition to retry background output"));},[]);
   const getMediaElement=useCallback(()=>mediaRef.current?.element??null,[]);
+  /** Car-test diagnostic: channels the browser's output device reports (2 = stereo). null until audio starts.
+   * Note the media <audio> route may stay stereo even if this reports more. */
+  const getOutputChannels=useCallback(():number|null=>ctxRef.current?.destination.maxChannelCount??null,[]);
   return useMemo(
     () => ({
-      background,backgroundStatus,setBackgroundEnabled,getMediaElement,
+      background,backgroundStatus,setBackgroundEnabled,getMediaElement,getOutputChannels,
       error,
       starting,
       start,
@@ -310,7 +313,7 @@ export function useAudioEngine(
       context: ctxRef,
     }),
     [
-      background,backgroundStatus,setBackgroundEnabled,getMediaElement,
+      background,backgroundStatus,setBackgroundEnabled,getMediaElement,getOutputChannels,
       error,
       starting,
       start,
