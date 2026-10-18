@@ -419,3 +419,36 @@ test('v3.1: NAV (rail) and INS (plate) are one switch: flipping either flips bot
   assert.deepEqual(csTap('inertialNav', true, sys({ batt: true, avionics: true })), { type: 'set', system: 'inertialNav', on: true });
   assert.deepEqual(csTap('inertialNav', true, sys({ batt: true })), { type: 'none', reason: 'Avionics first' });
 });
+
+/* ---------------- 81df4ce gate fixes (William, Oct 18) */
+
+test('773 HOLD TO REV / SHUT DOWN: at least 44 wide (zone − border − side padding), zones and min widths unchanged', () => {
+  const z = HV_RAIL_773.zones;
+  const pad = /\.cjhv-rail\[data-rf-layout='window'\] \.cjhv-mod-push \{ padding: 4px (\d+)px; \}/.exec(css);
+  assert.ok(pad, '773 push module drops its 4 px side padding');
+  const w = z.push - 2 * 1 - 2 * Number(pad[1]); // .cjhv-mod: border-box, 1 px border
+  assert.ok(w >= 44, `773 push buttons ${w} px wide`);
+  assert.equal(w, 48, 'the mock A-c-773 hit is 48 wide');
+  const h = (HV_RAIL_H - 2 - 2 * 4 - 4) / 2; // 4 px top/bottom padding, 4 px gap, two buttons
+  assert.ok(h >= 44, `773 push buttons ${h} px tall`);
+  for (const n of ['Hold to rev', 'Shutdown']) {
+    const t = railTargets('window').find((x) => x.name === n)!;
+    assert.ok(t.w >= 44 && t.h >= 44 && t.w <= w && t.h <= h, `${n} target ${t.w}x${t.h} matches the CSS`);
+  }
+  // the zone widths did not change, so the minimums stand: 773 keeps the hero, 1256x784 too
+  assert.equal(Object.values(z).reduce((a, b) => a + b, 0) + 6 * 3, HV_RAIL_MIN_W.window);
+  assert.equal(heroMinW('window'), 757);
+  assert.equal(heroMinW('board'), 1236);
+  assert.ok(heroFits(773, 'window') && heroFits(1256, 'board') && heroFits(1280, 'board'));
+  assert.ok(!heroFits(756, 'window') && !heroFits(1235, 'board'));
+});
+
+test("the app's own Hold to rev chip: hidden with the hero (the rail has HOLD TO REV), kept in the fallback", () => {
+  const rule = /\.rev-dock:has\(\.cjhv-rail\) > \.rev-chip:not\(\.rev-stop\):not\(\.rev-muted\):not\(\.rev-blaster\) \{ display: none !important; \}/;
+  assert.match(css, rule, 'hidden only while the rail (hero) is in the dock');
+  assert.match(css, /\.rev-dock:has\(\.cjhv-rail\) > \.rev-stop \{ display: none !important; \}/);
+  // the rail only renders with the hero (fallback = no .cjhv-rail, so neither rule applies there)
+  assert.match(mountSrc(), /const heroRail = hero \? \(\s*<HeroRail/);
+  // nowhere else hides the chip unconditionally for CJ
+  for (const f of ['carrier-jet-v2.css', 'carrier-jet-controls.css', 'carrier-jet-mount.css']) assert.doesNotMatch(src(`packs/mounts/${f}`), /\.rev-chip:not\(\.rev-stop\)[^{]*\{[^}]*display: none/);
+});

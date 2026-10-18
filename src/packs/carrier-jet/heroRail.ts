@@ -478,7 +478,7 @@ export function railTargets(l: HeroLayout): { name: string; w: number; h: number
     const g = HV_RAIL_773;
     for (const id of ['radar', 'source', 'xbleed'] as const) t.push({ name: `${id} up`, w: g.left[id].w, h: g.left.upH }, { name: `${id} down`, w: g.left[id].w, h: g.left.dnH });
     for (const [id, c] of Object.entries(g.mid)) t.push({ name: id === 'ab' ? 'Afterburner (two taps)' : `${id} flip`, w: c.w, h: c.h });
-    t.push({ name: 'Quick start guard', w: 64, h: 44 }, { name: 'Quick start press', w: 64, h: 44 }, { name: 'Emergency stop handle', w: 46, h: 56 }, { name: 'Hold to rev', w: 48, h: 66 }, { name: 'Shutdown', w: 48, h: 66 });
+    t.push({ name: 'Quick start guard', w: 64, h: 44 }, { name: 'Quick start press', w: 64, h: 44 }, { name: 'Emergency stop handle', w: 46, h: 56 }, { name: 'Hold to rev', w: 48, h: 60 }, { name: 'Shutdown', w: 48, h: 60 });
   }
   return t;
 }

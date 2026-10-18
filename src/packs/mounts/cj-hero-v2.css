@@ -172,6 +172,8 @@ div.cjhv-cap { cursor: default; }
 
 /* HOLD TO REV / SHUTDOWN: raised push caps */
 .cjhv-mod-push { display: flex; flex-direction: column; gap: 4px; padding: 4px; }
+/* 773: no side padding (zone 52 - 2 border - 2 x 1 = 48 wide, the mock's 48 x 66.5 hit; 4 px padding left 42) */
+.cjhv-rail[data-rf-layout='window'] .cjhv-mod-push { padding: 4px 1px; }
 .cjhv-push {
   flex: 1 1 0; margin: 0; padding: 0; border: 0; border-radius: 3px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: linear-gradient(170deg, #2e3033, #232527 60%, #1c1e20);
@@ -184,6 +186,9 @@ div.cjhv-cap { cursor: default; }
 /* ---------------- dock: the rail has the row to itself (no SHELF); the shell's Shutdown / Hold to rev chips are the
    rail's SHUTDOWN / HOLD TO REV caps */
 .rev-dock:has(.cjhv-rail) > .rev-stop { display: none !important; }
+/* the app's own Hold to rev chip (ForgePage .rev-chip, the CJ dock's one non-stop chip) is the rail's HOLD TO REV
+   while the hero is on: hidden (it sat half under the rail's HOLD TO REV / SHUTDOWN module). Fallback (no rail): shown. */
+.rev-dock:has(.cjhv-rail) > .rev-chip:not(.rev-stop):not(.rev-muted):not(.rev-blaster) { display: none !important; }
 .rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row] > .cjhv-rail { flex: 1 1 auto !important; }
 .rev-dock:has(.cjhv-rail) .cjhv-mod-gps .cjp-gps { height: 118px; }
 .rev-dock:has(.cjhv-rail[data-rf-layout='window']) .cjhv-mod-gps .cjp-gps { height: 135px; }
