@@ -11,7 +11,7 @@ import {
   annSize, clearsAfter, heroFits, heroKeyActive, heroMinW, forcedLamps, GREEN_LAMPS, heroCells, HV_ANN_BORDER, HV_BRAND_W, HV_FIT, HV_ANN_CAP, HV_CONTRAST_TARGET, HV_LAMPS, HV_LEGEND, HV_RAIL_H, HV_RAIL_MIN_W,
   HV_RED_LEGEND_LIFT, HV_START, LAMPS_DARK, lampAria, lampColor, lampStates, orientCap, radarApply, radarPos, radarStep, RED_LAMPS, splitCap,
   startPositions, type CapCtx, type LampId, type LampInput,
-  HV_BONUS, HV_TOP, topTargets, bonusAria, fsbAria, abArmedAria,
+  abGuardTap, abView, HV_BONUS, HV_TOP, topTargets, bonusAria, fsbAria, abArmedAria,
 } from '../src/packs/carrier-jet/heroRail.ts';
 import { CJ_GRID, type CjAnchors } from '../src/packs/carrier-jet/cells.ts';
 import { board2CellsMapFirst } from '../src/packs/carrier-jet/geometry.ts';
@@ -277,4 +277,21 @@ test('v3.1 top plate: bonus row order, MASTER CAUTION/WARNING only, lights row, 
   assert.match(plate, /Themes: opens the theme picker/);
   // the plate replaces the skin's LOOK row (pack CSS only, the skin is untouched)
   assert.match(css, /\.rev-viewport:has\(\.cjhv-top\)[^{]*\.cj-tabs\s*\{\s*visibility:\s*hidden/);
+});
+
+test('AFTERBURNER: AB ARMED lamp never lit while the switch reads SAFE (one value drives bat, lid and lamps)', () => {
+  for (const armed of [false, true]) for (const guardOpen of [false, true]) {
+    const v = abView(armed, guardOpen);
+    // the switch reads SAFE when the bat is down or a closed lid covers it; the lamp is lit only at a visible ARM
+    const readsArm = v.pos === 'up' && v.lidOpen;
+    assert.equal(v.lamp, readsArm, `armed=${armed} guardOpen=${guardOpen}`);
+  }
+  // fresh storage: getAbArmed() defaults to armed with the guard closed -> lid drawn open at ARM, not closed over SAFE
+  assert.deepEqual(abView(true, false), { pos: 'up', lidOpen: true, lamp: true });
+  assert.deepEqual(abGuardTap(false, false), { open: true, disarm: false }, 'closed lid: tap lifts');
+  assert.deepEqual(abGuardTap(true, false), { open: false, disarm: true }, 'closing the lid over ARM throws SAFE');
+  assert.deepEqual(abGuardTap(false, true), { open: false, disarm: false });
+  const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
+  assert.match(mount, /<TopPlate[\s\S]*?armed=\{ab\.lamp\}/, 'plate lamp reads the switch view');
+  assert.match(mount, /<HeroRail[\s\S]*?armed=\{ab\.lamp\}[\s\S]*?guardOpen=\{ab\.lidOpen\}/, 'rail bat + lid read the same view');
 });

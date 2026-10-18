@@ -32,7 +32,7 @@ import { CJ_GRID } from '../carrier-jet/cells';
 import { getPackJet, subscribePackJet } from '../jetBridge';
 import { LAUNCH_OFF, launchAbZone, launchStep, readLaunchActive } from '../carrier-jet/launchLight';
 import { HeroRail, TopPlate } from './CjHeroV2';
-import { clearsAfter, forcedLamps, heroFits, HV_LAMPS, HV_START, lampStates, radarApply, radarPos, startPositions, type HeroLayout, type LampId, type StartId } from '../carrier-jet/heroRail';
+import { abGuardTap, abView, clearsAfter, forcedLamps, heroFits, HV_LAMPS, HV_START, lampStates, radarApply, radarPos, startPositions, type HeroLayout, type LampId, type StartId } from '../carrier-jet/heroRail';
 import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
 
 /**
@@ -120,6 +120,7 @@ export function CarrierJetMount(props: PackHudProps) {
   const { heading, stale: headingStale } = useHeading(layout);
   const armed = useSyncExternalStore(subscribeAbArmed, getAbArmed, getAbArmed);
   const [guardOpen, setGuardOpen] = useState(false);
+  const ab = abView(armed, guardOpen); // bat, lid and both AB ARMED lamps read this one value
   const onArm = () => {
     const next = !armed;
     setAbArmed(next);
@@ -318,10 +319,17 @@ export function CarrierJetMount(props: PackHudProps) {
         else if (getCjPrefs().switchSound) sendPackEngineCommand(ID.id, { type: 'jet-cue', cue: 'toggle' });
         if (r.wx !== wxRadar) setWxRadar(r.wx);
       }}
-      armed={armed}
-      guardOpen={guardOpen}
-      onGuard={() => setGuardOpen((o) => !o)}
-      onArm={onArm}
+      armed={ab.lamp}
+      guardOpen={ab.lidOpen}
+      onGuard={() => {
+        const t = abGuardTap(armed, guardOpen);
+        if (t.disarm) onArm();
+        setGuardOpen(t.open);
+      }}
+      onArm={() => {
+        if (armed) setGuardOpen(true); // ARM -> SAFE on the switch band: the lid stays up until it is closed
+        onArm();
+      }}
       launch={launch.lit}
       start={startPos}
       startCue={cold.nextId ? NEXT[cold.nextId] ?? null : null}
@@ -406,7 +414,7 @@ export function CarrierJetMount(props: PackHudProps) {
           onClear={onClearLamp}
           bonus={cold.sys.on as Record<string, boolean>}
           onBonus={(sys, on) => cold.railTap(sys, on)}
-          armed={armed}
+          armed={ab.lamp}
           launch={launch.lit}
           onThemes={() => void requestPackShell({ type: 'nav', action: { type: 'panel', panel: 'themes' } })}
         />,

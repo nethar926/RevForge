@@ -322,3 +322,17 @@ export function topTargets(l: HeroLayout): { name: string; w: number; h: number 
 export const bonusAria = (b: BonusDecl, on: boolean, pos: 'on' | 'off') => `${b.spoken} ${pos === 'on' ? 'on' : 'off'}, now ${on ? 'on' : 'off'}`;
 export const fsbAria = (lit: boolean) => `Fasten seat belt light, ${lit ? 'lit amber' : 'off'}`;
 export const abArmedAria = (armed: boolean, launch: boolean) => `A B armed light, ${launch ? 'launch, lit amber' : armed ? 'lit amber' : 'off'}`;
+
+/* ---------------- AFTERBURNER view: one value for the bat, the lid and every AB ARMED lamp */
+/**
+ * A closed MS25224 guard holds its switch at SAFE, so the lid can never be drawn closed over an armed switch: it is
+ * drawn open (edge-on, NOTES.md state c) whenever the switch is at ARM, and closing it throws the switch to SAFE.
+ * The rail bat, the rail AB ARMED cap and the top-plate AB ARMED lamp all read this one view.
+ */
+export function abView(armed: boolean, guardOpen: boolean): { pos: 'up' | 'dn'; lidOpen: boolean; lamp: boolean } {
+  return { pos: armed ? 'up' : 'dn', lidOpen: armed || guardOpen, lamp: armed };
+}
+/** Guard tap: lift a closed lid; closing an open lid over ARM disarms (the guard pushes the switch to SAFE). */
+export function abGuardTap(armed: boolean, guardOpen: boolean): { open: boolean; disarm: boolean } {
+  return abView(armed, guardOpen).lidOpen ? { open: false, disarm: armed } : { open: true, disarm: false };
+}
