@@ -189,6 +189,10 @@
    label slot (cell top - 16, left + 4, like ACCEL / MAP). VDI's label sits under the CONFIG title bar: hidden so its
    top edge no longer pokes out above the bar (the stray tab). visibility also drops them from the a11y tree. */
 .cjv2-lab[data-blank] { visibility: hidden; }
+/* CONFIG open: the MAP cell's (i) credit button sat on top of the tile over MAP (OPT on home), stealing taps in that
+   tile's top-right corner. Hidden (box kept, out of hit-testing and the a11y tree) while CONFIG is open; the credit
+   stays reachable as CONFIG › MAP › CREDIT. */
+.cjv2[data-config] .cjv2-map :is(.cjv2-info, .cjv2-attr) { visibility: hidden; }
 .cjm:has(> .cjv2[data-config]) .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-mid > .cj-plab:not(.cj-plab-2),
 .cjm:has(> .cjv2[data-hdr-sweep]) .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-right > .cj-plab,
 .cjm:has(> .cjv2[data-hdr-compass]) .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-mid > .cj-plab-2 { visibility: hidden; }
