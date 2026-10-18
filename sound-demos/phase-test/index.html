@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RevForge — Immersive phase test</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0d0f14;
+      color: #e8eaed;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-size: 18px;
+      line-height: 1.5;
+      padding: 24px 20px 48px;
+    }
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: #9aa0a6;
+      font-size: 1rem;
+      margin: 0 0 28px;
+    }
+    audio {
+      width: 100%;
+      height: 54px;
+      margin: 0 0 20px;
+      display: block;
+    }
+    #playBtn {
+      display: block;
+      width: 100%;
+      min-height: 72px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #0d0f14;
+      background: #8ab4f8;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin: 0 0 28px;
+      padding: 16px 24px;
+    }
+    #playBtn:hover { background: #aecbfa; }
+    #playBtn:active { background: #7aa2f0; }
+    h2 {
+      font-size: 1.15rem;
+      margin: 0 0 12px;
+      color: #c4c7c5;
+    }
+    ol {
+      margin: 0 0 24px;
+      padding-left: 1.4em;
+    }
+    li { margin-bottom: 8px; }
+    .note {
+      background: #1a1d24;
+      border: 1px solid #2a2f3a;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 0 0 24px;
+    }
+    .note p { margin: 0 0 10px; }
+    .note p:last-child { margin-bottom: 0; }
+    a.download {
+      color: #8ab4f8;
+      font-size: 1rem;
+    }
+    a.download:hover { color: #aecbfa; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>RevForge — Immersive phase test</h1>
+    <p class="sub">Carrier Jet immersive / out-of-phase seating check</p>
+
+    <audio id="player" controls preload="auto" src="cj-immersive-phase-test.mp3"></audio>
+    <button type="button" id="playBtn" aria-label="Play or pause">Play</button>
+
+    <div class="note">
+      <p><strong>How to listen:</strong> Play once with Immersive Sound on <strong>High</strong>, then once with Immersive Sound <strong>Off</strong>.</p>
+      <p>Listen for whether section 4 and the sweeps move toward the back seats, and whether they sound hollow with Immersive Off.</p>
+    </div>
+
+    <h2>Beeps mark sections</h2>
+    <ol>
+      <li><strong>0:00</strong> — front left</li>
+      <li><strong>0:05</strong> — front right</li>
+      <li><strong>0:11</strong> — front center</li>
+      <li><strong>0:17</strong> — rear (out of phase)</li>
+      <li><strong>0:23</strong> — sweep front to rear</li>
+      <li><strong>0:34</strong> — sweep rear to front</li>
+      <li><strong>0:45</strong> — center and rear back and forth</li>
+    </ol>
+
+    <p><a class="download" href="cj-immersive-phase-test.mp3" download>Download MP3</a></p>
+  </div>
+  <script>
+    (function () {
+      var audio = document.getElementById('player');
+      var btn = document.getElementById('playBtn');
+      function sync() {
+        btn.textContent = audio.paused ? 'Play' : 'Pause';
+      }
+      btn.addEventListener('click', function () {
+        if (audio.paused) {
+          audio.play();
+        } else {
+          audio.pause();
+        }
+        sync();
+      });
+      audio.addEventListener('play', sync);
+      audio.addEventListener('pause', sync);
+      audio.addEventListener('ended', sync);
+      sync();
+    })();
+  </script>
+</body>
+</html>
