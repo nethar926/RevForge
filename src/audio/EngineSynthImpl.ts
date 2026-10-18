@@ -53,6 +53,8 @@ import type {
   JetCalloutResult,
   JetFlightInfo,
   JetFlightPhase,
+  JetWarningId,
+  JetWarningsState,
   LockStage,
   ScannerEdge,
   SynthNodeDesc,
@@ -106,6 +108,7 @@ import {
   type TomcatDrive,
 } from './tomcatVoice';
 import { FlightCallouts } from './flightCallouts';
+import { JET_WARNINGS, JetWarningVoice } from './jetWarnings';
 import type { GearSequence } from './jetGear';
 import {
   JET_DEFAULT_FOLEY,
@@ -289,6 +292,8 @@ interface GraphHandles {
   tcPad?: GainNode;
   /** Tomcat cold-start systems + switch foley (created lazily: only once cold start / a jet cue is used). */
   jetVoice?: JetColdStartVoice;
+  /** Carrier Jet warning tones (created lazily on the jet cue bus once warnings are enabled). */
+  warnVoice?: JetWarningVoice;
 }
 
 /** Cold-start step list with its cursor (jetAutoStart / jetQuickStart / emergency stop). */
@@ -409,6 +414,9 @@ export class EngineSynthImpl implements EngineSynth {
     },
     mechanical: (id) => this.gearLever(id === 'gearUp' ? 'up' : 'down'),
   });
+  /** Carrier Jet warning tones (opt-in, default off) and the last condition Frontend set. */
+  private warnEnabled = false;
+  private warnState: Record<JetWarningId, boolean> = { stall: false, masterCaution: false };
   /** setJetSwitchSound (switch foley in setJetSystem); default on. */
   private jetSwitchSound = true;
   private jetListeners = new Set<(state: JetSystemsState, change: JetSystemChange) => void>();
@@ -660,6 +668,7 @@ export class EngineSynthImpl implements EngineSynth {
       this.jetQueue = null;
       this.jetCold = createJetColdState();
       this.g = this.buildGraph(patch.kind, patch.topology);
+      this.syncWarnings();
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
     }
@@ -2240,6 +2249,7 @@ export class EngineSynthImpl implements EngineSynth {
     }
     try {
       g.tcVoice?.dispose();
+      g.warnVoice?.dispose();
       g.jetVoice?.dispose();
       g.tcPad?.disconnect();
     } catch {
@@ -3013,6 +3023,57 @@ export class EngineSynthImpl implements EngineSynth {
     this.startJetQueue(this.quickStartSteps());
     this.kickJet();
     return true;
+  }
+
+  /* ───────────── Carrier Jet warning tones (real-time synthesis, jet cue bus) ───────────── */
+
+  /** Warning voice on the jet cue bus (Tomcat pack only; created on first use). */
+  private ensureWarnVoice(): JetWarningVoice | undefined {
+    if (this.g.warnVoice) return this.g.warnVoice;
+    const jv = this.ensureJetVoice();
+    if (!jv) return undefined;
+    this.g.warnVoice = new JetWarningVoice(this.context, jv.bus);
+    return this.g.warnVoice;
+  }
+
+  /** Stall tone follows enabled && stall (also after a pack rebuild). */
+  private syncWarnings(): void {
+    if (this.disposed) return;
+    const want = this.warnEnabled && this.warnState.stall;
+    if (!want) {
+      this.g.warnVoice?.stopStall(this.context.currentTime);
+      return;
+    }
+    this.ensureWarnVoice()?.startStall(this.context.currentTime);
+  }
+
+  /** Warning tones on / off (default off). Non-boolean values are ignored. */
+  setWarningsEnabled(enabled: boolean): void {
+    if (this.disposed || typeof enabled !== 'boolean' || enabled === this.warnEnabled) return;
+    this.warnEnabled = enabled;
+    if (!enabled) {
+      this.g.warnVoice?.silence(this.context.currentTime);
+      return;
+    }
+    this.syncWarnings();
+  }
+
+  /**
+   * Warning condition (repeats are no-ops). stall loops while active; masterCaution chimes once per
+   * false → true edge while enabled. False for an unknown id / non-boolean (nothing changes).
+   */
+  setWarning(id: JetWarningId, active: boolean): boolean {
+    if (this.disposed || typeof active !== 'boolean' || !(JET_WARNINGS as readonly string[]).includes(id)) return false;
+    const was = this.warnState[id];
+    if (was === active) return true;
+    this.warnState[id] = active;
+    if (id === 'stall') this.syncWarnings();
+    else if (active && this.warnEnabled) this.ensureWarnVoice()?.chime(this.context.currentTime + 0.005);
+    return true;
+  }
+
+  getWarnings(): JetWarningsState {
+    return { enabled: this.warnEnabled, stall: this.warnState.stall, masterCaution: this.warnState.masterCaution };
   }
 
   /** One-shot switch foley / cue on the Tomcat pack (cold start on or off), e.g. 'abGuardOpen'. */

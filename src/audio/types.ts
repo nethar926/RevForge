@@ -461,6 +461,29 @@ export interface EngineSynth {
   setChargeLevel?(level: number): void;
   /** Chrono Coupe: one-shot discharge (rate-limited). Safe no-op on other packs / stopped. */
   triggerDischarge?(): void;
+  /**
+   * Carrier Jet cockpit warning tones (opt-in, default OFF; nothing plays while off). Frontend keeps
+   * the preference; the audio layer stores nothing. Non-boolean values are ignored.
+   */
+  setWarningsEnabled?(enabled: boolean): void;
+  /**
+   * Warning condition from Frontend (call it every frame or on change; repeats are no-ops).
+   * 'stall' loops the Hi-Lo tone while active and fades out when cleared; 'masterCaution' plays one
+   * double chime per false → true edge (re-arms when cleared). The state is kept while disabled
+   * (enabling with stall active starts the tone; a caution already active does not chime).
+   * Returns false for an unknown id or a non-boolean value (nothing changes).
+   */
+  setWarning?(id: JetWarningId, active: boolean): boolean;
+  getWarnings?(): JetWarningsState;
+}
+
+/** setWarning ids (Carrier Jet). */
+export type JetWarningId = 'stall' | 'masterCaution';
+/** getWarnings: the enable flag and each condition as last set. */
+export interface JetWarningsState {
+  enabled: boolean;
+  stall: boolean;
+  masterCaution: boolean;
 }
 
 export interface ParamMeta {

@@ -4,7 +4,7 @@ import type {SoundLayer} from './types';
 import {nextLockStage} from './lockStage';
 import {JetLayers} from './JetLayers';
 import {SignalGraph} from './SignalGraph';
-import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge,JetCue,JetStartMode,JetSwitchFoley,JetSystem,JetSystemChange,JetSystemsState,JetVariant,JetSystemEntry,JetChecklist,JetFlightPhase,JetFlightInfo,JetCalloutId,JetCalloutResult,JetCalloutMode,JetCalloutModes,JetAlertLevel,AudioSpeedConfig} from './types';
+import type {JetWarningId,JetWarningsState,EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge,JetCue,JetStartMode,JetSwitchFoley,JetSystem,JetSystemChange,JetSystemsState,JetVariant,JetSystemEntry,JetChecklist,JetFlightPhase,JetFlightInfo,JetCalloutId,JetCalloutResult,JetCalloutMode,JetCalloutModes,JetAlertLevel,AudioSpeedConfig} from './types';
 import {getJetSystemList,getJetChecklist} from './jetColdStart';
 import {EnvelopeMeter} from './envelopeMeter';
 import {ProceduralCharacter} from './ProceduralCharacter';
@@ -50,6 +50,10 @@ export class CharacterEngine implements EngineSynth {
  setFlightPhase(phase:JetFlightPhase|null,info?:JetFlightInfo):void{if(!this.disposed)this.base.setFlightPhase?.(phase,info);}
  getFlightPhase():JetFlightPhase|null{return this.base.getFlightPhase?.()??null;}
  setAfterburnerLaunch(launch:boolean):void{if(!this.disposed)this.base.setAfterburnerLaunch?.(launch);}
+ /** Carrier Jet warning tones — forwarded; safe no-ops on other packs. */
+ setWarningsEnabled(enabled:boolean):void{if(!this.disposed)this.base.setWarningsEnabled?.(enabled);}
+ setWarning(id:JetWarningId,active:boolean):boolean{return this.disposed?false:(this.base.setWarning?.(id,active)??false);}
+ getWarnings():JetWarningsState{return this.base.getWarnings?.()??{enabled:false,stall:false,masterCaution:false};}
  getAfterburnerLaunch():boolean{return this.base.getAfterburnerLaunch?.()??false;}
  setAutoLaunch(enabled:boolean):void{if(!this.disposed)this.base.setAutoLaunch?.(enabled);}
  getAutoLaunch():boolean{return this.base.getAutoLaunch?.()??false;}

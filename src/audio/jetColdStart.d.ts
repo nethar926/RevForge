@@ -49,6 +49,8 @@ export function jetAutoStartSteps(mode?: JetStartMode): JetAutoStep[];
 
 export class JetColdStartVoice {
   constructor(ctx: BaseAudioContext, dest: AudioNode, opts?: { whiteBuf?: AudioBuffer; pinkBuf?: AudioBuffer });
+  /** Cue bus (→ 30 Hz high-pass → trim → Tomcat pad); the warning tones join it here. */
+  readonly bus: GainNode;
   update(st: JetColdState, eng?: { starterA?: number; starterB?: number; n2a?: number; n2b?: number }, when?: number): void;
   /** Foley / one-shot. Extra internal cues: relay, cartClunk, xbValve, apuLightoff, lightoff, igniter. */
   cue(name: JetCue | string, opts?: { when?: number; pan?: number; level?: number; down?: boolean }): boolean;
