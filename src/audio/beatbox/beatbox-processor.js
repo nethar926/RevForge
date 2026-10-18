@@ -216,6 +216,20 @@ class BeatboxProcessor extends AudioWorkletProcessor {
 
     // ── smoothed controls ──
     this.s = { rpm: 0, thr: 0, thrC: 0, load: 0, speed: 0, drv: 0.7, tone: 0.5, pops: 0, level: 0 };
+    // Optional warm start (runtime engine swap): begin at the live rpm / throttle / level instead of
+    // gliding up from 0, so a crossfaded-in voice is already at speed on its first sample.
+    const init = o.init;
+    if (init) {
+      const f = (v, d, a, b) => (Number.isFinite(v) ? Math.max(a, Math.min(b, v)) : d);
+      const s0 = this.s;
+      s0.rpm = f(init.rpm, 0, 0, 12000);
+      s0.thr = s0.thrC = s0.load = f(init.throttle, 0, 0, 1);
+      s0.speed = f(init.speed, 0, 0, 400);
+      s0.drv = f(init.drive, 0.7, 0, 1);
+      s0.tone = f(init.tone, 0.5, 0, 1);
+      s0.pops = f(init.pops, 0, 0, 1);
+      s0.level = f(init.level, 0, 0, 4);
+    }
     this.kFast = 1 - Math.exp(-1 / (0.012 * sr));
     this.kLoadUp = 1 - Math.exp(-1 / (0.06 * sr));
     this.kLoadDn = 1 - Math.exp(-1 / (0.22 * sr));

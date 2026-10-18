@@ -1,5 +1,6 @@
 /**
- * Beat Box engine catalogue: six original procedural ICE archetypes (generic names only).
+ * Beat Box engine catalogue: six original procedural ICE archetypes (generic names only), plus
+ * `np-original`, which wraps Night Pursuit's existing V8 voice (see npOriginal.ts).
  * Each entry carries the public facts (cylinders, idle, redline, gearing hints) plus the voice
  * spec the worklet plays (firing table from the real firing order and crank angles, pulse
  * shape, pipe lengths, resonances, intake, mechanics, turbo). All numbers are our own, derived
@@ -78,10 +79,28 @@ export interface BeatboxEngineInfo {
   limiterRpm: number;
   /** Gear ratios the test-drive helper uses (overall incl. final drive). */
   gears: number[];
-  voice: BeatboxVoiceSpec;
+  /**
+   * Which synth plays it. `'beatbox'` (default when absent) = beatbox-processor with `voice`;
+   * `'np-pulse'` = the Night Pursuit pulse-engine voice through an adapter (npOriginal.ts).
+   */
+  backend?: 'beatbox' | 'np-pulse';
+  /** Beat Box worklet spec (present on every `'beatbox'` engine; absent on adapter engines). */
+  voice?: BeatboxVoiceSpec;
 }
 
-export type BeatboxEngineId = 'crossplane-v8' | 'flatplane-v8' | 'turbo-i6' | 'flat6-boxer' | 'v12-gt' | 'twin-rotor';
+export type BeatboxEngineId =
+  | 'crossplane-v8'
+  | 'flatplane-v8'
+  | 'turbo-i6'
+  | 'flat6-boxer'
+  | 'v12-gt'
+  | 'twin-rotor'
+  | 'np-original';
+
+/** Suggested first engine when nothing else is chosen (generic, not a pack mapping). */
+export const BEATBOX_DEFAULT_ENGINE_ID: BeatboxEngineId = 'crossplane-v8';
+/** Suggested backup if the chosen engine cannot be built (e.g. a worklet fails to load). */
+export const BEATBOX_FALLBACK_ENGINE_ID: BeatboxEngineId = 'turbo-i6';
 
 /** Build the even-fire slot list for a firing order (cylinder numbers) and a bank function. */
 function slots(order: number[], step: number, bankOf: (cyl: number) => 0 | 1, primaryMs: (cyl: number) => number, gain?: (cyl: number) => number): FireSlot[] {
@@ -366,6 +385,23 @@ export const BEATBOX_ENGINES: readonly BeatboxEngineInfo[] = [
       width: 0.12,
       trim: 0.385,
     },
+  },
+  // Night Pursuit's original V8 (commit 9841edc), played by its own pulse-engine-processor
+  // voice + NightPursuitBus chain through an adapter; no Beat Box spec. Facts from
+  // NIGHT_PURSUIT_DEFAULTS: idle 44 Hz firing (660 rpm), redline 340 Hz (5100 rpm), maxRpm 5200,
+  // 4-speed automatic 2.74/1.57/1.00/0.67 × 3.23 final drive.
+  {
+    id: 'np-original',
+    name: 'Original',
+    description: 'Night Pursuit\'s original big-block cross-plane V8: deep cam lope, dual-bank burble, load rasp.',
+    cylinders: 8,
+    layout: 'V8 90°, cross-plane crank',
+    firingOrder: 'cross-plane (pulse-engine family 1)',
+    idleRpm: 660,
+    redline: 5100,
+    limiterRpm: 5200,
+    gears: [8.85, 5.07, 3.23, 2.16],
+    backend: 'np-pulse',
   },
 ];
 

@@ -63,12 +63,19 @@ for (const info of BB.BEATBOX_ENGINES) {
   });
 }
 
-test('catalogue: six engines, generic ids, sane ranges, real firing tables', () => {
-  assert.equal(BB.BEATBOX_ENGINES.length, 6);
+test('catalogue: six Beat Box engines + np-original, generic ids, sane ranges, real firing tables', () => {
+  assert.equal(BB.BEATBOX_ENGINES.length, 7);
   const ids = BB.BEATBOX_ENGINES.map((e) => e.id);
-  assert.deepEqual(ids, ['crossplane-v8', 'flatplane-v8', 'turbo-i6', 'flat6-boxer', 'v12-gt', 'twin-rotor']);
+  assert.deepEqual(ids, ['crossplane-v8', 'flatplane-v8', 'turbo-i6', 'flat6-boxer', 'v12-gt', 'twin-rotor', 'np-original']);
+  const np = BB.getBeatboxEngine('np-original');
+  assert.equal(np.name, 'Original');
+  assert.equal(np.backend, 'np-pulse');
+  assert.equal(np.voice, undefined, 'np-original plays the Night Pursuit voice, not a Beat Box spec');
+  assert.equal(BB.BEATBOX_DEFAULT_ENGINE_ID, 'crossplane-v8');
+  assert.equal(BB.BEATBOX_FALLBACK_ENGINE_ID, 'turbo-i6');
   for (const e of BB.BEATBOX_ENGINES) {
     assert.ok(e.idleRpm >= 600 && e.idleRpm < e.redline && e.redline < e.limiterRpm, e.id);
+    if (e.backend === 'np-pulse') continue;
     const fire = e.voice.fire.map((f) => f.deg);
     for (let i = 1; i < fire.length; i++) assert.ok(fire[i] > fire[i - 1], `${e.id} angles ascending`);
   }

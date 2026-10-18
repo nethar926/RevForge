@@ -1,8 +1,8 @@
 # Beat Box ICE voices (audio)
 
-Six original, fully procedural ICE engine voices for RevForge. There are no samples, recordings, wavetables, convolution or storage: every sound is computed per sample from the crank angle inside one AudioWorklet (`src/audio/beatbox/beatbox-processor.js`). The engines are modelled from engine acoustics only. No third-party audio, app or asset was used, inspected or measured.
+Six original, fully procedural ICE engine voices for RevForge, plus `np-original` (Night Pursuit's existing V8), all switchable live with `setEngine`. There are no samples, recordings, wavetables, convolution or storage: every Beat Box sound is computed per sample from the crank angle inside one AudioWorklet (`src/audio/beatbox/beatbox-processor.js`); `np-original` is Night Pursuit's procedural pulse-engine voice. The engines are modelled from engine acoustics only. No third-party audio, app or asset was used, inspected or measured.
 
-Code: `src/audio/beatbox/` (`index.ts` API, `engines.ts` catalogue + voice specs, `testDrive.ts` sim, `beatbox-processor.js` worklet). Tests: `tests/beatbox.test.mjs`. Offline demo renderer: `tests/beatbox-render.mjs`.
+Code: `src/audio/beatbox/` (`index.ts` API, `engines.ts` catalogue + voice specs, `testDrive.ts` sim, `beatbox-processor.js` worklet, `npOriginal.ts` Night Pursuit adapter, `voice.ts` internal voice contract). Tests: `tests/beatbox.test.mjs`, `tests/beatbox-swap.test.mjs`. Offline demo renderer: `tests/beatbox-render.mjs`.
 
 ## Engines (`BEATBOX_ENGINES`)
 
@@ -14,8 +14,13 @@ Code: `src/audio/beatbox/` (`index.ts` API, `engines.ts` catalogue + voice specs
 | `flat6-boxer` | Flat-6 Boxer | 6 | 1-6-2-4-3-5, 120°, banks alternate | 880 | 8800 | 9000 |
 | `v12-gt` | V12 Grand Tourer | 12 | 1-7-5-11-3-9-6-12-2-8-4-10, 60° | 800 | 8400 | 8600 |
 | `twin-rotor` | Twin-Rotor Rotary | 2 rotors | one chamber fire per rotor per eccentric-shaft turn, rotors 180° apart | 1000 | 9000 | 9300 |
+| `np-original` | Original | 8 | Night Pursuit's own cross-plane big-block (pulse-engine family 1), 4-speed automatic hints | 660 | 5100 | 5200 |
 
-Each entry: `{ id, name, description, cylinders, layout, firingOrder, idleRpm, redline, limiterRpm, gears, voice }`. `voice` is the worklet spec (firing table, pulse shape, pipes, resonances, intake, mechanics, turbo, level trim). Reuse it for car themes by copying an entry and changing the spec.
+`np-original` is not a Beat Box spec. It is Night Pursuit's existing V8 voice (commit 9841edc) played through an adapter (`npOriginal.ts`, see [Runtime engine swap](#runtime-engine-swap-setengine)), so its entry has `backend: 'np-pulse'` and no `voice`. The six Beat Box entries have `voice` and no `backend` (= `'beatbox'`).
+
+`BEATBOX_DEFAULT_ENGINE_ID = 'crossplane-v8'` and `BEATBOX_FALLBACK_ENGINE_ID = 'turbo-i6'` are generic suggestions (first engine, and a backup if a build fails). They are not a pack mapping; the frontend decides which pack starts on which engine.
+
+Each entry: `{ id, name, description, cylinders, layout, firingOrder, idleRpm, redline, limiterRpm, gears, backend?, voice? }`. `voice` is the worklet spec (firing table, pulse shape, pipes, resonances, intake, mechanics, turbo, level trim). Reuse it for car themes by copying an entry and changing the spec.
 
 ## API (`src/audio/beatbox/index.ts`)
 
@@ -32,18 +37,71 @@ eng.update({ rpm: s.rpm, throttle: s.throttle, speed: s.speed });
 
 | call | range | default | meaning |
 |---|---|---|---|
-| `createBeatboxEngine(ctx, destination, id, opts?)` | → `Promise<BeatboxEngine>` | | Loads the worklet once per context (`loadBeatboxWorklet`), builds the voice, connects it to `destination`. It is silent until `start()`. `opts`: `drive`, `tone`, `pops`, `volumeDb`, `seed`, `workletUrl`. |
+| `createBeatboxEngine(ctx, destination, id, opts?)` | → `Promise<BeatboxEngine>` | | Loads the worklet once per context (`loadBeatboxWorklet`, or the pulse worklet for `np-original`), builds the voice, connects it to `destination`. It is silent until `start()`. `opts`: `drive`, `tone`, `pops`, `volumeDb`, `seed`, `workletUrl`, `npWorkletUrl`. |
+| `setEngine(id, { crossfadeMs }?)` | crossfadeMs 0–2000 | 300 | Live engine swap with an equal-power crossfade on the same `output`. See below. |
 | `update({ rpm, throttle, speed }, when?)` | rpm 0–12000, throttle 0–1, speed km/h 0–400 | | Live state. Call it every frame; the worklet smooths everything per sample (~12 ms), so you get no zipper noise. `speed` < ~8 km/h tells the turbo there is no road load. `when` = context time for offline scheduling. `setRpm` / `setThrottle` are shorthands. |
 | `setDrive(x)` | 0–1 | 0.7 | Overall drive: loudness (−9 dB at 0 to 0 dB at 1) plus how hard and raspy it sounds under load (saturation, rasp, intake). The test-drive helper also uses `drive` for pedal eagerness and shift rpm. |
 | `setTone(x)` | 0–1 | 0.5 | Smooth and muffled (0) to raw, lumpy and open (1): cylinder imbalance and cycle jitter, cam lope, exhaust pipe resonance, muffler opening and intake growl. Tuned per engine through the spec. |
 | `setPops(x)` | 0–1 | 0 | Overrun pops and bangs after a genuine lift at revs (above roughly idle + 38 % of range, min 2600 rpm). Scales both rate (about 1.5–10 per second plus small crackles) and level. 0 = none, ever. Pops stay separate from tone. |
 | `setVolume(db)` | −60 to +6 dB | 0 | Output gain stage (30 ms glide). |
 | `start(when?)` / `stop(when?)` | | | 150 ms fade in / 250 ms fade out (the voice keeps running silently after stop). |
-| `dispose()` | | | Disconnect and free the node. |
+| `dispose()` | | | Disconnect and free every node (including a voice that is still fading out). |
 
 Output safety (always on): zero-area blowdown pulses (no DC at the source), a 28 Hz second-order high-pass (DC guard and speaker protection), and a 1.5 ms look-ahead peak limiter at −1 dBFS with a soft safety clip above it. Levels are trimmed so the six engines sit within about 1.5 dB of each other at the same drive (about −19 LUFS at drive 0.7 on a scripted run).
 
 UI labels are configurable. The API names (drive, tone, pops) are code names only. On-screen labels are for the UI owner and Wilson to decide.
+
+## Runtime engine swap (`setEngine`)
+
+```ts
+setEngine(id: BeatboxEngineId, opts?: { crossfadeMs?: number }): Promise<void>
+```
+
+- Builds a new voice for `id`, warm-started with the live rpm, throttle, speed, drive, tone, pops and running state (start/stop), so it is at speed on its first sample. Seed policy carries over: with `opts.seed` at create time every new voice uses that seed (deterministic renders); without it each voice gets a fresh random seed.
+- Equal-power crossfade (old gain cos, new gain sin, Σ gain² = 1) on the same `output` node. The default is 300 ms. `crossfadeMs` is clamped to 0–2000; below 5 ms a 5 ms de-click fade is used, so 0 means "as fast as possible" and never a hard cut.
+- `id` and `info` switch to the new engine when the swap starts. The promise resolves once the new voice is playing and the fade is scheduled, not when the fade ends.
+- The old voice is disconnected and freed when its fade ends (an audio-clock timer, so it works in realtime and offline contexts and pauses with a suspended context).
+- Same id as the current engine: no-op (it also cancels a swap that is still pending). Unknown id: the promise rejects with `unknown Beat Box engine: <id>` and the current voice keeps playing.
+- Rapid calls: the last call wins. Calls in the same tick that are superseded before their worklet is ready build nothing. A call that lands mid-fade fades every live voice out from where it is. Each fade-out is a fresh gain stage multiplied onto the voice, so an in-flight curve is never cancelled or re-scheduled (no jumps, no `cancelAndHoldAtTime`, which Firefox lacks), and Σ gain² stays 1. No nodes leak: each superseded voice is freed when its first fade-out reaches 0.
+- Measured (offline, 2500 rpm, 30 % throttle, 300 ms, `tests/beatbox-swap.test.mjs`): the largest sample-to-sample step in the crossfade window stays within the steady level of the two engines, the 20 ms RMS stays flat, and the output stays finite. The peak can rise briefly mid-fade (up to the equal-power envelope √(a² + b²) of the two steady peaks) because two uncorrelated voices are summed at 0.71 each. That is a crest, not a click.
+- `update`, `setDrive`, `setTone`, `setPops`, `start` and `stop` reach every live voice, including one that is fading out.
+- Offline scripts that schedule `update(state, when)` far ahead: a voice built by a later `setEngine` starts at the latest values given to `update` (even ones scheduled for later) and only gets updates made after it exists. Swap from a `ctx.suspend(t)` callback and keep feeding updates after it, as `tests/beatbox-swap.test.mjs` does. Realtime per-frame use is unaffected.
+
+### `np-original` (Night Pursuit's V8 as a Beat Box voice)
+
+`src/audio/beatbox/npOriginal.ts` is an adapter, not a copy. It runs the same pieces EngineSynthImpl's Night Pursuit path runs: the shared `pulse-engine-processor` worklet, `nightPursuitVoice.js` (`stepNightPursuitDrive`, `nightPursuitWorkletTargets`, `NightPursuitBus` post chain), `NIGHT_PURSUIT_DEFAULTS`, and the master → limiter stage. It does not wrap `EngineSynthImpl` itself, because that class reads browser storage, needs a realtime `AudioContext` and owns its own output. Mapping:
+
+| Beat Box | Night Pursuit |
+|---|---|
+| `rpm` | drive-contract `rpm` (absolute rpm wins, so the NP gearbox model is bypassed) |
+| `throttle` | `throttle`, and `load` = throttle |
+| `speed` (km/h) | normalized `speed` (1 = 120 mph) |
+| `drive` | output level, −9 dB to 0 dB like the Beat Box voices (0.7 ≈ NP's own level, trimmed −0.7 dB to sit with the others), then a soft safety clip that never passes 0.9 |
+| `tone` | `camLope` = 0.82 × (0.5 + tone), `roughness` = 0.58 × (0.7 + 0.6 × tone) (0.5 = NP defaults) |
+| `pops` | `overrunBurble` = pops, worklet `crackle` = 0.5 × pops (0.6 = NP defaults; 0 = no afterfire) |
+
+Offline renders that schedule `update(state, when)` ahead run the bus morph at a faked `currentTime` with the module's piecewise-linear offline scheduling, at most every 40 ms, the same way `scripts/night-pursuit-render.mjs` does. The pulse worklet uses `Math.random`, so `seed` does not make `np-original` deterministic.
+
+### Frontend wiring (Night Pursuit pack, any pack)
+
+Create the engine once with the pack's default, call `setEngine` when the picker changes, and persist the choice per pack in the frontend. The audio layer never touches localStorage, sessionStorage or IndexedDB.
+
+```ts
+import { BEATBOX_ENGINES, BEATBOX_FALLBACK_ENGINE_ID, createBeatboxEngine, getBeatboxEngine, type BeatboxEngineId } from '../audio/beatbox/index.ts';
+
+// frontend-owned: pack default + persisted choice
+const saved = prefs.get(`beatbox-engine:${pack.id}`);              // your own prefs layer
+const first = (getBeatboxEngine(saved ?? '')?.id ?? pack.defaultEngine) as BeatboxEngineId; // e.g. 'crossplane-v8'
+const eng = await createBeatboxEngine(ctx, bus, first).catch(() => createBeatboxEngine(ctx, bus, BEATBOX_FALLBACK_ENGINE_ID));
+eng.start();
+
+// picker: BEATBOX_ENGINES.map((e) => ({ value: e.id, label: e.name }))  → includes 'np-original' ("Original")
+async function onPick(id: BeatboxEngineId) {
+  await eng.setEngine(id);                                           // ~300 ms crossfade, keeps driving
+  prefs.set(`beatbox-engine:${pack.id}`, id);                        // frontend persists per pack
+}
+// per frame, whatever engine is active: eng.update({ rpm, throttle, speed });
+```
 
 ## Test drive (`createTestDrive(opts)`)
 
