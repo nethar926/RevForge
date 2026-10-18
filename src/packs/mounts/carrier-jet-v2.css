@@ -184,6 +184,14 @@
 
 /* CONFIG (SPDS-style pages): tiles over the Board 2 cells; SPEED, its keys and the AB guard stay live */
 .cjv2-config-title { position: absolute; }
+/* CONFIG headers (configHeaders.ts): a relabelled cell's header names the page under it; blank = same box, hidden (zero
+   shift). WING SWEEP / COMPASS are skin labels: hidden (box kept) while the host draws the page name in the same
+   label slot (cell top - 16, left + 4, like ACCEL / MAP). VDI's label sits under the CONFIG title bar: hidden so its
+   top edge no longer pokes out above the bar (the stray tab). visibility also drops them from the a11y tree. */
+.cjv2-lab[data-blank] { visibility: hidden; }
+.cjm:has(> .cjv2[data-config]) .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-mid > .cj-plab:not(.cj-plab-2),
+.cjm:has(> .cjv2[data-hdr-sweep]) .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-right > .cj-plab,
+.cjm:has(> .cjv2[data-hdr-compass]) .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-mid > .cj-plab-2 { visibility: hidden; }
 .cjv2-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; text-align: center; cursor: pointer; font: inherit; color: #8dffad; overflow: hidden;
   border: 3px solid #111416; border-radius: 10px; background: radial-gradient(ellipse at 50% 40%, #08190e, #041009 70%); box-shadow: 0 0 0 2px #535c62, inset 0 0 24px rgb(0 0 0 / 0.8); container-type: size; }
 .cjv2-tile[aria-disabled='true'] { cursor: default; color: #6c8a74; }
