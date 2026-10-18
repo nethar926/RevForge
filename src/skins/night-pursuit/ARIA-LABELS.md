@@ -6,9 +6,9 @@ Reid wires them only after Meghan approves.
 
 | Readout | Role | aria-label | aria-valuetext | Source |
 |---|---|---|---|---|
-| MPH 7-seg (velocity pod) | labeled wrapper | Speed | none; hidden span reads "{n} miles per hour" (NP always draws MPH) | `mph` |
-| RPM 7-seg (tach pod) | labeled wrapper | Engine RPM | none; hidden span reads "{n} RPM" | `rpmShown` |
-| GEAR readout | labeled wrapper | Gear | none; hidden span reads "{n}", or "neutral" for N; no gear readout at all when gear is null | `gearText` |
+| MPH 7-seg (velocity pod) | hidden span, no role | none | none; span reads "Speed {n} miles per hour" (NP always draws MPH) | `mph` |
+| RPM 7-seg (tach pod) | hidden span, no role | none | none; span reads "Engine RPM {n}" | `rpmShown` |
+| GEAR readout | hidden span, no role | none | none; span reads "Gear {n}", or "Gear neutral" for N; no gear readout at all when gear is null | `gearText` |
 | THROTTLE bar (full, and compact at 773x601 only) | meter, 0 to 100 | Throttle | "{n} percent" | `thr` |
 | LOAD bar | meter, 0 to 100 | Engine load | "{n} percent" | `load` |
 | ENGINE bar | meter, 0 to 100 | Engine speed | "{n} percent of redline" | `rpm`, n = round(clamp(rpm, 0, 1) x 100) |
@@ -24,7 +24,7 @@ Rules
 - Keep the individual 7-seg digit SVGs, scanner, voice box and glyph `aria-hidden` (decorative; the readout wrappers above carry the labels).
 - CRT B lines use a visually hidden span for the spoken words; the visible "THR"/"LOAD" abbreviations stay as drawn.
 - Meters carry aria-valuemin 0, aria-valuemax 100 and aria-valuenow n. Role and name go on a wrapper around SegBar, because SegBar's own `.np-bar` div is `aria-hidden`.
-- aria-valuetext is only for the meters. Speed, Engine RPM and Gear speak through a visually hidden span inside a labeled wrapper around each 7-seg, the same way CRT B does.
+- aria-valuetext is only for the meters. Speed, Engine RPM and Gear speak through a visually hidden span next to each 7-seg that holds the whole phrase, the same way CRT B does. No aria-label on plain divs or spans, since ARIA doesn't allow it there.
 - Unhide only the speed, RPM and gear wrappers, the bar stack and the CRT B screen from their pods' `aria-hidden`. In compact, the speed and gear wrappers and `np-c-thr` sit inside the hidden `np-c-speed` section and the RPM wrapper inside `np-c-tach`, so pull them out or unhide them on their own.
 - 844x390 has no bars and neither compact size has CRT B today; the new cell plans bring them back and these labels apply there too.
 - Each value is spoken once (Meghan, 2026-10-18): whenever the matching THROTTLE or LOAD bar is rendered, its CRT B line is aria-hidden, so CRT B reads only "System monitor" or "System pursuit". If a layout drops a bar, unhide that bar's CRT B line so the value is still announced.
