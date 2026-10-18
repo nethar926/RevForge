@@ -147,7 +147,6 @@ export function ForgePage({
   const [motion, setMotion] = useState(() => storedFlag("drivesynth.motion", true));
   const [mediaEnabled,setMediaEnabled] = useState(() => storedFlag("revforge.media.experimental", false));
   const [pauseShifts,setPauseShifts] = useState(() => storedFlag("drivesynth.pauseShifts", true));
-  const [mutedBeforeHide, setMutedBeforeHide] = useState(false);
   const [revision, setRevision] = useState(0);
   const patch = useMemo(
     () =>
@@ -197,11 +196,10 @@ export function ForgePage({
       setPedal(0);
       setBrake(false);
     };
+    // Hidden (Tesla backup camera, app switch): release the held pedal / brake only. Audio keeps running in Drive;
+    // only Shutdown, the shutdown guard or a pack shutdown stop it.
     const visibility = () => {
-      if (document.visibilityState === "hidden") {
-        release();
-        if(!audio.background){audio.stop();setMutedBeforeHide(true);}
-      }
+      if (document.visibilityState === "hidden") release();
     };
     window.addEventListener("blur", release);
     document.addEventListener("visibilitychange", visibility);
@@ -209,7 +207,7 @@ export function ForgePage({
       window.removeEventListener("blur", release);
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [audio]);
+  }, []);
   useEffect(() => {
     if (panel) {
       setPedal(0);
@@ -293,7 +291,6 @@ export function ForgePage({
   });
   const start = () => {
     setIgnited(true);
-    setMutedBeforeHide(false);
     media.arm();
     if(source === "gps") onGpsEnabled(true);
     void audio.start().then(() => {
@@ -362,7 +359,7 @@ export function ForgePage({
             {driveMode==='manual'&&<><button className="rev-chip" disabled={!audio.running} aria-label="Downshift" onClick={()=>shift(-1)}>−</button><button className="rev-chip" disabled={!audio.running} onClick={neutral}>N</button><button className="rev-chip" disabled={!audio.running} aria-label="Upshift" onClick={()=>shift(1)}>+</button></>}
             {source==='demo'&&<button className="rev-chip" disabled={!revReady} onPointerDown={e=>hold(e,'throttle')} onPointerUp={()=>setPedal(0)} onPointerCancel={()=>setPedal(0)} onLostPointerCapture={()=>setPedal(0)}>Hold to rev</button>}
             {patch?.kind==='scifi'&&<button className="rev-chip rev-blaster" disabled={!audio.running} onClick={()=>audio.triggerUiCue('ion-cannon')}>Pulse Burst</button>}
-            <button className="rev-chip rev-stop" disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Shutdown':mutedBeforeHide?'Resume':'Ignition'}</button>
+            <button className="rev-chip rev-stop" disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Shutdown':'Ignition'}</button>
           </footer>
         </>}
         {audio.error&&<p className="rev-message" role="alert">{audio.error}</p>}

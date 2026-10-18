@@ -5,6 +5,7 @@ import type { useAudioEngine } from "../hooks/useAudioEngine";
 import type { useGeolocation } from "../hooks/useGeolocation";
 import { mphToSpeed } from "../audio";
 import { createSimulation, stepSimulation, clamp } from "./simulation";
+import { startFrameLoop } from "./frameLoop";
 import type { Drivetrain, Controls } from "./simulation";
 
 export function useDriveSimulation(
@@ -35,13 +36,11 @@ export function useDriveSimulation(
     queuedShift.current = 0;
   }, [source]);
   useEffect(() => {
-    let handle = 0,
-      previous = performance.now(),
-      published = 0;
-    const frame = (now: number) => {
+    let published = 0;
+    // one step of the feed; frameLoop.ts paces it (rAF, plus a 100 ms watchdog when no frame ran for > 150 ms) and
+    // caps dt (0.05 s per rAF step, 1.0 s per watchdog step), so hidden / covered pages keep feeding the engine
+    const frame = (now: number, dt: number) => {
       const { audio, gps, config, source, mode, pedal, brake, jitter, rawGpsSpeed } = latest.current;
-      const dt = Math.min(document.visibilityState === "hidden" ? .25 : .05, Math.max(0, (now - previous) / 1000));
-      previous = now;
       if (audio.running || source === "gps") {
         // Status encodes wall-callback staleness from useGeolocation (not pos.timestamp).
         const fresh = gps.status === "live";
@@ -79,13 +78,14 @@ export function useDriveSimulation(
         const s=simulation.current,o=latest.current;
         setHud({ ...s,rpm:s.rpm+(o.audio.running?idleWander(now/1000,s.rpm,o.config.idleRpm,o.source==='demo'?o.pedal:s.load,o.jitter):0) });
       }
-      if (document.visibilityState === "visible") handle = requestAnimationFrame(frame);
     };
-    handle = requestAnimationFrame(frame);
-    const timer = window.setInterval(() => {if(document.visibilityState === "hidden") frame(performance.now());}, 100);
-    const visible = () => {cancelAnimationFrame(handle); if(document.visibilityState === "visible") handle=requestAnimationFrame(frame);};
-    document.addEventListener("visibilitychange",visible);
-    return () => {cancelAnimationFrame(handle);clearInterval(timer);document.removeEventListener("visibilitychange",visible);};
+    return startFrameLoop(frame, {
+      now: () => performance.now(),
+      raf: (cb) => requestAnimationFrame(cb),
+      caf: (id) => cancelAnimationFrame(id),
+      setInterval: (f, ms) => window.setInterval(f, ms),
+      clearInterval: (t) => window.clearInterval(t as number),
+    });
   }, []);
   return {
     simulation,
