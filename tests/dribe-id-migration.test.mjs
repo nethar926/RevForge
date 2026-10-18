@@ -121,7 +121,7 @@ test('old ids stay out of the shipped sources as plain strings (reversed in migr
   const sources = ['src/packs/migrations.ts', 'src/forge/catalog.ts', 'src/forge/sceneLabels.ts', 'src/themes/catalog.ts', 'src/themes/ThemeStage.tsx', 'src/forge/scenes.js', 'src/forge/revforge-packs.json'];
   for (const rel of sources) {
     const src = readFileSync(join(root, rel), 'utf8');
-    for (const old of Object.keys(OLD_TO_NEW).filter((id) => id !== 'dual-surge')) {
+    for (const old of Object.keys(OLD_TO_NEW)) {
       assert.equal(new RegExp(`['"\`]${old}['"\`]|road-${old}\\b|revforge-${old}\\b`).test(src), false, `${rel} still has ${old}`);
     }
     for (const key of ['route66', 'sakura', 'starliner', 'desert', 'alpine']) assert.equal(new RegExp(`['"\`]${key}['"\`]`).test(src), false, `${rel} still has scene key ${key}`);

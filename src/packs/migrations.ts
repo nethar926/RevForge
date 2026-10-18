@@ -54,7 +54,7 @@ const DRIBE_SCENE_RENAMES: ReadonlyArray<readonly [string, string]> = [
   [legacy('ailati'), 'azure-bend'],
   [legacy('imaim'), 'pink-current'],
   [legacy('nhabotua'), 'silver-run'],
-  ['dual-surge', 'lightline'],
+  [legacy('egrus-laud'), 'lightline'],
   [legacy('rennur-enud'), 'sandwake'],
   [legacy('enipla'), 'frostpass'],
   [legacy('renilrats'), 'deep-transit'],
