@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RevForge – Immersive phase test</title>
+<style>
+body{margin:0;background:#15181b;color:#e6e9ec;font:20px/1.4 system-ui,sans-serif;display:flex;justify-content:center}
+main{max-width:760px;padding:32px}
+h1{font-size:28px;margin:0 0 16px}
+button{min-height:88px;min-width:260px;font-size:26px;font-weight:600;border:2px solid #8a9198;border-radius:10px;background:#2a2f34;color:#fff;margin:8px 0 20px}
+audio{width:100%;height:56px}
+ol{padding-left:28px} li{margin:6px 0}
+</style></head><body><main>
+<h1>Immersive phase test</h1>
+<p>Play once with Immersive Sound on High, once with it Off. Beeps mark each section.</p>
+<button id="p" aria-label="Play or pause the phase test">▶ Play</button>
+<audio id="a" controls preload="auto" src="cj-immersive-phase-test.mp3"></audio>
+<ol>
+<li>0:00 front left</li><li>0:05 front right</li><li>0:11 front center</li>
+<li><b>0:17 rear (out of phase)</b></li><li>0:23 sweep front to rear</li>
+<li>0:34 sweep rear to front</li><li>0:45 center and rear back and forth</li>
+</ol>
+<p>With Immersive on: does section 4 and the sweeps move behind you? With it off: does section 4 sound hollow or "inside your head"?</p>
+</main>
+<script>
+const a=document.getElementById('a'),b=document.getElementById('p');
+b.onclick=()=>a.paused?a.play():a.pause();
+a.onplay=()=>b.textContent='❚❚ Pause';a.onpause=()=>b.textContent='▶ Play';
+</script></body></html>
