@@ -492,3 +492,7 @@
 .cjm[data-cjm-v2] .cj[data-variant='carrier-jet'][data-layout='reflow'] .cj-a-eng [data-cj-el='aoa'] > text:first-child {
   transform: translate(min(0px, calc((19px - 11.2px / var(--cj-sv, 1)) * 2)), max(calc(11.2px / var(--cj-sv, 1) - 19px), 0px));
 }
+
+/* Narrow compass (COMPASS / ACCEL swap): when the host lays its HTML HDG chip over the rose, the rose's own digit box
+   would peek out under it, so it hides. With no chip (no heading yet: '---') the box shows. Visibility only. */
+:root:has([data-cj-hdg-chip]) [data-cj-rose='narrow'] .cj-rose-box { visibility: hidden; }
