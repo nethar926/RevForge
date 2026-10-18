@@ -138,7 +138,8 @@ export function subscribeWxRadar(f: Listener) {
 /* ---- last good frame (radar offline / a fetch failed): keep showing it, with its age.
    cjWxRadarLayer reports every radar fetch here (the weather-maps.json frame list and each tile). A failed fetch
    never blanks the overlay: the frame list keeps the last good frame, and a tile that fails is answered from the
-   last good copy of that tile (WxTileCache), from any earlier frame. The age is minutes since the last good fetch.
+   last good copy of that tile (WxTileCache), from any earlier frame. The age is the shown frame's own age (its RainViewer
+   `time`; wxRadarAgeMin), falling back to minutes since the last good fetch.
    Past 180 min (the OAT hide point) the held frame expires: layer, label and held frame/tiles are dropped together. */
 export interface WxRadarStatus {
   /** Last successful radar fetch (frame list or tile), ms; null before the first. */
@@ -176,16 +177,27 @@ export function __setWxRadarStatus(next: Partial<WxRadarStatus>): void {
 /** Stale = the last radar fetch failed (after the last good one) or the browser is offline. */
 export const wxRadarStale = (s: WxRadarStatus, online: boolean) => s.lastGoodAt != null && (!online || (s.lastFailAt != null && s.lastFailAt > s.lastGoodAt));
 
-/** Expired = the last good radar fetch is past the OAT "hidden" point (wxStaleness, > 180 min): the stale rain frame,
+/** Age of the radar picture (minutes): from the shown frame's own timestamp (RainViewer `time`, unix s), not the fetch
+ *  time, so a frame that was 5 min old when fetched reads 'RADAR · 5m'. Falls back to the last good fetch when there is
+ *  no frame or its time is implausible for this clock (> 5 min in the future, or > 3 h older than the fetch: a skewed
+ *  device clock or a bogus value), so a bad clock never hides a live frame. */
+export const WX_RADAR_FUTURE_SKEW_MS = 5 * 60_000;
+export function wxRadarAgeMin(s: WxRadarStatus, now: number): number {
+  const t = s.frame && Number.isFinite(s.frame.time) && s.frame.time > 0 ? s.frame.time * 1000 : null;
+  const sane = t != null && t <= now + WX_RADAR_FUTURE_SKEW_MS && (s.lastGoodAt == null || !wxStaleness((s.lastGoodAt - t) / 60000).hidden);
+  const from = sane ? t : s.lastGoodAt;
+  return from == null ? 0 : Math.max(0, (now - from) / 60000);
+}
+/** Expired = the radar picture (wxRadarAgeMin: the frame's own time) is past the OAT "hidden" point (wxStaleness, > 180 min): the stale rain frame,
  *  its label and the held frame/tiles all go together, and nothing brings them back until a fresh frame arrives. */
-export const wxRadarExpired = (s: WxRadarStatus, now: number) => s.lastGoodAt != null && wxStaleness((now - s.lastGoodAt) / 60000).hidden;
+export const wxRadarExpired = (s: WxRadarStatus, now: number) => s.lastGoodAt != null && wxStaleness(wxRadarAgeMin(s, now)).hidden;
 /** Drop the held frame (cjWxRadarLayer also removes the layer and clears its tile cache). */
 export function expireWxRadarFrame(): void {
   if (status.frame) emitStatus({ ...status, frame: null });
 }
 
 export interface WxRadarAgeView {
-  /** "RADAR · 12m" / "RADAR · 1h" / "RADAR · 1h45" (fmtAge, as the OAT age) */
+  /** "RADAR · 12m" / "RADAR · 1h" / "RADAR · 1h45" (fmtAge, as the OAT age), from the frame's own time */
   text: string;
   aria: string;
   /** dims on the OAT schedule (wxStaleness: > 90 min) */
@@ -197,7 +209,7 @@ export interface WxRadarAgeView {
  *  Null when there is no frame, or once it has expired (> 180 min, wxStaleness hidden): frame and label go together. */
 export function radarAgeView(s: WxRadarStatus, online: boolean, now: number): WxRadarAgeView | null {
   if (s.frame == null || s.lastGoodAt == null) return null;
-  const min = Math.max(0, (now - s.lastGoodAt) / 60000);
+  const min = wxRadarAgeMin(s, now);
   const st = wxStaleness(min);
   if (st.hidden) return null;
   return { text: `RADAR · ${fmtAge(min)}`, aria: `Radar, last updated ${ageSpan(min)} ago`, dim: st.dim, stale: wxRadarStale(s, online) };

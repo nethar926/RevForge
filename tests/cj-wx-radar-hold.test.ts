@@ -94,7 +94,7 @@ test('dims on the OAT schedule: the same wxStaleness, no second set of threshold
   const radar = src('packs/carrier-jet/wxRadar.ts');
   assert.match(radar, /const st = wxStaleness\(min\);\n\s*if \(st\.hidden\) return null;/);
   assert.match(radar, /dim: st\.dim/);
-  assert.match(radar, /export const wxRadarExpired = \(s: WxRadarStatus, now: number\) => s\.lastGoodAt != null && wxStaleness\(\(now - s\.lastGoodAt\) \/ 60000\)\.hidden;/);
+  assert.match(radar, /export const wxRadarExpired = \(s: WxRadarStatus, now: number\) => s\.lastGoodAt != null && wxStaleness\(wxRadarAgeMin\(s, now\)\)\.hidden;/);
   assert.doesNotMatch(radar, /WX_DIM_MIN|WX_AGE_SHOW_MIN|WX_HIDE_MIN|min >=? \d/, 'no copied thresholds');
   assert.match(src('packs/carrier-jet/wxView.ts'), /const st = v \? wxStaleness\(v\.ageMin\) : null;/);
 });
