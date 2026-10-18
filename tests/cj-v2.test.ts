@@ -61,9 +61,10 @@ test('hidden features: no VoiceOver node — CONFIG pages never list them', () =
 test('bank order: plate < guard (DOM + grid column), NAV row under the guard; Hold to rev / Shutdown to the right', () => {
   const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
   assert.match(mount, /if \(dock\.firstElementChild !== bankEl\) dock\.prepend\(bankEl\)/, 'bank leads the dock DOM (before Hold / Shutdown)');
-  assert.match(mount, /\{!row && plate\}\s*<div className="cjm-bank-ab">\{guard\}<\/div>\s*\{row && sbLamp\}\s*\{spds \? coldOn && <div className="cjm-bank-shelf">[^\n]*: <div className="cjm-bank-nav"/, 'DOM / VoiceOver order: plate, guard, (v3 Tesla: SHELF key | phones: NAV row); one-row dock: guard, SEAT BELT, SHELF');
-  // one-row dock (Tesla, cold start on): the plate moves to the right end, after EMER STOP · QUICK START
-  assert.match(mount, /<div className="cjm-bank-es" role="group" aria-label="Engine start and stop">\s*\{cold\.render\.pullQs\([^)]*\)\}\s*<\/div>\s*\{plate\}/);
+  assert.match(mount, /\{plate\}\s*<div className="cjm-bank-ab">\{guard\}<\/div>\s*\{row \? null : spds \? shelf : <div className="cjm-bank-nav"/, 'DOM / VoiceOver order: plate, guard, (v3 Tesla: SHELF key | phones: NAV row); one-row dock: plate, guard, then bank-b: EMER STOP · QUICK START · SEAT BELT · SHELF');
+  // one-row dock (Tesla, cold start on; Wilson's layout): plate far left, AB guard, then EMER STOP · QUICK START · SEAT BELT · SHELF
+  assert.match(mount, /<div className="cjm-bank-es" role="group" aria-label="Engine start and stop">\s*\{cold\.render\.pullQs\([^)]*\)\}\s*<\/div>\s*\{sbLamp\}\s*\{shelf\}/);
+  assert.match(mount, /const shelf = coldOn && <div className="cjm-bank-shelf">/);
   // CJ v3 NAV → SPDS: on the Tesla board the NAV panel is gone (functions on the edge keys / CONFIG), the slot is never published
   assert.match(mount, /const spds = FEATURES\.cjV2 && tesla;/);
   assert.match(mount, /if \(!spds \|\| !docked\) return;\s*setCjNavSpds\(true\);/);

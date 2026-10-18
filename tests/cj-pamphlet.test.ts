@@ -165,7 +165,7 @@ test('SEAT BELT lamp on every cold-start dock, guarded SHUTDOWN removed (panel 6
   assert.match(mount, /const sbLamp = sbLampShown\(sbCtx\) \?/);
   assert.match(mount, /<SeatBeltLamp on=\{cold\.seatbelt\} \/>/);
   assert.match(mount, /const shutdownGuard = sdGuardShown\(sdShow, sbCtx\) \?/);
-  assert.match(src('src/packs/mounts/carrier-jet-v2.css'), /\.rev-dock:has\(> \.cjm-bank > \.cjm-sbl\[data-sd-off\]\) > \.rev-stop \{ display: none !important; \}/);
+  assert.match(src('src/packs/mounts/carrier-jet-v2.css'), /\.rev-dock:has\(> \.cjm-bank-b > \.cjm-sbl\[data-sd-off\]\) > \.rev-stop \{ display: none !important; \}/);
   assert.deepEqual(CJ_HOST_CUES, { seatbelt: 'seatbeltTone', oxygen: 'o2Chimes' });
   assert.equal(hostCueFor('seatbelt', true), 'seatbeltTone');
   assert.equal(hostCueFor('oxygen', true), 'o2Chimes');

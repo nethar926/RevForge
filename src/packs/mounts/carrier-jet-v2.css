@@ -74,27 +74,42 @@
 .rev-dock > .cjm-bank[data-cjm-v2][data-rf-layout='board'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-label,
 .rev-dock > .cjm-bank[data-cjm-v2][data-rf-layout='board'] .cjnav .cjs[data-cjs-variant]:not(#cj-v) .cjs-legend { letter-spacing: 0.01em; }
 
-/* ---------------- ONE bottom row (Meghan's spec, Oct 18; William's gate). Tesla (board / window) with the cold start on
-   (CarrierJetMount bankRowOn → data-cjm-row): AFTERBURNER (guard at the left end, nearest the driver) · FASTEN SEAT
-   BELT · SHELF · [host chips] · EMER STOP · QUICK START · GPS/RADAR, bottom-aligned on the old row line (3px below the
-   dock line, 15px over the Tesla app bar), spread over the dock's full width (no dead space right of QUICK START).
-   .cjm-bank / .cjm-bank-b are display: contents (their children are the row's items, DOM = visual = VoiceOver order;
-   the role=group boxes .cjm-bank-plate and .cjm-bank-es stay boxes). The board box (padding below) is unchanged, so
-   every cell keeps its size, Park = Drive. 773 window: no room for the GPS/RADAR plate (row 697 of 725 px without
-   it), so it is not drawn there; GPS state stays on SPEED (GPS LIVE / ACQ), RADAR on CONFIG › MAP › RADAR. */
+/* ---------------- ONE bottom row (Meghan's spec + Wilson's layout, Oct 18; William's gate). Tesla (board / window)
+   with the cold start on (CarrierJetMount bankRowOn → data-cjm-row), left (driver) to right, DOM = visual = VoiceOver:
+   GPS/RADAR plate · AFTERBURNER (MASTER ARM guard) · [host chips] · EMER STOP · QUICK START · FASTEN SEAT BELT · SHELF.
+   Equal gaps (space-between over the full dock width: no dead space right of the last part), one baseline 3px below
+   the dock line (18px over the Tesla app bar). AFTERBURNER, SEAT BELT and SHELF share --cjrow-h (top and bottom
+   edges); EMER STOP, QUICK START and the GPS/RADAR plate are the 118px parts (Meghan's PULL / QUICK START /
+   GPS_RADAR_PLATE minimum heights, skins/carrier-jet/parts/tokens.ts) on the same baseline. .cjm-bank / .cjm-bank-b /
+   .cjm-bank-es are display: contents (the parts are the row's items; .cjm-bank-plate and .cjm-bank-es keep their
+   role=group). The board box (padding below) is unchanged, so every cell keeps its size; Park = Drive.
+   773 window: the dock spans the board's width (8px sides) and the AFTERBURNER caption sits over the guard (row
+   height 66px) so all six parts fit one row; text stays 11px, targets 44px. */
 .rev-dock:has(> .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window'])) {
-  display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; overflow: visible;
+  --cjrow-h: 60px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; overflow: visible;
 }
+.rev-viewport > .rev-dock:has(> .cjm-bank[data-cjm-v2][data-cjm-row][data-rf-layout='window']) { --cjrow-h: 66px; left: 8px !important; right: 8px !important; }
 .rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window']),
-.rev-dock > .cjm-bank-b[data-cjm-row] { display: contents !important; }
+.rev-dock > .cjm-bank-b[data-cjm-row],
+.rev-dock > .cjm-bank-b[data-cjm-row] > .cjm-bank-es { display: contents !important; }
 .rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window']) > *,
-.rev-dock > .cjm-bank-b[data-cjm-row] > *,
+.rev-dock > .cjm-bank-b[data-cjm-row] > :not(.cjm-bank-es),
+.rev-dock > .cjm-bank-b[data-cjm-row] > .cjm-bank-es > *,
 .rev-dock:has(> .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window'])) > :is(.rev-chip, .rev-stop) {
   position: static !important; inset: auto !important; translate: none !important; margin: 0 0 -3px !important; flex: none; align-self: flex-end; order: 0 !important;
 }
-.rev-dock > .cjm-bank-b[data-cjm-row] > .cjm-bank-es { display: flex; align-items: flex-end; gap: 8px; }
-.rev-dock > .cjm-bank-b[data-cjm-row] > .cjm-bank-plate { display: flex; }
-.rev-dock > .cjm-bank-b[data-cjm-row][data-rf-layout='window'] > .cjm-bank-plate { display: none; }
+/* the shared-height parts */
+.rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-bank-ab { height: var(--cjrow-h); display: flex; }
+.rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row]:is([data-rf-layout='board'], [data-rf-layout='window']) > .cjm-bank-ab > .cjg { box-sizing: border-box; height: 100%; }
+.rev-dock > .cjm-bank-b[data-cjm-row] > .cjm-sbl .sbl { box-sizing: border-box; height: var(--cjrow-h); padding: calc((var(--cjrow-h) - 44px) / 2) 4px; vertical-align: bottom; }
+.rev-dock > .cjm-bank-b[data-cjm-row] > .cjm-bank-shelf .cjcs-shelfkey { height: var(--cjrow-h); }
+/* 773: AFTERBURNER caption over the guard well, AB ARMED plate beside both (250 x 66 instead of 343 x 60) */
+.rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row][data-rf-layout='window'] > .cjm-bank-ab > .cjg[data-cjg-variant='compact']:not(#cj-v) {
+  display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 6px; row-gap: 2px; align-items: center; padding: 2px 6px;
+}
+.rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row][data-rf-layout='window'] > .cjm-bank-ab > .cjg[data-cjg-variant='compact']:not(#cj-v) > .cjg-cap { grid-area: 1 / 1; }
+.rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row][data-rf-layout='window'] > .cjm-bank-ab > .cjg[data-cjg-variant='compact']:not(#cj-v) > .cjg-well { grid-area: 2 / 1; }
+.rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row][data-rf-layout='window'] > .cjm-bank-ab > .cjg[data-cjg-variant='compact']:not(#cj-v) > .cjg-plate { grid-area: 1 / 2 / 3 / 3; }
 
 /* ---------------- board box: clears the stack top (124 tall, bottom 6px below the dock line) + 8 */
 .rev-viewport:has(> .rev-dock > .cjm-bank[data-cjm-v2][data-rf-layout='board']) .rev-scene .theme-stage.is-fullscreen .skin-body:has(> .cjm) {
@@ -368,10 +383,10 @@
 .cjv2-hsd .cjv2-scope > .cjv2-corner { background: rgb(4 16 9 / 0.82); padding: 0 3px; border-radius: 3px; }
 .cjv2-hsd .cjv2-scope > .cjv2-br { color: #8fb59a; }
 
-/* SEAT BELT lamp (Meghan's sheet panel 5): a flex item of the one bottom row (below), inside .cjm-bank between
-   AFTERBURNER and SHELF. The host Shutdown chip goes where panel 6 removes it (engine running; data-sd-off): out of
+/* SEAT BELT lamp (Meghan's sheet panel 5): a flex item of the one bottom row (below), inside .cjm-bank-b between
+   QUICK START and SHELF. The host Shutdown chip goes where panel 6 removes it (engine running; data-sd-off): out of
    the row (display: none, so it leaves no hole); stopped, it is Ignition / Resume and takes its place in the row. */
-.rev-dock:has(> .cjm-bank > .cjm-sbl[data-sd-off]) > .rev-stop { display: none !important; }
+.rev-dock:has(> .cjm-bank-b > .cjm-sbl[data-sd-off]) > .rev-stop { display: none !important; }
 .cjm-sbl .sbl { display: block; }
 
 /* MASTER CAUTION (sheet panel 4) in place of CAUT RST: the skin cell keeps its box (layout unchanged) but is hidden

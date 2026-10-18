@@ -48,7 +48,7 @@ test('shown on every cold-start dock: no engine-running or Park input; guarded S
   assert.equal(sdGuardShown(false, { coldOn: false, spds: true, docked: true }), false);
   // wiring: the lamp condition is the cold-start dock only (not props.running / sdShow / park)
   assert.match(mount, /const sbCtx = \{ coldOn, spds, docked: !!vp\.dock \};\s*const sbLamp = sbLampShown\(sbCtx\) \?/);
-  assert.match(mount, /<div className="cjm-bank-ab">\{guard\}<\/div>\s*\{row && sbLamp\}/, 'in the bottom row, right of AFTERBURNER');
+  assert.match(mount, /\{cold\.render\.pullQs\([^)]*\)\}\s*<\/div>\s*\{sbLamp\}\s*\{shelf\}/, 'in the bottom row, after QUICK START, before SHELF');
   assert.doesNotMatch(mount, /createPortal\(sbLamp/);
   assert.equal(bankRowOn({ coldOn: true, spds: true, docked: true }), true, 'row exactly where the lamp shows');
   assert.equal(bankRowOn({ coldOn: false, spds: true, docked: true }), false);
@@ -72,12 +72,13 @@ test('pre-start: dark when the sign is off; lit when on; VoiceOver "Seat belt li
   assert.match(concept, /\.sbl\[data-on\] \.sbl-lens \{[^}]*color: #fff6dc;[^}]*text-shadow: 0 0 3px/);
 });
 
-test('spot: the one bottom row, between AFTERBURNER and SHELF (Meghan, Oct 18); Shutdown chip out of the row while running', () => {
+test('spot: the one bottom row, between QUICK START and SHELF (Meghan + Wilson, Oct 18); Shutdown chip out of the row while running', () => {
   assert.doesNotMatch(css, /\.cjm-sbl \{\s*position: absolute/, 'a row item, not an absolute overlay');
-  assert.match(css, /\.rev-dock > \.cjm-bank\[data-cjm-v2\]\[data-cjm-row\]:is\(\[data-rf-layout='board'\], \[data-rf-layout='window'\]\) > \*,/);
+  assert.match(css, /\.rev-dock > \.cjm-bank-b\[data-cjm-row\] > :not\(\.cjm-bank-es\),/);
+  assert.match(css, /\.rev-dock > \.cjm-bank-b\[data-cjm-row\] > \.cjm-sbl \.sbl \{ box-sizing: border-box; height: var\(--cjrow-h\);/, 'same height as AFTERBURNER / SHELF');
   // Shutdown chip hidden only where panel 6 removes it (running) and with no hole in the row; stopped it stays the
   // Ignition / Resume path, a row item
-  assert.match(css, /\.rev-dock:has\(> \.cjm-bank > \.cjm-sbl\[data-sd-off\]\) > \.rev-stop \{ display: none !important; \}/);
+  assert.match(css, /\.rev-dock:has\(> \.cjm-bank-b > \.cjm-sbl\[data-sd-off\]\) > \.rev-stop \{ display: none !important; \}/);
   assert.doesNotMatch(css, /\.rev-dock:has\(> \.cjm-sbl/, 'no dead rule for the old dock-child lamp (William gate)');
   assert.doesNotMatch(css, /\.cjm-sbl:not\(\[data-sd-off\]\)/, 'no dead stopped-position rule (William gate)');
 });

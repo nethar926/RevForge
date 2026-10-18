@@ -252,17 +252,17 @@ export function CarrierJetMount(props: PackHudProps) {
       <div aria-hidden="true"><SeatBeltLamp on={cold.seatbelt} /></div>
     </div>
   ) : null;
-  // Bottom row (Meghan's spec, Oct 18; William's gate): Tesla with the cold start on = ONE aligned row along the bottom
-  // edge, DOM = visual = VoiceOver order: AFTERBURNER (guard at the left end, nearest the driver) · FASTEN SEAT BELT ·
-  // SHELF · [host chips] · EMER STOP · QUICK START · GPS/RADAR plate (right end; hidden in the 773 window, where the row
-  // has no room for it: GPS state stays on SPEED, RADAR on CONFIG › MAP › RADAR). Spacing in carrier-jet-v2.css.
+  // Bottom row (Meghan's spec + Wilson's layout, Oct 18; William's gate): Tesla with the cold start on = ONE even row
+  // along the bottom edge, DOM = visual = VoiceOver order, left (driver) to right: GPS/RADAR plate · AFTERBURNER
+  // (MASTER ARM guard) · [host chips] · EMER STOP · QUICK START · FASTEN SEAT BELT · SHELF. Every size, 773 included.
+  // Spacing / heights in carrier-jet-v2.css.
   const row = bankRowOn({ spds, coldOn, docked: !!vp.dock });
+  const shelf = coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div>;
   const bank = (
     <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined} data-cjm-row={row || undefined}>
-      {!row && plate}
+      {plate}
       <div className="cjm-bank-ab">{guard}</div>
-      {row && sbLamp}
-      {spds ? coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div> : <div className="cjm-bank-nav" ref={setNavSlot} />}
+      {row ? null : spds ? shelf : <div className="cjm-bank-nav" ref={setNavSlot} />}
     </div>
   );
   const shutdownGuard = sdGuardShown(sdShow, sbCtx) ? (
@@ -275,7 +275,8 @@ export function CarrierJetMount(props: PackHudProps) {
       <div className="cjm-bank-es" role="group" aria-label="Engine start and stop">
         {cold.render.pullQs(layout === 'board' ? 'wide' : 'narrow')}
       </div>
-      {plate}
+      {sbLamp}
+      {shelf}
     </div>
   ) : null;
   return (
