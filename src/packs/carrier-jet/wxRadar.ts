@@ -10,6 +10,7 @@
  */
 import { storageKey } from '../../lib/storageKey.ts';
 import { ageSpan, fmtAge, wxStaleness } from './wxView.ts';
+import { abortable } from './weather/abortable.ts';
 
 export const WX_RADAR_API = 'https://api.rainviewer.com/public/weather-maps.json';
 export const WX_RADAR_CREDIT = 'Radar: RainViewer.com';
@@ -238,4 +239,100 @@ export class WxTileCache {
   clear() {
     this.m.clear();
   }
+}
+
+/* ---- frame-list refresh loop (pure; cjWxRadarLayer supplies the map side, node tests supply fakes).
+   Every frame-list fetch has its own AbortController with a WX_RADAR_FETCH_TIMEOUT_MS timeout, raced against the
+   abort, so a request that hangs (or a fetch that ignores the signal) still settles as a failure. A failure or timeout
+   reports to the status store (lastFailAt → the held state on the age label) and the next refresh is always scheduled
+   (finally). One fetch at a time: refresh() while one is in flight does nothing. */
+export const WX_RADAR_FETCH_TIMEOUT_MS = 10_000;
+export class WxTimeoutError extends Error {
+  constructor(what: string, ms: number) {
+    super(`${what}: timed out after ${ms} ms`);
+    this.name = 'TimeoutError';
+  }
+}
+export type RvFetch = (url: string, init: { signal: AbortSignal; cache?: RequestCache }) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
+export type RvLatest = { host: string; frame: RvFrame };
+/** The frame list (weather-maps.json) → latest frame; rejects on HTTP errors and on `signal` (timeout / stop). */
+export async function fetchWxRadarFrames(f: RvFetch, signal: AbortSignal): Promise<RvLatest | null> {
+  return abortable((async () => {
+    const r = await f(WX_RADAR_API, { signal, cache: 'no-store' });
+    if (!r.ok) throw new Error(`weather-maps ${r.status}`);
+    return latestFrame(await r.json());
+  })(), signal);
+}
+
+export interface WxRadarLoopDeps {
+  fetch: RvFetch;
+  now(): number;
+  setTimeout(f: () => void, ms: number): unknown;
+  clearTimeout(t: unknown): void;
+  /** Put a frame up (a fresh one, or the held one put back on a re-created map). */
+  show(f: RvLatest): void;
+  /** Is the radar source on the map already? (then a failed list leaves it as it is) */
+  shown(): boolean;
+  /** 3h stale: drop the frame, label and held tiles. */
+  expire(): void;
+  /** Any failed tick (stats). */
+  onError?(e: unknown): void;
+  timeoutMs?: number;
+  refreshMs?: number;
+}
+export function startWxRadarLoop(d: WxRadarLoopDeps) {
+  let dead = false;
+  let busy = false;
+  let timer: unknown = null;
+  let cur: AbortController | null = null;
+  const timeoutMs = d.timeoutMs ?? WX_RADAR_FETCH_TIMEOUT_MS;
+  const refreshMs = d.refreshMs ?? WX_RADAR_REFRESH_MS;
+  const tick = async (): Promise<void> => {
+    if (dead || busy) return;
+    busy = true;
+    if (timer != null) d.clearTimeout(timer);
+    timer = null;
+    const ac = new AbortController();
+    cur = ac;
+    const to = d.setTimeout(() => ac.abort(new WxTimeoutError('weather-maps', timeoutMs)), timeoutMs);
+    try {
+      let f: RvLatest | null = null;
+      try {
+        f = await fetchWxRadarFrames(d.fetch, ac.signal);
+        if (f) reportWxRadarFetch(true, d.now(), { host: f.host, path: f.frame.path, time: f.frame.time });
+      } catch (e) {
+        if (dead) throw e;
+        reportWxRadarFetch(false, d.now());
+        // offline / API down / timed out: keep (or, on a re-created map, put back) the last good frame
+        if (wxRadarExpired(getWxRadarStatus(), d.now())) {
+          d.expire();
+          throw e;
+        }
+        const last = getWxRadarStatus().frame;
+        if (!last || d.shown()) throw e;
+        f = { host: last.host, frame: { path: last.path, time: last.time } };
+      }
+      if (dead || !f) return;
+      d.show(f);
+    } catch (e) {
+      if (!dead) d.onError?.(e);
+    } finally {
+      d.clearTimeout(to);
+      cur = null;
+      busy = false;
+      if (!dead) timer = d.setTimeout(() => void tick(), refreshMs);
+    }
+  };
+  void tick();
+  return {
+    /** Re-read now (QA hook / back online); a no-op while a fetch is in flight. */
+    refresh: () => tick(),
+    busy: () => busy,
+    stop() {
+      dead = true;
+      cur?.abort();
+      if (timer != null) d.clearTimeout(timer);
+      timer = null;
+    },
+  };
 }

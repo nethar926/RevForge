@@ -2,14 +2,15 @@
  * WX radar overlay on the CJ live map (browser half of carrier-jet/wxRadar.ts).
  * One raster source + layer, inserted under the road layers so streets stay on top and readable. Tiles come through
  * a `cjrv://` MapLibre protocol that fetches RainViewer's Universal Blue PNG and recolours it to the phosphor ramp
- * (green → amber → red, moderate alpha). Latest frame only, re-read every 10 min; no animation.
+ * (green → amber → red, moderate alpha). Latest frame only, re-read every 10 min (wxRadar.startWxRadarLoop: 10 s
+ * timeout per frame-list fetch; a timeout / failure marks the frame held and the next refresh is still scheduled); no animation.
  * Offline / a failed fetch never blanks it: the frame list keeps the last good frame (wxRadar status store), a failed
  * tile is answered from the last good copy of that tile (WxTileCache, any frame), and every fetch reports to the
  * status store, which drives the 'RADAR · 12m' age label (CjLiveMap; shown whenever a frame is up). Back online →
  * re-read at once. Past 180 min since the last good fetch (OAT hide point) the frame, label and held tiles all go.
  */
 import type { Map as MlMap, RasterTileSource } from 'maplibre-gl';
-import { __setWxRadarStatus, expireWxRadarFrame, getWxRadarStatus, subscribeWxRadarStatus, wxRadarExpired, latestFrame, recolorRgba, reportWxRadarFetch, rvSourceTemplate, WxTileCache, WX_SCOPE_PREFIX, WX_RADAR_API, WX_RADAR_MAX_ZOOM, WX_RADAR_PROTOCOL, WX_RADAR_REFRESH_MS } from '../carrier-jet/wxRadar';
+import { __setWxRadarStatus, expireWxRadarFrame, getWxRadarStatus, subscribeWxRadarStatus, wxRadarExpired, recolorRgba, reportWxRadarFetch, rvSourceTemplate, WxTileCache, WX_SCOPE_PREFIX, WX_RADAR_MAX_ZOOM, WX_RADAR_PROTOCOL, startWxRadarLoop, type RvLatest } from '../carrier-jet/wxRadar';
 
 type Ml = typeof import('maplibre-gl');
 export const WX_SRC = 'cjwx-radar';
@@ -71,12 +72,6 @@ function register(ml: Ml) {
   });
 }
 
-async function fetchFrame(signal: AbortSignal) {
-  const r = await fetch(WX_RADAR_API, { signal, cache: 'no-store' });
-  if (!r.ok) throw new Error(`weather-maps ${r.status}`);
-  return latestFrame(await r.json());
-}
-
 /** RADAR over the map: the scope tint (teal + hatched light rain). Switches the source's tiles, no layer rebuild. */
 let scopeTint = false;
 export function setWxScopeTint(map: MlMap, on: boolean): void {
@@ -89,7 +84,6 @@ export function setWxScopeTint(map: MlMap, on: boolean): void {
 export function attachWxRadar(ml: Ml, map: MlMap): () => void {
   register(ml);
   const ac = new AbortController();
-  let timer = 0;
   const put = (path: string) => {
     const tiles = [rvSourceTemplate(path, scopeTint)];
     const src = map.getSource(WX_SRC) as RasterTileSource | undefined;
@@ -118,63 +112,49 @@ export function attachWxRadar(ml: Ml, map: MlMap): () => void {
   const checkExpiry = () => {
     if (!ac.signal.aborted && wxRadarExpired(getWxRadarStatus(), Date.now()) && (getWxRadarStatus().frame || map.getSource(WX_SRC))) drop();
   };
-  const tick = async () => {
-    clearTimeout(timer);
-    try {
-      let f: Awaited<ReturnType<typeof fetchFrame>> = null;
+  // the frame-list loop (wxRadar.startWxRadarLoop): 10 s timeout per list fetch, a failure / timeout reports to the
+  // status store (held label) and the next 10-min refresh is always scheduled
+  const show = (fr: RvLatest) => {
+    host = fr.host;
+    if (fr.frame.path === wxRadarStats.frame && map.getSource(WX_SRC)) return;
+    wxRadarStats.frame = fr.frame.path;
+    wxRadarStats.frameTime = fr.frame.time;
+    // style may still be loading (fresh map): retry on the next idle instead of waiting for a styledata that has passed
+    const go = () => {
+      if (ac.signal.aborted) return;
       try {
-        f = await fetchFrame(ac.signal);
-        if (f) reportWxRadarFetch(true, Date.now(), { host: f.host, path: f.frame.path, time: f.frame.time });
-      } catch (e) {
-        if (ac.signal.aborted) throw e;
-        reportWxRadarFetch(false);
-        // offline / API down: keep (or, on a re-created map, put back) the last good frame; tiles come from lastTiles
-        if (wxRadarExpired(getWxRadarStatus(), Date.now())) {
-          drop();
-          throw e;
-        }
-        const last = getWxRadarStatus().frame;
-        if (!last || map.getSource(WX_SRC)) throw e;
-        f = { host: last.host, frame: { path: last.path, time: last.time } };
+        put(fr.frame.path);
+      } catch {
+        map.once('idle', go);
       }
-      if (ac.signal.aborted || !f) return;
-      const fr = f;
-      host = fr.host;
-      if (fr.frame.path !== wxRadarStats.frame || !map.getSource(WX_SRC)) {
-        wxRadarStats.frame = fr.frame.path;
-        wxRadarStats.frameTime = fr.frame.time;
-        // style may still be loading (fresh map): retry on the next idle instead of waiting for a styledata that has passed
-        const go = () => {
-          if (ac.signal.aborted) return;
-          try {
-            put(fr.frame.path);
-          } catch {
-            map.once('idle', go);
-          }
-        };
-        go();
-      }
-    } catch {
-      wxRadarStats.errors++;
-    } finally {
-      if (!ac.signal.aborted) timer = window.setTimeout(tick, WX_RADAR_REFRESH_MS);
-    }
+    };
+    go();
   };
   checkExpiry();
-  void tick();
+  const loop = startWxRadarLoop({
+    fetch: (u, i) => fetch(u, i),
+    now: Date.now,
+    setTimeout: (f, ms) => window.setTimeout(f, ms),
+    clearTimeout: (t) => window.clearTimeout(t as number),
+    show,
+    shown: () => !!map.getSource(WX_SRC),
+    expire: drop,
+    onError: () => void wxRadarStats.errors++,
+  });
+  const tick = () => void loop.refresh();
   const offExpiry = subscribeWxRadarStatus(checkExpiry);
   const expiryTimer = window.setInterval(checkExpiry, 30_000);
   // back online: re-read now instead of waiting out the 10 min
-  const onOnline = () => void tick();
+  const onOnline = () => tick();
   window.addEventListener('online', onOnline);
   // shots / QA hooks: stats, the status store (backdate the last good fetch), a refresh now
   Object.assign(window as unknown as Record<string, unknown>, {
     __cjWxRadar: wxRadarStats,
-    __cjWxRadarStatus: { get: getWxRadarStatus, set: __setWxRadarStatus, refresh: () => void tick() },
+    __cjWxRadarStatus: { get: getWxRadarStatus, set: __setWxRadarStatus, refresh: tick },
   });
   return () => {
     ac.abort();
-    clearTimeout(timer);
+    loop.stop();
     window.removeEventListener('online', onOnline);
     offExpiry();
     clearInterval(expiryTimer);

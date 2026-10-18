@@ -136,14 +136,16 @@ test('layer wiring: failed tile → last good copy; failed frame list → last g
   const l = src('packs/mounts/cjWxRadarLayer.ts');
   assert.match(l, /const last = wxRadarExpired\(getWxRadarStatus\(\), Date\.now\(\)\) \? undefined : lastTiles\.get\(scope, z, x, y\);\n\s*if \(last\) \{/);
   assert.match(l, /lastTiles\.put\(scope, z, x, y, data\.slice\(0\)\);\n\s*reportWxRadarFetch\(true\);/);
-  assert.match(l, /const last = getWxRadarStatus\(\)\.frame;\n\s*if \(!last \|\| map\.getSource\(WX_SRC\)\) throw e;/);
+  const r = src('packs/carrier-jet/wxRadar.ts');
+  assert.match(r, /const last = getWxRadarStatus\(\)\.frame;\n\s*if \(!last \|\| d\.shown\(\)\) throw e;/);
+  assert.match(l, /shown: \(\) => !!map\.getSource\(WX_SRC\),\n\s*expire: drop,/);
   assert.match(l, /window\.addEventListener\('online', onOnline\)/);
   assert.match(l, /window\.removeEventListener\('online', onOnline\)/);
   // 3h: drop = clear held tiles + remove layer/source + clear held frame; checked on attach, on every status change
   // and every 30 s; a failed frame list past 3h drops instead of putting the held frame back
   assert.match(l, /const drop = \(\) => \{\n\s*lastTiles\.clear\(\);\n\s*unput\(\);\n\s*expireWxRadarFrame\(\);/);
-  assert.match(l, /checkExpiry\(\);\n\s*void tick\(\);\n\s*const offExpiry = subscribeWxRadarStatus\(checkExpiry\);\n\s*const expiryTimer = window\.setInterval\(checkExpiry, 30_000\);/);
-  assert.match(l, /if \(wxRadarExpired\(getWxRadarStatus\(\), Date\.now\(\)\)\) \{\n\s*drop\(\);\n\s*throw e;\n\s*\}\n\s*const last = getWxRadarStatus\(\)\.frame;/);
+  assert.match(l, /checkExpiry\(\);\n\s*const loop = startWxRadarLoop\(\{[\s\S]*?\}\);\n\s*const tick = \(\) => void loop\.refresh\(\);\n\s*const offExpiry = subscribeWxRadarStatus\(checkExpiry\);\n\s*const expiryTimer = window\.setInterval\(checkExpiry, 30_000\);/);
+  assert.match(r, /if \(wxRadarExpired\(getWxRadarStatus\(\), d\.now\(\)\)\) \{\n\s*d\.expire\(\);\n\s*throw e;\n\s*\}\n\s*const last = getWxRadarStatus\(\)\.frame;/);
   assert.match(l, /offExpiry\(\);\n\s*clearInterval\(expiryTimer\);/);
   assert.doesNotMatch(l + src('packs/carrier-jet/wxRadar.ts'), /forecast|hourly/i, 'no hourly forecast cache');
 });

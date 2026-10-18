@@ -4,6 +4,7 @@
  * the last value and retry at 30 s, 2 min, 5 min, then the normal schedule; HTTP 429/503 wait at least 5 min.
  * Clock, timers, fetch and storage are injected (node tests use fakes, never the network).
  */
+import { abortable } from './abortable.ts';
 import { fetchWeather, HttpError, type Fetch, type KV, type WxObs } from './sources.ts';
 
 export const WX_REFRESH_MS = 15 * 60000;
@@ -78,8 +79,9 @@ export function startWxPoller(d: PollerDeps) {
     busy = true;
     ac = new AbortController();
     const a = ac;
-    const to = setTimeout(() => a.abort(), WX_FETCH_TIMEOUT_MS);
-    fetchWeather(d.fetch, d.kv, d.prefix, pos.lat, pos.lon, now, a.signal)
+    // 12 s timeout, raced against the abort: a hung request (even one that ignores the signal) fails and frees the poller
+    const to = setTimeout(() => a.abort(new Error(`weather: timed out after ${WX_FETCH_TIMEOUT_MS} ms`)), WX_FETCH_TIMEOUT_MS);
+    abortable(fetchWeather(d.fetch, d.kv, d.prefix, pos.lat, pos.lon, now, a.signal), a.signal)
       .then((o) => {
         if (dead) return;
         s = wxOk(s, pos, d.now(), d.random());
