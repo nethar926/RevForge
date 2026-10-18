@@ -903,7 +903,14 @@ export class EngineSynthImpl implements EngineSynth {
   }
 
   getEngineState(): EngineStateSnapshot {
-    return this.engineState.snapshot();
+    return this.engineState.snapshot(this.lockDriveNorm());
+  }
+
+  /** Smoothed lock drive value (0..1, finite); 0 while the engine is stopped / disposed. */
+  private lockDriveNorm(): number {
+    if (!this.started || this.disposed) return 0;
+    const v = this.lockLadder.input;
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
   }
 
   /** bit i SET = cylinder/slot i disabled. Pushes to worklet when live. */

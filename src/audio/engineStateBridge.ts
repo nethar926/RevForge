@@ -510,8 +510,10 @@ export class EngineStateBridge {
     };
   }
 
-  snapshot(): EngineStateSnapshot {
+  /** `rpmNorm`: the engine's lock drive value (EngineSynthImpl owns it; 0 when stopped). */
+  snapshot(rpmNorm = 0): EngineStateSnapshot {
     return {
+      rpmNorm: Number.isFinite(rpmNorm) ? Math.max(0, Math.min(1, rpmNorm)) : 0,
       rpm: this.rpm,
       throttle: this.throttle,
       load: this.load,

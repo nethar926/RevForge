@@ -61,6 +61,17 @@ export interface EngineStateSnapshot {
   chambersPerRotor?: number;
   /** Rotary: rotor count 1|2. */
   rotors?: number;
+  /**
+   * Normalised drive value 0..1 — exactly the value the Ion Twin lock ladder reads
+   * (getLockStage() / getHud().lockStage), so a scope % drawn from it agrees with the stage:
+   * Frontend `DrivingInput.rpmNorm` when supplied, else the engine's rpmNorm fallback raised to
+   * the parked Rev throttle (speed < 0.04, linear fade), one-pole smoothed (tau 0.25 s,
+   * LOCK_INPUT_TAU_S). Stage edges: identified ≥ 0.50, lock ≥ 0.70, kill ≥ 0.86 (exit 0.04 lower).
+   * Always finite, clamped 0..1; 0 while the engine is stopped or disposed. Computed for every
+   * pack (lockStage stays 'none' off Ion Twin). Not the acoustic getHud().rpmNorm (parked that is
+   * 0.55 × throttle).
+   */
+  rpmNorm: number;
 }
 
 export interface DrivingInput {

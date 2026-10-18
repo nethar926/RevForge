@@ -3,7 +3,7 @@ import {LayerMixer} from './LayerMixer';
 import type {SoundLayer} from './types';
 import {JetLayers} from './JetLayers';
 import {SignalGraph} from './SignalGraph';
-import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,LockStage,SynthNodeDesc,ScannerEdge,JetCue,JetStartMode,JetSwitchFoley,JetSystem,JetSystemChange,JetSystemsState,JetVariant,JetSystemEntry,JetChecklist,JetFlightPhase,JetFlightInfo,JetCalloutId,JetCalloutResult,JetCalloutMode,JetCalloutModes,JetAlertLevel,AudioSpeedConfig} from './types';
+import type {EngineSynth,EnginePatch,EngineParams,DrivingInput,EngineStateSnapshot,LockStage,SynthNodeDesc,ScannerEdge,JetCue,JetStartMode,JetSwitchFoley,JetSystem,JetSystemChange,JetSystemsState,JetVariant,JetSystemEntry,JetChecklist,JetFlightPhase,JetFlightInfo,JetCalloutId,JetCalloutResult,JetCalloutMode,JetCalloutModes,JetAlertLevel,AudioSpeedConfig} from './types';
 import {getJetSystemList,getJetChecklist} from './jetColdStart';
 import {EnvelopeMeter} from './envelopeMeter';
 import {ProceduralCharacter} from './ProceduralCharacter';
@@ -83,6 +83,8 @@ export class CharacterEngine implements EngineSynth {
  private graphActive(){return this.getParams().graphEnabled===1&&this.graphDesc.some(n=>n.type==='Output');}
  private routeGraph(){const active=this.graphActive();if(active)this.graph.configure(this.graphDesc);this.dry.gain.setTargetAtTime(active?0:1,this.context.currentTime,.025);if(active&&this.running)this.graph.start();else this.graph.stop();}
  applyGraphToParams(graph:SynthNodeDesc[]){if(graph.some(n=>n.type==='Output')){this.graph.configure(graph);this.graphDesc=graph;this.base.setParams({graphEnabled:1});this.routeGraph();}else{this.base.applyGraphToParams?.(graph);this.configure();}}
+ /** Base EngineState + `rpmNorm` (the lock ladder's smoothed drive value, 0..1, finite; 0 while stopped / disposed). Bases without an EngineState bridge get a neutral snapshot with the clamped HUD rpmNorm. */
+ getEngineState():EngineStateSnapshot{const on=this.running&&!this.disposed;const s=this.base.getEngineState?.();const fin=(v:unknown)=>{const n=Number(v);return Number.isFinite(n)?Math.max(0,Math.min(1,n)):0;};if(s)return {...s,rpmNorm:on?fin(s.rpmNorm):0};return {rpm:0,throttle:0,load:0,firingMask:0,misfireAmount:0,firingFamily:0,bankSchedule:'',cylinders:0,crankAngleDeg:0,manifoldNorm:0,exhaustOpenness:0,pulseJitter:0,rpmNorm:on?fin(this.base.getHud().rpmNorm):0};}
  getHud(){return {...this.base.getHud(),lockStage:this.lockStage};}getDiag(){return this.base.getDiag();}getLockStage(){return this.lockStage;}
  setLockSfxEnabled(v:boolean){this.lockSfx=v;this.base.setLockSfxEnabled(false);}getLockSfxEnabled(){return this.lockSfx;}
  setUpshiftSfxEnabled(v:boolean){this.base.setUpshiftSfxEnabled(v);}getUpshiftSfxEnabled(){return this.base.getUpshiftSfxEnabled();}
