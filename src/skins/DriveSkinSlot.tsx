@@ -44,7 +44,8 @@ export interface DriveSkinProps {
 export function skinIdForEngine(engineId: string): string {
   if (engineId === 'night-pursuit') return 'night-pursuit'; // experimental flagship pack
   const builtin = getBuiltin(engineId);
-  if (builtin?.revforge) return builtin.kind === 'scifi' ? 'ion-twin' : builtin.kind === 'aerospace' ? 'aerospace-f14' : builtin.kind === 'ev-whine' ? 'ev-inverter' : 'ice-v8';
+  // Scene patches (src/audio/sceneEngines.ts) carry meta.tags 'scene'; `kind` is the engine category.
+  if (builtin?.meta?.tags?.includes('scene')) return builtin.kind === 'scifi' ? 'ion-twin' : builtin.kind === 'aerospace' ? 'aerospace-f14' : builtin.kind === 'ev-whine' ? 'ev-inverter' : 'ice-v8';
   switch (engineId) {
     case 'ion-twin':
     case 'tie-fighter': // legacy audio id → Ion Twin immersive HUD
