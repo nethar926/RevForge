@@ -21,3 +21,13 @@ test('media keep-alive re-plays after an outside pause and falls back to direct 
  const before=plays;route.kick();await wait(20);assert.equal(plays,before);route.dispose();
  }finally{(globalThis as any).Audio=original;}
 });
+test('media keep-alive never replays after Stop/Shutdown (wantsPlay false)',async()=>{
+ const original=(globalThis as any).Audio;let plays=0;let el:any;
+ (globalThis as any).Audio=class {srcObject:any;paused=true;l:any={};constructor(){el=this;}setAttribute(){}addEventListener(t:string,f:any){this.l[t]=f;}removeEventListener(t:string){delete this.l[t];}async play(){plays++;this.paused=false;}pause(){this.paused=true;this.l.pause?.();}};
+ const wait=(ms:number)=>new Promise(r=>setTimeout(r,ms));
+ try{const destination={},stream={stream:{getTracks:()=>[]},disconnect(){}};const ctx={destination,createMediaStreamDestination:()=>stream};const node={context:ctx,connect(){},disconnect(){}};
+ const route=new MediaOutput(ctx as any);let wants=true;route.wantsPlay=()=>wants;route.attach(node as any);await route.enable();assert.equal(plays,1);
+ wants=false;el.paused=true;el.l.pause();await wait(20);route.kick();await wait(20);assert.equal(plays,1);assert.equal(el.paused,true);
+ wants=true;route.kick();await wait(20);assert.equal(plays,2);route.dispose();
+ }finally{(globalThis as any).Audio=original;}
+});

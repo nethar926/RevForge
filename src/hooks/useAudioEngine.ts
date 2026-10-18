@@ -64,6 +64,7 @@ export function useAudioEngine(
       }
       try{mediaRef.current=new MediaOutput(ctxRef.current);}catch{setBackgroundStatus("Media streams unavailable · direct audio active");}
       if(mediaRef.current)mediaRef.current.onFallback=()=>setBackgroundStatus("Background output paused by the browser · direct audio active");
+      if(mediaRef.current)mediaRef.current.wantsPlay=()=>wantsRunning.current;
       ctxRef.current.onstatechange = () => {
         const st = ctxRef.current?.state as string | undefined;
         // The car/browser can suspend or interrupt the context (backup camera over the page in

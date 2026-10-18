@@ -9,6 +9,8 @@ export class MediaOutput {
  private output:AudioNode|null=null; private routed=false; private rejects=0; private retryTimer:ReturnType<typeof setTimeout>|null=null;
  /** Called once when play() keeps getting rejected and we switch to direct output. */
  onFallback:(()=>void)|null=null;
+ /** Whether the user still wants sound (false after Stop/Shutdown). Gates every replay. */
+ wantsPlay:()=>boolean=()=>true;
  constructor(privateContext:AudioContext){
   this.stream=privateContext.createMediaStreamDestination();
   this.element=new Audio();this.element.setAttribute('playsinline','');this.element.srcObject=this.stream.stream;
@@ -23,13 +25,13 @@ export class MediaOutput {
   this.routed=true;
  }
  /** Re-start a paused element while routed (watchdog / page visible again). Safe to call often. */
- kick(){if(this.routed&&this.element.paused&&!this.retryTimer)this.retry();}
- private onPause=()=>{if(this.routed&&!this.retryTimer)this.retry();};
+ kick(){if(this.routed&&this.wantsPlay()&&this.element.paused&&!this.retryTimer)this.retry();}
+ private onPause=()=>{if(this.routed&&this.wantsPlay()&&!this.retryTimer)this.retry();};
  private retry(){
   const delay=RETRY_MS[Math.min(this.rejects,RETRY_MS.length-1)];
   this.retryTimer=setTimeout(()=>{
    this.retryTimer=null;
-   if(!this.routed||!this.element.paused)return;
+   if(!this.routed||!this.wantsPlay()||!this.element.paused)return;
    Promise.resolve().then(()=>this.element.play()).then(()=>{this.rejects=0;},()=>{
     this.rejects++;
     if(this.rejects>=MAX_REJECTS){this.disable();this.onFallback?.();}
