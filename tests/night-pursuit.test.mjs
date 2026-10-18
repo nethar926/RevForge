@@ -247,3 +247,12 @@ test('NP skin copy stays original (no banned names)', () => {
     for (const re of BANNED) assert.doesNotMatch(src, re, `${rel} contains ${re}`);
   }
 });
+
+test('NP lamp test can never stick: 1.4 s timer end, skipped under reduced motion, armed after ignition', () => {
+  const src = readFileSync(new URL('../src/skins/night-pursuit/NightPursuitOverlay.tsx', import.meta.url), 'utf8');
+  assert.match(src, /setTimeout\(\(\) => setLampPhase\('done'\), 1400\)/, 'timer ends the lamp test');
+  assert.match(src, /prefers-reduced-motion: reduce/, 'OS reduced motion skips it');
+  assert.match(src, /closest\('\.motion-off'\)/, 'app motion-off skips it');
+  assert.match(src, /useState<'pending' \| 'on' \| 'done'>\('pending'\)/, 'starts pending, not lit under the splash');
+  assert.match(src, /const engineLive = rpmReal > 0/, 'armed by first engine RPM');
+});

@@ -1,4 +1,4 @@
-import { useMemo, useState, type AnimationEvent, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type AnimationEvent, type CSSProperties } from 'react';
 import './night-pursuit.css';
 
 export type NightPursuitMode = 'power' | 'auto' | 'norm' | 'pursuit';
@@ -185,8 +185,34 @@ export function NightPursuitOverlay({
     return base.map((v) => Math.max(0.08, Math.min(1, v * (pursuitHot ? 1.15 : 0.9))));
   }, [env, thr, load, rpm, pursuitHot]);
 
-  // Power-up lamp test: one red scanner sweep (runs once per mount; hidden under Reduce Motion).
-  const [lampTest, setLampTest] = useState(true);
+  // Power-up lamp test: one red scanner sweep, once per mount, armed by the first engine RPM
+  // (i.e. after the IGNITION tap, not under the splash). Always ends on a 1.4 s timer so it can
+  // never stick; skipped entirely under Reduce Motion or the app's motion-off setting.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [lampPhase, setLampPhase] = useState<'pending' | 'on' | 'done'>('pending');
+  const lampTest = lampPhase === 'on';
+  const setLampTest = (on: boolean) => {
+    if (!on) setLampPhase('done');
+  };
+  const engineLive = rpmReal > 0;
+  useEffect(() => {
+    if (lampPhase !== 'pending' || !engineLive) return;
+    const reduced =
+      (typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches) ||
+      !!rootRef.current?.closest('.motion-off');
+    if (reduced) {
+      setLampPhase('done');
+      return;
+    }
+    setLampPhase('on');
+  }, [lampPhase, engineLive]);
+  useEffect(() => {
+    if (lampPhase !== 'on') return;
+    const t = window.setTimeout(() => setLampPhase('done'), 1400);
+    return () => window.clearTimeout(t);
+  }, [lampPhase]);
   const [edge, setEdge] = useState<'left' | 'right'>('left');
   const handleSweepIteration = (_e: AnimationEvent<HTMLDivElement>) => {
     const next = edge === 'left' ? 'right' : 'left';
@@ -196,6 +222,7 @@ export function NightPursuitOverlay({
 
   return (
     <div
+      ref={rootRef}
       className={`np-overlay${pursuitHot ? ' np-hot' : ''}${lampTest ? ' np-lamp-test' : ''}`}
       data-mode={mode}
       style={
