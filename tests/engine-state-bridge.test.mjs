@@ -9,6 +9,12 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
+async function loadBridgeTs() {
+  const { createJiti } = await import('jiti');
+  const jiti = createJiti(join(root, 'package.json'), { moduleCache: false });
+  return jiti.import(join(root, 'src/audio/engineStateBridge.ts'));
+}
+
 async function loadBridge() {
   // Prefer tsx register if present
   try {
@@ -44,6 +50,7 @@ const SCHED_FAM = {
   'silver-run': 2,
   sandwake: 1,
   frostpass: 3,
+  'blossom-run': 3,
   'rotary-hum': 4,
 };
 
@@ -94,7 +101,6 @@ test('ICE schedule family table', () => {
   for (const [id, fam] of Object.entries(SCHED_FAM)) {
     assert.equal(SCHED_FAM[id], fam);
   }
-  assert.equal('blossom-run' in SCHED_FAM, false);
 });
 
 test('nextPulseDt grows for farther event', () => {
@@ -123,43 +129,42 @@ test('rotary twin stack angles + drop-chamber lope', () => {
   assert.ok(Math.max(...iv) > 60);
 });
 
-test('source files encode pack families + blossom-run exclusion', () => {
+test('source files encode topology families; scene schedules come from sceneEngines', () => {
   const bridge = readFileSync(join(root, 'src/audio/engineStateBridge.ts'), 'utf8');
-  const catalog = readFileSync(join(root, 'src/forge/catalog.ts'), 'utf8');
   const builtins = readFileSync(join(root, 'src/audio/builtins.ts'), 'utf8');
+  const scenes = readFileSync(join(root, 'src/audio/sceneEngines.ts'), 'utf8');
   const worklet = readFileSync(
     join(root, 'src/audio/worklets/pulse-engine-processor.js'),
     'utf8',
   );
-  assert.match(bridge, /'pink-current':\s*\{[\s\S]*?firingFamily:\s*1/);
-  assert.match(bridge, /'ember-dusk':\s*\{[\s\S]*?firingFamily:\s*2/);
-  assert.match(bridge, /frostpass:\s*\{[\s\S]*?firingFamily:\s*3/);
   assert.match(bridge, /'rotary-hum':\s*\{[\s\S]*?firingFamily:\s*4/);
+  assert.match(bridge, /\.\.\.SCENE_ICE_SCHEDULES/);
   assert.match(builtins, /id: 'rotary-hum'/);
   assert.match(builtins, /firingFamily:\s*4/);
-  assert.match(bridge, /raw === 'blossom-run'/);
   assert.match(builtins, /firingFamily:\s*1/);
   assert.match(builtins, /collectorDelayMs:\s*1\.8/);
+  assert.match(builtins, /sceneEnginePatches\(defaultsForTopology\)/);
   assert.match(worklet, /family === 4/);
   assert.match(worklet, /chambersPerRotor/);
-  // blossom-run stays in packs JSON but is not an ICE_PACK_SCHEDULES key
-  assert.equal(/'blossom-run'\s*:/.test(bridge), false);
+  // No per-scene special case in the bridge; scene schedules are not hand-written tables
+  assert.doesNotMatch(bridge, /raw === '/);
+  assert.doesNotMatch(bridge, /'copper-mile':\s*\{/);
+  // Scene families are derived from the firing order in sceneEngines.ts
+  assert.match(scenes, /crossPlane: 1, flatPlane: 2, i6Even: 3/);
 });
 
-test('revforge-packs.json blossom-run unchanged checksum field', () => {
-  const packs = JSON.parse(
-    readFileSync(join(root, 'src/forge/revforge-packs.json'), 'utf8'),
-  );
-  const blossom = packs.find((p) => p.id === 'blossom-run');
-  assert.ok(blossom);
-  assert.equal(blossom.engine.cylinders, 6);
-  assert.equal(blossom.engine.firing, 'even');
-  assert.equal(blossom.engine.idleRpm, 950);
-  assert.equal(blossom.engine.turbo, 0.72);
-});
-
-test('catalog scenePatch legacy pulse values (source contains exact pulse values)', () => {
-  const catalog = readFileSync(join(root, 'src/forge/catalog.ts'), 'utf8');
-  assert.match(catalog, /pulseJitter: p\.firing === "crossplane" \? 0\.14 : 0\.045/);
-  assert.match(catalog, /pulseWidth: p\.firing === "crossplane" \? 0\.44 : 0\.25/);
+test('scene schedules resolve by scene id with or without the revforge- prefix', async () => {
+  const mod = await loadBridgeTs();
+  for (const [id, fam] of Object.entries(SCHED_FAM)) {
+    const sched = mod.resolveIcePackSchedule(`revforge-${id}`) ?? mod.resolveIcePackSchedule(id);
+    assert.ok(sched, `no schedule for ${id}`);
+    assert.equal(sched.firingFamily, fam, id);
+  }
+  // Unknown ids are a no-op on the bridge
+  assert.equal(mod.resolveIcePackSchedule('revforge-no-such-scene'), undefined);
+  const b = new mod.EngineStateBridge();
+  b.applyPackId(undefined);
+  b.applyPackId('no-such-pack');
+  b.tick(1 / 60, { throttle: 0.4, speed: 0.2 });
+  assert.ok(Number.isFinite(b.rpm));
 });

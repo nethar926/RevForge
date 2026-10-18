@@ -3,11 +3,12 @@
  * firingMask: uint8; bit i SET → cylinder/slot i disabled. Default 0 = all fire.
  * Worklet owns sample-accurate crank schedule; bridge is HUD/QA + param push helper.
  *
- * Canonical schedules: product-research/ice-pack-firing-schedules-v1.md
- * (exclude blossom-run). Family 4 = rotary chamber-pulse (docs/rotary-chamber-pulse-v1.md).
+ * Canonical schedules: product-research/ice-pack-firing-schedules-v1.md for the topology
+ * builtins; RoadView scene schedules are derived in sceneEngines.ts. Family 4 = rotary chamber-pulse (docs/rotary-chamber-pulse-v1.md).
  */
 import type { EngineStateSnapshot } from './types';
 import { CHRONO_COUPE } from './chronoCoupePack';
+import { SCENE_ICE_SCHEDULES } from './sceneEngines';
 
 export type FiringFamilyName =
   | 'crossPlane'
@@ -65,7 +66,7 @@ export interface WorkletParamPush {
   rotors: number;
 }
 
-/** Pack physics constants from ice-pack-firing-schedules-v1.md (blossom-run excluded). */
+/** Pack physics constants (topology builtins + derived scene schedules). */
 export interface IcePackSchedule {
   cylinders: number;
   firingFamily: number;
@@ -132,102 +133,9 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.007,
     misfireDefault: 0,
   },
-  'copper-mile': {
-    cylinders: 8,
-    firingFamily: 1,
-    bankSchedule: 'crossPlaneV8',
-    eventAnglesDeg: [...CROSS_BANK_A],
-    bankOffsetDeg: 90,
-    collectorDelayMs: 2.0,
-    tauManifold: 0.14,
-    tauExhaust: 0.26,
-    pulseJitterFrac: 0.022,
-    misfireDefault: 0.06,
-  },
-  'ember-dusk': {
-    cylinders: 8,
-    firingFamily: 2,
-    bankSchedule: 'flatPlaneV8',
-    eventAnglesDeg: [...FLAT_V8],
-    bankOffsetDeg: 90,
-    collectorDelayMs: 0.7,
-    tauManifold: 0.08,
-    tauExhaust: 0.12,
-    pulseJitterFrac: 0.01,
-    misfireDefault: 0.02,
-  },
-  'violet-grid': {
-    cylinders: 8,
-    firingFamily: 2,
-    bankSchedule: 'flatPlaneV8',
-    eventAnglesDeg: [...FLAT_V8],
-    bankOffsetDeg: 90,
-    collectorDelayMs: 0.5,
-    tauManifold: 0.06,
-    tauExhaust: 0.09,
-    pulseJitterFrac: 0.009,
-    misfireDefault: 0.015,
-  },
-  'azure-bend': {
-    cylinders: 8,
-    firingFamily: 2,
-    bankSchedule: 'flatPlaneV8',
-    eventAnglesDeg: [...FLAT_V8],
-    bankOffsetDeg: 90,
-    collectorDelayMs: 0.8,
-    tauManifold: 0.08,
-    tauExhaust: 0.13,
-    pulseJitterFrac: 0.011,
-    misfireDefault: 0.02,
-  },
-  'pink-current': {
-    cylinders: 8,
-    firingFamily: 1,
-    bankSchedule: 'crossPlaneV8',
-    eventAnglesDeg: [...CROSS_BANK_A],
-    bankOffsetDeg: 90,
-    collectorDelayMs: 2.4,
-    tauManifold: 0.15,
-    tauExhaust: 0.28,
-    pulseJitterFrac: 0.024,
-    misfireDefault: 0.07,
-  },
-  'silver-run': {
-    cylinders: 8,
-    firingFamily: 2,
-    bankSchedule: 'flatPlaneV8',
-    eventAnglesDeg: [...FLAT_V8],
-    bankOffsetDeg: 90,
-    collectorDelayMs: 0.9,
-    tauManifold: 0.09,
-    tauExhaust: 0.15,
-    pulseJitterFrac: 0.01,
-    misfireDefault: 0.02,
-  },
-  sandwake: {
-    cylinders: 8,
-    firingFamily: 1,
-    bankSchedule: 'crossPlaneV8',
-    eventAnglesDeg: [...CROSS_BANK_A],
-    bankOffsetDeg: 90,
-    collectorDelayMs: 2.2,
-    tauManifold: 0.16,
-    tauExhaust: 0.32,
-    pulseJitterFrac: 0.023,
-    misfireDefault: 0.055,
-  },
-  frostpass: {
-    cylinders: 6,
-    firingFamily: 3,
-    bankSchedule: 'i6Even',
-    eventAnglesDeg: [...I6_EVEN],
-    bankOffsetDeg: 0,
-    collectorDelayMs: 0.55,
-    tauManifold: 0.08,
-    tauExhaust: 0.12,
-    pulseJitterFrac: 0.007,
-    misfireDefault: 0.01,
-  },
+  // RoadView scene engines: schedules derived from cylinders / firing order / dimensions
+  // in sceneEngines.ts (deriveIceSchedule), keyed by the scene id (patch id minus 'revforge-').
+  ...SCENE_ICE_SCHEDULES,
   // Night Pursuit: deep 5.0-class cross-plane V8, long dual-collector burble
   'night-pursuit': {
     cylinders: 8,
@@ -293,7 +201,7 @@ export function workletJitterToPhysics(w: number): number {
 }
 
 /**
- * Map revforge JSON firing → worklet firingFamily int.
+ * Map a firing-order label → worklet firingFamily int.
  * crossplane→1 · V8 even→2 flatPlane · I6 smooth / i4→3
  */
 export function mapRevforgeFiringToFamily(
@@ -312,7 +220,6 @@ export function resolveIcePackSchedule(
 ): IcePackSchedule | undefined {
   if (!packId) return undefined;
   const raw = packId.startsWith('revforge-') ? packId.slice('revforge-'.length) : packId;
-  if (raw === 'blossom-run') return undefined;
   return ICE_PACK_SCHEDULES[raw];
 }
 
@@ -419,7 +326,7 @@ export class EngineStateBridge {
     this.firingMask = (this.firingMask | (1 << s)) & 255;
   }
 
-  /** Apply pack-id schedule defaults (blossom-run → no-op). */
+  /** Apply pack-id schedule defaults (unknown ids → no-op). */
   applyPackId(packId: string | undefined): void {
     this.packId = packId;
     const sched = resolveIcePackSchedule(packId);
