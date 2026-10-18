@@ -86,10 +86,8 @@
 }
 
 .icon-btn,
-.start-btn,
 .btn-primary,
 .engine-preview-btn,
-.gear-pill,
 .palette-btn {
   min-height: var(--touch-min);
   backdrop-filter: blur(16px) saturate(1.35);
@@ -98,10 +96,8 @@
 
 .engine-card,
 .panel,
-.hud-stage,
 .diag-row,
-.stat-card,
-.tele-cell {
+.stat-card {
   background:
     var(--glass-specular),
     var(--glass-bg) !important;
@@ -109,10 +105,6 @@
   box-shadow: var(--glass-shadow-tight);
   backdrop-filter: blur(26px) saturate(1.45);
   -webkit-backdrop-filter: blur(26px) saturate(1.45);
-}
-
-.hud-stage {
-  border-radius: var(--radius-xl) !important;
 }
 
 .brand-mark {
@@ -363,88 +355,6 @@
 
 .ion-scream-panel .slider-block {
   margin-top: 10px;
-}
-
-.commentary-chips {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  padding: 4px 0 8px;
-}
-.commentary-chip {
-  min-height: var(--touch-min);
-  min-width: 72px;
-  padding: 0 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-pill);
-  font-weight: 800;
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text);
-  border: 1px solid var(--glass-border);
-  background:
-    var(--glass-specular),
-    var(--glass-bg-strong);
-  box-shadow: var(--glass-shadow-tight);
-  backdrop-filter: blur(22px) saturate(1.45);
-  -webkit-backdrop-filter: blur(22px) saturate(1.45);
-}
-
-.aurebesh-hint {
-  margin: 4px 0 0;
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-  opacity: 0.55;
-  animation: aurebesh-hint-fade 4.5s ease-in-out infinite;
-}
-@keyframes aurebesh-hint-fade {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 0.65; }
-}
-.aurebesh-toggle {
-  position: absolute;
-  right: 8px;
-  top: 8px;
-  min-height: var(--touch-min);
-  min-width: var(--touch-min);
-  padding: 0 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  color: var(--text-dim);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  opacity: 0.55;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-.aurebesh-toggle[aria-pressed="true"] {
-  color: var(--accent);
-  opacity: 0.95;
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
-}
-.speed-hero {
-  position: relative;
-}
-.speed-hero-value {
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .aurebesh-hint {
-    animation: none;
-    opacity: 0.5;
-  }
 }
 
 /*

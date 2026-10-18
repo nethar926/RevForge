@@ -12,6 +12,7 @@ import type {
 } from '../hooks/useUiPrefs';
 import { clusterToGaugeStyle } from '../hooks/useUiPrefs';
 import '../themes/themes.css';
+import { NEON_ACCENT_LABEL } from '../forge/sceneLabels';
 
 interface Props {
   prefs: UiPrefs;
@@ -22,7 +23,7 @@ interface Props {
 const THEMES: { id: ThemeId; label: string; accent: string }[] = [
   { id: 'night', label: 'Night Graphite', accent: '#3dffb5' },
   { id: 'day', label: 'Day High-Vis', accent: '#0b5fff' },
-  { id: 'neon', label: 'Neon Drive', accent: '#ff3d9a' },
+  { id: 'neon', label: NEON_ACCENT_LABEL, accent: '#ff3d9a' },
   { id: 'mono', label: 'Minimal Mono', accent: '#e8ecf2' },
 ];
 
@@ -161,7 +162,7 @@ export function CustomizePage({ prefs, update, reset }: Props) {
           ))}
         </div>
         <p className="help-text dim">
-          Minimal hides the shared LOAD/REVS/ACCEL bar (skin-native gauges keep SPEED dominant).
+          Saved with your settings for dashboards that offer a readout density. The current dashboards keep their own layout.
         </p>
       </section>
 

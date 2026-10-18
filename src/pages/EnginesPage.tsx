@@ -33,7 +33,7 @@ const SNIPPET_BY_ID: Record<string, string> = {
   [STELLAR_HELM_PACK.id]: `snippets/${STELLAR_HELM_PACK.id}.wav`,
 };
 
-/** Product Research taxonomy — all free, never Launch Pack / paywall groups. */
+/** Product Research taxonomy — all free, never paywall groups. */
 const CATEGORIES: { kind: EngineKind; label: string }[] = [
   { kind: 'ice', label: 'Internal Combustion' },
   { kind: 'ev-whine', label: 'EV' },

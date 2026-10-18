@@ -281,17 +281,6 @@ textarea {
   box-shadow: inset 0 0 0 1px var(--accent-dim), 0 0 20px var(--accent-dim);
 }
 
-.tab-warn {
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
-  color: var(--text);
-  font-size: 0.9rem;
-  font-weight: 600;
-  min-height: 48px;
-}
-
 .keepalive-tip {
   font-size: 0.78rem;
   color: var(--text-dim);
@@ -300,85 +289,6 @@ textarea {
 }
 
 /* Drive */
-.drive-page {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.audio-gate {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-}
-
-.start-btn {
-  min-height: 64px;
-  min-width: min(420px, 100%);
-  padding: 0 28px;
-  border: none;
-  border-radius: 18px;
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #1a8f6a));
-  color: #04110c;
-  font-weight: 800;
-  font-size: 1.15rem;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  box-shadow: 0 10px 30px var(--accent-dim);
-}
-.start-btn.compact {
-  min-height: var(--touch);
-  font-size: 1rem;
-  margin-bottom: 10px;
-}
-.gate-hint {
-  margin: 0;
-  color: var(--text-dim);
-  font-size: 0.85rem;
-}
-
-.gps-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.gps-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-.gps-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--text-dim);
-}
-.status-live .gps-dot {
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
-}
-.status-waiting .gps-dot,
-.status-requesting .gps-dot {
-  background: #f5c542;
-  animation: pulse 1.2s infinite;
-}
-.status-denied .gps-dot,
-.status-error .gps-dot,
-.status-unavailable .gps-dot {
-  background: var(--danger);
-}
 
 @keyframes pulse {
   50% {
@@ -428,9 +338,6 @@ textarea {
   }
   .hud-side {
     grid-area: side;
-  }
-  .hud-rev {
-    grid-area: rev;
   }
 }
 
@@ -529,58 +436,6 @@ textarea {
   border-radius: inherit;
 }
 
-.rev-pad-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.rev-pad-label {
-  font-size: 0.75rem;
-  letter-spacing: 0.14em;
-  color: var(--text-dim);
-}
-.rev-pad {
-  width: 88px;
-  height: 220px;
-  border-radius: 22px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  position: relative;
-  overflow: hidden;
-  touch-action: none;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-}
-.rev-pad.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-.rev-pad-fill {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 30%, #000));
-  opacity: 0.9;
-}
-.rev-pad-hint {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--text-dim);
-  font-size: 0.8rem;
-  pointer-events: none;
-  font-weight: 600;
-}
-
-.drive-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .slider-block {
   display: block;
 }
@@ -620,13 +475,6 @@ textarea {
 }
 .big-slider:disabled {
   opacity: 0.55;
-}
-
-.safety-note {
-  margin: 0;
-  color: var(--text-dim);
-  font-size: 0.78rem;
-  line-height: 1.4;
 }
 
 /* Pages shared */
@@ -914,7 +762,6 @@ textarea {
   }
 }
 
-
 /* Diag */
 .diag-page {
   display: flex;
@@ -1075,20 +922,8 @@ textarea {
   border-top: 1px solid var(--border);
 }
 
-
 /* Drive cinematic HUD (Research observe — original layout) */
-.hud-stage {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 280px;
-  padding: 12px 8px 8px;
-  border-radius: 18px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--panel) 80%, #000);
-}
+
 .drive-skin {
   position: absolute;
   inset: 0;
@@ -1102,87 +937,10 @@ textarea {
     radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 55%),
     linear-gradient(180deg, transparent 40%, color-mix(in srgb, #000 55%, transparent));
 }
-.gear-pills {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-.gear-pill {
-  min-height: 44px;
-  min-width: 88px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 1.5px solid var(--border);
-  background: var(--bg-elev);
-  color: var(--text-dim);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-.gear-pill.active {
-  color: var(--text);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-dim);
-}
-.speed-hero {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  padding: 8px 0 4px;
-}
-.speed-hero-value {
-  font-size: clamp(4.5rem, 18vw, 7rem);
-  font-weight: 800;
-  line-height: 0.95;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
-}
-.speed-hero-unit {
-  color: var(--text-dim);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.85rem;
-}
-.telemetry-strip {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-.tele-cell {
-  text-align: center;
-  padding: 10px 6px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--panel) 70%, transparent);
-  min-height: 56px;
-}
-.tele-value {
-  font-size: 1.35rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.tele-label {
-  color: var(--text-dim);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-.hud-secondary {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-items: stretch;
-}
+
 .kind-aerospace {
   border-color: color-mix(in srgb, #5c9dff 70%, var(--border));
 }
-
 
 /* Builder category tabs */
 .category-tabs {
@@ -1206,27 +964,6 @@ textarea {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   background: color-mix(in srgb, var(--accent) 12%, var(--bg-elev));
-}
-
-.telemetry-strip.density-compact .tele-value { font-size: 0.85em; opacity: 0.85; }
-.telemetry-strip.density-compact .tele-label { font-size: 0.7em; }
-.telemetry-strip.density-compact { gap: 8px; padding: 6px 10px; }
-.shift-paddles { display: flex; gap: 12px; justify-content: center; margin: 8px 0; }
-.shift-paddle {
-  min-height: 48px;
-  min-width: 64px;
-  border-radius: 12px;
-  border: 1px solid var(--glass-border, rgba(255,255,255,0.2));
-  background: var(--glass-bg, rgba(0,0,0,0.35));
-  color: inherit;
-  font-size: 1.4rem;
-  font-weight: 700;
-}
-.gear-readout {
-  min-width: 48px;
-  text-align: center;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
 /* RevForge Visual / Dynamics controls (Customize + Interface Options) */
