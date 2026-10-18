@@ -1,0 +1,84 @@
+/*
+ * Headless drag-or-tap controls: structural rules (always) + a plain default look (.rf-ctl--default).
+ * Default look: matte flat greys, 1 px borders, small radii (no pills, no frosted glass, no iOS toggles), text ≥ 12 px,
+ * every tappable part ≥ 44 × 44 px. No hover-only states, no blinking. Transitions are short position eases only and
+ * are removed under Reduce Motion (OS setting, any [data-rf-reduce-motion] ancestor, or data-reduced on the root).
+ */
+
+/* ---------- shared */
+.rf-ctl { position: relative; box-sizing: border-box; font-size: 13px; line-height: 1.3; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+.rf-ctl *, .rf-ctl *::before, .rf-ctl *::after { box-sizing: border-box; }
+.rf-ctl button { font: inherit; min-width: 44px; min-height: 44px; touch-action: manipulation; }
+.rf-ctl [aria-disabled='true'], .rf-ctl button:disabled { cursor: not-allowed; }
+.rf-ctl-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.rf-ctl[data-reduced='true'], .rf-ctl[data-reduced='true'] *, [data-rf-reduce-motion] .rf-ctl, [data-rf-reduce-motion] .rf-ctl * { transition: none !important; animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .rf-ctl, .rf-ctl * { transition: none !important; animation: none !important; } }
+
+/* default palette (override the custom properties, or drop the look with `unstyled`) */
+.rf-ctl--default {
+  --rf-ctl-bg: #24272a; --rf-ctl-raised: #33373b; --rf-ctl-line: #4b5055; --rf-ctl-text: #e4e6e8; --rf-ctl-dim: #a3a9ae;
+  --rf-ctl-armed: #3a3020; --rf-ctl-armed-line: #d9a441; --rf-ctl-hot: #3c4a44; --rf-ctl-hot-line: #8fc7ad; --rf-ctl-focus: #f2f2f2;
+  color: var(--rf-ctl-text);
+}
+.rf-ctl--default button, .rf-ctl--default [role='slider'] { color: var(--rf-ctl-text); background: var(--rf-ctl-raised); border: 1px solid var(--rf-ctl-line); border-radius: 6px; padding: 0 12px; cursor: pointer; box-shadow: none; }
+.rf-ctl--default button:focus-visible, .rf-ctl--default [role='slider']:focus-visible { outline: 2px solid var(--rf-ctl-focus); outline-offset: 2px; }
+.rf-ctl--default button:disabled, .rf-ctl--default [aria-disabled='true'] { opacity: 0.45; }
+.rf-ctl--default[data-disabled='true'] { opacity: 0.55; }
+
+/* ---------- SlideConfirm */
+.rf-slide { display: block; width: 100%; max-width: 360px; }
+.rf-slide__track { position: relative; display: flex; align-items: center; justify-content: center; min-height: 52px; touch-action: pan-y; --rf-thumb: 56px; }
+.rf-slide__label { position: relative; pointer-events: none; padding: 0 64px; font-size: 13px; letter-spacing: 0.04em; text-align: center; }
+.rf-slide__thumb { position: absolute; top: 4px; bottom: 4px; left: calc(4px + (100% - var(--rf-thumb) - 8px) * var(--rf-progress, 0)); width: var(--rf-thumb); touch-action: pan-y; transition: left 140ms ease-out; }
+.rf-slide[data-dragging='true'] .rf-slide__thumb { transition: none; }
+.rf-slide__tap { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; }
+.rf-slide__tap .rf-slide__label { padding: 0 12px; }
+.rf-slide__chevron { font-size: 22px; line-height: 1; }
+.rf-ctl--default .rf-slide__track { background: var(--rf-ctl-bg); border: 1px solid var(--rf-ctl-line); border-radius: 6px; }
+.rf-ctl--default .rf-slide__track .rf-slide__label { color: var(--rf-ctl-dim); }
+.rf-ctl--default.rf-slide[data-armed='true'] .rf-slide__track, .rf-ctl--default.rf-slide[data-armed='true'] .rf-slide__tap { background: var(--rf-ctl-armed); border-color: var(--rf-ctl-armed-line); }
+.rf-ctl--default.rf-slide[data-armed='true'] .rf-slide__label { color: var(--rf-ctl-text); }
+
+/* ---------- RangeDial */
+.rf-dial { display: inline-flex; align-items: center; gap: 12px; }
+.rf-dial__face { position: relative; display: grid; place-items: center; flex: none; border-radius: 50% !important; padding: 0 !important; touch-action: none; }
+.rf-dial[data-mode='tap'] .rf-dial__face { touch-action: manipulation; }
+.rf-dial__pointer { position: absolute; left: 50%; top: 8%; width: 3px; height: 42%; margin-left: -1.5px; transform-origin: 50% 100%; transform: rotate(var(--rf-angle, 0deg)); transition: transform 120ms ease-out; pointer-events: none; }
+.rf-dial[data-dragging='true'] .rf-dial__pointer { transition: none; }
+.rf-dial__value { position: relative; font-size: 13px; font-variant-numeric: tabular-nums; margin-top: 30%; pointer-events: none; }
+.rf-dial__step { width: 44px; height: 44px; padding: 0 !important; font-size: 18px; line-height: 1; }
+.rf-ctl--default .rf-dial__face { background: var(--rf-ctl-bg); }
+.rf-ctl--default .rf-dial__pointer { background: var(--rf-ctl-text); border-radius: 1px; }
+
+/* ---------- RadialMenu */
+.rf-radial { display: inline-block; }
+.rf-radial__ring { position: relative; }
+.rf-radial__item { position: absolute; transform: translate(-50%, -50%); min-width: 56px; white-space: nowrap; }
+.rf-radial__hub { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; transform: translate(-50%, -50%); display: grid; place-items: center; border-radius: 50%; touch-action: none; font-size: 12px; cursor: grab; }
+.rf-radial__list { display: flex; flex-direction: column; gap: 6px; min-width: 200px; }
+.rf-radial__row { width: 100%; text-align: left; }
+.rf-ctl--default .rf-radial__hub { background: var(--rf-ctl-bg); border: 1px solid var(--rf-ctl-line); color: var(--rf-ctl-dim); }
+.rf-ctl--default .rf-radial__item[data-active='true'] { background: var(--rf-ctl-hot); border-color: var(--rf-ctl-hot-line); }
+
+/* ---------- MagneticSelect */
+.rf-magnet { display: block; max-width: 420px; }
+.rf-magnet__track { position: relative; display: grid; grid-template-columns: repeat(var(--rf-count, 1), minmax(44px, 1fr)); gap: 0; touch-action: pan-y; }
+.rf-magnet[data-mode='tap'] .rf-magnet__track { gap: 6px; touch-action: manipulation; }
+.rf-magnet__opt { position: relative; z-index: 1; }
+.rf-magnet__puck { position: absolute; top: 2px; bottom: 2px; width: calc(100% / var(--rf-count, 1) - 4px); left: calc((100% - 100% / var(--rf-count, 1)) * var(--rf-pos, 0) + 2px); transition: left 140ms ease-out; pointer-events: none; z-index: 0; }
+.rf-magnet[data-dragging='true'] .rf-magnet__puck { transition: none; }
+.rf-ctl--default.rf-magnet[data-mode='drag'] .rf-magnet__track { background: var(--rf-ctl-bg); border: 1px solid var(--rf-ctl-line); border-radius: 6px; }
+.rf-ctl--default.rf-magnet[data-mode='drag'] .rf-magnet__opt { background: transparent; border-color: transparent; }
+.rf-ctl--default .rf-magnet__puck { background: var(--rf-ctl-raised); border: 1px solid var(--rf-ctl-line); border-radius: 5px; }
+.rf-ctl--default .rf-magnet__opt[aria-checked='true'] { font-weight: 600; }
+.rf-ctl--default.rf-magnet[data-mode='tap'] .rf-magnet__opt[aria-checked='true'] { background: var(--rf-ctl-hot); border-color: var(--rf-ctl-hot-line); }
+.rf-ctl--default.rf-magnet[data-dragging='true'] .rf-magnet__opt[data-near='true'] { color: var(--rf-ctl-hot-line); }
+
+/* ---------- Options › ACCESS › Prefer Taps */
+.rf-access { margin: 8px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line, #ffffff22); }
+.rf-access .rf-access__title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 4px; font-size: 15px; font-weight: 600; letter-spacing: 0.16em; }
+.rf-access .rf-access__title small { font-size: 12px; font-weight: 400; letter-spacing: 0; color: #a3a9ae; }
+.rf-pref__row { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 48px; padding: 2px 0; font-size: 13px; cursor: pointer; }
+/* the whole label row (full width × 48 px) is the target; the box itself is the app's usual 22 px checkbox */
+.rf-pref__row input[type='checkbox'] { width: 22px; height: 22px; margin: 0; flex: none; cursor: pointer; }
+.rf-pref__desc { margin: 0 0 8px !important; font-size: 12px; line-height: 1.5; color: #a3a9ae; }

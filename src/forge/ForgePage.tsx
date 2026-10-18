@@ -45,6 +45,7 @@ import "./forge.css";
 import "./viewport.css";
 import { storageKey } from '../lib/storageKey';
 import { FEATURES, hiddenPanel } from '../features';
+import { AccessOptionsGroup } from '../controls/PreferTapsSetting';
 
 function gatePanel<P extends string | null>(p: P): P | null {
   return hiddenPanel(p) ? null : p;
@@ -478,6 +479,7 @@ export function ForgePage({
                     }
                   />
                 </label>
+                <AccessOptionsGroup />
               </div>
             )}
           </section>

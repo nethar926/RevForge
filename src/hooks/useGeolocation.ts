@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { speedFromFix, type Fix } from "./gpsSpeed";
 import { kphToMph } from "../audio";
-import { publishGpsFix, publishGpsStatus } from "./gpsFixes";
+import { publishGpsFix, publishGpsMotion, publishGpsStatus } from "./gpsFixes";
 import { startGeolocation } from "./geoStart";
 import { createRepeatGate } from "./gpsRepeat";
 
@@ -43,6 +43,12 @@ export function useGeolocation(enabled: boolean) {
   });
   // Pack HUDs (Carrier Jet GPS plate) read the status from the shared feed.
   useEffect(() => publishGpsStatus(state.status), [state.status]);
+  // Interaction mode (src/controls) reads status + speed from the motion feed; stamped with the wall clock here
+  // because state.timestamp may be the device clock. Re-published on every fix (timestamp changes).
+  useEffect(
+    () => publishGpsMotion({ status: state.status, mph: state.mph, at: state.timestamp === null ? null : Date.now() }),
+    [state.status, state.mph, state.timestamp],
+  );
   const session = useRef<{ cancel: () => void } | null>(null);
   const generation = useRef(0);
   const previous = useRef<Fix | null>(null);

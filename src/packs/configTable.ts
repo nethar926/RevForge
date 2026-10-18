@@ -10,7 +10,8 @@
  *   TLM   LOOK (the theme's looks) · UNITS (SPEED · HDG REF M/T · DIST⚑ · TEMP⚑ · PRESS⚑) · READOUT (DENSITY⚑)
  *   SND   PACK ▸ P · AUDIO (MUTE · VOL = SYS read-only · SW SND · AUTO LAUNCH · BKGND) · ALERTS (CALLS · HI-SPD · AB UNARM — REQ)
  *   MAP   GPS P · FIX + RETRY · COMPASS (phones) · RADAR · STYLE · RNG · MODE · (i) MAP CREDIT (REQ)
- *   OPT   ENGINE STARTUP P (APU / STANDARD) · MOTION (REQ) · ALERTS ▸ · TIP · DIAG ▸ P · ABOUT · RESET ▸ P
+ *   OPT   ENGINE STARTUP P (APU / STANDARD) · ACCESS (MOTION (REQ) · PREFER TAPS) · ALERTS ▸ · TIP · DIAG ▸ P · ABOUT ·
+ *         RESET ▸ P
  * ⚑ = KEEP, FLAGGED (Meghan's map). P = Park only: disabled with PARK_REASON while moving. View changes are live.
  * Nothing is dead: every tile does something or says why not (disabledReason).
  */
@@ -18,6 +19,7 @@ import type { CjNavAction } from './carrier-jet.nav.ts';
 import { abUnarmedReason, type CjPrefs } from './carrier-jet/cjPrefs.ts';
 import { applyMapKey, stepRange, stepZoom, type MapView } from './carrier-jet/mapView.ts';
 import type { PackShellUi } from './runtime.ts';
+import { PREFER_TAPS_DESCRIPTION } from '../lib/preferTaps.ts';
 
 export const DEFAULT_ROLE = 'DRIVER';
 export type PageId = 'home' | 'role' | 'telemetry' | 'sound' | 'map' | 'options';
@@ -32,6 +34,8 @@ export interface ConfigCtx {
   ui?: PackShellUi;
   /** iOS compass permission flow exists here (phones). */
   compass?: { available: boolean; state: string };
+  /** App-wide accessibility prefs (lib/preferTaps.ts); absent = defaults (Prefer Taps off). */
+  a11y?: { preferTaps: boolean };
 }
 export type ConfigEffect =
   | { type: 'page'; page: PageId }
@@ -44,6 +48,7 @@ export type ConfigEffect =
   | { type: 'look'; id: string }
   | { type: 'retry-gps' }
   | { type: 'compass' }
+  | { type: 'prefer-taps'; on: boolean }
   | { type: 'info'; text: string };
 
 export interface ConfigItem {
@@ -206,7 +211,8 @@ export function buildConfig(spec: PackConfigSpec): Record<PageId, ConfigPage> {
       items: [
         RTN,
         { id: 'start', label: 'ENGINE STARTUP', parkOnly: true, value: (c) => (c.prefs.startMode === 'apu' ? 'APU' : 'STANDARD'), aria: (c) => `Engine startup, ${c.prefs.startMode === 'apu' ? 'A P U' : 'standard, ground air cross-bleed'}`, effect: (c) => ({ type: 'prefs', partial: { startMode: c.prefs.startMode === 'apu' ? 'gndAir' : 'apu' } }) },
-        { id: 'motion', label: 'MOTION', value: (c) => UP(c.prefs.motion), aria: (c) => `Motion, ${c.prefs.motion === 'auto' ? 'follows system' : c.prefs.motion}`, effect: (c) => ({ type: 'prefs', partial: { motion: cycle(['auto', 'reduced', 'full'] as const, c.prefs.motion) } }) },
+        { id: 'motion', group: 'ACCESS', label: 'MOTION', value: (c) => UP(c.prefs.motion), aria: (c) => `Motion, ${c.prefs.motion === 'auto' ? 'follows system' : c.prefs.motion}`, effect: (c) => ({ type: 'prefs', partial: { motion: cycle(['auto', 'reduced', 'full'] as const, c.prefs.motion) } }) },
+        { id: 'preferTaps', group: 'ACCESS', label: 'PREFER TAPS', value: (c) => onOff(!!c.a11y?.preferTaps), on: (c) => !!c.a11y?.preferTaps, aria: (c) => `Prefer Taps, ${c.a11y?.preferTaps ? 'on' : 'off'}. ${PREFER_TAPS_DESCRIPTION}`, effect: (c) => ({ type: 'prefer-taps', on: !c.a11y?.preferTaps }) },
         { id: 'shelfAuto', label: 'AUTO SHELF', value: (c) => onOff(c.prefs.shelfAutoOpen), on: (c) => c.prefs.shelfAutoOpen, aria: (c) => `Auto-open start shelf in Park, ${c.prefs.shelfAutoOpen ? 'on' : 'off'}`, effect: (c) => ({ type: 'prefs', partial: { shelfAutoOpen: !c.prefs.shelfAutoOpen } }) },
         { id: 'alerts', label: 'ALERTS ▸', value: () => 'Calls · hi-spd · AB', aria: () => 'Alerts, opens the sound page', effect: () => ({ type: 'page', page: 'sound' }) },
         { id: 'tip', label: 'TIP', needsUi: true, value: (c) => onOff(c.ui!.showKeepAliveTip), on: (c) => !!c.ui?.showKeepAliveTip, aria: (c) => `Keep-tab-open tip, ${c.ui!.showKeepAliveTip ? 'on' : 'off'}`, effect: (c) => ({ type: 'ui', partial: { showKeepAliveTip: !c.ui!.showKeepAliveTip } }) },

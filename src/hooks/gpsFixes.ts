@@ -65,3 +65,40 @@ export function subscribeGpsStatus(l: StatusListener): () => void {
     statusListeners.delete(l);
   };
 }
+
+/*
+ * GPS motion feed (framework): useGeolocation publishes its status + speed here (wall-clock stamped) so the
+ * interaction mode (src/controls/interactionMode.ts) can tell "known stopped" from "moving / unknown" without a
+ * second watch or prop drilling. `at` = Date.now() when the state was published (null before the first).
+ */
+export interface GpsMotion {
+  /** useGeolocation GpsStatus ('live' is the only status with a trusted speed). */
+  status: string;
+  /** Speed in mph (0 when unknown). */
+  mph: number;
+  /** Wall clock (ms) of the reading; null = never received. */
+  at: number | null;
+}
+type MotionListener = () => void;
+const motionListeners = new Set<MotionListener>();
+let motion: GpsMotion = { status: 'idle', mph: 0, at: null };
+export function publishGpsMotion(next: GpsMotion): void {
+  if (next.status === motion.status && next.mph === motion.mph && next.at === motion.at) return;
+  motion = { ...next };
+  for (const l of [...motionListeners]) {
+    try {
+      l();
+    } catch {
+      /* a consumer must never break the GPS feed */
+    }
+  }
+}
+export function getGpsMotion(): GpsMotion {
+  return motion;
+}
+export function subscribeGpsMotion(l: MotionListener): () => void {
+  motionListeners.add(l);
+  return () => {
+    motionListeners.delete(l);
+  };
+}

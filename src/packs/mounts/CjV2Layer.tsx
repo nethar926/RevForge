@@ -25,6 +25,7 @@ import { CjWxReadout } from './CjWxReadout';
 import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
 import { wxCreditRows } from '../carrier-jet/wxCredits';
 import { CONFIG_HEADER_CELLS, configCellHeader, type ConfigHeaderCell } from '../carrier-jet/configHeaders';
+import { getPreferTaps, setPreferTaps, subscribePreferTaps } from '../../lib/preferTaps.ts';
 // live map + compass legend: a lazy chunk (CjLiveMap.tsx, Meghan's style + WMM2025); maplibre-gl is a further lazy chunk
 const CjLiveMap = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjLiveMap })));
 const CjHeadingReadout = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjHeadingReadout })));
@@ -366,6 +367,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
   const cfg = useSyncExternalStore(subscribeCjConfig, getCjConfig, getCjConfig);
   const shell = useSyncExternalStore(onPackShellState, getPackShellState, getPackShellState);
   const compass = useSyncExternalStore(subscribeCompass, getCompassSnapshot, getCompassSnapshot);
+  const preferTaps = useSyncExternalStore(subscribePreferTaps, getPreferTaps, getPreferTaps);
   const sys = useSyncExternalStore(subSysReduced, sysReduced, () => false);
   const [look] = useCarrierJetVariant();
   const reduced = reducedMotion(prefs, sys || !motion);
@@ -415,8 +417,8 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
   }, [moreOpen]);
 
   const ctx: ConfigCtx = useMemo(
-    () => ({ park, muted: shell.muted, look, map: view, prefs, ui: shell.connected ? shell.ui : undefined, compass: { available: compassFlowAvailable(layout), state: compass.state } }),
-    [park, shell, look, view, prefs, layout, compass.state],
+    () => ({ park, muted: shell.muted, look, map: view, prefs, ui: shell.connected ? shell.ui : undefined, compass: { available: compassFlowAvailable(layout), state: compass.state }, a11y: { preferTaps } }),
+    [park, shell, look, view, prefs, layout, compass.state, preferTaps],
   );
   const page = CJ_CONFIG[cfg.page];
   const items = visibleItems(page, ctx);
@@ -446,6 +448,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
       case 'look': return writeCarrierJetVariant(e.id as CarrierJetVariant);
       case 'retry-gps': return void requestPackShell({ type: 'retry-gps' });
       case 'compass': return toggleCompass();
+      case 'prefer-taps': return void setPreferTaps(e.on);
       case 'info': return setSay(e.text);
     }
   };
