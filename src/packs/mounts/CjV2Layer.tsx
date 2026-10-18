@@ -7,7 +7,7 @@ import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompass } from '../heading';
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
-import { board2Cells, board2CellsMapFirst, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
+import { board2Cells, board2CellsMapFirst, mapSquareSide, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
 import { applyMapKey, getMapView, radarCue, rangeRings, setMapView, subscribeMapView, type MapKeyId, type MapView } from '../carrier-jet/mapView';
 import { cjRadarScopeAria } from '../../skins/carrier-jet/map/radarAria';
 import { getCjPrefs, reducedMotion, setCjPrefs, subscribeCjPrefs, type CjPrefs } from '../carrier-jet/cjPrefs';
@@ -123,13 +123,23 @@ function useGeo(selfRef: RefObject<HTMLElement | null>, layout: RfLayout): Geo |
       let cells: Cells | null = null;
       let gap = 4;
       let mapFirst = false;
+      const mf = board2 && host.dataset.cjMapfirst === 'drive';
+      // Square MAP: size the MAP column from the two-row span (rows only, so one pass settles), then measure.
+      // Not map-first: drop the side so Board 2 / phones keep their fr column.
+      if (mf) {
+        const m0 = q('.cj-a-gr > :first-child'), c0 = root.querySelectorAll<HTMLElement>(':scope .cj-a-mid > div.cj-crt')[1]?.getBoundingClientRect();
+        if (m0 && c0) {
+          const side = `${mapSquareSide({ mach: rel(m0, o), compass: rel(c0, o) })}px`;
+          if (host.style.getPropertyValue('--cjv2-map-side') !== side) host.style.setProperty('--cjv2-map-side', side);
+        }
+      } else if (host.style.getPropertyValue('--cjv2-map-side')) host.style.removeProperty('--cjv2-map-side');
       if (board2) {
         const speed = q('.cj-a-speed'), mach = q('.cj-a-gr > :first-child'), rpm = q('.cj-a-gr > :last-child');
         const mids = root.querySelectorAll<HTMLElement>(':scope .cj-a-mid > div.cj-crt');
         const vdi = mids[0]?.getBoundingClientRect(), compass = mids[1]?.getBoundingClientRect();
         const sweep = q('.cj-a-sweep'), eng = q('.cj-a-eng');
         if (speed && mach && rpm && vdi && compass && sweep && eng) {
-          mapFirst = host.dataset.cjMapfirst === 'drive';
+          mapFirst = mf;
           cells = (mapFirst ? board2CellsMapFirst : board2Cells)({ speed: rel(speed, o), rpm: rel(rpm, o), mach: rel(mach, o), vdi: rel(vdi, o), sweep: rel(sweep, o), eng: rel(eng, o), compass: rel(compass, o) });
           const body = root.querySelector<HTMLElement>('.cj-body');
           gap = body ? parseFloat(getComputedStyle(body).rowGap) || 4 : 4;

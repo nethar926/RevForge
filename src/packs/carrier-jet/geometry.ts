@@ -28,8 +28,19 @@ export function board2Cells(r: {
   };
 }
 
-/** Map-first Drive gate: v2 board, Tesla layouts (board 1280/1256 · window 773), not in Park. Park → Board 2. */
-export const cjMapFirst = (s: { v2: boolean; tesla: boolean; park: boolean }): boolean => s.v2 && s.tesla && !s.park;
+/** Map-first gate: v2 board on the Tesla layouts (board 1280/1256 · window 773), in Drive AND Park (Wilson's square-map
+ * rule, Meghan Oct 17: Park is laid out like Drive, MAP spanning both instrument rows; one design, no Board 2 in Park). */
+export const cjMapFirst = (s: { v2: boolean; tesla: boolean }): boolean => s.v2 && s.tesla;
+
+/**
+ * Square MAP (Wilson's rule): the map-first MAP cell is as wide as its two-row span is tall. The span (MACH's top to
+ * COMPASS's bottom) comes from the body's rows alone (fixed px + fr of the body height), so it does not move when the
+ * columns change: the host sets the MAP column to this many px (--cjv2-map-side, carrier-jet-v2.css) and the other
+ * columns (fr) give way. Never shrunk to fit. Rounded to 1/100 px.
+ */
+export function mapSquareSide(r: { mach: Box; compass: Box }): number {
+  return Math.max(0, Math.round((r.compass.top + r.compass.height - r.mach.top) * 100) / 100);
+}
 
 /**
  * Map-first DRIVE (Meghan's mock, ported). Host CSS (carrier-jet-v2.css, .cjm[data-cj-mapfirst='drive'])

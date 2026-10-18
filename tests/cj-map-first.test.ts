@@ -1,4 +1,5 @@
-/** Map-first Drive (Meghan's mock 36b7005, ported): gate, cell geometry, and the Park↔Drive swap contract. */
+/** Map-first (Meghan's mock 36b7005, ported; Drive and Park since the square-map rule): gate, cell geometry, and the
+ * Park↔Drive swap contract (the cell no longer moves on P/D, but the one-MapCell / resize contract still holds). */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -15,12 +16,11 @@ const r = {
   compass: { left: 358, top: 340, width: 200, height: 200 },
 };
 
-test('map-first is the Drive default on the Tesla layouts only; Park keeps Board 2', () => {
-  assert.equal(cjMapFirst({ v2: true, tesla: true, park: false }), true);
-  assert.equal(cjMapFirst({ v2: true, tesla: true, park: true }), false);
-  assert.equal(cjMapFirst({ v2: true, tesla: false, park: false }), false);
-  assert.equal(cjMapFirst({ v2: false, tesla: true, park: false }), false);
-  assert.match(src('packs/mounts/CarrierJetMount.tsx'), /const mapFirst = cjMapFirst\(\{ v2, tesla, park \}\);/);
+test('map-first is the layout on the Tesla layouts only, in Drive and Park (square-map rule: Park laid out like Drive)', () => {
+  assert.equal(cjMapFirst({ v2: true, tesla: true }), true);
+  assert.equal(cjMapFirst({ v2: true, tesla: false }), false);
+  assert.equal(cjMapFirst({ v2: false, tesla: true }), false);
+  assert.match(src('packs/mounts/CarrierJetMount.tsx'), /const mapFirst = cjMapFirst\(\{ v2, tesla \}\);/);
   assert.doesNotMatch(src('packs/mounts/CarrierJetMount.tsx'), /MOCK_MAP_FIRST|URLSearchParams\(location\.search\)\.get\('cjMapFirst'\)/);
 });
 
@@ -33,7 +33,7 @@ test('map-first cells: SPEED full column, MACH runs to RPM bottom, MAP spans bot
   assert.equal(c.map.left + c.map.width, r.sweep.left - 4);
   assert.equal(c.map.top, r.mach.top);
   assert.equal(c.map.top + c.map.height, r.compass.top + r.compass.height);
-  // Park (Board 2) has the same SPEED / MACH shape (RPM under MACH in both)
+  // Board 2 (non-map-first fallback) has the same SPEED / MACH shape (RPM under MACH in both)
   const p = board2Cells(r);
   assert.deepEqual(p.speed, c.speed);
   assert.deepEqual(p.mach, c.mach);
