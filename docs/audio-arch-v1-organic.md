@@ -94,7 +94,7 @@ optional `getHud().driveMood` (`idle`/`lope`/`spooling`/`ab`/`regen`/`cruise`/`p
 
 ## Acoustic cue sheet v1 (public analysis only — no sample rips)
 
-*Folded 2026-09-20 by Audio Synth. Sources: exhaust order-tracking literature (half-orders / roughness), NASA turbomachinery noise summaries, Burtt/ILM public interviews on TIE layering. Not a license to copy any recording.*
+*Folded 2026-09-20 by Audio Synth. Sources: exhaust order-tracking literature (half-orders / roughness), NASA turbomachinery noise summaries, Burtt/ILM public interviews on starfighter-effect layering. Not a license to copy any recording.*
 
 ### Why our current packs sound “digital”
 
@@ -126,7 +126,7 @@ optional `getHud().driveMood` (`idle`/`lope`/`spooling`/`ab`/`regen`/`cruise`/`p
 
 ### Sci-fi ion / fighter *design language* (Burtt — public)
 
-Documented TIE recipe: **slowed organic bellow** + **wet pavement pass-by hiss**, aiming at dive-bomber terror.  
+Documented starfighter-effect recipe: **slowed organic bellow** + **wet pavement pass-by hiss**, aiming at dive-bomber terror.  
 **Our language (original only):** moving multi-formant howl (organic scream without animal samples) + wet-road filtered noise + twin pulsed carriers as *support*, not the whole sound.
 
 ### Concrete next build steps

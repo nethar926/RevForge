@@ -1,5 +1,5 @@
 import type { EngineKind, EnginePatch, EngineParams, ParamMeta } from './types';
-import { REVFORGE_PATCHES } from '../forge/catalog';
+import { sceneEnginePatches } from './sceneEngines';
 import { PACK_ENGINE_MIGRATIONS } from '../packs/migrations';
 import { NIGHT_PURSUIT_DEFAULTS, NIGHT_PURSUIT_PACK_ID, nightPursuitBuiltinPatch } from './nightPursuitPack';
 import { CHRONO_COUPE, CHRONO_COUPE_DEFAULTS, chronoCoupeBuiltinPatch } from './chronoCoupePack';
@@ -433,7 +433,8 @@ export const BUILTIN_PATCHES: EnginePatch[] = [
   chronoCoupeBuiltinPatch(),
   // Stellar Helm (experimental): dedicated starship drive hum voice — see stellarHelmPack.ts
   stellarHelmBuiltinPatch(),
-  ...REVFORGE_PATCHES,
+  // RoadView scene engines (audio-owned, procedural; ids `revforge-<scene>`) — see sceneEngines.ts
+  ...sceneEnginePatches(defaultsForTopology),
 ];
 
 export function defaultsForTopology(topology: string): EngineParams {

@@ -5,13 +5,23 @@
  * Also documents collectorDelayMs → samples @ 48 kHz.
  */
 import assert from 'node:assert/strict';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createJiti } from 'jiti';
 
 const SR = 48000;
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Cross-plane scene schedules are derived in src/audio/sceneEngines.ts (no copied tables here).
+const { SCENE_ICE_SCHEDULES } = await createJiti(join(ROOT, 'package.json')).import(
+  join(ROOT, 'src/audio/sceneEngines.ts'),
+);
 const CROSS_PACKS = {
   'v8-rumble': { fam: 1, collectorDelayMs: 1.8 },
-  'copper-mile': { fam: 1, collectorDelayMs: 2.0 },
-  'pink-current': { fam: 1, collectorDelayMs: 2.4 },
-  sandwake: { fam: 1, collectorDelayMs: 2.2 },
+  ...Object.fromEntries(
+    Object.entries(SCENE_ICE_SCHEDULES)
+      .filter(([, s]) => s.firingFamily === 1)
+      .map(([id, s]) => [id, { fam: 1, collectorDelayMs: s.collectorDelayMs }]),
+  ),
 };
 
 const GLOBAL_8 = [0, 90, 180, 270, 360, 450, 540, 630];

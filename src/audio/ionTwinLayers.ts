@@ -95,7 +95,7 @@ const LAYER_MIX_KEY: Record<IonTwinLayerId, keyof EngineParams> = {
   grit: 'gritMix',
 };
 
-/** Default continuous-roar pack — all layers on, current TIE feel. */
+/** Default continuous-roar pack — all layers on, current Twin Ion feel. */
 export function ionTwinContinuousLayers(params: EngineParams = CONTINUOUS): IonTwinLayerConfig[] {
   return ION_TWIN_LAYER_IDS.map((id) => layerFromParams(id, params));
 }
