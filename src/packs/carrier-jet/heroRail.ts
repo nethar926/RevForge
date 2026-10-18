@@ -204,9 +204,9 @@ export const annSize = (l: HeroLayout) => {
   return { w: 8 * c.w + 7 * c.gap + 2 * c.pad, h: c.h + 2 * c.pad };
 };
 /** Rail modules share the 118 px part height (Meghan's PULL / QUICK START / GPS plate minimum). */
-export const HV_RAIL_H = 118;
+export const HV_RAIL_H = 135; // v3.1 rail box: 118 px modules + the engraved group titles under them (board); 135 px zones (773)
 /** Smallest rail width that holds every module at its minimum (design px). */
-export const HV_RAIL_MIN_W: Readonly<Record<HeroLayout, number>> = { board: 1040, window: 660 };
+export const HV_RAIL_MIN_W: Readonly<Record<HeroLayout, number>> = { board: 1188, window: 741 }; // v3.1: module widths + 4 / 3 px minimum gaps (no SHELF key)
 
 /**
  * Width guard (Meghan's mobile audit, Oct 18): the plate and the rail are fixed design px OUTSIDE the useFitBox scale,
@@ -216,7 +216,7 @@ export const HV_RAIL_MIN_W: Readonly<Record<HeroLayout, number>> = { board: 1040
  *    `.rev-topbar > div` at 1280 / 773), the top bar's 12px flex gap and its 24px side insets (forge/viewport.css).
  *  - rail: HV_RAIL_MIN_W + the dock's 8px gap + the 80px SHELF key it shares the row with (carrier-jet-v2.css), plus
  *    the dock's side insets (24px board, viewport.css; 8px window, carrier-jet-v2.css).
- * board 1176 (rail-bound; plate 1054), window 764 (rail-bound; plate 754): 1280 and 773 keep the hero.
+ * v3.1 rail (no SHELF): board 1236 (rail-bound; plate 1054), window 757 (rail-bound): 1280 and 773 keep the hero.
  */
 export const HV_ANN_BORDER = 1;
 export const HV_BRAND_W = 96;
@@ -224,7 +224,7 @@ export const HV_FIT = { topbarInset: 24, brandGap: 12, dockGap: 8, shelfKey: 80,
 export function heroMinW(l: HeroLayout, brandW: number = HV_BRAND_W): number {
   const f = HV_FIT;
   const plate = annSize(l).w + 2 * HV_ANN_BORDER + brandW + f.brandGap + 2 * f.topbarInset;
-  const rail = HV_RAIL_MIN_W[l] + f.dockGap + f.shelfKey + 2 * f.dockInset[l];
+  const rail = HV_RAIL_MIN_W[l] + 2 * f.dockInset[l]; // v3.1: the rail has the dock row to itself (no SHELF key)
   return Math.max(plate, rail);
 }
 /** True when a `vw`-wide viewport holds the hero plate (clear of the brand) and the rail at their design size. */
@@ -247,17 +247,6 @@ export function heroCells(cells: { speed: Box; sweep: Box; eng: Box; compass: Bo
 
 /** Hit targets the hero declares (design px, the smallest size each one renders at). */
 export const HV_ANN_TARGETS = HV_LAMPS.filter((d) => d.clearable).map((d) => ({ name: `${d.spoken}, clear`, w: HV_ANN_CAP.window.w, h: HV_ANN_CAP.window.h }));
-export const HV_RAIL_TARGETS: readonly { name: string; w: number; h: number }[] = [
-  { name: 'Radar up one position', w: 44, h: 50 },
-  { name: 'Radar down one position', w: 44, h: 50 },
-  { name: 'Afterburner guard', w: 44, h: 50 },
-  { name: 'Afterburner ARM / SAFE', w: 44, h: 50 },
-  ...HV_START.flatMap((s) => [{ name: `${s.label} on`, w: 44, h: 50 }, { name: `${s.label} off`, w: 44, h: 50 }]),
-  { name: 'Quick start guard', w: 88, h: 64 },
-  { name: 'Emergency stop handle', w: 56, h: 44 },
-  { name: 'Hold to rev', w: 64, h: 48 },
-  { name: 'Shutdown', w: 64, h: 48 },
-];
 
 /* ------------------------------------------------------------------ v3.1 top plate (Meghan's v3.1-all-switches, option A) */
 
@@ -336,3 +325,163 @@ export function abView(armed: boolean, guardOpen: boolean): { pos: 'up' | 'dn'; 
 export function abGuardTap(armed: boolean, guardOpen: boolean): { open: boolean; disarm: boolean } {
   return abView(armed, guardOpen).lidOpen ? { open: false, disarm: armed } : { open: true, disarm: false };
 }
+
+/* ------------------------------------------------------------------ v3.1 bottom rail (push 2; NOTES.md, Dan's order) */
+
+/** Every start-up switch on the rail (no SHELF). `system`: Dan's id (null: GEN follows the engines; SOURCE is 3-pos). */
+export type RailSwId = 'batt' | 'source' | 'xbleed' | 'seatbelt' | 'fuelL' | 'ignL' | 'engL' | 'fuelR' | 'ignR' | 'engR' | 'gen' | 'nav';
+export interface RailSwDecl { id: RailSwId; label: string; short: string; spoken: string; system: string | null }
+export const HV_RAIL_SW: readonly RailSwDecl[] = [
+  { id: 'batt', label: 'BATT', short: 'BATT', spoken: 'Battery', system: 'batt' },
+  { id: 'source', label: 'SOURCE', short: 'SOURCE', spoken: 'Start source', system: null },
+  { id: 'xbleed', label: 'X-BLEED', short: 'X-BLEED', spoken: 'Crossbleed', system: 'crossbleed' },
+  { id: 'seatbelt', label: 'FASTEN|SEAT BELT', short: 'FASTEN SEAT BELT', spoken: 'Fasten seat belt', system: 'seatbelt' },
+  { id: 'fuelL', label: 'FUEL', short: 'L FUEL', spoken: 'L fuel pump', system: 'fuelPumpL' },
+  { id: 'ignL', label: 'IGN', short: 'L IGN', spoken: 'L ignition', system: 'ignL' },
+  { id: 'engL', label: 'ENG START', short: 'L START', spoken: 'L engine start', system: 'engL' },
+  { id: 'fuelR', label: 'FUEL', short: 'R FUEL', spoken: 'R fuel pump', system: 'fuelPumpR' },
+  { id: 'ignR', label: 'IGN', short: 'R IGN', spoken: 'R ignition', system: 'ignR' },
+  { id: 'engR', label: 'ENG START', short: 'R START', spoken: 'R engine start', system: 'engR' },
+  { id: 'gen', label: 'GEN', short: 'GEN', spoken: 'Generators', system: null },
+  // NAV and the top plate's INS are one switch (Dan's inertialNav), same state
+  { id: 'nav', label: 'NAV', short: 'NAV', spoken: 'Nav platform', system: 'inertialNav' },
+];
+export const railSw = (id: RailSwId) => HV_RAIL_SW.find((d) => d.id === id)!;
+export type RailPart = 'gps' | 'radar' | 'ab' | RailSwId | 'qs' | 'estop' | 'push';
+/** DOM = visual = VoiceOver order. Board: NOTES.md one line. 773: three zones (left tall, middle 2 rows, right tall). */
+export const HV_RAIL_ORDER: Readonly<Record<HeroLayout, readonly RailPart[]>> = {
+  board: ['gps', 'radar', 'ab', 'batt', 'source', 'xbleed', 'seatbelt', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'gen', 'nav', 'qs', 'estop', 'push'],
+  window: ['gps', 'radar', 'source', 'xbleed', 'batt', 'seatbelt', 'ab', 'gen', 'nav', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'qs', 'estop', 'push'],
+};
+/** Rail id a start-order step (Dan's system id) lands on, for the static green "next" legend. */
+export function railCue(next: string | null): RailSwId | null {
+  if (!next) return null;
+  if (next === 'apu' || next === 'apuGuard' || next === 'aircart') return 'source';
+  return HV_RAIL_SW.find((d) => d.system === next)?.id ?? null;
+}
+
+export type SourcePos = 'up' | 'mid' | 'dn';
+export type EngBulb = 'off' | 'start' | 'run';
+export interface RailState { on: Record<RailSwId, boolean>; source: SourcePos; bulb: { L: EngBulb; R: EngBulb } }
+/** Switch positions + engine bulbs. Without a cold start the rail mirrors the engine (all ON + RUN while running). */
+export function railPositions(i: StartInput): RailState {
+  const all = (v: boolean) => Object.fromEntries(HV_RAIL_SW.map((d) => [d.id, v])) as Record<RailSwId, boolean>;
+  if (!i.cold) return { on: { ...all(i.running), xbleed: false }, source: i.running ? 'up' : 'mid', bulb: { L: i.running ? 'run' : 'off', R: i.running ? 'run' : 'off' } };
+  const b = (s: string): EngBulb => (s === 'run' ? 'run' : s === 'off' ? 'off' : 'start');
+  const on = all(false);
+  for (const d of HV_RAIL_SW) if (d.system) on[d.id] = !!i.on[d.system];
+  on.engL = i.engines.L !== 'off' || !!i.on.engL;
+  on.engR = i.engines.R !== 'off' || !!i.on.engR;
+  on.gen = i.engines.L === 'run' || i.engines.R === 'run';
+  return { on, source: i.on.apu ? 'up' : i.on.aircart ? 'dn' : 'mid', bulb: { L: b(i.engines.L), R: b(i.engines.R) } };
+}
+/** Engine bulbs: dark/OFF, amber/START, green/RUN (a legend, never colour alone). Steady. */
+export const ENG_BULB_LEGEND: Readonly<Record<EngBulb, string>> = { off: 'OFF', start: 'START', run: 'RUN' };
+/** 773 middle row: one tap-to-flip target, no ON/OFF engraving, so the state is in the label (+ aria-pressed). */
+export const railFlipAria = (d: RailSwDecl, on: boolean) => `${d.spoken}, ${on ? 'on' : 'off'}. Tap to turn ${on ? 'off' : 'on'}`;
+export const railSwAria = (d: RailSwDecl, on: boolean, pos: 'on' | 'off') => `${d.spoken} ${pos}, now ${on ? 'on' : 'off'}`;
+
+/* ---------------- two-step guards (AFTERBURNER, QUICK START): tap 1 lifts, tap 2 acts, ~5 s auto-close */
+export const HV_GUARD_CLOSE_MS = 5000;
+export type AbTarget = 'guard' | 'switch' | 'one';
+export interface AbStep { open: boolean; arm: boolean | null; say: string }
+/**
+ * AFTERBURNER at every size is two taps. Board: a guard band and a switch band (NOTES.md). 773: one 44+ target
+ * ('one'), still two taps (Lana's HIG check): lift, then ARM; at ARM one tap goes to SAFE and closes the guard.
+ */
+export function abTap(armed: boolean, guardOpen: boolean, target: AbTarget): AbStep {
+  const lid = abView(armed, guardOpen).lidOpen;
+  if (target === 'guard') {
+    const g = abGuardTap(armed, guardOpen);
+    return { open: g.open, arm: g.disarm ? false : null, say: g.open ? 'Afterburner guard open. Tap again for ARM' : g.disarm ? 'Afterburner SAFE, guard closed' : 'Afterburner guard closed' };
+  }
+  if (!lid) return target === 'one' ? { open: true, arm: null, say: 'Afterburner guard open. Tap again for ARM' } : { open: false, arm: null, say: 'Afterburner: lift the guard first' };
+  if (!armed) return { open: true, arm: true, say: 'Afterburner ARM' };
+  return target === 'one' ? { open: false, arm: false, say: 'Afterburner SAFE, guard closed' } : { open: true, arm: false, say: 'Afterburner SAFE' };
+}
+export function abAria(armed: boolean, guardOpen: boolean, target: AbTarget): string {
+  const lid = abView(armed, guardOpen).lidOpen;
+  if (target === 'guard') return lid ? 'Afterburner guard: open, tap to close' : 'Afterburner guard: closed, tap to lift';
+  if (target === 'switch') return armed ? 'Afterburner: ARM, tap for SAFE' : lid ? 'Afterburner: SAFE, tap for ARM' : 'Afterburner: SAFE, lift the guard first';
+  return armed ? 'Afterburner: ARM. Tap for SAFE and close the guard' : lid ? 'Afterburner: SAFE, guard open. Tap for ARM' : 'Afterburner: SAFE, guard closed. Tap to lift the guard';
+}
+export type QsTarget = 'guard' | 'start';
+export interface QsStep { open: boolean; start: boolean; say: string }
+/** QUICK START (from scott/cj-quickstart-wip 4cbe6e7): tap 1 lifts the guard, tap 2 on START starts; shuts after a start. */
+export function qsTap(open: boolean, target: QsTarget, live: boolean): QsStep {
+  if (live) return { open: false, start: false, say: 'Engines already running' };
+  if (target === 'guard') return open ? { open: false, start: false, say: 'Quick start guard closed' } : { open: true, start: false, say: 'Quick start guard open. Tap START to start' };
+  return open ? { open: false, start: true, say: '' } : { open: false, start: false, say: 'Lift the quick start guard first' };
+}
+export function qsAria(target: QsTarget, open: boolean, live: boolean): string {
+  if (live) return target === 'guard' ? 'Quick start guard: engines already running' : 'Quick start: engines already running';
+  if (target === 'start') return open ? 'Quick start: press START' : 'Quick start: lift the guard first';
+  return open ? 'Quick start guard: open, tap to close' : 'Quick start guard: closed, tap to lift';
+}
+
+/* ---------------- rail geometry (design px from bake/dock-A-c-*.json + mock/A-c-*.html; module-relative) */
+export interface RailCol { x: number; w: number; tx: number }
+export interface RailMod { id: string; w: number; titles?: { t: string; x: number; w: number }[]; dividers?: number[] }
+export interface RailGeo {
+  mods: readonly RailMod[];
+  /** switch column per part (module-relative): hit x / w and the toggle centre tx */
+  col: Partial<Record<RailPart, RailCol>>;
+  nameY: number; onY: number; offY: number; upY: number; upH: number; dnY: number; dnH: number; tgY: number; tgK: number; titleY: number;
+}
+export const HV_RAIL_GEO: Readonly<Record<'board', RailGeo>> = {
+  board: {
+    mods: [
+      { id: 'gps', w: 52 }, { id: 'radar', w: 72 }, { id: 'ab', w: 88 },
+      { id: 'air', w: 240, titles: [{ t: 'POWER', x: 4, w: 52 }, { t: 'START AIR', x: 56, w: 120 }, { t: 'CABIN', x: 176, w: 60 }], dividers: [56, 176] },
+      { id: 'engL', w: 176, titles: [{ t: 'L ENG', x: 4, w: 168 }] }, { id: 'engR', w: 176, titles: [{ t: 'R ENG', x: 4, w: 168 }] },
+      { id: 'elec', w: 112, titles: [{ t: 'ELEC · NAV', x: 4, w: 104 }] },
+      { id: 'qs', w: 100 }, { id: 'estop', w: 68 }, { id: 'push', w: 68 },
+    ],
+    col: {
+      radar: { x: 4, w: 64, tx: 26 }, ab: { x: 4, w: 80, tx: 30 },
+      batt: { x: 4, w: 52, tx: 30 }, source: { x: 56, w: 66, tx: 78 }, xbleed: { x: 122, w: 54, tx: 149 }, seatbelt: { x: 176, w: 60, tx: 206 },
+      fuelL: { x: 4, w: 50, tx: 29 }, ignL: { x: 54, w: 48, tx: 78 }, engL: { x: 102, w: 70, tx: 124 },
+      fuelR: { x: 4, w: 50, tx: 29 }, ignR: { x: 54, w: 48, tx: 78 }, engR: { x: 102, w: 70, tx: 124 },
+      gen: { x: 4, w: 52, tx: 30 }, nav: { x: 56, w: 52, tx: 82 },
+    },
+    nameY: 4, onY: 22, offY: 107, upY: 18, upH: 54, dnY: 72, dnH: 44, tgY: 72, tgK: 1.1, titleY: 121,
+  },
+};
+/** 773: three zones. Middle zone parts are single tap-to-flip targets (x / y zone-relative, w x h). */
+export const HV_RAIL_773 = {
+  zones: { gps: 40, radar: 62, air: 114, mid: 333, qs: 70, estop: 52, push: 52 },
+  left: { radar: { x: 4, w: 54, tx: 24 }, source: { x: 4, w: 58, tx: 24 }, xbleed: { x: 62, w: 48, tx: 86 }, nameY: 4, onY: 22, offY: 114, upY: 18, upH: 52, dnY: 70, dnH: 65, tgY: 70 },
+  midMods: [
+    { x: 0, y: 0, w: 50, h: 66 }, { x: 55.7, y: 0, w: 100, h: 66 }, { x: 161.3, y: 0, w: 70, h: 66 }, { x: 237, y: 0, w: 96, h: 66 },
+    { x: 0, y: 69, w: 156, h: 66 }, { x: 177, y: 69, w: 156, h: 66 },
+  ],
+  mid: {
+    batt: { x: 2, y: 0, w: 46, h: 66, tx: 25 }, seatbelt: { x: 57.7, y: 0, w: 96, h: 66, tx: 105.7 }, ab: { x: 163.3, y: 14, w: 66, h: 52, tx: 183.3 },
+    gen: { x: 239, y: 0, w: 46, h: 66, tx: 262 }, nav: { x: 285, y: 0, w: 46, h: 66, tx: 308 },
+    fuelL: { x: 2, y: 69, w: 44, h: 66, tx: 24 }, ignL: { x: 46, y: 69, w: 44, h: 66, tx: 68 }, engL: { x: 90, y: 69, w: 64, h: 66, tx: 106 },
+    fuelR: { x: 179, y: 69, w: 44, h: 66, tx: 201 }, ignR: { x: 223, y: 69, w: 44, h: 66, tx: 245 }, engR: { x: 267, y: 69, w: 64, h: 66, tx: 283 },
+  } as Record<string, { x: number; y: number; w: number; h: number; tx: number }>,
+  bulbs: { L: { cx: 134, cy: 99, r: 8 }, R: { cx: 311, cy: 99, r: 8 } },
+  tgK: 0.8,
+} as const;
+/** Every rail target (design px, smallest size it renders at). */
+export function railTargets(l: HeroLayout): { name: string; w: number; h: number }[] {
+  const t: { name: string; w: number; h: number }[] = [];
+  if (l === 'board') {
+    const g = HV_RAIL_GEO.board;
+    for (const [id, c] of Object.entries(g.col)) {
+      if (id === 'ab') t.push({ name: 'Afterburner guard band', w: c!.w, h: 44 }, { name: 'Afterburner switch band', w: c!.w, h: 52 });
+      else t.push({ name: `${id} up`, w: c!.w, h: g.upH }, { name: `${id} down`, w: c!.w, h: g.dnH });
+    }
+    t.push({ name: 'Quick start guard', w: 94, h: 44 }, { name: 'Quick start press', w: 94, h: 44 }, { name: 'Emergency stop handle', w: 62, h: 49 }, { name: 'Hold to rev', w: 60, h: 52 }, { name: 'Shutdown', w: 60, h: 52 });
+  } else {
+    const g = HV_RAIL_773;
+    for (const id of ['radar', 'source', 'xbleed'] as const) t.push({ name: `${id} up`, w: g.left[id].w, h: g.left.upH }, { name: `${id} down`, w: g.left[id].w, h: g.left.dnH });
+    for (const [id, c] of Object.entries(g.mid)) t.push({ name: id === 'ab' ? 'Afterburner (two taps)' : `${id} flip`, w: c.w, h: c.h });
+    t.push({ name: 'Quick start guard', w: 64, h: 44 }, { name: 'Quick start press', w: 64, h: 44 }, { name: 'Emergency stop handle', w: 46, h: 56 }, { name: 'Hold to rev', w: 48, h: 66 }, { name: 'Shutdown', w: 48, h: 66 });
+  }
+  return t;
+}
+
+/** The grid contract's rail targets: the 773 set (the smallest sizes). */
+export const HV_RAIL_TARGETS: readonly { name: string; w: number; h: number }[] = railTargets('window');

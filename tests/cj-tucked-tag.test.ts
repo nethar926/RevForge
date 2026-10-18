@@ -124,7 +124,7 @@ test('hide path: no clear spot → the tag hides and the SHELF key carries the s
   const cs = src('src/packs/mounts/CjColdStart.tsx');
   const key = cs.slice(cs.indexOf('const shelfKey'), cs.indexOf('const pullQs'));
   assert.match(key, /const tagHidden = shelf !== 'closed' && !bay;/);
-  assert.match(key, /aria-label=\{`\$\{park \? name : `\$\{name\}\. Switches: \$\{CS_PARK_REASON\}`\}\$\{stepSaid\}`\}/);
+  assert.match(key, /aria-label=\{`\$\{name\}\$\{stepSaid\}`\}/, 'no Park lock (Oct 18): the key names the step only');
   assert.doesNotMatch(key, /'PARK'/);
   assert.doesNotMatch(nc(src('src/packs/mounts/carrier-jet-v2.css')), /data-tag-hidden/, 'no visual change');
   // forced in the live build (gate.mjs: a screen-wide block leaves no clear spot) at step 17, every viewport and mode

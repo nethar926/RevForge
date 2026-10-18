@@ -26,22 +26,15 @@ function after(mode: CsMode, n: number, park = true): CsInput {
 }
 const N = (mode: CsMode) => csSequence(getJetSystemList(csVariant(mode)), mode).length;
 
-test('fix 1: APU START reads PARK in Drive while the APU-off step (14) is ahead; START / OFF otherwise', () => {
+test('fix 1 (superseded Oct 18: no Park lock): APU START is never locked for Park and never reads PARK in Drive', () => {
   const seq = csSequence(getJetSystemList('apu'), 'apu');
   const apuOff = seq.findIndex((s) => s.key === 'apu:off');
   assert.equal(apuOff + 1, 14);
   for (let n = 0; n <= N('apu'); n++) {
     const drive = csView(after('apu', n, false));
-    assert.equal(drive.apu.disabled, true);
-    assert.equal(drive.apu.disabledReason, CS_PARK_REASON);
-    assert.equal(!!drive.apu.parkLegend, n <= apuOff, `Drive after ${n} steps`);
-    assert.equal(csView(after('apu', n, true)).apu.parkLegend, undefined, `never in Park (${n})`);
+    assert.notEqual(drive.apu.disabledReason, CS_PARK_REASON);
+    assert.equal(!!drive.apu.parkLegend, false, `Drive after ${n} steps`);
   }
-  // the screenshot case: step 14 next, driving, APU running → lock + PARK (was lock + START)
-  const v = csView(after('apu', apuOff, false));
-  assert.equal(v.cursor, apuOff);
-  assert.equal(v.apu.start, true);
-  assert.equal(v.apu.parkLegend, true);
 });
 
 test('fix 1: the mount passes PARK to Meghan\'s ApuBlock legend prop; the CSS PARK overlay is gone', () => {

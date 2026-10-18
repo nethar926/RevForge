@@ -126,25 +126,16 @@ test('shelfAutoClose: edges only (shift into D, completion in Park), or no cold 
   assert.equal(shelfToggle('opening'), 'closed');
 });
 
-test('PARK legend: only on a switch locked for Park with its step ahead; CRANK / RUN / CLOSED / OPEN keep priority', () => {
+test('PARK legend: gone with the Park lock (every switch works in Drive); CRANK / RUN / CLOSED / OPEN still show', () => {
   for (const mode of ['apu', 'gndAir'] as const) {
     const d0 = csView(after(mode, 0, false));
-    assert.equal(d0.switches.batt.legend, 'PARK');
-    assert.equal(d0.switches.batt.disabledReason, 'Available in Park');
+    assert.equal(d0.switches.batt.legend, undefined);
+    assert.notEqual(d0.switches.batt.disabledReason, 'Available in Park');
     assert.equal(d0.switches.canopy.legend, 'OPEN', 'canopy keeps OPEN');
-    assert.equal(d0.switches.engL.legend, 'PARK');
-    const p0 = csView(after(mode, 0, true));
-    assert.ok(Object.values(p0.switches).every((v) => v.legend !== 'PARK'), 'never in Park');
-    // after step 12: running engines read RUN, done switches keep ON / OFF, switches with steps ahead read PARK
     const d12 = csView(after(mode, 12, false));
     assert.equal(d12.switches.engL.legend, 'RUN');
     assert.equal(d12.switches.engR.legend, 'RUN');
-    assert.equal(d12.switches.batt.legend, undefined, 'done switch: ON');
-    assert.equal(d12.switches.seatbelt.legend, 'PARK');
-    assert.equal(d12.switches.masterCaution.legend, 'PARK');
-    const N = csSequence(getJetSystemList(csVariant(mode)), mode).length;
-    const dn = csView(after(mode, N, false));
-    assert.deepEqual(Object.entries(dn.switches).filter(([, v]) => v.legend === 'PARK').map(([k]) => k), [], 'complete: no PARK');
+    for (const n of [0, 12]) assert.ok(Object.values(csView(after(mode, n, false)).switches).every((v) => v.legend !== 'PARK'), `no PARK (${n})`);
   }
 });
 
@@ -167,7 +158,7 @@ async function bundleParts() {
   return mod as Record<string, unknown>;
 }
 
-test('shelf header reads COLD START (amber engraving), and a locked switch draws PARK at the 11-unit floor', async () => {
+test('shelf header reads COLD START (amber engraving); in Drive a switch is live and never draws PARK (no Park lock, Oct 18)', async () => {
   const parts = await bundleParts();
   const React = await import('react');
   const { renderToStaticMarkup } = await import('react-dom/server');
@@ -178,8 +169,8 @@ test('shelf header reads COLD START (amber engraving), and a locked switch draws
   assert.doesNotMatch(h, /PARK ONLY/);
   const batt = h.slice(h.lastIndexOf('<button', h.indexOf('data-sys="batt"')));
   const btn = batt.slice(0, batt.indexOf('</button>'));
-  assert.match(btn, /aria-disabled="true"/);
-  assert.match(btn, /data-text-floor="11"[^>]*>PARK<\/text>/);
+  assert.doesNotMatch(btn, /aria-disabled="true"/);
+  assert.doesNotMatch(btn, />PARK<\/text>/);
 });
 
 test('mount: SHELF has no Park gate, the level-triggered close is gone, the key never reads PARK', () => {

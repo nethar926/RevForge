@@ -7,11 +7,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { getJetSystemList, jetAutoStartSteps } from '../src/audio/jetColdStart.js';
+import { csTap } from '../src/packs/carrier-jet/coldStart.ts';
 import {
   annSize, clearsAfter, heroFits, heroKeyActive, heroMinW, forcedLamps, GREEN_LAMPS, heroCells, HV_ANN_BORDER, HV_BRAND_W, HV_FIT, HV_ANN_CAP, HV_CONTRAST_TARGET, HV_LAMPS, HV_LEGEND, HV_RAIL_H, HV_RAIL_MIN_W,
   HV_RED_LEGEND_LIFT, HV_START, LAMPS_DARK, lampAria, lampColor, lampStates, orientCap, radarApply, radarPos, radarStep, RED_LAMPS, splitCap,
   startPositions, type CapCtx, type LampId, type LampInput,
-  abGuardTap, abView, HV_BONUS, HV_TOP, topTargets, bonusAria, fsbAria, abArmedAria,
+  abGuardTap, abView, HV_BONUS, HV_TOP, abTap, abAria, qsTap, qsAria, HV_GUARD_CLOSE_MS, HV_RAIL_ORDER, HV_RAIL_SW, HV_RAIL_GEO, HV_RAIL_773, railTargets, railPositions, railFlipAria, railCue, ENG_BULB_LEGEND, topTargets, bonusAria, fsbAria, abArmedAria,
 } from '../src/packs/carrier-jet/heroRail.ts';
 import { CJ_GRID, type CjAnchors } from '../src/packs/carrier-jet/cells.ts';
 import { board2CellsMapFirst } from '../src/packs/carrier-jet/geometry.ts';
@@ -233,15 +235,15 @@ test('no WebGL: the hero draws nothing with WebGL, and the map degrades to its N
 });
 
 test('width guard: hero only where the plate clears the brand and the rail fits (1280 / 773 keep it; fine-pointer phones do not)', () => {
-  // plate = annSize + border + brand + gap + insets; rail = min width + gap + SHELF key + dock insets
+  // plate = annSize + border + brand + gap + insets; rail (v3.1: no SHELF key) = min width + dock insets
   assert.equal(annSize('board').w + 2 * HV_ANN_BORDER, 898);
   assert.equal(annSize('window').w + 2 * HV_ANN_BORDER, 598);
-  assert.equal(heroMinW('board'), Math.max(898 + HV_BRAND_W + HV_FIT.brandGap + 48, HV_RAIL_MIN_W.board + 8 + 80 + 48));
-  assert.equal(heroMinW('board'), 1176);
-  assert.equal(heroMinW('window'), 764);
+  assert.equal(heroMinW('board'), Math.max(898 + HV_BRAND_W + HV_FIT.brandGap + 48, HV_RAIL_MIN_W.board + 48));
+  assert.equal(heroMinW('board'), 1236);
+  assert.equal(heroMinW('window'), 757);
   assert.ok(heroFits(1280, 'board') && heroFits(1256, 'board') && heroFits(773, 'window'));
-  for (const w of [390, 650, 667, 763]) assert.equal(heroFits(w, 'window'), false, `window ${w}`);
-  for (const w of [390, 650, 1024, 1175]) assert.equal(heroFits(w, 'board'), false, `board ${w}`);
+  for (const w of [390, 650, 667, 756]) assert.equal(heroFits(w, 'window'), false, `window ${w}`);
+  for (const w of [390, 650, 1024, 1235]) assert.equal(heroFits(w, 'board'), false, `board ${w}`);
   // a wider measured brand raises the plate bound; a missing / zero measure falls back to HV_BRAND_W
   assert.equal(heroFits(773, 'window', 200), false);
   assert.equal(heroFits(773, 'window', 0), true);
@@ -298,4 +300,122 @@ test('AFTERBURNER: AB ARMED lamp never lit while the switch reads SAFE (one valu
   const mount = readFileSync(new URL('../src/packs/mounts/CarrierJetMount.tsx', import.meta.url), 'utf8');
   assert.match(mount, /<TopPlate[\s\S]*?armed=\{ab\.lamp\}/, 'plate lamp reads the switch view');
   assert.match(mount, /<HeroRail[\s\S]*?armed=\{ab\.lamp\}[\s\S]*?guardOpen=\{ab\.lidOpen\}/, 'rail bat + lid read the same view');
+});
+
+/* ---------------- v3.1 push 2: bottom rail */
+
+const mountSrc = () => src('packs/mounts/CarrierJetMount.tsx');
+
+test('v3.1 rail: Dan\'s jetAutoStartSteps order, every start-up switch on the board (rail + plate), no SHELF', () => {
+  const sysOf = (p: string) => (p === 'source' ? 'apu' : HV_RAIL_SW.find((d) => d.id === p)?.system ?? null);
+  for (const l of ['board', 'window'] as const) {
+    const order = HV_RAIL_ORDER[l].map(sysOf).filter((x): x is string => !!x);
+    // Dan's APU auto-start switches each system ON in this order; the rail keeps it (773: within each zone, NOTES.md)
+    const dan = [...new Set(jetAutoStartSteps('apu').flatMap((s) => ('system' in s && s.on ? [s.system as string] : [])))];
+    assert.deepEqual(dan, ['batt', 'apu', 'seatbelt', 'engL', 'engR']);
+    const pos = dan.map((d) => order.indexOf(d));
+    assert.ok(pos.every((p) => p >= 0), `${l}: every auto-start switch is on the rail`);
+    if (l === 'board') assert.deepEqual([...pos].sort((a, b) => a - b), pos, 'board: one line in Dan\'s order');
+  }
+  assert.deepEqual(HV_RAIL_ORDER.board, ['gps', 'radar', 'ab', 'batt', 'source', 'xbleed', 'seatbelt', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'gen', 'nav', 'qs', 'estop', 'push']);
+  // every switchable start-up system (both start modes) is on the rail, the SOURCE lever, or the top plate
+  const onBoard = new Set([...HV_RAIL_SW.map((d) => d.system), ...HV_BONUS.map((b) => b.system), 'apu', 'aircart', 'masterCaution', 'quickStartGuard', 'quickStart', 'emergencyStop']);
+  for (const v of ['apu', 'aircart'] as const) for (const e of getJetSystemList(v)) assert.ok(onBoard.has(e.id), `${e.id} has a switch on the board`);
+  const m = mountSrc();
+  assert.match(m, /hero v3\.1: every switch is on the rail; no SHELF key and no shelf pop-up/);
+  assert.match(m, /\{!hero && spds && coldOn && cold\.render\.shelf\(/, 'no shelf pop-up with the hero');
+  assert.doesNotMatch(tsx, /cjhv-abcap|shelfKey/, 'no AB ARMED cap and no SHELF key on the rail');
+});
+
+test('v3.1 rail: every target >= 44 pt at both sizes; geometry matches the mock (1280 module widths, 773 zones)', () => {
+  for (const l of ['board', 'window'] as const) for (const t of railTargets(l)) assert.ok(t.w >= 44 && t.h >= 44, `${l}: ${t.name} ${t.w}x${t.h}`);
+  assert.deepEqual(HV_RAIL_GEO.board.mods.map((m) => m.w), [52, 72, 88, 240, 176, 176, 112, 100, 68, 68]);
+  assert.deepEqual(Object.values(HV_RAIL_773.zones), [40, 62, 114, 333, 70, 52, 52]);
+  // engraved group titles (NOTES.md / mock): POWER · START AIR · CABIN · L ENG · R ENG · ELEC · NAV
+  assert.deepEqual(HV_RAIL_GEO.board.mods.flatMap((m) => m.titles?.map((t) => t.t) ?? []), ['POWER', 'START AIR', 'CABIN', 'L ENG', 'R ENG', 'ELEC · NAV']);
+  assert.match(css, /\.cjhv-rail \{[^}]*tabular-nums lining-nums/);
+});
+
+test('v3.1 rail: AFTERBURNER two taps at every size (773 one target, still two taps); ~5 s auto-close; works in Drive', () => {
+  assert.equal(HV_GUARD_CLOSE_MS, 5000);
+  assert.equal(abTap.length, 3, 'no Park input: the guards hold the same way in Drive');
+  // board: guard band then switch band
+  let armed = false, open = false;
+  const step = (t: 'guard' | 'switch' | 'one') => { const r = abTap(armed, open, t); open = r.open; if (r.arm !== null) armed = r.arm; return r; };
+  assert.equal(step('switch').arm, null, 'closed guard: the switch band never arms');
+  assert.equal(armed, false);
+  step('guard'); assert.equal(open, true); assert.equal(armed, false, 'tap 1 only lifts');
+  step('switch'); assert.equal(armed, true, 'tap 2 arms');
+  step('guard'); assert.equal(armed, false, 'closing the lid over ARM throws SAFE'); assert.equal(open, false);
+  // 773: one 66x52 target, two taps: lift, then ARM; at ARM one tap = SAFE + guard closed
+  armed = false; open = false;
+  step('one'); assert.deepEqual([open, armed], [true, false], '773 tap 1 lifts only');
+  step('one'); assert.deepEqual([open, armed], [true, true], '773 tap 2 arms');
+  step('one'); assert.deepEqual([open, armed], [false, false]);
+  assert.equal(abAria(false, false, 'guard'), 'Afterburner guard: closed, tap to lift');
+  assert.equal(abAria(false, true, 'guard'), 'Afterburner guard: open, tap to close');
+  assert.equal(abAria(true, false, 'switch'), 'Afterburner: ARM, tap for SAFE');
+  assert.equal(abAria(false, false, 'switch'), 'Afterburner: SAFE, lift the guard first');
+  assert.equal(abAria(false, false, 'one'), 'Afterburner: SAFE, guard closed. Tap to lift the guard');
+  const m = mountSrc();
+  assert.match(m, /if \(!guardOpen \|\| armed\) return;\s*const t = setTimeout\(\(\) => setGuardOpen\(false\), HV_GUARD_CLOSE_MS\);/, 'lifted SAFE lid closes itself');
+  const onAb = m.slice(m.indexOf('onAb={'), m.indexOf('rail={railState}'));
+  assert.doesNotMatch(onAb, /park/i, 'AB two-step does not depend on Park / Drive');
+  assert.match(tsx, /onClick=\{\(\) => p\.onAb\('one'\)\}/);
+  assert.match(tsx, /onClick=\{\(\) => p\.onAb\('guard'\)\}/);
+  assert.match(tsx, /onClick=\{\(\) => p\.onAb\('switch'\)\}/);
+});
+
+test('v3.1 rail: QUICK START two steps (guard band, PRESS band, each 44+), auto-close ~5 s, instant lid, works in Drive', () => {
+  assert.equal(qsTap.length, 3, 'no Park input');
+  assert.deepEqual(qsTap(false, 'start', false), { open: false, start: false, say: 'Lift the quick start guard first' });
+  assert.deepEqual(qsTap(false, 'guard', false).open, true);
+  assert.deepEqual(qsTap(true, 'start', false), { open: false, start: true, say: '' }, 'tap 2 starts and the guard shuts');
+  assert.equal(qsTap(true, 'guard', false).open, false);
+  assert.equal(qsTap(false, 'guard', true).open, false, 'engines running: never opens');
+  assert.equal(qsAria('guard', false, false), 'Quick start guard: closed, tap to lift');
+  assert.equal(qsAria('guard', true, false), 'Quick start guard: open, tap to close');
+  assert.equal(qsAria('start', true, false), 'Quick start: press START');
+  assert.equal(qsAria('start', false, false), 'Quick start: lift the guard first');
+  assert.match(tsx, /if \(!qsUp\) return;\s*const t = setTimeout\(\(\) => setQsUp\(false\), HV_GUARD_CLOSE_MS\);/);
+  assert.match(tsx, /GUARD OPEN/);
+  assert.match(tsx, /LIFT · PRESS/);
+});
+
+test('v3.1 rail: 773 middle row = one flip target each with aria-pressed + on/off in the label; START/RUN bulbs; steady cue', () => {
+  const batt = HV_RAIL_SW.find((d) => d.id === 'batt')!;
+  assert.equal(railFlipAria(batt, true), 'Battery, on. Tap to turn off');
+  assert.equal(railFlipAria(batt, false), 'Battery, off. Tap to turn on');
+  assert.match(tsx, /aria-label=\{railFlipAria\(s\.d, s\.on\)\} aria-pressed=\{s\.on\}/);
+  for (const [k, c] of Object.entries(HV_RAIL_773.mid)) assert.ok(c.w >= 44 && c.h >= 44, k);
+  assert.deepEqual(ENG_BULB_LEGEND, { off: 'OFF', start: 'START', run: 'RUN' });
+  const r = railPositions({ cold: true, running: false, on: { batt: true }, engines: { L: 'starting', R: 'run' } });
+  assert.deepEqual(r.bulb, { L: 'start', R: 'run' });
+  assert.equal(r.on.gen, true);
+  assert.equal(railCue('apuGuard'), 'source');
+  assert.equal(railCue('fuelPumpL'), 'fuelL');
+  // the waiting-on-a-prerequisite cue is a steady legend (no animation anywhere in the hero CSS)
+  assert.match(css, /\.cjhv-col\[data-cue\] \.cjhv-rname \{ color: #8dffad;/);
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /@keyframes|animation|transition/);
+});
+
+test('v3.1: NAV (rail) and INS (plate) are one switch: flipping either flips both; NAV toggles in Drive', () => {
+  const nav = HV_RAIL_SW.find((d) => d.id === 'nav')!;
+  const ins = HV_BONUS.find((b) => b.id === 'ins')!;
+  assert.equal(nav.system, 'inertialNav');
+  assert.equal(ins.system, nav.system, 'same Dan system');
+  for (const v of [true, false]) {
+    const r = railPositions({ cold: true, running: false, on: { inertialNav: v }, engines: { L: 'off', R: 'off' } });
+    assert.equal(r.on.nav, v, 'rail NAV reads inertialNav');
+  }
+  const m = mountSrc();
+  assert.match(m, /bonus=\{cold\.sys\.on as Record<string, boolean>\}/, 'plate INS reads the same cold.sys.on');
+  assert.match(m, /onBonus=\{\(sys, on\) => cold\.railTap\(sys, on\)\}/);
+  assert.match(m, /cold\.railTap\(d\.system, on\)/, 'rail NAV taps the same system');
+  // in Drive (park false) with avionics on, NAV switches; without avionics it says why
+  const list = getJetSystemList('apu');
+  const base = { list, checklist: [], mode: 'apu', guards: {}, held: null, park: false, cautionReset: false, auto: false } as never as Parameters<typeof csTap>[2];
+  const sys = (on: Record<string, boolean>) => ({ ...base, sys: { on, engines: { L: 'off', R: 'off' }, apuReady: false, cartReady: false, emergency: false } } as never as Parameters<typeof csTap>[2]);
+  assert.deepEqual(csTap('inertialNav', true, sys({ batt: true, avionics: true })), { type: 'set', system: 'inertialNav', on: true });
+  assert.deepEqual(csTap('inertialNav', true, sys({ batt: true })), { type: 'none', reason: 'Avionics first' });
 });

@@ -10,10 +10,10 @@
  * Nothing animates: no transitions or keyframes; a pulled EMER STOP handle follows the finger (direct manipulation)
  * and snaps back. No WebGL, no backdrop-filter, no CSS blur: everything here is CSS + inline SVG + two baked tiles.
  */
-import { useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { GpsPlate } from '../../skins/carrier-jet/parts/index';
 import type { CjGps } from '../../skins/carrier-jet/parts/index';
-import { abArmedAria, bonusAria, fsbAria, HV_BONUS, HV_LAMPS, HV_START, HV_TOP, lampAria, lampColor, RADAR_SPOKEN, radarStep, type HeroLayout, type LampId, type LampMark, type LampState, type RadarPos, type SplitCap, type StartId } from '../carrier-jet/heroRail';
+import { abArmedAria, abAria, bonusAria, ENG_BULB_LEGEND, fsbAria, HV_BONUS, HV_GUARD_CLOSE_MS, HV_LAMPS, HV_RAIL_773, HV_RAIL_GEO, HV_TOP, lampAria, lampColor, qsAria, qsTap, RADAR_SPOKEN, radarStep, railFlipAria, railSw, railSwAria, type AbTarget, type EngBulb, type HeroLayout, type LampId, type LampMark, type LampState, type QsTarget, type RadarPos, type RailCol, type RailState, type RailSwDecl, type RailSwId, type SourcePos, type SplitCap } from '../carrier-jet/heroRail';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
 import './cj-hero-v2.css';
 
@@ -199,26 +199,115 @@ function ArtDefs() {
 
 /* ------------------------------------------------------------------ rail */
 
-/** A raised bead-blast module with its engraved title and two Dzus studs. */
-function Mod({ kind, title, children, label }: { kind: string; title?: ReactNode; children: ReactNode; label: string }) {
+/** A raised bead-blast module (fixed design width) with its engraved title and two Dzus studs. */
+function Mod({ kind, w, title, children, label, style }: { kind: string; w?: number; title?: ReactNode; children: ReactNode; label?: string; style?: CSSProperties }) {
   return (
-    <div className={`cjhv-mod cjhv-mod-${kind}`} role="group" aria-label={label}>
+    <div className={`cjhv-mod cjhv-mod-${kind}`} role={label ? 'group' : undefined} aria-label={label} style={{ width: w, ...style }}>
       {title ? <span className="cjhv-title" aria-hidden="true">{title}</span> : null}
       {children}
     </div>
   );
 }
-
-/** A two-target toggle (upper half = ON / up, lower half = OFF / down), the rail v2 hit boxes. */
-function Toggle2({ name, on, onSet, cue, disabled, reason, upLegend = 'ON', dnLegend = 'OFF', w }: { name: string; on: boolean; onSet: (on: boolean) => void; cue?: boolean; disabled?: boolean; reason?: string; upLegend?: string; dnLegend?: string; w: number }) {
-  const why = disabled && reason ? `. ${reason}` : '';
+/** ToggleArt centred on (tx, ty) at scale k. */
+function Tg({ pos, tx, ty, k }: { pos: 'up' | 'mid' | 'dn'; tx: number; ty: number; k: number }) {
   return (
-    <div className="cjhv-sw" data-on={on || undefined} data-cue={cue || undefined} data-disabled={disabled || undefined}>
-      <span className="cjhv-lg cjhv-sw-up" aria-hidden="true">{upLegend}</span>
-      <ToggleArt pos={on ? 'up' : 'dn'} w={w} />
-      <span className="cjhv-lg cjhv-sw-dn" aria-hidden="true">{dnLegend}</span>
-      <button type="button" className="cjhv-hit cjhv-hit-up" aria-label={`${name} ${upLegend.toLowerCase()}${why}`} aria-pressed={on} aria-disabled={disabled || undefined} onClick={() => onSet(true)} />
-      <button type="button" className="cjhv-hit cjhv-hit-dn" aria-label={`${name} ${dnLegend.toLowerCase()}${why}`} aria-pressed={!on} aria-disabled={disabled || undefined} onClick={() => onSet(false)} />
+    <span className="cjhv-rtg" style={{ left: tx - 22, top: ty - 34, '--tg-k': k } as CSSProperties}>
+      <ToggleArt pos={pos} w={44} />
+    </span>
+  );
+}
+const lgAt = (x: number, y: number, w: number, extra?: CSSProperties): CSSProperties => ({ left: x, top: y, width: w, ...extra });
+/** Board / 773-left two-target toggle column (up target ON, down target OFF). */
+function Col({ d, c, g, on, cue, onSet, up = 'ON', dn = 'OFF' }: { d: RailSwDecl; c: RailCol; g: { nameY: number; onY: number; offY: number; upY: number; upH: number; dnY: number; dnH: number; tgY: number }; on: boolean; cue?: boolean; onSet: (on: boolean) => void; up?: string; dn?: string }) {
+  const two = d.label.includes('|');
+  return (
+    <div className="cjhv-col" data-on={on || undefined} data-cue={cue || undefined}>
+      {two ? (
+        <span className="cjhv-lg cjhv-rname cjhv-rname-2" aria-hidden="true" style={lgAt(c.x, g.nameY - 2, c.w)}>{d.label.split('|')[0]}<br />{d.label.split('|')[1]}</span>
+      ) : (
+        <span className="cjhv-lg cjhv-rname" aria-hidden="true" style={lgAt(c.x, g.nameY, c.w)}>{d.label}</span>
+      )}
+      <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(c.tx - 20, g.onY + (two ? 4 : 0), 40)}>{up}</span>
+      <Tg pos={on ? 'up' : 'dn'} tx={c.tx} ty={g.tgY} k={HV_RAIL_GEO.board.tgK} />
+      <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(c.tx - 20, g.offY, 40)}>{dn}</span>
+      <button type="button" className="cjhv-hit" style={{ left: c.x, width: c.w, top: g.upY, height: g.upH }} aria-label={railSwAria(d, on, 'on')} aria-pressed={on} onClick={() => onSet(true)} />
+      <button type="button" className="cjhv-hit" style={{ left: c.x, width: c.w, top: g.dnY, height: g.dnH }} aria-label={railSwAria(d, on, 'off')} aria-pressed={!on} onClick={() => onSet(false)} />
+    </div>
+  );
+}
+/** Three-position lever (RADAR MX / WX / OFF, SOURCE APU / OFF / AIR CART): up / down step one position. */
+function Col3({ name, spoken, c, g, pos, labels, onStep, k }: { name: string; spoken: string; c: RailCol; g: { nameY: number; onY: number; offY: number; upY: number; upH: number; dnY: number; dnH: number; tgY: number }; pos: 'up' | 'mid' | 'dn'; labels: [string, string, string]; onStep: (dir: 1 | -1) => void; k: number }) {
+  const now = labels[pos === 'up' ? 0 : pos === 'mid' ? 1 : 2];
+  return (
+    <div className="cjhv-col" data-pos={pos}>
+      <span className="cjhv-lg cjhv-rname" aria-hidden="true" style={lgAt(c.x, g.nameY, c.w)}>{name}</span>
+      <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(c.tx - 22, g.onY, 44)}>{labels[0]}</span>
+      <Tg pos={pos} tx={c.tx} ty={g.tgY} k={k} />
+      <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(c.tx + 15, g.tgY - 6, c.x + c.w - c.tx - 15, { textAlign: 'left' })}>{labels[1]}</span>
+      <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(c.x, g.offY - 1, c.w)}>{labels[2]}</span>
+      <button type="button" className="cjhv-hit" style={{ left: c.x, width: c.w, top: g.upY, height: g.upH }} aria-label={`${spoken}: up one position, toward ${labels[0]}, now ${now}`} onClick={() => onStep(1)} />
+      <button type="button" className="cjhv-hit" style={{ left: c.x, width: c.w, top: g.dnY, height: g.dnH }} aria-label={`${spoken}: down one position, toward ${labels[2]}, now ${now}`} onClick={() => onStep(-1)} />
+    </div>
+  );
+}
+/** Engine START/RUN bulb: dark OFF, amber START, green RUN, with its legend (never colour alone). Steady. */
+function Bulb({ state, cx, cy, r, lgX, lgY, lgW }: { state: EngBulb; cx: number; cy: number; r: number; lgX: number; lgY: number; lgW: number }) {
+  return (
+    <>
+      <span className="cjhv-bulb" data-state={state} aria-hidden="true" style={{ left: cx - r, top: cy - r, width: 2 * r, height: 2 * r }} />
+      <span className="cjhv-lg cjhv-bulb-lg" data-state={state} aria-hidden="true" style={lgAt(lgX, lgY, lgW)}>{ENG_BULB_LEGEND[state]}</span>
+    </>
+  );
+}
+/** AFTERBURNER art: ARM / SAFE toggle under the red MS25224 guard (drawn open edge-on, or closed over the bat). */
+function AbArt({ armed, open }: { armed: boolean; open: boolean }) {
+  return (
+    <div className="cjhv-ab-well">
+      <ToggleArt pos={armed ? 'up' : 'dn'} w={44} />
+      <svg className="cjhv-guard" viewBox="0 0 40 64" aria-hidden="true" focusable="false">
+        {open ? (
+          <g>
+            <rect x="4" y="0.5" width="32" height="10" rx="2" fill="url(#cjhv-red)" stroke="#3a0b08" strokeWidth="0.8" />
+            <rect x="6" y="2.5" width="28" height="2" rx="1" fill="rgba(255,255,255,.18)" />
+          </g>
+        ) : (
+          <g>
+            <rect x="5" y="9" width="30" height="51" rx="3" fill="rgba(0,0,0,.35)" transform="translate(1.5 1.5)" />
+            <rect x="5" y="9" width="30" height="51" rx="3" fill="url(#cjhv-red)" stroke="#3a0b08" strokeWidth="0.8" />
+            <rect x="8" y="12" width="3" height="44" rx="1.5" fill="rgba(255,255,255,.16)" />
+            <rect x="12" y="56" width="16" height="5" rx="1.5" fill="#b02a21" stroke="#3a0b08" strokeWidth="0.6" />
+          </g>
+        )}
+        <rect x="2" y="2" width="36" height="7" rx="3.5" fill="#b8bec2" stroke="#2f3336" strokeWidth="0.7" />
+        <path d="M10 2.5 V8.5 M20 2.5 V8.5 M30 2.5 V8.5" stroke="#596065" strokeWidth="0.8" />
+      </svg>
+    </div>
+  );
+}
+/** QUICK START art: striped guard over the START korry (closed, LIFT tag) or lid edge-on + GUARD OPEN + green START. */
+function QsArt({ open }: { open: boolean }) {
+  return (
+    <div className="cjhv-qs" data-open={open || undefined}>
+      <span className="cjhv-qs-key" aria-hidden="true"><span className="cjhv-lg">START</span></span>
+      {open ? (
+        <>
+          <svg className="cjhv-qs-lid" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <rect x="1" y="1" width="98" height="8" rx="2" fill="url(#cjhv-stripe)" stroke="#1a1a1a" strokeWidth="1" />
+            <rect x="0" y="0" width="100" height="4" rx="2" fill="#c4c9cc" stroke="#2f3336" strokeWidth="0.7" />
+          </svg>
+          <span className="cjhv-lg cjhv-qs-open" aria-hidden="true">GUARD OPEN</span>
+        </>
+      ) : (
+        <>
+          <svg className="cjhv-qs-guard" viewBox="0 0 100 64" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <rect x="2" y="6" width="96" height="56" rx="3" fill="url(#cjhv-stripe)" stroke="#1a1a1a" strokeWidth="1" />
+            <rect x="2" y="6" width="96" height="56" rx="3" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="1" />
+            <rect x="0" y="0" width="100" height="7" rx="3.5" fill="#c4c9cc" stroke="#2f3336" strokeWidth="0.7" />
+            <path d="M16.6 0.5 V6.5 M33.3 0.5 V6.5 M50 0.5 V6.5 M66.6 0.5 V6.5 M83.3 0.5 V6.5" stroke="#596065" strokeWidth="0.8" />
+          </svg>
+          <span className="cjhv-qs-tag" aria-hidden="true">LIFT ▲</span>
+        </>
+      )}
     </div>
   );
 }
@@ -228,17 +317,16 @@ export interface HeroRailProps {
   gps: CjGps;
   radar: RadarPos;
   onRadar: (pos: RadarPos) => void;
+  /** AFTERBURNER at ARM (abView: the one value the bat, the lid and the plate lamp read) */
   armed: boolean;
+  /** lid drawn open (abView.lidOpen) */
   guardOpen: boolean;
-  onGuard: () => void;
-  onArm: () => void;
-  launch: boolean;
-  start: Record<StartId, boolean>;
-  /** Next START switch in the start order (static green legend cue), if any. */
-  startCue?: StartId | null;
-  /** START bank usable (cold start present); false: it mirrors the engine and says why on a tap. */
-  startLive: boolean;
-  onStart: (id: StartId, on: boolean) => void;
+  onAb: (target: AbTarget) => void;
+  rail: RailState;
+  /** next switch in Dan's start order (static green legend, steady), if any */
+  cue?: RailSwId | null;
+  onSwitch: (id: RailSwId, on: boolean) => void;
+  onSource: (pos: SourcePos) => void;
   live: boolean;
   onQuickStart: () => void;
   onEmergencyStop: () => void;
@@ -249,14 +337,18 @@ export interface HeroRailProps {
   say: (t: string) => void;
 }
 
+const SRC_LABELS: [string, string, string] = ['APU', 'OFF', 'AIR CART'];
+const SRC_ORDER: SourcePos[] = ['dn', 'mid', 'up'];
+
 export function HeroRail(p: HeroRailProps) {
   const narrow = p.layout === 'window';
-  const W = narrow ? 44 : 56;
-  // EMER STOP: the same deliberate pull as Meghan's PULL handle (pullGesture.ts); taps never fire
+  const G = HV_RAIL_GEO.board;
+  const Z = HV_RAIL_773.zones;
+  const bmod = Object.fromEntries(G.mods.map((m) => [m.id, m.w])) as Record<string, number>;
+  // EMER STOP: the same deliberate pull as Meghan's PULL handle (pullGesture.ts); taps never fire (push 3 reworks it)
   const [pull, setPull] = useState<PullState>(PULL_REST);
   const pullRef = useRef(pull);
   const applyPull = (r: PullResult, el?: HTMLElement | null, pid?: number) => {
-    // the ref is the gesture's source of truth between pointer events (written here, never during render)
     const next = r.state.phase === 'fired' ? PULL_REST : r.state;
     pullRef.current = next;
     setPull(next);
@@ -278,101 +370,49 @@ export function HeroRail(p: HeroRailProps) {
     p.onRadar(r.pos);
     p.say(`Radar ${RADAR_SPOKEN[r.pos]}`);
   };
+  const srcStep = (dir: 1 | -1) => {
+    const i = SRC_ORDER.indexOf(p.rail.source) + dir;
+    if (i < 0 || i > 2) return p.say(`Start source already at ${dir > 0 ? 'APU' : 'AIR CART'}`);
+    p.onSource(SRC_ORDER[i]);
+  };
   const holding = useRef(false);
   const hold = (on: boolean) => {
     if (holding.current === on) return;
     holding.current = on;
     p.onHoldRev(on);
   };
-  return (
-    <div className="cjhv-rail" data-rf-layout={p.layout} role="group" aria-label="Start rail">
-      <ArtDefs />
-      <div className="cjhv-mod cjhv-mod-gps"><GpsPlate gps={p.gps} size={narrow ? 'narrow' : 'wide'} /></div>
+  // QUICK START two-step guard (qsTap): tap 1 lifts, tap 2 on START starts; shuts after a start, on a tap on the
+  // raised guard, or HV_GUARD_CLOSE_MS after a lift with no second tap. Instant lid (this rail has no motion at all).
+  const [qsUp, setQsUp] = useState(false);
+  const qsOpen = qsUp && !p.live;
+  useEffect(() => {
+    if (!qsUp) return;
+    const t = setTimeout(() => setQsUp(false), HV_GUARD_CLOSE_MS);
+    return () => clearTimeout(t);
+  }, [qsUp]);
+  const qsPress = (target: QsTarget) => {
+    const r = qsTap(qsOpen, target, p.live);
+    setQsUp(r.open);
+    if (r.start) p.onQuickStart();
+    if (r.say) p.say(r.say);
+  };
+  const sw = (id: RailSwId) => ({ d: railSw(id), on: p.rail.on[id], cue: p.cue === id, onSet: (on: boolean) => p.onSwitch(id, on) });
 
-      <Mod kind="radar" title="RADAR" label={`Radar, ${RADAR_SPOKEN[p.radar]}`}>
-        <div className="cjhv-sw cjhv-sw3" data-pos={p.radar}>
-          <span className="cjhv-lg cjhv-sw-up" aria-hidden="true">MX</span>
-          <ToggleArt pos={p.radar} w={44} />
-          <span className="cjhv-lg cjhv-sw-mid" aria-hidden="true">WX</span>
-          <span className="cjhv-lg cjhv-sw-dn" aria-hidden="true">OFF</span>
-          <button type="button" className="cjhv-hit cjhv-hit-up" aria-label={`Radar: move up one position, toward MX, now ${RADAR_SPOKEN[p.radar]}`} onClick={() => radarTap(1)} />
-          <button type="button" className="cjhv-hit cjhv-hit-dn" aria-label={`Radar: move down one position, toward OFF, now ${RADAR_SPOKEN[p.radar]}`} onClick={() => radarTap(-1)} />
-        </div>
-      </Mod>
-
-      <Mod kind="ab" title={narrow ? 'AB' : 'AFTERBURNER'} label="Afterburner master arm">
-        <div className="cjhv-ab" data-open={p.guardOpen || undefined} data-armed={p.armed || undefined}>
-          <span className="cjhv-lg cjhv-sw-up" aria-hidden="true">ARM</span>
-          <div className="cjhv-ab-well">
-            <ToggleArt pos={p.armed ? 'up' : 'dn'} w={44} />
-            {/* MS25224-style red flip guard: hinge barrel at the top, ears, U-channel, lift tab */}
-            <svg className="cjhv-guard" viewBox="0 0 40 64" aria-hidden="true" focusable="false">
-              {p.guardOpen ? (
-                <g>
-                  <rect x="4" y="0.5" width="32" height="10" rx="2" fill="url(#cjhv-red)" stroke="#3a0b08" strokeWidth="0.8" />
-                  <rect x="6" y="2.5" width="28" height="2" rx="1" fill="rgba(255,255,255,.18)" />
-                </g>
-              ) : (
-                <g>
-                  <rect x="5" y="9" width="30" height="51" rx="3" fill="rgba(0,0,0,.35)" transform="translate(1.5 1.5)" />
-                  <rect x="5" y="9" width="30" height="51" rx="3" fill="url(#cjhv-red)" stroke="#3a0b08" strokeWidth="0.8" />
-                  <rect x="8" y="12" width="3" height="44" rx="1.5" fill="rgba(255,255,255,.16)" />
-                  <rect x="12" y="56" width="16" height="5" rx="1.5" fill="#b02a21" stroke="#3a0b08" strokeWidth="0.6" />
-                </g>
-              )}
-              {/* hinge barrel + ears (always on top) */}
-              <rect x="2" y="2" width="36" height="7" rx="3.5" fill="#b8bec2" stroke="#2f3336" strokeWidth="0.7" />
-              <path d="M10 2.5 V8.5 M20 2.5 V8.5 M30 2.5 V8.5" stroke="#596065" strokeWidth="0.8" />
-            </svg>
-          </div>
-          <span className="cjhv-lg cjhv-sw-dn" aria-hidden="true">SAFE</span>
-          <button type="button" className="cjhv-hit cjhv-hit-guard" aria-label={p.guardOpen ? 'Afterburner guard, open: close it' : 'Afterburner guard, closed: lift to reach ARM'} aria-expanded={p.guardOpen} onClick={p.onGuard} />
-          {p.guardOpen ? <button type="button" className="cjhv-hit cjhv-hit-arm" role="switch" aria-checked={p.armed} aria-label={`Afterburner ${p.armed ? 'armed' : 'safe'}`} onClick={p.onArm} /> : null}
-        </div>
-        {!narrow && (
-          <div className="cjhv-cap cjhv-abcap" data-color="amber" data-lit={p.armed || undefined} role="img" aria-label={`A B armed, ${p.launch ? 'launch' : p.armed ? 'lit amber' : 'off'}`}>
-            <span className="cjhv-lg">AB</span>
-            <span className="cjhv-lg">{p.launch ? 'LAUNCH' : 'ARMED'}</span>
-          </div>
-        )}
-      </Mod>
-
-      <Mod kind="start" label="Start switches">
-        {HV_START.map((s, i) => (
-          <div key={s.id} className="cjhv-start" data-div={i === 4 || undefined}>
-            <span className="cjhv-title" aria-hidden="true">{s.label}</span>
-            <Toggle2
-              name={s.spoken}
-              on={p.start[s.id]}
-              cue={p.startCue === s.id}
-              w={W}
-              disabled={!p.startLive || s.system === null}
-              reason={s.system === null ? 'Generators come on with the engines' : 'Needs the cold start (Tomcat engine)'}
-              onSet={(on) => {
-                if (!p.startLive || s.system === null) return p.say(`${s.spoken}: ${s.system === null ? 'generators come on with the engines' : 'needs the cold start'}`);
-                p.onStart(s.id, on);
-              }}
-            />
-          </div>
-        ))}
-      </Mod>
-
-      <Mod kind="qs" title="QUICK START" label="Quick start">
-        <div className="cjhv-qs">
-          <svg className="cjhv-qs-guard" viewBox="0 0 100 64" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-            <rect x="2" y="6" width="96" height="56" rx="3" fill="url(#cjhv-stripe)" stroke="#1a1a1a" strokeWidth="1" />
-            <rect x="2" y="6" width="96" height="56" rx="3" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="1" />
-            {/* hinge with 6 knuckles */}
-            <rect x="0" y="0" width="100" height="7" rx="3.5" fill="#c4c9cc" stroke="#2f3336" strokeWidth="0.7" />
-            <path d="M16.6 0.5 V6.5 M33.3 0.5 V6.5 M50 0.5 V6.5 M66.6 0.5 V6.5 M83.3 0.5 V6.5" stroke="#596065" strokeWidth="0.8" />
-          </svg>
-          <span className="cjhv-qs-tag" aria-hidden="true">LIFT ▲</span>
-          <button type="button" className="cjhv-hit cjhv-hit-qs" aria-label={p.live ? 'Quick start: engines already running' : 'Quick start guard: lift and start in one tap'} aria-disabled={p.live || undefined} onClick={() => (p.live ? p.say('Engines already running') : p.onQuickStart())} />
-        </div>
-        <span className="cjhv-lg cjhv-foot" aria-hidden="true">1 TAP · LIFT</span>
-      </Mod>
-
-      <Mod kind="es" title={narrow ? 'EMER' : 'EMER STOP'} label="Emergency stop">
+  const qsHits = (x: number, w: number, pressY: number) => (
+    <>
+      <button type="button" className="cjhv-hit" style={{ left: x, width: w, top: 18, height: 44 }} aria-label={qsAria('guard', qsOpen, p.live)} aria-expanded={qsOpen} aria-disabled={p.live || undefined} onClick={() => qsPress('guard')} />
+      <button type="button" className="cjhv-hit" style={{ left: x, width: w, top: pressY, height: 44 }} aria-label={qsAria('start', qsOpen, p.live)} aria-disabled={!qsOpen || undefined} onClick={() => qsPress('start')} />
+    </>
+  );
+  const qs = (
+    <Mod kind="qs" w={narrow ? Z.qs : bmod.qs} title="QUICK START" label="Quick start">
+      <QsArt open={qsOpen} />
+      {narrow ? qsHits(3, 64, 64) : qsHits(3, 94, 62)}
+      <span className="cjhv-lg cjhv-foot" aria-hidden="true">LIFT · PRESS</span>
+    </Mod>
+  );
+  const estop = (
+      <Mod kind="es" w={narrow ? Z.estop : bmod.estop} title="EMER STOP" label="Emergency stop">
         <div className="cjhv-es-well">
           <button type="button" className="cjhv-es-grip" aria-label="Emergency stop: pull the handle down" style={{ transform: `translateY(${Math.round(pull.progress * 14)}px)` }} {...grip}>
             <svg viewBox="0 0 44 52" aria-hidden="true" focusable="false">
@@ -388,30 +428,137 @@ export function HeroRail(p: HeroRailProps) {
           <button type="button" className="rf-sr-only" onClick={() => applyPull(pullAction(pullRef.current))}>Emergency stop, stop the engines now</button>
         </div>
         <span className="cjhv-lg cjhv-foot" aria-hidden="true">PULL ▼</span>
-      </Mod>
+    </Mod>
 
-      <Mod kind="push" label="Engine">
-        <button
-          type="button"
-          className="cjhv-push"
-          aria-label={p.holdRev ? 'Hold to rev' : 'Hold to rev, demo source only'}
-          aria-disabled={!p.holdRev || undefined}
-          onPointerDown={(e) => {
-            if (!p.holdRev) return p.say('Hold to rev works with the demo source');
-            e.currentTarget.setPointerCapture?.(e.pointerId);
-            hold(true);
-          }}
-          onPointerUp={() => hold(false)}
-          onPointerCancel={() => hold(false)}
-          onLostPointerCapture={() => hold(false)}
-        >
-          <span className="cjhv-lg">HOLD</span>
-          <span className="cjhv-lg">TO REV</span>
-        </button>
-        <button type="button" className="cjhv-push" aria-label={p.running ? 'Shutdown' : 'Shutdown, engine already off'} aria-disabled={!p.running || undefined} onClick={() => (p.running ? p.onShutdown() : p.say('Engine already off'))}>
-          {narrow ? <><span className="cjhv-lg">SHUT</span><span className="cjhv-lg">DOWN</span></> : <span className="cjhv-lg">SHUTDOWN</span>}
-        </button>
+  );
+  const push = (
+    <Mod kind="push" w={narrow ? Z.push : bmod.push} label="Engine">
+      <button
+        type="button"
+        className="cjhv-push"
+        aria-label={p.holdRev ? 'Hold to rev' : 'Hold to rev, demo source only'}
+        aria-disabled={!p.holdRev || undefined}
+        onPointerDown={(e) => {
+          if (!p.holdRev) return p.say('Hold to rev works with the demo source');
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+          hold(true);
+        }}
+        onPointerUp={() => hold(false)}
+        onPointerCancel={() => hold(false)}
+        onLostPointerCapture={() => hold(false)}
+      >
+        <span className="cjhv-lg">HOLD</span>
+        <span className="cjhv-lg">TO REV</span>
+      </button>
+      <button type="button" className="cjhv-push" aria-label={p.running ? 'Shutdown' : 'Shutdown, engine already off'} aria-disabled={!p.running || undefined} onClick={() => (p.running ? p.onShutdown() : p.say('Engine already off'))}>
+        {narrow ? <><span className="cjhv-lg">SHUT</span><span className="cjhv-lg">DOWN</span></> : <span className="cjhv-lg">SHUTDOWN</span>}
+      </button>
+    </Mod>
+  );
+  const gps = <div className="cjhv-mod cjhv-mod-gps" style={{ width: narrow ? Z.gps : bmod.gps }}><GpsPlate gps={p.gps} size={narrow ? 'narrow' : 'wide'} /></div>;
+
+  if (narrow) {
+    const L = HV_RAIL_773.left;
+    const M = HV_RAIL_773.mid;
+    const k = HV_RAIL_773.tgK;
+    const flip = (id: RailSwId) => {
+      const s = sw(id);
+      const c = M[id];
+      const ty = c.y + 38;
+      return (
+        <div key={id} className="cjhv-col" data-on={s.on || undefined} data-cue={s.cue || undefined}>
+          <span className="cjhv-lg cjhv-rname" aria-hidden="true" style={lgAt(c.x, c.y + 3, c.w)}>{s.d.short}</span>
+          <Tg pos={s.on ? 'up' : 'dn'} tx={c.tx} ty={ty} k={k} />
+          <button type="button" className="cjhv-hit" style={px({ x: c.x, y: c.y, w: c.w, h: c.h })} aria-label={railFlipAria(s.d, s.on)} aria-pressed={s.on} onClick={() => s.onSet(!s.on)} />
+        </div>
+      );
+    };
+    const ab = M.ab;
+    return (
+      <div className="cjhv-rail" data-rf-layout="window" role="group" aria-label="Start rail">
+        <ArtDefs />
+        {gps}
+        <Mod kind="radar" w={Z.radar} label={`Radar, ${RADAR_SPOKEN[p.radar]}`}>
+          <Col3 name="RADAR" spoken="Radar" c={L.radar} g={L} pos={p.radar} labels={['MX', 'WX', 'OFF']} onStep={radarTap} k={1} />
+        </Mod>
+        <Mod kind="air" w={Z.air} label="Start air">
+          <Col3 name="SOURCE" spoken="Start source" c={L.source} g={L} pos={p.rail.source} labels={SRC_LABELS} onStep={srcStep} k={1} />
+          <Col d={railSw('xbleed')} c={L.xbleed} g={L} on={p.rail.on.xbleed} cue={p.cue === 'xbleed'} onSet={(on) => p.onSwitch('xbleed', on)} />
+        </Mod>
+        <div className="cjhv-zone" style={{ width: Z.mid }} role="group" aria-label="Start switches">
+          {HV_RAIL_773.midMods.map((m, i) => <span key={i} className="cjhv-mod cjhv-submod" aria-hidden="true" style={px(m)} />)}
+          {flip('batt')}
+          {flip('seatbelt')}
+          <div className="cjhv-col cjhv-ab" data-open={p.guardOpen || undefined} data-armed={p.armed || undefined}>
+            <span className="cjhv-lg cjhv-rname" aria-hidden="true" style={lgAt(161.3, 3, 70, { letterSpacing: 0 })}>AFTERBURNER</span>
+            <span className="cjhv-ab-k" style={{ left: ab.tx - 22, top: 48 - 33, '--tg-k': 0.7 } as CSSProperties}><AbArt armed={p.armed} open={p.guardOpen} /></span>
+            <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(196.3, 24, 35, { textAlign: 'left' })}>ARM</span>
+            <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(196.3, 46, 35, { textAlign: 'left' })}>SAFE</span>
+            <button type="button" className="cjhv-hit" style={px({ x: ab.x, y: ab.y, w: ab.w, h: ab.h })} aria-label={abAria(p.armed, p.guardOpen, 'one')} aria-pressed={p.armed} aria-expanded={p.guardOpen} onClick={() => p.onAb('one')} />
+          </div>
+          {flip('gen')}
+          {flip('nav')}
+          {flip('fuelL')}
+          {flip('ignL')}
+          {flip('engL')}
+          <Bulb state={p.rail.bulb.L} {...HV_RAIL_773.bulbs.L} lgX={116} lgY={112} lgW={36} />
+          {flip('fuelR')}
+          {flip('ignR')}
+          {flip('engR')}
+          <Bulb state={p.rail.bulb.R} {...HV_RAIL_773.bulbs.R} lgX={293} lgY={112} lgW={36} />
+        </div>
+        {qs}
+        {estop}
+        {push}
+      </div>
+    );
+  }
+
+  const C = G.col;
+  const titles = (id: string) =>
+    G.mods.find((m) => m.id === id)?.titles?.map((t) => <span key={t.t} className="cjhv-lg cjhv-gtitle" aria-hidden="true" style={lgAt(t.x, G.titleY, t.w)}>{t.t}</span>);
+  const divs = (id: string) => G.mods.find((m) => m.id === id)?.dividers?.map((x) => <span key={x} className="cjhv-div" aria-hidden="true" style={{ left: x }} />);
+  return (
+    <div className="cjhv-rail" data-rf-layout="board" role="group" aria-label="Start rail">
+      <ArtDefs />
+      {gps}
+      <Mod kind="radar" w={bmod.radar} label={`Radar, ${RADAR_SPOKEN[p.radar]}`}>
+        <Col3 name="RADAR" spoken="Radar" c={C.radar!} g={G} pos={p.radar} labels={['MX', 'WX', 'OFF']} onStep={radarTap} k={G.tgK} />
       </Mod>
+      <Mod kind="ab" w={bmod.ab} title="AFTERBURNER" label="Afterburner master arm">
+        <div className="cjhv-col cjhv-ab" data-open={p.guardOpen || undefined} data-armed={p.armed || undefined}>
+          <span className="cjhv-ab-k" style={{ left: C.ab!.tx - 22, top: G.tgY - 33, '--tg-k': 0.9 } as CSSProperties}><AbArt armed={p.armed} open={p.guardOpen} /></span>
+          <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(49, 40, 37, { textAlign: 'left' })}>ARM</span>
+          <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(49, 88, 37, { textAlign: 'left' })}>SAFE</span>
+          <button type="button" className="cjhv-hit" style={{ left: 4, width: 80, top: 18, height: 44 }} aria-label={abAria(p.armed, p.guardOpen, 'guard')} aria-expanded={p.guardOpen} onClick={() => p.onAb('guard')} />
+          <button type="button" className="cjhv-hit" style={{ left: 4, width: 80, top: 62, height: 52 }} aria-label={abAria(p.armed, p.guardOpen, 'switch')} aria-pressed={p.armed} onClick={() => p.onAb('switch')} />
+        </div>
+      </Mod>
+      <Mod kind="air" w={bmod.air} label="Power, start air, cabin">
+        {divs('air')}
+        <Col {...sw('batt')} c={C.batt!} g={G} />
+        <Col3 name="SOURCE" spoken="Start source" c={C.source!} g={G} pos={p.rail.source} labels={SRC_LABELS} onStep={srcStep} k={G.tgK} />
+        <Col {...sw('xbleed')} c={C.xbleed!} g={G} />
+        <Col {...sw('seatbelt')} c={C.seatbelt!} g={G} />
+        {titles('air')}
+      </Mod>
+      {(['L', 'R'] as const).map((s) => (
+        <Mod key={s} kind="eng" w={bmod[`eng${s}`]} label={`${s} engine`}>
+          <Col {...sw(`fuel${s}`)} c={C[`fuel${s}`]!} g={G} />
+          <Col {...sw(`ign${s}`)} c={C[`ign${s}`]!} g={G} />
+          <Col {...sw(`eng${s}`)} c={C[`eng${s}`]!} g={G} />
+          <Bulb state={p.rail.bulb[s]} cx={152} cy={58} r={9} lgX={134} lgY={70} lgW={36} />
+          {titles(`eng${s}`)}
+        </Mod>
+      ))}
+      <Mod kind="elec" w={bmod.elec} label="Electrics and nav">
+        <Col {...sw('gen')} c={C.gen!} g={G} />
+        <Col {...sw('nav')} c={C.nav!} g={G} />
+        {titles('elec')}
+      </Mod>
+      {qs}
+      {estop}
+      {push}
     </div>
   );
 }

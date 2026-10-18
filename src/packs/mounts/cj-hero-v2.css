@@ -77,16 +77,23 @@ div.cjhv-cap { cursor: default; }
 .cjhv-korry[data-lit] > .cjhv-korry-bot { background: #5fd3ff; color: #04141c; text-shadow: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); font-weight: 700; }
 .cjv2-key[data-reason] .cjhv-korry > span { color: #a9afb4; }
 
-/* ---------------- start rail (dock) */
-.cjhv-rail { position: relative; display: flex; align-items: stretch; justify-content: space-between; gap: 6px; height: 118px; flex: 1 1 auto; min-width: 0; box-sizing: border-box; }
+/* ---------------- start rail (dock), v3.1 push 2 (NOTES.md: Dan's order, every start-up switch, no SHELF). Modules are
+   fixed design px (heroRail.ts HV_RAIL_GEO / HV_RAIL_773); the gaps flex (space-between, 4 / 3 px minimum). */
+.cjhv-rail {
+  position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; height: 135px; flex: 1 1 auto; min-width: 0; box-sizing: border-box;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.cjhv-rail[data-rf-layout='window'] { gap: 3px; }
 .cjhv-mod {
-  position: relative; box-sizing: border-box; height: 118px; flex: none; border-radius: 3px; display: flex; align-items: stretch;
+  position: relative; box-sizing: border-box; height: 118px; flex: none; border-radius: 3px;
   background: var(--hv-grain) 0 0 / 256px 256px, linear-gradient(165deg, #363a3f, var(--hv-paint) 40%, var(--hv-paint-lo));
   background-blend-mode: soft-light, normal;
   border: 1px solid var(--hv-edge);
-  /* raised module: lit top-left rim, dark lower-right rim, one small contact shadow (dock modules sit higher than plates) */
+  /* raised module: lit top-left rim, dark lower-right rim, one small contact shadow */
   box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.08), inset -1px -1px 0 rgba(0, 0, 0, 0.5), 1px 2px 0 rgba(0, 0, 0, 0.5);
 }
+.cjhv-rail[data-rf-layout='window'] .cjhv-mod { height: 135px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-submod { position: absolute; height: auto; }
 /* Dzus studs (two corners): slotted quarter-turn heads */
 .cjhv-mod:not(.cjhv-mod-gps)::before, .cjhv-mod:not(.cjhv-mod-gps)::after {
   content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; pointer-events: none;
@@ -95,82 +102,76 @@ div.cjhv-cap { cursor: default; }
 }
 .cjhv-mod::before { left: 3px; top: 3px; }
 .cjhv-mod::after { right: 3px; bottom: 3px; }
+.cjhv-submod::before, .cjhv-submod::after { display: none; }
 .cjhv-title {
   position: absolute; left: 0; right: 0; top: 4px; text-align: center; white-space: nowrap; pointer-events: none;
-  font: 600 12px/14px 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; letter-spacing: 0.075em; color: var(--hv-cream);
+  font: 600 12px/14px 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; letter-spacing: 0.04em; color: var(--hv-cream);
   text-shadow: 0 0 1px rgba(255, 240, 214, 0.55), 0 -1px 0 rgba(0, 0, 0, 0.55);
 }
-.cjhv-mod-gps { width: 50px; background: none; border: 0; box-shadow: none; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-title { font-size: 11px; letter-spacing: 0.02em; }
+.cjhv-mod-gps { background: none; border: 0; box-shadow: none; }
 .cjhv-mod-gps > * { width: 100%; height: 100%; }
+.cjhv-zone { position: relative; flex: none; height: 135px; }
 .cjhv-hit { position: absolute; left: 0; right: 0; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 1; }
-.cjhv-hit-up { top: 0; height: 50%; }
-.cjhv-hit-dn { bottom: 0; height: 50%; }
+.cjhv-col > .cjhv-hit, .cjhv-mod-qs > .cjhv-hit { right: auto; }
 .cjhv-hit[aria-disabled], .cjhv-push[aria-disabled] { cursor: default; }
 
-/* a toggle column: legend above, the toggle, legend below */
-.cjhv-sw { position: relative; flex: 1 1 0; display: flex; flex-direction: column; align-items: center; height: 100%; }
-.cjhv-sw .cjhv-sw-up { position: absolute; top: 18px; left: 0; right: 0; }
-.cjhv-sw .cjhv-sw-dn { position: absolute; bottom: 4px; left: 0; right: 0; }
-.cjhv-tg { position: absolute; top: 31px; left: 50%; translate: -50% 0; width: auto; height: 66px; pointer-events: none; }
-/* start-order cue: only the next switch, a static green legend (rail v2) */
-.cjhv-sw[data-cue] .cjhv-sw-up { color: #8dffad; text-shadow: 0 0 1px rgba(141, 255, 173, 0.6), 0 -1px 0 rgba(0, 0, 0, 0.55); }
+/* switch columns: absolute legends (name 12 / 11 px, ON / OFF 11 px), the toggle centred on its design point */
+.cjhv-col .cjhv-lg { position: absolute; line-height: 13px; }
+.cjhv-rname { font-size: 12px !important; letter-spacing: 0.03em; }
+.cjhv-rname-2, .cjhv-rail[data-rf-layout='window'] .cjhv-rname { font-size: 11px !important; line-height: 12px !important; letter-spacing: 0.02em; }
+.cjhv-rtg { position: absolute; width: 44px; height: 68px; pointer-events: none; }
+.cjhv-rtg .cjhv-tg { position: static; translate: none; width: 44px; height: 68px; scale: var(--tg-k); transform-origin: 50% 50%; }
+/* start-order cue: only the next switch, a static green name legend (steady, never a blink) */
+.cjhv-col[data-cue] .cjhv-rname { color: #8dffad; text-shadow: 0 0 1px rgba(141, 255, 173, 0.6), 0 -1px 0 rgba(0, 0, 0, 0.55); }
+.cjhv-div { position: absolute; top: 7px; bottom: 7px; width: 1px; background: rgba(0, 0, 0, 0.55); box-shadow: 1px 0 0 rgba(255, 255, 255, 0.07); pointer-events: none; }
+/* engraved group titles (POWER · START AIR · CABIN · L ENG · R ENG · ELEC · NAV) on the plate under the modules */
+.cjhv-gtitle { position: absolute; letter-spacing: 0.14em; line-height: 12px; color: #c9cdd0; text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6); }
 
-/* RADAR 3-position: MX above, OFF below, toggle left, WX to its right */
-.cjhv-mod-radar { width: 92px; }
-.cjhv-sw3 { flex: 1 1 auto; }
-.cjhv-sw3 .cjhv-sw-up, .cjhv-sw3 .cjhv-sw-dn { right: auto; width: 44px; left: 4px; }
-.cjhv-sw3 .cjhv-tg { left: 26px; }
-.cjhv-sw3 .cjhv-sw-mid { position: absolute; left: 48px; top: 54px; text-align: left; line-height: 13px; }
-.cjhv-rail[data-rf-layout='window'] { gap: 4px; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-mod-radar { width: 60px; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-sw3 .cjhv-sw-up, .cjhv-rail[data-rf-layout='window'] .cjhv-sw3 .cjhv-sw-dn { left: 0; width: 40px; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-sw3 .cjhv-tg { left: 20px; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-sw3 .cjhv-sw-mid { left: 36px; top: 60px; letter-spacing: 0.02em; }
+/* engine START / RUN bulb: dark OFF, amber START, green RUN (legend under it: never colour alone; steady) */
+.cjhv-bulb { position: absolute; box-sizing: border-box; border-radius: 50%; pointer-events: none; background: radial-gradient(circle at 40% 35%, #3a3d40, #1b1d1f 70%); box-shadow: 0 0 0 2px #0d0e10, 0 0 0 3px #5d6368; }
+.cjhv-bulb[data-state='start'] { background: radial-gradient(circle at 40% 35%, #ffe2a6, #ffb347 45%, #b86b10); box-shadow: 0 0 0 2px #0d0e10, 0 0 0 3px #5d6368, 0 0 6px rgba(255, 179, 71, 0.55); }
+.cjhv-bulb[data-state='run'] { background: radial-gradient(circle at 40% 35%, #d6ffe2, #6cff9a 45%, #1f9a48); box-shadow: 0 0 0 2px #0d0e10, 0 0 0 3px #5d6368, 0 0 6px rgba(108, 255, 154, 0.5); }
+.cjhv-bulb-lg { position: absolute; letter-spacing: 0.02em; color: var(--hv-unlit) !important; }
+.cjhv-bulb-lg[data-state='start'] { color: #ffd07a !important; }
+.cjhv-bulb-lg[data-state='run'] { color: #a6ffbf !important; }
 
-/* AFTERBURNER: red flip guard over the ARM / SAFE toggle, + the AB ARMED cap (1280) */
-.cjhv-mod-ab { width: 150px; }
-.cjhv-ab { position: relative; width: 64px; height: 100%; flex: none; }
-.cjhv-ab .cjhv-sw-up { position: absolute; top: 18px; left: 0; right: 0; }
-.cjhv-ab .cjhv-sw-dn { position: absolute; bottom: 4px; left: 0; right: 0; }
-.cjhv-ab-well { position: absolute; left: 50%; top: 31px; width: 44px; height: 66px; translate: -50% 0; }
-.cjhv-ab-well .cjhv-tg { top: 0; }
+/* AFTERBURNER: red flip guard over the ARM / SAFE toggle (two taps at every size; no AB ARMED cap on the rail) */
+.cjhv-ab-k { position: absolute; width: 44px; height: 66px; scale: var(--tg-k); transform-origin: 50% 50%; pointer-events: none; }
+.cjhv-ab-well { position: absolute; inset: 0; }
+.cjhv-ab-well .cjhv-tg { position: absolute; left: 0; top: -1px; translate: none; }
 .cjhv-guard { position: absolute; left: 2px; top: 1px; width: 40px; height: 64px; pointer-events: none; }
-.cjhv-hit-guard { top: 18px; bottom: 0; }
-.cjhv-ab[data-open] .cjhv-hit-guard { top: 18px; bottom: auto; height: 44px; }
-.cjhv-hit-arm { top: 62px; bottom: 0; }
-.cjhv-abcap { position: absolute; right: 10px; top: 38px; width: 62px; height: 40px; padding-top: 6px; cursor: default; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-mod-ab { width: 54px; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-ab { width: 52px; }
 
-/* START bank: six toggles, an engraved divider before GEN */
-.cjhv-mod-start { width: 432px; padding: 0 6px; }
-.cjhv-start { position: relative; flex: 1 1 0; display: flex; }
-.cjhv-start[data-div]::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 1px; background: rgba(0, 0, 0, 0.55); box-shadow: 1px 0 0 rgba(255, 255, 255, 0.07); }
-.cjhv-start > .cjhv-title { z-index: 0; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-mod-start { width: 272px; padding: 0 3px; }
+/* QUICK START: recessed well, START korry, striped 6-knuckle guard (closed: LIFT tag; open: lid edge-on, GUARD OPEN,
+   green START). Instant lid change, Reduce Motion or not (this file has no motion). */
+.cjhv-qs { position: absolute; left: 5px; top: 30px; width: 90px; height: 74px; border-radius: 3px; background: #0b0c0d; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05); }
+.cjhv-rail[data-rf-layout='window'] .cjhv-qs { width: 60px; height: 76px; }
+.cjhv-qs-key {
+  position: absolute; left: 6px; right: 6px; bottom: 4px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 2px;
+  background: linear-gradient(180deg, #232527, #1d1f21); box-shadow: inset 0 0 0 1px #0c0d0e, inset 1px 1px 0 rgba(0, 0, 0, 0.75), 0 0 0 2px #101213;
+}
+.cjhv-qs-key .cjhv-lg { font-size: 12px; letter-spacing: 0.08em; color: var(--hv-unlit); text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7); }
+.cjhv-qs[data-open] .cjhv-qs-key { background: radial-gradient(70% 90% at 50% 45%, rgba(108, 255, 154, 0.2), rgba(108, 255, 154, 0.08) 60%, transparent), linear-gradient(180deg, #232527, #1d1f21); }
+.cjhv-qs[data-open] .cjhv-qs-key .cjhv-lg { color: #a6ffbf; text-shadow: 0 0 1px rgba(166, 255, 191, 0.9), 0 0 4px rgba(108, 255, 154, 0.45); }
+.cjhv-qs-guard { position: absolute; left: 2px; top: 2px; width: calc(100% - 4px); height: calc(100% - 4px); }
+.cjhv-qs-lid { position: absolute; left: 2px; top: 2px; width: calc(100% - 4px); height: 10px; }
+.cjhv-qs-open { position: absolute; left: 0; right: 0; top: 14px; font-size: 11px; letter-spacing: 0.02em; }
+.cjhv-qs-tag { position: absolute; left: 50%; top: 8px; translate: -50% 0; padding: 2px 6px; border-radius: 2px; background: #0d0e10; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.6); font: 700 11px/13px 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; color: var(--hv-cream); white-space: nowrap; }
+.cjhv-foot { position: absolute; left: 0; right: 0; bottom: 3px; letter-spacing: 0.02em; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-foot, .cjhv-rail[data-rf-layout='window'] .cjhv-title { letter-spacing: 0; }
 
-/* QUICK START: yellow-black striped guard (6-knuckle hinge) over the START cap, LIFT tag */
-.cjhv-mod-qs { width: 118px; }
-.cjhv-qs { position: absolute; left: 8px; right: 8px; top: 22px; height: 70px; }
-.cjhv-qs-guard { position: absolute; inset: 0; width: 100%; height: 100%; }
-.cjhv-qs-tag { position: absolute; left: 50%; top: 38px; translate: -50% 0; padding: 2px 6px; border-radius: 2px; background: #0d0e10; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.6); font: 700 11px/13px 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; letter-spacing: 0.06em; color: var(--hv-cream); white-space: nowrap; }
-.cjhv-hit-qs { top: 0; bottom: 0; }
-.cjhv-foot { position: absolute; left: 0; right: 0; bottom: 4px; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-mod-qs { width: 82px; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-foot { letter-spacing: 0.02em; }
-
-/* EMER STOP: red plate, striped well, red T-handle (PULL: a deliberate 40 px pull; taps never fire) */
-.cjhv-mod-es { width: 80px; background: var(--hv-grain) 0 0 / 256px 256px, linear-gradient(165deg, #5a1a15, #3c100d 45%, #2d0c0a); background-blend-mode: soft-light, normal; }
-.cjhv-es-well { position: absolute; left: 8px; right: 8px; top: 22px; height: 70px; border-radius: 2px; padding: 4px; box-sizing: border-box;
+/* EMER STOP (unchanged until push 3): red plate, striped well, red T-handle (a deliberate 40 px pull; taps never fire) */
+.cjhv-mod-es { background: var(--hv-grain) 0 0 / 256px 256px, linear-gradient(165deg, #5a1a15, #3c100d 45%, #2d0c0a); background-blend-mode: soft-light, normal; }
+.cjhv-es-well { position: absolute; left: 4px; right: 4px; top: 22px; height: 70px; border-radius: 2px; padding: 4px; box-sizing: border-box;
   background: repeating-linear-gradient(-45deg, #d9a521 0 5px, #141414 5px 10px); box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.6); }
 .cjhv-es-well::before { content: ''; position: absolute; inset: 5px; background: #0b0c0d; border-radius: 1px; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.8); }
 .cjhv-es-grip { position: absolute; left: 50%; top: 6px; width: 48px; height: 58px; margin: 0 0 0 -24px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; z-index: 1; }
 .cjhv-es-grip svg { width: 44px; height: 52px; display: block; margin: 3px auto 0; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-mod-es { width: 60px; }
-.cjhv-rail[data-rf-layout='window'] .cjhv-es-well { left: 4px; right: 4px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-es-well { top: 20px; height: 80px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-es-grip { width: 44px; margin-left: -22px; }
 
 /* HOLD TO REV / SHUTDOWN: raised push caps */
-.cjhv-mod-push { width: 108px; flex-direction: column; gap: 4px; padding: 4px; }
+.cjhv-mod-push { display: flex; flex-direction: column; gap: 4px; padding: 4px; }
 .cjhv-push {
   flex: 1 1 0; margin: 0; padding: 0; border: 0; border-radius: 3px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: linear-gradient(170deg, #2e3033, #232527 60%, #1c1e20);
@@ -178,13 +179,14 @@ div.cjhv-cap { cursor: default; }
 }
 .cjhv-push:active:not([aria-disabled]) { box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.7), inset 2px 2px 0 rgba(0, 0, 0, 0.35), 0 0 0 1px #0d0e10; }
 .cjhv-push[aria-disabled] .cjhv-lg { color: var(--hv-unlit); text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7); }
-.cjhv-rail[data-rf-layout='window'] .cjhv-mod-push { width: 62px; }
+.cjhv-mod-push .cjhv-lg { letter-spacing: 0.02em; }
 
-/* ---------------- dock: the rail takes the old row's parts' places; the shell's Shutdown / Hold to rev chips are the
-   rail's SHUTDOWN / HOLD TO REV caps now */
+/* ---------------- dock: the rail has the row to itself (no SHELF); the shell's Shutdown / Hold to rev chips are the
+   rail's SHUTDOWN / HOLD TO REV caps */
 .rev-dock:has(.cjhv-rail) > .rev-stop { display: none !important; }
 .rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row] > .cjhv-rail { flex: 1 1 auto !important; }
 .rev-dock:has(.cjhv-rail) .cjhv-mod-gps .cjp-gps { height: 118px; }
+.rev-dock:has(.cjhv-rail[data-rf-layout='window']) .cjhv-mod-gps .cjp-gps { height: 135px; }
 
 /* ---------------- hero v2 mock match: LOOK keys (Meghan's mock: three dark raised caps in one recessed bezel; the
    selected look is the brighter legend + a 76×4 backlit blue bar 4 px off the bottom, not a filled key). Hero board only.

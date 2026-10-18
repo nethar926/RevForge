@@ -32,7 +32,7 @@ import { CJ_GRID } from '../carrier-jet/cells';
 import { getPackJet, subscribePackJet } from '../jetBridge';
 import { LAUNCH_OFF, launchAbZone, launchStep, readLaunchActive } from '../carrier-jet/launchLight';
 import { HeroRail, TopPlate } from './CjHeroV2';
-import { abGuardTap, abView, clearsAfter, forcedLamps, heroFits, HV_LAMPS, HV_START, lampStates, radarApply, radarPos, startPositions, type HeroLayout, type LampId, type StartId } from '../carrier-jet/heroRail';
+import { abTap, abView, clearsAfter, forcedLamps, heroFits, HV_GUARD_CLOSE_MS, HV_LAMPS, lampStates, radarApply, radarPos, railCue, railPositions, railSw, type HeroLayout, type LampId, type RailSwId, type SourcePos } from '../carrier-jet/heroRail';
 import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
 
 /**
@@ -121,6 +121,12 @@ export function CarrierJetMount(props: PackHudProps) {
   const armed = useSyncExternalStore(subscribeAbArmed, getAbArmed, getAbArmed);
   const [guardOpen, setGuardOpen] = useState(false);
   const ab = abView(armed, guardOpen); // bat, lid and both AB ARMED lamps read this one value
+  // two-step guard: a lifted lid with the switch still at SAFE closes itself after HV_GUARD_CLOSE_MS (ARM keeps it up)
+  useEffect(() => {
+    if (!guardOpen || armed) return;
+    const t = setTimeout(() => setGuardOpen(false), HV_GUARD_CLOSE_MS);
+    return () => clearTimeout(t);
+  }, [guardOpen, armed]);
   const onArm = () => {
     const next = !armed;
     setAbArmed(next);
@@ -306,8 +312,20 @@ export function CarrierJetMount(props: PackHudProps) {
     cold.announce(`${d.spoken} cleared`);
   };
   const wxRadar = useSyncExternalStore(subscribeWxRadar, getWxRadar, getWxRadar);
-  const startPos = startPositions({ cold: coldOn, running: props.running, on: cold.sys.on, engines: cold.sys.engines });
-  const NEXT: Record<string, StartId> = { batt: 'batt', apu: 'apu', apuGuard: 'apu', engL: 'engL', engR: 'engR', inertialNav: 'nav' };
+  const railState = railPositions({ cold: coldOn, running: props.running, on: cold.sys.on, engines: cold.sys.engines });
+  const onRailSwitch = (id: RailSwId, on: boolean) => {
+    const d = railSw(id);
+    // GEN has no switch of its own in Dan's list: it follows the engines (said and shown, never a silent no-op)
+    if (!d.system) return cold.announce(`${d.spoken}: come on with the engines`);
+    cold.railTap(d.system, on);
+  };
+  const onSource = (pos: SourcePos) => {
+    const sysOn = cold.sys.on;
+    if (pos !== 'up' && sysOn.apu) cold.railTap('apu', false);
+    if (pos !== 'dn' && sysOn.aircart) cold.railTap('aircart', false);
+    if (pos === 'up') cold.railTap('apu', true);
+    if (pos === 'dn') cold.railTap('aircart', true);
+  };
   const heroRail = hero ? (
     <HeroRail
       layout={heroLayout}
@@ -321,23 +339,17 @@ export function CarrierJetMount(props: PackHudProps) {
       }}
       armed={ab.lamp}
       guardOpen={ab.lidOpen}
-      onGuard={() => {
-        const t = abGuardTap(armed, guardOpen);
-        if (t.disarm) onArm();
-        setGuardOpen(t.open);
+      onAb={(target) => {
+        // two taps at every size (abTap): lift, then ARM; closing the lid over ARM throws SAFE
+        const r = abTap(armed, guardOpen, target);
+        setGuardOpen(r.open);
+        if (r.arm !== null && r.arm !== armed) onArm();
+        if (r.say) cold.announce(r.say);
       }}
-      onArm={() => {
-        if (armed) setGuardOpen(true); // ARM -> SAFE on the switch band: the lid stays up until it is closed
-        onArm();
-      }}
-      launch={launch.lit}
-      start={startPos}
-      startCue={cold.nextId ? NEXT[cold.nextId] ?? null : null}
-      startLive={coldOn}
-      onStart={(id, on) => {
-        const sys = HV_START.find((s) => s.id === id)?.system;
-        if (sys) cold.railTap(sys, on);
-      }}
+      rail={railState}
+      cue={railCue(cold.nextId)}
+      onSwitch={onRailSwitch}
+      onSource={onSource}
       live={cold.live}
       onQuickStart={cold.quickStart}
       onEmergencyStop={cold.emergencyStop}
@@ -376,10 +388,8 @@ export function CarrierJetMount(props: PackHudProps) {
       {shelf}
     </div>
   ) : (
-    // hero v2: QUICK START / EMER STOP are on the rail and FASTEN SEAT BELT is an annunciator cap; only SHELF stays here
-    <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} data-rf-reduce-motion={reduced || undefined} data-cjm-row>
-      {shelf}
-    </div>
+    // hero v3.1: every switch is on the rail; no SHELF key and no shelf pop-up (NOTES.md)
+    null
   )) : null;
   return (
     <div
@@ -403,7 +413,7 @@ export function CarrierJetMount(props: PackHudProps) {
           </>
         )}
       </CjHeadingEase>
-      {spds && coldOn && cold.render.shelf(layout === 'board' ? 'wide' : 'narrow')}
+      {!hero && spds && coldOn && cold.render.shelf(layout === 'board' ? 'wide' : 'narrow')}
       {coldOn && <p className="cjcs-say" role="status" aria-live="polite">{cold.say}</p>}
       <p className="rf-sr-only cjm-launch-say" role="status" aria-live="polite">{launch.say}</p>
       {bankB && vp.dock && createPortal(bankB, vp.dock)}

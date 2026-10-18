@@ -7,13 +7,14 @@
  * cue / step / legend), the annunciators, the current checklist line, and the next action for QUICK START.
  *
  * The audio layer is permissive (any order, never refuses); start order and the Park lockout live here:
- *  - `requires` (advisory in the audio list) gates switching ON. Switching OFF is always allowed in Park.
+ *  - `requires` (advisory in the audio list) gates switching ON, with a spoken / shown reason. Switching OFF is always allowed.
  *  - 'apu' / 'aircart' as a requirement means READY (spooled), an engine means RUN, 'crossbleed' means open with the
  *    right engine running (its bleed source), a guard means lifted.
  *  - Throttle 'requires engX' is met while that engine cranks (throttle to idle "when it turns") — or once the host
  *    has wired the throttle (Dan's light-off gate engages only after the first throttle call), in which case the
  *    engine start in turn waits for the throttle at IDLE, so a wired throttle at cutoff never deadlocks a start.
- *  - Outside Park everything is locked with 'Available in Park'.
+ *  - Park or Drive: every switch works in either (Wilson, Oct 18: all switches available in Drive). CS_PARK_REASON
+ *    stays exported for the parts that still say it, but no lock returns it.
  *
  * Sequence (step numbers on the switches, `next` cue on the next one):
  *  APU (default): POWER (batt, avionics, nav platform) → FUEL (L, R pumps) → APU ARM (cover) → APU START held to READY
@@ -165,7 +166,6 @@ export const CS_PARK_REASON = 'Available in Park';
 
 /** Why switching `id` ON is locked right now, or null when allowed. */
 export function csLockReason(id: string, inp: CsInput): string | null {
-  if (!inp.park) return CS_PARK_REASON;
   const e = inp.list.find((x) => x.id === id);
   const reqs = [...(e?.requires ?? [])];
   // Ground air: the engines take cart air (R) / crossbleed (L), never the APU, whatever the list says.
@@ -273,7 +273,7 @@ export function csView(inp: CsInput): CsView {
     const on = isOn(s, id);
     const held = inp.held === id;
     const eng = id === 'engL' || id === 'engR' ? s.engines[id === 'engL' ? 'L' : 'R'] : null;
-    const lock = on ? (inp.park ? null : CS_PARK_REASON) : csLockReason(id, inp);
+    const lock = on ? null : csLockReason(id, inp);
     const v: CsSwitchView = {
       label: CS_SHORT[id] ?? e.label.toUpperCase(),
       ariaLabel: e.label,
@@ -304,7 +304,7 @@ export function csView(inp: CsInput): CsView {
   }
   // APU block: ARM (cover), START and the APU-off step all print on the START switch
   const apuStep = badge(['apuGuard', 'apu'])?.code;
-  const apuLock = !inp.park ? CS_PARK_REASON : isOn(s, 'apu') ? null : csLockReason('batt', inp) ?? (isOn(s, 'batt') ? null : 'Battery first');
+  const apuLock = isOn(s, 'apu') ? null : csLockReason('batt', inp) ?? (isOn(s, 'batt') ? null : 'Battery first');
   const apuBusy = inp.held === 'apu' || (isOn(s, 'apu') && !s.apuReady);
   const apu: CsView['apu'] = {
     arm: !!inp.guards.apuGuard,
@@ -318,7 +318,7 @@ export function csView(inp: CsInput): CsView {
   if (apuLock === CS_PARK_REASON && inp.held !== 'apu' && seq.some((st, i) => i >= cursor && (st.id === 'apu' || st.id === 'apuGuard') && !csStepDone(st, inp))) apu.parkLegend = true;
   const reasons: CsView['gndAir']['disabledReasons'] = {};
   for (const id of ['aircart', 'crossbleed'] as const) {
-    const r = isOn(s, id) ? (inp.park ? null : CS_PARK_REASON) : csLockReason(id, inp);
+    const r = isOn(s, id) ? null : csLockReason(id, inp);
     if (r) reasons[id] = r;
   }
   const steps: CsView['gndAir']['steps'] = {};
@@ -372,7 +372,6 @@ export type CsIntent =
  * press handlers (csHoldStart) — except switching OFF, which a tap does.
  */
 export function csTap(id: string, nextOn: boolean, inp: CsInput): CsIntent {
-  if (!inp.park) return { type: 'none', reason: CS_PARK_REASON };
   if (!nextOn) return { type: 'set', system: id as JetSystem, on: false };
   const hold = id === 'engL' || id === 'engR' || (id === 'apu' && inp.mode === 'apu');
   const lock = csLockReason(id, inp);
@@ -384,7 +383,6 @@ export function csTap(id: string, nextOn: boolean, inp: CsInput): CsIntent {
 
 /** Press on a hold switch: start cranking / spooling if allowed. */
 export function csHoldStart(id: string, inp: CsInput): CsIntent {
-  if (!inp.park) return { type: 'none', reason: CS_PARK_REASON };
   if (id !== 'engL' && id !== 'engR' && id !== 'apu') return { type: 'none', reason: 'Not a hold switch' };
   if (isOn(inp.sys, id)) return { type: 'none', reason: 'Already on' };
   if (id !== 'apu' && !inp.guards[id as CsGuardId]) return { type: 'none', reason: 'Lift the guard first' };

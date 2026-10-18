@@ -105,16 +105,19 @@ test('GND AIR: R start needs cart READY; L start needs the crossbleed open with 
   assert.equal(csView(inp).switches.engL.disabledReason, 'Crossbleed open first');
 });
 
-test('Park lockout: outside Park every switch is locked with "Available in Park", taps do nothing', () => {
+test('Drive: every switch works outside Park (Wilson, Oct 18); a missing prerequisite says why, never a silent no-op', () => {
   const inp = input('apu', { on: { batt: true } }, { park: false });
   const v = csView(inp);
-  for (const [id, s] of Object.entries(v.switches)) {
-    assert.equal(s.disabled, true, id);
-    assert.equal(s.disabledReason, CS_PARK_REASON, id);
-  }
-  assert.equal(v.apu.disabledReason, CS_PARK_REASON);
-  assert.equal(csTap('batt', false, inp).type, 'none');
-  assert.equal(csHoldStart('apu', { ...inp, guards: { apuGuard: true } }).type, 'none');
+  for (const [, s] of Object.entries(v.switches)) assert.notEqual(s.disabledReason, CS_PARK_REASON);
+  assert.notEqual(v.apu.disabledReason, CS_PARK_REASON);
+  assert.deepEqual(csTap('batt', false, inp), { type: 'set', system: 'batt', on: false });
+  assert.equal(csHoldStart('apu', { ...inp, guards: { apuGuard: true } }).type, 'set', 'APU starts in Drive');
+  // NAV (inertialNav, the plate's INS) toggles in Drive; it needs avionics first, and says so
+  const noAv = csTap('inertialNav', true, inp);
+  assert.deepEqual(noAv, { type: 'none', reason: 'Avionics first' });
+  const withAv = input('apu', { on: { batt: true, avionics: true } }, { park: false });
+  assert.deepEqual(csTap('inertialNav', true, withAv), { type: 'set', system: 'inertialNav', on: true });
+  assert.deepEqual(csTap('inertialNav', false, input('apu', { on: { batt: true, avionics: true, inertialNav: true } }, { park: false })), { type: 'set', system: 'inertialNav', on: false });
 });
 
 test('Park detector: dwell to enter, leaves at once', () => {
