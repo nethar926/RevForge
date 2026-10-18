@@ -20,6 +20,7 @@ Approved; Reid builds from this file.
 Rules
 - Whole percents, rounded the same way as the visible CRT B text.
 - No aria-live on any of these: the values change many times a second and would talk over the driver. They read when focused or browsed.
+- One exception (Meghan, 2026-10-18): the AUTO transition announcer (91f183b, "Auto: Pursuit engaged" / "Auto: back to Cruise") is the pack's single polite live region, because it is one event per change. Guard it: at most one announcement every 3 seconds; if AUTO flips back and forth near the threshold inside that window, only the latest state is spoken when the window ends; never announce the same state twice in a row.
 - Speed, Engine RPM and Gear replace ThemeStage's combined line for this pack (Meghan, 2026-10-18). ThemeStage is shared code outside src/skins, so Scott or Reid decides how the combined line is suppressed for NP.
 - Keep the individual 7-seg digit SVGs, scanner, voice box and glyph `aria-hidden` (decorative; the hidden spans and meters above carry the spoken values).
 - CRT B lines use a visually hidden span for the spoken words; the visible "THR"/"LOAD" abbreviations stay as drawn.
