@@ -186,10 +186,10 @@ export function CarrierJetMount(props: PackHudProps) {
   // CJ v3 cold start: one Park for the shelf and CONFIG's Park-only tiles (≤ 0.5 mph for 1.5 s; leaves above 2).
   const speedMph = props.unit === 'kph' ? props.speed / 1.609344 : props.speed;
   const park = useCjPark(speedMph);
-  // Map-first Drive (Wilson-approved, Meghan's mock): the Drive default on the Tesla layouts (board / window); Park keeps
-  // Board 2. Instant swap on P/D (CSS grid areas, carrier-jet-v2.css); the one MapLibre map moves with its cell and
-  // resizes from its own ResizeObserver (CjLiveMap), no remount.
-  const mapFirst = cjMapFirst({ v2, tesla, park });
+  // Map-first (Wilson-approved, Meghan's mock): the layout on the Tesla layouts (board / window) in Drive and in Park
+  // (square-map rule, Oct 17: Park is laid out like Drive). The MAP column is sized square by CjV2Layer
+  // (--cjv2-map-side); the one MapLibre map resizes from its own ResizeObserver (CjLiveMap), no remount.
+  const mapFirst = cjMapFirst({ v2, tesla });
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const sysReduced = useSyncExternalStore(subSysReduced, readSysReduced, () => false);
   const reduced = reducedMotion(prefs, sysReduced || !props.motion);
