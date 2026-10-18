@@ -7,7 +7,7 @@
  * The wing, arc pointer and tape ACT marks carry data-cj-* hooks: the HUD's rAF loop moves
  * them with transform attributes only (no React re-render per frame).
  */
-import { useId, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { SWEEP_TAPE_HI, SWEEP_TAPE_LO, type IndexerState, type SweepMode } from './model';
 import type { CjPalette } from './palettes';
 
@@ -15,8 +15,12 @@ const f1 = (n: number) => Math.round(n * 10) / 10;
 type Pt = [number, number];
 
 // ------------------------------------------------------------------ SVG frame + text
+/** Rendered px per viewBox unit of the nearest <Svg> (1 until measured, and on the server), for parts that change
+ * their layout, not just their text size, when the cell is small (the narrow compass rose). */
+export const SvgScale = createContext(1);
 export function Svg({ w, h, className = '', children, align = 'xMidYMid' }: { w: number; h: number; className?: string; children: ReactNode; align?: string }) {
   const ref = useRef<SVGSVGElement>(null);
+  const [scale, setScale] = useState(1);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -27,6 +31,7 @@ export function Svg({ w, h, className = '', children, align = 'xMidYMid' }: { w:
       const s = Math.min(r.width / w, r.height / h);
       const v = String(Math.round(s * 1000) / 1000);
       if (el.style.getPropertyValue('--cj-sv') !== v) el.style.setProperty('--cj-sv', v);
+      setScale((p) => (Math.abs(p - s) < 0.01 ? p : s));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -35,7 +40,7 @@ export function Svg({ w, h, className = '', children, align = 'xMidYMid' }: { w:
   }, [w, h]);
   return (
     <svg ref={ref} className={`cj-svg ${className}`} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio={`${align} meet`} aria-hidden="true" focusable="false">
-      {children}
+      <SvgScale.Provider value={scale}>{children}</SvgScale.Provider>
     </svg>
   );
 }
@@ -262,6 +267,8 @@ export function Rose({ x, y, w, h, P, heading, stale = false }: { x: number; y: 
   const hd = heading ?? 0;
   const dim = stale && heading !== undefined;
   const tone = staleTones(P, dim);
+  const sv = useContext(SvgScale);
+  if (sv < ROSE_NARROW_SCALE) return <RoseNarrow x={x} y={y} w={w} h={h} P={P} hd={hd} heading={heading} dim={dim} tone={tone} id={id} sv={sv} />;
   const cx = x + w / 2, R = Math.min(w * 0.46, h * 0.9), cy = y + R + 34;
   return (
     <g data-cj-el="heading" data-stale={dim ? 'true' : undefined}>
@@ -291,6 +298,61 @@ export function Rose({ x, y, w, h, P, heading, stale = false }: { x: number; y: 
       <path d={`M${f1(cx)} ${f1(y + 36)} l-8 -8 h16 z`} fill={P.ref} />
       <rect x={f1(cx - 40)} y={y - 2} width="80" height="30" fill={P.boxBg} stroke={tone.edge} strokeWidth="1.5" />
       <T x={cx} y={y + 19} size={16} fill={tone.text} weight={700} ls={0.1}>{hdgText(heading)}</T>
+    </g>
+  );
+}
+
+/**
+ * Narrow compass (COMPASS in the small bottom cell after the COMPASS / ACCEL swap: about 99 / 174 / 159 px wide at
+ * 773 / 1256 / 1280). Below ROSE_NARROW_SCALE rendered px per unit the 12px text floor makes the full rose collide, so
+ * the layout is worked out in rendered px (u = viewBox units per px):
+ * - a 34px band on top holds the digit box (and the host's HTML HDG chip laid over it); the arc starts 6px under it;
+ * - the ring's centre sits on the cell floor; card labels sit 17px inside it; N / E / S / W always, the 30° numbers
+ *   only when neighbours are >= 22px apart (1256 / 1280: yes; 773: cardinals only);
+ * - ticks every 10° (7px at 30°, 4px otherwise), strokes kept >= 1px rendered;
+ * - the digit box is 46x22px and tagged .cj-rose-box so the host chip can hide it (see carrier-jet.css).
+ */
+export const ROSE_NARROW_SCALE = 0.6;
+const ROSE_BAND_PX = 34;
+function RoseNarrow({ x, y, w, h, P, hd, heading, dim, tone, id, sv }: { x: number; y: number; w: number; h: number; P: CjPalette; hd: number; heading?: number; dim: boolean; tone: { line: string; text: string; edge: string }; id: string; sv: number }) {
+  const u = 1 / sv;
+  const band = ROSE_BAND_PX * u, top = y + band + 6 * u;
+  // the ring's centre sits on the cell floor, so the whole upper half (and its labels) is in view
+  const cx = x + w / 2, R = Math.min(w * 0.46, y + h - top - 2 * u), cy = top + R;
+  const inset = 17 * u, lr = R - inset;
+  const showNums = 2 * lr * Math.sin(Math.PI / 12) * sv >= 22;
+  const bw = 46 * u, bh = 22 * u;
+  return (
+    <g data-cj-el="heading" data-stale={dim ? 'true' : undefined} data-cj-rose="narrow">
+      <defs>
+        <clipPath id={`${id}c`}>
+          <rect x={x} y={y + band} width={w} height={h - band} />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${id}c)`}>
+        <circle cx={f1(cx)} cy={f1(cy)} r={f1(R)} fill="none" stroke={tone.line} strokeWidth={f1(1.5 * u)} />
+        {Array.from({ length: 36 }, (_, i) => i * 10).map((d) => {
+          const t = ((d - hd - 90) * Math.PI) / 180, l = (d % 30 === 0 ? 7 : 4) * u;
+          const ty = cy + lr * Math.sin(t);
+          const lab = d % 90 === 0 || (showNums && d % 30 === 0);
+          return (
+            <g key={d}>
+              <line x1={f1(cx + R * Math.cos(t))} y1={f1(cy + R * Math.sin(t))} x2={f1(cx + (R - l) * Math.cos(t))} y2={f1(cy + (R - l) * Math.sin(t))} stroke={tone.line} strokeWidth={f1((d % 30 === 0 ? 1.5 : 1) * u)} />
+              {lab && ty + 6 * u < y + h && (
+                <T x={cx + lr * Math.cos(t)} y={ty + 4.5 * u} size={15} fill={tone.text} weight={700}>
+                  {card(d)}
+                </T>
+              )}
+            </g>
+          );
+        })}
+        <path d={`M${f1(cx)} ${f1(cy - 9 * u)} l${f1(-3 * u)} ${f1(8 * u)} h${f1(6 * u)} z`} fill={P.ref} />
+      </g>
+      <path d={`M${f1(cx)} ${f1(top + 1 * u)} l${f1(-4 * u)} ${f1(-5 * u)} h${f1(8 * u)} z`} fill={P.ref} />
+      <g className="cj-rose-box">
+        <rect x={f1(cx - bw / 2)} y={f1(y + 2 * u)} width={f1(bw)} height={f1(bh)} fill={P.boxBg} stroke={tone.edge} strokeWidth={f1(1 * u)} />
+        <T x={cx} y={y + 2 * u + bh / 2 + 4.5 * u} size={16} fill={tone.text} weight={700} ls={0.1}>{hdgText(heading)}</T>
+      </g>
     </g>
   );
 }
