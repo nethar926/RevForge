@@ -452,6 +452,12 @@
   .cjwx-sep { display: none; }
 }
 @container (min-height: 140px) and (min-width: 260px) { .cjwx { font-size: 15px; line-height: 17px; left: 10px; top: 7px; } .cjwx-glyph { width: 20px; height: 20px; } }
+/* COMPASS narrowed by the COMPASS ⇄ ACCEL swap (Meghan's narrow compass, 7b558e6): the corner left of the HDG chip is
+   too narrow for the column (1280: 25 px, 773: 10 px; 1256 keeps 32 px and the corner spot), so the readout goes UNDER
+   the chip, top-left, above the rose band (chip: top 4px, 24.7 px tall on the board, 18.9 px in the 773 window).
+   773: glyph and temperature on one line (the stacked column would reach the rose arc). */
+@container (max-width: 174px) { .cjwx { top: 31px; } }
+@container (max-width: 140px) { .cjwx { top: 25px; left: 5px; } .cjwx-line { flex-direction: row; align-items: center; gap: 2px; } }
 /* (i) with weather / radar credits (CjV2Layer MapCell): outside the CRT (it clips), over the CRT's inner box (3px border
    + the 4px inset of the plain panel); the map credit, then one full-width row per credit. Link rows are >= 44px tall
    (Apple HIG 44pt; the whole row is the target), 11px text, phosphor on #041009 (15.7:1). The wrap is bottom-anchored
