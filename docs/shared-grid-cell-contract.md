@@ -205,3 +205,27 @@ Read from `src/skins/night-pursuit/NightPursuitOverlay.tsx`, `night-pursuit.css`
 - `skin/night-pursuit-radar`: CRT A becomes a half-moon radar scope (rings, 10° ticks, chevron, 3.5–1 s sweep, 7 contacts, afterglow; static under Reduce Motion).
 - `skin/night-pursuit-mode-rail`: a "Drive mode" caption plus physical keycaps AUTO / CRUISE (was NORM) / PURSUIT, each with a lamp. POWER is retired.
 - `frontend/np-drive-modes`: a real AUTO mode (it engages pursuit at throttle ≥ 0.80 held for 400 ms and drops out at ≤ 0.35 after 2 s), plus an "auto engaged" lamp.
+
+## 7. API at a glance (for pack authors)
+
+All of it is in `src/packs/grid/`. Nothing there knows about a theme.
+
+| Module | Exports |
+|---|---|
+| `contract.ts` (pure) | Types: `GridSpec`, `CellDecl`, `CellRole`, `LayoutRule`, `RailSpec`, `GridFit`, `Rect`, `Size`, `CellRects`, `GridLayout`. Values: `GRID_LAYOUTS`. Functions: `resolveCells(spec, layout, ctx)`, `validateSpec(spec)`, `gridFitArgs(spec, layout?)`, `gridHandles(spec, layout)`, `requiredCells(spec, layout)`. |
+| `hig.ts` (pure) | `HIG_MIN_TEXT_PX` (11), `HIG_MIN_TARGET_PX` (44), `checkGrid(spec, rects, { layout, scale?, railCells? })` returns a list of `GridIssue`, `warnGridIssues(themeId, issues, log?)` (warns once per message). |
+| `rail.ts` (pure) | `railCount(width, key, max?)`, `railXs(cell, n, key)`, `railTop(cell, gap)`, `railSlots(cell, n, key, gap)`. |
+| `useGrid.ts` (hooks) | `useGridMeasure(selfRef, read, { attributeFilter })` (pass a stable `read` from useCallback), `useGrid(spec, layout, ctx)`, `useSystemReducedMotion()`, `useGridState()`, `useGridMotion()`, `useRailSlots(spec, id, n, gap)`, `rectStyle(rect)`, `GridCtx`. |
+| `GridLayer.tsx` (components) | `GridLayer` (props: `spec, layout, cells, ready, reduced, scale?, railCells?, ref?`, plus any div attributes), `GridCell` (`spec, id`), `GridFrame` (`spec, driveWindow, className?`, with children as a function of `{ layout, fit }`). |
+
+**Fit box.** `GridFrame` calls `useRfLayout(driveWindow)` first, then
+`useFitBox(...gridFitArgs(spec, layout))`. That uses `spec.fitFor[layout]` when one is set, else `spec.fit`. Pass
+`fit.s` to `GridLayer` as `scale` so the dev check measures what is actually on screen. If a mount already calls
+`useFitBox` itself, as CarrierJetMount does, pass the declared box: CJ calls
+`useFitBox(CJ_GRID.fit.w, CJ_GRID.fit.minH, CJ_GRID.fit.maxH, CJ_GRID.fit.fallbackH)`.
+
+**Registering layouts.** There is no central registry. A pack exports one `GridSpec` constant (CJ:
+`CJ_GRID` in `src/packs/carrier-jet/cells.ts`). Its `layouts` object *is* the registration: it has one entry for
+each of `board`, `window`, `portrait` and `phone-landscape`, given as `rects`, `derive` or `null`. The mount passes the spec to
+`GridFrame` / `GridLayer`, or for measured themes to `useGridMeasure` + `useGrid`. Add a test that runs
+`validateSpec(spec)` and `checkGrid` on every layout, as `tests/grid-contract.test.ts` does for CJ and the NP example.
