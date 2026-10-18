@@ -37,6 +37,7 @@ import type { useThemes } from "../themes/useThemes";
 import { useVehicleMedia } from "./useVehicleMedia";
 import { NativeStudio } from "./NativeStudio";
 import { useDriveSimulation } from "./useDriveSimulation";
+import { audioChannelsLine, readOutputChannels } from "./audioChannels";
 import "./forge.css";
 import "./viewport.css";
 import { storageKey } from '../lib/storageKey';
@@ -185,6 +186,8 @@ export function ForgePage({
     activePackId===CARRIER_JET_IDENTITY.id,
   );
   const revReady = audio.running && source === "demo";
+  // car-test diagnostics (Options): output channel count, null → '—' until audio starts; re-read when audio starts
+  const audioCh = useMemo(() => audioChannelsLine(readOutputChannels(audio)), [audio, audio.running]);
 
   useEffect(() => {try {localStorage.setItem(storageKey("drivesynth.demo"),String(source==='demo'));localStorage.setItem(storageKey("drivesynth.motion"),String(motion));localStorage.setItem(storageKey("revforge.media.experimental"),String(mediaEnabled));localStorage.setItem(storageKey("drivesynth.pauseShifts"),String(pauseShifts));}catch{/* preferences remain available this session */}},[source,motion,mediaEnabled,pauseShifts]);
   useEffect(() => {
@@ -414,7 +417,7 @@ export function ForgePage({
             {panel === "tune" && (
               <div className="forge-tune">
                 {!FEATURES.garage&&<details className="garage-colors"><summary>Colors · recolor</summary><ThemeColors themes={themes}/></details>}<FontPicker value={themes.fonts[themes.skinId]??{numbers:"default",labels:"default"}} onChange={value=>themes.setFont(themes.skinId,value)}/><label>Dashboard scale · {Math.round(scale*100)}%<input aria-label="Dashboard scale" type="range" min=".65" max="1.35" step=".01" value={scale} onChange={e=>setScale(Number(e.target.value))}/></label><label>Instrument opacity<input aria-label="Instrument opacity" type="range" min=".25" max="1" step=".01" value={opacity} onChange={e=>update({hudOpacity:Number(e.target.value)})}/></label><label>Volume<input aria-label="Master volume" type="range" min="0" max="1" step=".01" value={prefs.masterVolume} onChange={e=>update({masterVolume:Number(e.target.value)})}/></label><label>Mute<input aria-label="Mute" type="checkbox" checked={prefs.masterMuted} onChange={e=>update({masterMuted:e.target.checked})}/></label>
-                <label>Background audio<input aria-label="Background audio" type="checkbox" checked={audio.background} onChange={e=>audio.setBackgroundEnabled(e.target.checked)}/></label><p role="status">{audio.backgroundStatus} · Audio context: {audio.getDiag().contextState}</p><label>Demo mode<input aria-label="Demo mode" type="checkbox" checked={source==='demo'} onChange={e=>sourceChange(e.target.checked?'demo':'gps')}/></label>
+                <label>Background audio<input aria-label="Background audio" type="checkbox" checked={audio.background} onChange={e=>audio.setBackgroundEnabled(e.target.checked)}/></label><p role="status">{audio.backgroundStatus} · Audio context: {audio.getDiag().contextState}</p><p className="forge-audio-channels" role="note" aria-label={audioCh.aria}>{audioCh.text}</p><label>Demo mode<input aria-label="Demo mode" type="checkbox" checked={source==='demo'} onChange={e=>sourceChange(e.target.checked?'demo':'gps')}/></label>
                 <p className="forge-control-hint">Turn Demo off to use browser GPS. Location permission is required.</p>{source==='gps'&&<div role="status"><p>{gpsLabel} · {gps.accuracy===null?'No fix':`Accuracy ±${Math.round(gps.accuracy)} m`}</p><p>{gps.errorMessage}</p><button onClick={gps.start}>Retry GPS</button></div>}
                 <label>Idle jitter<input aria-label="Idle jitter" type="checkbox" checked={jitterEnabled} onChange={e=>setJitterEnabled(e.target.checked)}/></label><label>Idle jitter intensity · {Math.round(jitterAmount*100)}%<input aria-label="Idle jitter intensity" type="range" min="0" max="1" step=".01" disabled={!jitterEnabled} value={jitterAmount} onChange={e=>setJitterAmount(Number(e.target.value))}/></label><p className="forge-control-hint">Adds subtle RPM wander at idle. Fades out as you accelerate.</p>
                 <p className="forge-control-hint">Background playback and wheel events depend on the browser. If interrupted, tap Ignition to resume{hasGears?'; touch shifting remains available':''}.</p><label>Experimental media-button controls<input type="checkbox" checked={mediaEnabled} onChange={e=>setMediaEnabled(e.target.checked)}/></label>
