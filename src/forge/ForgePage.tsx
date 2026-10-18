@@ -372,7 +372,7 @@ export function ForgePage({
           >
             <div className="forge-modal-heading">
               <div>
-                <span className="forge-eyebrow">REVFORGE / TUNE</span>{panel!=="tuner"&&<button className="tuner-back" onClick={()=>setPanel("tuner")}>← TUNE</button>}<h2>{panelTitle}</h2>
+                {/* breadcrumb: parent path + this panel; the back key names and returns to the parent (Tuner) */}<span className="forge-eyebrow">{panel==="tuner"?"REVFORGE / TUNE":`REVFORGE / TUNE / ${panelTitle.toUpperCase()}`}</span>{panel!=="tuner"&&<button className="tuner-back" aria-label="Back to Tune" onClick={()=>setPanel("tuner")}>← TUNE</button>}<h2>{panelTitle}</h2>
               </div>
               <button
                 autoFocus
