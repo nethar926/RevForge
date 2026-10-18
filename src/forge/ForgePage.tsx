@@ -304,7 +304,7 @@ export function ForgePage({
     audio.stop();
     reset();
   };
-  const media = useVehicleMedia({blasters:patch?.kind==='scifi',fire:()=>audio.triggerUiCue('ion-cannon'),getMediaElement:audio.getMediaElement,enabled:mediaEnabled,running:audio.running,manual:hasGears && driveMode==='manual' && config.gears>1,gearbox:hasGears,pauseShifts,name:audio.patchName,start:()=>{void audio.start().then(()=>audio.playStarter?.());if(source==='gps')onGpsEnabled(true);},stop,shift:(d:number)=>{if(hasGears)shift(d);}});
+  const media = useVehicleMedia({blasters:patch?.kind==='scifi',fire:()=>audio.triggerUiCue('ion-cannon'),getMediaElement:audio.getMediaElement,enabled:mediaEnabled,running:audio.running,manual:hasGears && driveMode==='manual' && config.gears>1,gearbox:hasGears,pauseShifts,name:audio.patchName,start:()=>{void audio.start().then(()=>audio.playStarter?.());if(source==='gps')onGpsEnabled(true);},stop,mute:()=>update({masterMuted:true}),unmute:()=>update({masterMuted:false}),paused:prefs.masterMuted,shift:(d:number)=>{if(hasGears)shift(d);}});
   const sourceChange = (next: "demo" | "gps") => {
     setSource(next);
     setPedal(0);
@@ -360,6 +360,7 @@ export function ForgePage({
             {source==='demo'&&<button className="rev-chip" disabled={!revReady} onPointerDown={e=>hold(e,'throttle')} onPointerUp={()=>setPedal(0)} onPointerCancel={()=>setPedal(0)} onLostPointerCapture={()=>setPedal(0)}>Hold to rev</button>}
             {patch?.kind==='scifi'&&<button className="rev-chip rev-blaster" disabled={!audio.running} onClick={()=>audio.triggerUiCue('ion-cannon')}>Pulse Burst</button>}
             <button className="rev-chip rev-stop" disabled={audio.starting} onClick={audio.running?stop:start}>{audio.running?'Shutdown':'Ignition'}</button>
+            {prefs.masterMuted&&<button type="button" className="rev-chip rev-muted" aria-pressed="true" aria-label={audio.running?'Engine sound muted, engine still running. Unmute':'Engine sound muted. Unmute'} onClick={()=>update({masterMuted:false})}>Muted</button>}
           </footer>
         </>}
         {audio.error&&<p className="rev-message" role="alert">{audio.error}</p>}

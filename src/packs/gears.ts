@@ -20,6 +20,6 @@ export const effectiveGearCount = (packId: string | null | undefined, prefGears:
 /** Transmission mode actually in effect: gearless packs are always 'auto' (the 'manual' choice is kept for when you switch back). */
 export const effectiveDriveMode = <M extends string>(packId: string | null | undefined, mode: M): M | 'auto' => (packHasGears(packId) ? mode : 'auto');
 
-/** Media-button command for a pack: on gearless packs next/previous/pause never shift (pause stops, as in Auto). */
+/** Media-button command for a pack: on gearless packs next/previous/pause never shift (pause mutes, as in Auto). */
 export const packMediaCommand = (packId: string | null | undefined, action: VehicleMediaAction, running: boolean, manual: boolean, pauseShifts: boolean, blasters = false) =>
   mediaCommand(action, running, packHasGears(packId) && manual, pauseShifts, blasters);

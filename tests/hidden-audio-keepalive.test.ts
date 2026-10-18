@@ -120,10 +120,28 @@ test('ForgePage: hidden releases the pedal and brake only; audio stops only on S
   assert.match(vis, /if \(document\.visibilityState === "hidden"\) release\(\);/);
   assert.doesNotMatch(vis, /audio\.stop|background/);
   assert.doesNotMatch(page, /mutedBeforeHide|'Resume'/);
-  // audio.stop() is called from the explicit stop() only (Shutdown chip, media stop, pack 'shutdown' → stop())
+  // audio.stop() is called from the explicit stop() only (Shutdown chip, shutdown guard, pack 'shutdown', car media 'stop' → stop())
   assert.equal(page.match(/audio\.stop\(\)/g)?.length, 1);
   assert.match(page, /const stop = \(\) => \{\n\s*setPedal\(0\);\n\s*setBrake\(false\);\n\s*audio\.playShutoff\?\.\(\);\n\s*audio\.stop\(\);/);
   assert.match(page, /if \(a\.type === 'shutdown'\) \{ if \(audio\.running\) stop\(\); \}/);
   // the Background audio setting stays (media-element output route + pack CONFIG); it no longer gates stop-on-hide
   assert.match(page, /aria-label="Background audio" type="checkbox" checked=\{audio\.background\}/);
+});
+
+test('useVehicleMedia + ForgePage: car pause mutes through the app mute (never stop / shutoff / element pause); muted chip on screen', () => {
+  const vm = src('forge/useVehicleMedia.ts');
+  assert.match(vm, /runMediaCommand\(command,\{session,arm,fire:o\.fire,start:o\.start,stop:o\.stop,mute:o\.mute,unmute:o\.unmute,shift:o\.shift\}\);/);
+  assert.match(vm, /const actions:VehicleMediaAction\[\]=\['play','pause','stop','nexttrack','previoustrack'\];/, "'stop' handled");
+  assert.doesNotMatch(vm, /visibilityState/, 'a car play while the camera covers the page can re-arm the session');
+  assert.match(vm, /playbackState=options\.paused\?'paused':'playing'/, 'the running effect keeps a paused session paused');
+  const ma = src('forge/mediaActions.ts');
+  const mute = ma.slice(ma.indexOf("if(command==='mute')"), ma.indexOf('\n', ma.indexOf("if(command==='mute')")));
+  assert.match(mute, /d\.mute\(\);d\.session\.playbackState='paused';/);
+  assert.doesNotMatch(mute, /stop|pause\(\)|arm/);
+  const page = src('forge/ForgePage.tsx');
+  const at = page.indexOf('useVehicleMedia({');
+  const call = page.slice(at, page.indexOf('});', at));
+  assert.match(call, /mute:\(\)=>update\(\{masterMuted:true\}\),unmute:\(\)=>update\(\{masterMuted:false\}\),paused:prefs\.masterMuted/, 'the app mute (output gain 0 in App.tsx)');
+  assert.match(page, /\{prefs\.masterMuted&&<button type="button" className="rev-chip rev-muted" aria-pressed="true" aria-label=\{audio\.running\?'Engine sound muted, engine still running\. Unmute':'Engine sound muted\. Unmute'\} onClick=\{\(\)=>update\(\{masterMuted:false\}\)\}>Muted<\/button>\}/);
+  assert.match(src('app/App.tsx'), /prefs\.masterMuted\s*\? 0/, 'mute = output gain 0, engine keeps running');
 });

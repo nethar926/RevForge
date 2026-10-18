@@ -8,7 +8,7 @@ import type { Controls, Drivetrain } from '../src/forge/simulation.ts';
 import CARRIER_JET from '../src/packs/carrier-jet.identity.ts';
 
 const GEARED = ['night-pursuit', 'chrono-coupe', 'stellar-helm', 'ion-twin'];
-const ACTIONS = ['play', 'pause', 'nexttrack', 'previoustrack'] as const;
+const ACTIONS = ['play', 'pause', 'stop', 'nexttrack', 'previoustrack'] as const;
 
 test('Carrier Jet has no gears; NP, Chrono Coupe, Stellar Helm, Twin Ion and no pack keep theirs', () => {
   assert.equal(CARRIER_JET.id, 'carrier-jet');
@@ -29,7 +29,7 @@ test('effective gear count / mode: CJ = single speed in Auto whatever the prefs;
   for (const id of GEARED) assert.equal(effectiveDriveMode(id, 'manual'), 'manual');
 });
 
-test('media buttons never shift on Carrier Jet (pause stops, next/previous no-op); other packs unchanged', () => {
+test('media buttons never shift on Carrier Jet (pause mutes, next/previous no-op); other packs unchanged', () => {
   for (const running of [true, false]) for (const manual of [true, false]) for (const pauseShifts of [true, false]) for (const action of ACTIONS) {
     const cj = packMediaCommand('carrier-jet', action, running, manual, pauseShifts);
     assert.ok(cj !== 'up' && cj !== 'down', `${action} ${running} ${manual} ${pauseShifts} → ${cj}`);
@@ -37,7 +37,7 @@ test('media buttons never shift on Carrier Jet (pause stops, next/previous no-op
   }
   assert.equal(packMediaCommand('carrier-jet', 'nexttrack', true, true, true), 'none');
   assert.equal(packMediaCommand('carrier-jet', 'previoustrack', true, true, true), 'none');
-  assert.equal(packMediaCommand('carrier-jet', 'pause', true, true, true), 'stop');
+  assert.equal(packMediaCommand('carrier-jet', 'pause', true, true, true), 'mute');
   assert.equal(packMediaCommand('carrier-jet', 'play', false, true, true), 'start');
   assert.equal(packMediaCommand('night-pursuit', 'nexttrack', true, true, true), 'up');
 });
