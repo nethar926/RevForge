@@ -907,6 +907,11 @@
 .forge-gps-status .forge-text-button {
   margin-left: 8px;
 }
+/* Tesla input check: 'Enable controls / recheck' is a tap target in the car, so >= 44px tall (HIG); same inline-flex
+   centring, padding and font, only the floor moves from the base 40px */
+.compatibility-box .forge-text-button {
+  min-height: 44px;
+}
 @media (min-width: 1500px) {
   .forge-world {
     min-height: 580px;
