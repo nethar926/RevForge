@@ -145,3 +145,10 @@ test('useVehicleMedia + ForgePage: car pause mutes through the app mute (never s
   assert.match(page, /\{prefs\.masterMuted&&<button type="button" className="rev-chip rev-muted" aria-pressed="true" aria-label=\{audio\.running\?'Engine sound muted, engine still running\. Unmute':'Engine sound muted\. Unmute'\} onClick=\{\(\)=>update\(\{masterMuted:false\}\)\}>Muted<\/button>\}/);
   assert.match(src('app/App.tsx'), /prefs\.masterMuted\s*\? 0/, 'mute = output gain 0, engine keeps running');
 });
+
+test('Options hints match the media mapping: pause mutes (engine keeps running), never "pause stops"', () => {
+  const page = src('forge/ForgePage.tsx');
+  assert.doesNotMatch(page, /pause stops/);
+  assert.match(page, /has no gearbox: play starts the engine or unmutes it, pause mutes it and the engine keeps running, next\/previous do nothing\. Touch Shutdown always stops\./);
+  assert.match(page, /Other engines: pause mutes the sound and the engine keeps running \(or upshifts in Manual with the option above\); play unmutes\./);
+});
