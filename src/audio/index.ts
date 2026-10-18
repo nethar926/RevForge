@@ -54,8 +54,18 @@ export {
   physicsJitterToWorklet,
   resolveIcePackSchedule,
   workletJitterToPhysics,
+  finiteRpm,
+  jetN2ToRpm,
+  spoolDecay,
+  iceStartShape,
+  ICE_SPOOL_DOWN,
+  JET_SPOOL_DOWN_N2,
+  RPM_ZERO_SNAP,
 } from './engineStateBridge';
 export type {
+  EnginePowerPhase,
+  EngineSpoolProfile,
+  EngineSides,
   EngineStatePackHints,
   EngineStateRawInput,
   IcePackSchedule,

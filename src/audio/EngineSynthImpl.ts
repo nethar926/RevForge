@@ -77,6 +77,7 @@ import {
   playEngineShutoff,
   playEngineStarter,
   shutoffDuration,
+  starterDuration,
 } from './engineStartShutdown';
 import { applyIonTwinLayersToParams } from './ionTwinLayers';
 import { storageKey } from '../lib/storageKey';
@@ -84,6 +85,7 @@ import pulseWorkletUrl from './worklets/pulse-engine-processor.js?url';
 import { isGearlessPatch, isTomcatPatch, tomcatHeadroomGain } from './tomcatPack';
 import {
   TC_SHUTOFF_SECONDS,
+  TC_STARTER_SECONDS,
   TomcatVoice,
   createTomcatDriveState,
   stepTomcatDrive,
@@ -325,6 +327,8 @@ export class EngineSynthImpl implements EngineSynth {
   /** Thin ICE EngineState bridge (firingMask / crank HUD). */
   private engineState = new EngineStateBridge();
   private lastEngineStateMs = 0;
+  /** Wall-clock ms of the last engine-power advance (reported rpm spool-up / spool-down). */
+  private powerLastMs = 0;
   /** Ion Twin flyby attack envelope (rpm/throttle jump) */
   private scifiFlyby = 0;
   private scifiPrevRpm = 0;
@@ -440,6 +444,7 @@ export class EngineSynthImpl implements EngineSynth {
     }
 
     this.g = this.buildGraph(initial.kind, initial.topology);
+    this.syncSpoolProfile();
     this.applyAllParams();
     this.upshiftSfxEnabled = readUpshiftSfxPref();
     this.idleBand = readIdleBandFromStorage();
@@ -474,6 +479,9 @@ export class EngineSynthImpl implements EngineSynth {
 
     smooth(this.output.gain, 1, 0.08, this.context);
     this.started = true;
+    // Reported rpm: single-engine packs rise from 0 with the start sequence (jets follow their N2).
+    this.advancePower();
+    if (!this.g.tcVoice) this.engineState.setEnginePower(true);
     if (this.g.tcVoice && this.jetColdEnabled) {
       // Tomcat cold start: start() only unlocks audio; the engines stay dark until switched on.
       this.tcLastMs = 0;
@@ -501,6 +509,9 @@ export class EngineSynthImpl implements EngineSynth {
   stop(): void {
     this.started = false;
     this.callouts.reset();
+    // Reported rpm spools down to 0 (jets: sampled before the drive state reset below).
+    this.advancePower();
+    if (!this.g.tcVoice) this.engineState.setEnginePower(false);
     if (this.g.tcVoice && this.tcState.phase !== 'shutdown') {
       // Plain stop (no shutdown cue): output fades below; the next start() runs a fresh start sequence.
       this.tcState = createTomcatDriveState('off');
@@ -646,6 +657,7 @@ export class EngineSynthImpl implements EngineSynth {
       this.applyGraphToParams(this.customGraph);
     }
     if (kindChanged) {
+      this.advancePower();
       this.teardownGraph();
       this.npDriveState = createNightPursuitDriveState(npIdleRpm(this.params));
       this.npLastMs = 0;
@@ -663,6 +675,7 @@ export class EngineSynthImpl implements EngineSynth {
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
     }
+    this.syncSpoolProfile();
     this.applyAllParams();
     this.applyDriving(true);
     if (patch.kind === 'ice' && this.context.state === 'running') {
@@ -750,6 +763,8 @@ export class EngineSynthImpl implements EngineSynth {
       }
       return;
     }
+    this.advancePower();
+    this.engineState.setEnginePower(true);
     const helm = this.g.helmVoice;
     // Stellar Helm: a starter after a power-down cue brings the hum back up under the sweep
     if (helm && helm.powerTarget < 0.5) helm.powerUp(1.6);
@@ -799,6 +814,8 @@ export class EngineSynthImpl implements EngineSynth {
       if (tomcatBeginShutdown(this.tcState)) this.applyTomcatDriving(this.driving, false);
       return;
     }
+    this.advancePower();
+    this.engineState.setEnginePower(false);
     // Stellar Helm: the hum winds down (pitch falls, level fades) under the shutoff sweep
     this.g.helmVoice?.powerDown(dur * 0.85);
     try {
@@ -895,7 +912,38 @@ export class EngineSynthImpl implements EngineSynth {
   }
 
   getEngineState(): EngineStateSnapshot {
+    this.advancePower();
     return this.engineState.snapshot();
+  }
+
+  /** Spool laws for the reported rpm: jets (twin, N2-driven) vs single-engine packs. */
+  private syncSpoolProfile(): void {
+    if (this.g.tcVoice) {
+      this.engineState.setSpoolProfile('jet', { twin: true, startSeconds: TC_STARTER_SECONDS });
+    } else {
+      this.engineState.setSpoolProfile('ice', {
+        startSeconds: starterDuration(this.patchMeta.kind, this.patchMeta.topology),
+      });
+    }
+  }
+
+  /**
+   * Advance the reported-rpm power model to now (wall clock; the spool laws are closed form, so
+   * the result does not depend on how often this runs), then sample the jet drive's per-engine
+   * phase + N2. Reported values only — never touches the audio graph.
+   */
+  private advancePower(): void {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const dt = this.powerLastMs ? (now - this.powerLastMs) / 1000 : 0;
+    this.powerLastMs = now;
+    this.engineState.tickPower(dt > 0 && Number.isFinite(dt) ? dt : 0);
+    if (this.g?.tcVoice) {
+      const st = this.tcState;
+      this.engineState.setJetSpool(
+        { phase: this.jetEnginePhase(0), n2: st.a.n2 },
+        { phase: this.jetEnginePhase(1), n2: st.b.n2 },
+      );
+    }
   }
 
   /** bit i SET = cylinder/slot i disabled. Pushes to worklet when live. */

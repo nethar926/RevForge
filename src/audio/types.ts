@@ -44,7 +44,22 @@ export interface EngineDiag {
 
 /** ICE EngineState snapshot from Audio Physics bridge (HUD / QA). */
 export interface EngineStateSnapshot {
+  /**
+   * Reported rpm = max(rpmL, rpmR): finite, >= 0, exactly 0 when the engines are off / spooled
+   * down; the drive rpm while running. Field semantics: FRONTEND NOTE in engineStateBridge.ts.
+   */
   rpm: number;
+  /** Left / right engine rpm (single-engine packs: both = rpm). */
+  rpmL: number;
+  rpmR: number;
+  /** true for twin-engine packs (Carrier Jet / Tomcat). */
+  twinEngine: boolean;
+  /** Per-engine power phase. */
+  enginePhase: { left: 'off' | 'starting' | 'run' | 'shutdown'; right: 'off' | 'starting' | 'run' | 'shutdown' };
+  /** true once that engine is off and its rpm has reached exactly 0 (also before the first start). */
+  engineSpooledDown: { left: boolean; right: boolean };
+  /** Every engine spooled down. */
+  spooledDown: boolean;
   throttle: number;
   load: number;
   /** bit i SET = slot i disabled */

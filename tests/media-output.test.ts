@@ -8,7 +8,7 @@ test('media routing avoids duplicate output and restores direct sound when disab
 });
 test('media keep-alive re-plays after an outside pause and falls back to direct only after repeated rejections',async()=>{
  const original=(globalThis as any).Audio;let plays=0;let reject=false;let el:any;
- (globalThis as any).Audio=class {srcObject:any;paused=true;l:any={};constructor(){el=this;}setAttribute(){}addEventListener(t:string,f:any){this.l[t]=f;}removeEventListener(t:string){delete this.l[t];}async play(){plays++;if(reject)throw Error('NotAllowed');this.paused=false;}pause(){this.paused=true;this.l.pause?.();}};
+ (globalThis as any).Audio=new Proxy(class {srcObject:any;paused=true;l:any={};setAttribute(){}addEventListener(t:string,f:any){this.l[t]=f;}removeEventListener(t:string){delete this.l[t];}async play(){plays++;if(reject)throw Error('NotAllowed');this.paused=false;}pause(){this.paused=true;this.l.pause?.();}},{construct:(C,a)=>(el=Reflect.construct(C,a))});
  const wait=(ms:number)=>new Promise(r=>setTimeout(r,ms));
  try{const destination={},stream={stream:{getTracks:()=>[]},disconnect(){}};const ctx={destination,createMediaStreamDestination:()=>stream};const connections=new Set<any>([destination]);const node={context:ctx,connect:(n:any)=>connections.add(n),disconnect:(n:any)=>{if(!connections.delete(n))throw Error('not connected');}};
  const route=new MediaOutput(ctx as any);route.attach(node as any);await route.enable();assert.equal(plays,1);
@@ -23,7 +23,7 @@ test('media keep-alive re-plays after an outside pause and falls back to direct 
 });
 test('media keep-alive never replays after Stop/Shutdown (wantsPlay false)',async()=>{
  const original=(globalThis as any).Audio;let plays=0;let el:any;
- (globalThis as any).Audio=class {srcObject:any;paused=true;l:any={};constructor(){el=this;}setAttribute(){}addEventListener(t:string,f:any){this.l[t]=f;}removeEventListener(t:string){delete this.l[t];}async play(){plays++;this.paused=false;}pause(){this.paused=true;this.l.pause?.();}};
+ (globalThis as any).Audio=new Proxy(class {srcObject:any;paused=true;l:any={};setAttribute(){}addEventListener(t:string,f:any){this.l[t]=f;}removeEventListener(t:string){delete this.l[t];}async play(){plays++;this.paused=false;}pause(){this.paused=true;this.l.pause?.();}},{construct:(C,a)=>(el=Reflect.construct(C,a))});
  const wait=(ms:number)=>new Promise(r=>setTimeout(r,ms));
  try{const destination={},stream={stream:{getTracks:()=>[]},disconnect(){}};const ctx={destination,createMediaStreamDestination:()=>stream};const node={context:ctx,connect(){},disconnect(){}};
  const route=new MediaOutput(ctx as any);let wants=true;route.wantsPlay=()=>wants;route.attach(node as any);await route.enable();assert.equal(plays,1);
