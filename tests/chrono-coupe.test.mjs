@@ -151,7 +151,7 @@ test('real worklet: odd-fire signature + loudness-safe discharge (rate-limited)'
   const { renderChronoCoupe } = await import(pathToFileURL(join(root, 'scripts/chrono-coupe-render.mjs')).href);
   const SR = 22050;
   const orders = async (family) => {
-    const buf = await renderChronoCoupe(() => ({ speed: 0.15, throttle: 0.25, rpm: 1200 }), 3, { sampleRate: SR, family });
+    const buf = await renderChronoCoupe(() => ({ speed: 0.15, throttle: 0.25, rpm: 1200 }), 3, { sampleRate: SR, family, seed: 'cc-odd-fire' });
     const x = buf.getChannelData(0).subarray(SR, 3 * SR);
     // Goertzel-ish power at order 1.5 (30 Hz) vs firing order 3 (60 Hz)
     const pow = (f) => {
@@ -175,7 +175,7 @@ test('real worklet: odd-fire signature + loudness-safe discharge (rate-limited)'
   assert.ok(odd - even > 8, `odd-fire order-1.5 lift ${odd.toFixed(1)} vs even ${even.toFixed(1)} dB`);
 
   const prof = () => ({ speed: 0.74, throttle: 0.5, charge: 1 });
-  const buf = await renderChronoCoupe(prof, 2.2, { sampleRate: SR, cues: [{ t: 1.2, type: 'discharge' }] });
+  const buf = await renderChronoCoupe(prof, 2.2, { sampleRate: SR, seed: 'cc-discharge', cues: [{ t: 1.2, type: 'discharge' }] });
   const x = buf.getChannelData(0);
   const rms = (a, b) => {
     let s = 0;

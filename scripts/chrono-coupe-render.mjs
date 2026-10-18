@@ -4,9 +4,11 @@
  * discharge, cues), driven like EngineSynthImpl.applyIceDriving with the real EngineStateBridge.
  * Used by render-snippets.mjs (preview WAV), chrono-coupe-qa.mjs and tests. Fully procedural.
  */
+import { armSuspends, assertNoMissed } from './offline-steps.mjs'; // first: pins the runtime (see file)
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createJiti } from 'jiti';
+import { mulberry32, seededWorkletModule } from './seeded-random.mjs';
 
 if (!Promise.withResolvers) {
   Promise.withResolvers = function withResolvers() {
@@ -39,12 +41,26 @@ const lerp = (a, b, t) => a + (b - a) * t;
  * profile(t) → DrivingInput { speed, throttle, load?, rpm?, rpmNorm?, charge? (0..1), boost? }.
  * opts.params overrides defaults; opts.cues = [{ t, type: 'starter'|'shutoff'|'discharge' }].
  * opts.family forces the worklet family (A/B: 3 = even-fire V6); opts.noBus bypasses the chain.
+ * opts.seed makes the render deterministic (main thread + worklet Math.random seeded).
  */
 export async function renderChronoCoupe(profile, dur, opts = {}) {
+  if (opts.seed === undefined) return renderChronoCoupeUnseeded(profile, dur, opts);
+  // opts.seed: deterministic render — seeded Math.random on the main thread (pitch jitter,
+  // crackle timing, noise) AND inside the worklet realm (hunt / lope phases, pulse jitter)
+  const prev = Math.random;
+  Math.random = mulberry32(opts.seed);
+  try {
+    return await renderChronoCoupeUnseeded(profile, dur, { ...opts, worklet: seededWorkletModule(WORKLET, opts.seed) });
+  } finally {
+    Math.random = prev;
+  }
+}
+
+async function renderChronoCoupeUnseeded(profile, dur, opts = {}) {
   const SR = opts.sampleRate ?? 44100;
   const params = { ...pack.CHRONO_COUPE_DEFAULTS, ...(opts.params ?? {}) };
   const ctx = new OfflineAudioContext(2, Math.ceil(SR * dur), SR);
-  await ctx.audioWorklet.addModule(WORKLET);
+  await ctx.audioWorklet.addModule(opts.worklet ?? WORKLET);
   const node = new AudioWorkletNode(ctx, 'pulse-engine-processor', {
     numberOfInputs: 0,
     numberOfOutputs: 1,
@@ -140,21 +156,24 @@ export async function renderChronoCoupe(profile, dur, opts = {}) {
   }
   const cueDest = ctx.createGain();
   cueDest.connect(limiter);
-  for (const cue of opts.cues ?? []) {
-    ctx.suspend(cue.t).then(() => {
-      if (cue.type === 'starter') voice.playChronoCoupeStarter(ctx, cueDest, params, bus.white, bus.pink);
-      else if (cue.type === 'shutoff') voice.playChronoCoupeShutoff(ctx, cueDest, params, bus.white, bus.pink);
-      else if (cue.type === 'discharge') {
-        const upd = bus.updateCharge;
-        bus.updateCharge = () => undefined; // charge collapse already pre-scheduled
-        bus.lastDischarge = -10;
-        bus.discharge({ ...params, pursuitBoost: profile(cue.t).boost ?? params.pursuitBoost });
-        bus.updateCharge = upd;
-      }
-      ctx.resume();
-    });
-  }
+  // cue points registered before rendering starts (offline-steps.mjs): a cue is never dropped
+  const cueList = opts.cues ?? [];
+  const { settled, missed } = await armSuspends(ctx, cueList.map((c) => c.t), (_t, i) => {
+    const cue = cueList[i];
+    if (cue.type === 'starter') voice.playChronoCoupeStarter(ctx, cueDest, params, bus.white, bus.pink);
+    else if (cue.type === 'shutoff') voice.playChronoCoupeShutoff(ctx, cueDest, params, bus.white, bus.pink);
+    else if (cue.type === 'discharge') {
+      const upd = bus.updateCharge;
+      bus.updateCharge = () => undefined; // charge collapse already pre-scheduled
+      bus.lastDischarge = -10;
+      bus.discharge({ ...params, pursuitBoost: profile(cue.t).boost ?? params.pursuitBoost });
+      bus.updateCharge = upd;
+    }
+    ctx.resume();
+  });
   const buf = await ctx.startRendering();
+  await settled;
+  assertNoMissed(missed, 'renderChronoCoupe');
   buf.trace = trace;
   return buf;
 }

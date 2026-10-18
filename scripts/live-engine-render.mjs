@@ -6,8 +6,11 @@
  *
  * Used by tomcat-render.mjs (A/B + level measurements) and the Tomcat tests. `opts.root` lets the
  * same harness render an older checkout (e.g. the e2ace06 baseline) for before/after comparisons.
- * Deterministic: Math.random (main thread + worklet) is seeded. Nothing is loaded except code.
+ * Deterministic: Math.random (main thread + worklet) is seeded, every suspend point is registered
+ * before rendering (offline-steps.mjs), and engine settle timers never run on wall-clock time.
+ * Nothing is loaded except code.
  */
+import { armSuspends, assertNoMissed } from './offline-steps.mjs'; // first: pins the runtime (see file)
 import { createJiti } from 'jiti';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -143,13 +146,17 @@ export async function renderLive(profile, dur, opts = {}) {
         await engine.start();
         neutralise();
       }
+      // onFrame calls engine API (setAfterburnerArmed, setFlightPhase, jetQuickStart, …) that arm
+      // the engine's real 40 ms settle timer. Left real, it fires on WALL-CLOCK time whenever the
+      // next frame takes > 40 ms to render (busy box) and adds an extra drive step + random draws
+      // at a load-dependent audio time. The harness steps the drive every frame, so keep it a no-op.
       if (started && !stopped) {
         quiet(() => engine.setDriving(profile(t)));
-        opts.onFrame?.(engine, t);
+        quiet(() => opts.onFrame?.(engine, t));
       } else if (!started && opts.driveBeforeStart) {
         // Car loop already running but no user gesture yet: setDriving must stay silent
         quiet(() => engine.setDriving(profile(t)));
-        opts.onFrame?.(engine, t);
+        quiet(() => opts.onFrame?.(engine, t));
       }
       while (cues.length && cues[0].t <= t + 1e-9) {
         const c = cues.shift();
@@ -183,18 +190,17 @@ export async function renderLive(profile, dur, opts = {}) {
     }
     // Frame 0 runs before rendering starts (suspend(0) is not allowed)
     await frame(0);
-    for (let i = 1; i * step < dur - quantum; i++) {
-      ctx.suspend(i * step).then(
-        async () => {
-          await frame(ctx.currentTime);
-          resume();
-        },
-        (err) => {
-          if (process.env.RF_DEBUG) console.warn('suspend failed', i, i * step, err?.message);
-        },
-      );
-    }
+    const times = [];
+    for (let i = 1; i * step < dur - quantum; i++) times.push(i * step);
+    // every frame point is registered before rendering starts (offline-steps.mjs), so no frame is
+    // dropped under CPU load; a refused point fails the render instead of leaving a silent hole
+    const { settled, missed } = await armSuspends(ctx, times, async () => {
+      await frame(ctx.currentTime);
+      resume();
+    });
     const buf = await ctx.startRendering();
+    await settled;
+    assertNoMissed(missed, 'renderLive');
     try {
       engine.dispose();
     } catch {

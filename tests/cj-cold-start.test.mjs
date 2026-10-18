@@ -3,10 +3,9 @@
  * switch foley, emergency stop. Pure model tests + offline renders through the shipped live chain
  * (CharacterEngine → EngineSynthImpl → TomcatVoice + JetColdStartVoice).
  *
- * Offline renders: the live harness (scripts/live-engine-render.mjs) catches every rejected
- * suspend(t); direct suspend renders here use renderWithSteps / withSteps (same pattern as
- * tests/playback-session.test.mjs on audio/resume-rejection-fix) so no suspend promise is left
- * dangling or unhandled.
+ * Offline renders: the live harness (scripts/live-engine-render.mjs) and the direct suspend
+ * renders here (renderWithSteps) register every suspend point before rendering starts
+ * (scripts/offline-steps.mjs), so no point is dropped under load and none is left dangling.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,6 +24,7 @@ const { renderLive, channelsOf } = await imp('scripts/live-engine-render.mjs');
 const { integratedLufs, samplePeakDb } = await imp('scripts/loudness.mjs');
 const { renderColdStart, DEMO_TIMELINES, DEMO_SECONDS } = await imp('tests/cj-cold-start-render.mjs');
 const { mulberry32 } = await imp('scripts/seeded-random.mjs');
+const { armSuspends } = await imp('scripts/offline-steps.mjs');
 const nwa = await import('node-web-audio-api');
 
 const PARK = () => ({ speed: 0, throttle: 0, load: 0 });
@@ -34,37 +34,28 @@ const peakOf = (chs) => Math.max(...chs.map((c) => c.reduce((m, v) => Math.max(m
 /** Largest sample-to-sample step (a click shows up as a step far above the signal's own slope). */
 const maxStep = (chs) => Math.max(...chs.map((c) => c.reduce((m, v, i) => (i ? Math.max(m, Math.abs(v - c[i - 1])) : 0), 0)));
 
-/** OfflineAudioContext with callbacks at offline times; every suspend promise is settled. */
+/**
+ * OfflineAudioContext with callbacks at offline times. Every suspend point is registered before
+ * rendering starts (scripts/offline-steps.mjs), so none is dropped under CPU load; `missed` lists
+ * any point the context refused instead of hiding it.
+ */
 async function renderWithSteps(off, steps) {
   const at = {};
-  const missed = [];
-  const settled = steps.map(([t, fn]) =>
-    off.suspend(t).then(
-      async () => {
-        at[t] = off.currentTime;
-        try {
-          await fn();
-        } finally {
-          await off.resume();
-        }
-      },
-      (err) => {
-        missed.push(`${t}: ${err?.name ?? err}`);
-      },
-    ),
-  );
-  await new Promise((r) => setTimeout(r, 5));
+  const { settled, missed } = await armSuspends(off, steps.map(([t]) => t), async (t, i) => {
+    at[t] = off.currentTime;
+    try {
+      await steps[i][1]();
+    } finally {
+      await off.resume();
+    }
+  });
   const buf = await off.startRendering();
-  await Promise.all(settled);
+  await settled;
   return { buf, at, missed };
 }
-async function withSteps(attempt, tries = 3) {
-  let r;
-  for (let n = 0; n < tries; n++) {
-    r = await attempt();
-    if (r.missed.length === 0) return r;
-  }
-  assert.deepEqual(r.missed, [], `offline suspend points rejected on all ${tries} renders`);
+async function withSteps(attempt) {
+  const r = await attempt();
+  assert.deepEqual(r.missed, [], 'offline suspend points rejected');
   return r;
 }
 
@@ -172,21 +163,16 @@ test('default off: drive model identical to ef4021e; targets identical except th
 test('default off: live chain is sample-identical to ef4021e engine code running the current Tomcat voice (start → drive → shutoff)', { skip: !baseVoice && 'ef4021e not available' }, async () => {
   const profile = (t) => (t < 5 ? { speed: 0, throttle: 0, load: 0 } : { speed: 0.3, throttle: 0.5, load: 0.5 });
   const opts = { patchId: 'aerospace-f14', seed: 'cj-default-live', fps: 30, cues: [{ t: 8, cue: 'shutdown' }] };
-  let same = false;
+  // deterministic harness (no dropped suspend points, no wall-clock timers): one pair, exact
+  const A = await renderLive(profile, 10, { ...opts, root: baseVoice });
+  const B = await renderLive(profile, 10, opts);
   let worst = 0;
-  // the harness tolerates a dropped suspend point (frame lands one step later); retry before failing
-  for (let n = 0; n < 3 && !same; n++) {
-    const A = await renderLive(profile, 10, { ...opts, root: baseVoice });
-    const B = await renderLive(profile, 10, opts);
-    worst = 0;
-    for (let c = 0; c < 2; c++) {
-      const x = A.getChannelData(c);
-      const y = B.getChannelData(c);
-      for (let i = 0; i < x.length; i++) worst = Math.max(worst, Math.abs(x[i] - y[i]));
-    }
-    same = worst === 0;
+  for (let c = 0; c < 2; c++) {
+    const x = A.getChannelData(c);
+    const y = B.getChannelData(c);
+    for (let i = 0; i < x.length; i++) worst = Math.max(worst, Math.abs(x[i] - y[i]));
   }
-  assert.ok(same, `max sample difference ${worst}`);
+  assert.ok(worst === 0, `max sample difference ${worst}`);
 });
 
 test('default off: API defaults, setJetSystem is refused, quick Start still runs both engines', async () => {

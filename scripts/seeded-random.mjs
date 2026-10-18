@@ -2,8 +2,8 @@
  * Deterministic Math.random for offline renders (preview WAVs / QA): unchanged packs render
  * byte-identical run to run. Seed = string (pack id) or number. Restores Math.random after.
  */
-import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -50,6 +50,11 @@ export function seededWorkletModule(workletPath, seed) {
   const prelude =
     `{ let a = ${s} | 0; Math.random = () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);` +
     ` t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }\n`;
-  writeFileSync(dest, prelude + readFileSync(workletPath, 'utf8'));
+  // Parallel test workers share this path: write a private temp file, then rename (atomic), so
+  // a worker loading the module never reads another worker's half-written copy. (randomUUID, not
+  // Math.random: the caller may already have seeded Math.random, and a draw here would shift it.)
+  const tmp = `${dest}.${process.pid}.${randomUUID()}.tmp`;
+  writeFileSync(tmp, prelude + readFileSync(workletPath, 'utf8'));
+  renameSync(tmp, dest);
   return dest;
 }

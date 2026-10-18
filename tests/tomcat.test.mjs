@@ -58,19 +58,14 @@ const BANNED = [
 const DISPLAY_LABEL = new RegExp(['aerospace[ _]?', 'f-?14'].join(''), 'i');
 
 /**
- * Render-vs-render identity checks: two offline renders of the same seeded profile can differ by
- * float jitter when the shared box is loaded (suspend / resume timing in node-web-audio-api —
- * seen on ef4021e itself). Such a check retries the pair (fixed seeds) and accepts at most
- * RENDER_JITTER (−80 dBFS); a real behaviour change (gear saw-tooth, shift bark) is ≥ 1e-3.
+ * Render-vs-render identity checks: the live harness is deterministic (seeded Math.random, every
+ * suspend point confirmed registered before rendering, no wall-clock engine timers), so one render
+ * pair is compared — no retries. RENDER_JITTER (−80 dBFS) stays as the identity tolerance; a real
+ * behaviour change (gear saw-tooth, shift bark) is ≥ 1e-3.
  */
 const RENDER_JITTER = 1e-4;
-async function stablePair(renderPair, tries = 3) {
-  let r;
-  for (let k = 0; k < tries; k++) {
-    r = await renderPair();
-    if (r.max < 1e-7) break;
-  }
-  return r;
+async function stablePair(renderPair) {
+  return renderPair();
 }
 
 /** Run the drive model at 60 Hz from a settled running state. */

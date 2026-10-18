@@ -5,6 +5,7 @@
  * render-snippets.mjs (preview WAV) and night-pursuit-qa.mjs (idle/cruise/WOT analysis).
  * Fully procedural: nothing is loaded except code.
  */
+import { armSuspends, assertNoMissed } from './offline-steps.mjs'; // first: pins the runtime (see file)
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -166,15 +167,18 @@ export async function renderNightPursuit(profile, dur, opts = {}) {
   // Cues route to the limiter input at full level (they bypass masterGain like EngineSynthImpl.output)
   const cueDest = ctx.createGain();
   cueDest.connect(limiter);
-  for (const cue of opts.cues ?? []) {
-    ctx.suspend(cue.t).then(() => {
-      if (cue.type === 'starter') voice.playNightPursuitStarter(ctx, cueDest, params, bus.white, bus.pink);
-      else if (cue.type === 'shutoff') voice.playNightPursuitShutoff(ctx, cueDest, params, bus.white, bus.pink);
-      else if (cue.type === 'scanner') bus.scannerTick(Number(params.scannerTick) || 0.6, cue.edge === 'left' ? -1 : 1);
-      ctx.resume();
-    });
-  }
+  // cue points registered before rendering starts (offline-steps.mjs): a cue is never dropped
+  const cueList = opts.cues ?? [];
+  const { settled, missed } = await armSuspends(ctx, cueList.map((c) => c.t), (_t, i) => {
+    const cue = cueList[i];
+    if (cue.type === 'starter') voice.playNightPursuitStarter(ctx, cueDest, params, bus.white, bus.pink);
+    else if (cue.type === 'shutoff') voice.playNightPursuitShutoff(ctx, cueDest, params, bus.white, bus.pink);
+    else if (cue.type === 'scanner') bus.scannerTick(Number(params.scannerTick) || 0.6, cue.edge === 'left' ? -1 : 1);
+    ctx.resume();
+  });
   const buf = await ctx.startRendering();
+  await settled;
+  assertNoMissed(missed, 'renderNightPursuit');
   return buf;
 }
 
