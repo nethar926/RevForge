@@ -46,3 +46,8 @@ test('wiring: host labels take the header, skin WING SWEEP / COMPASS / VDI label
   // only visibility (never display / size) so nothing moves
   assert.doesNotMatch(css.slice(css.indexOf('CONFIG headers (configHeaders.ts)')), /^\.cjm:has\(> \.cjv2\[data-(config|hdr-[a-z]+)\]\)[^{]*\{[^}]*(display|width|height|font-size)/m);
 });
+
+test('CONFIG open: the map (i) credit button no longer sits over the tile above MAP (whole tile is the target)', () => {
+  const css = src('packs/mounts/carrier-jet-v2.css');
+  assert.match(css, /\.cjv2\[data-config\] \.cjv2-map :is\(\.cjv2-info, \.cjv2-attr\) \{ visibility: hidden; \}/);
+});
