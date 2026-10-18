@@ -336,7 +336,11 @@ export interface EngineSynth {
     lockStage?: LockStage;
   };
 
-  /** Ion Twin lock ladder stage from rpmNorm + hysteresis; 'none' for other packs. */
+  /**
+   * Ion Twin lock ladder stage; 'none' for other packs and while stopped. Reads a smoothed drive
+   * value (Frontend rpmNorm, else the rpmNorm fallback raised to parked Rev throttle) with
+   * hysteresis + minimum dwell (lockStage.ts: every stage ≥ 1.0 s, KILL ≥ 1.5 s).
+   */
   getLockStage(): LockStage;
 
   /** Optional lock-confirm chirp; default false. Frontend owns UI prefs; this API is the audio gate. */

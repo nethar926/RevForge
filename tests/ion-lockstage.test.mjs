@@ -19,8 +19,10 @@ test('CharacterEngine derives lockStage from base after setDriving (no local nex
   assert.match(ce, /this\.running\?this\.base\.getLockStage\(\):'none'/);
 });
 
-test('ion-twin parked Hold-to-Rev: CharacterEngine lockStage matches base (identified)', async () => {
-  // Parked, full throttle, no Frontend rpmNorm → base rpmNorm ≈ throttle*0.55 ≈ 0.5445 → identified (≥0.50).
+test('ion-twin parked Hold-to-Rev: CharacterEngine lockStage matches base (first step identified)', async () => {
+  // Parked, full throttle, no Frontend rpmNorm → HUD rpmNorm ≈ throttle*0.55 ≈ 0.5445 (acoustic). The
+  // ladder reads the smoothed Rev throttle and escalates one stage per LOCK_MIN_HOLD_S, so at
+  // 0.2–0.35 s the first step (identified) is in; KILL follows (tests/ion-lockstage-dwell.test.mjs).
   const profile = () => ({ speed: 0, throttle: 0.99, load: 0.99 });
   let seen;
   await renderLive(profile, 0.35, {

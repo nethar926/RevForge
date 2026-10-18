@@ -58,7 +58,7 @@ import type {
   SynthNodeDesc,
   TopologyId,
 } from './types';
-import { nextLockStage, packSupportsLockLadder } from './lockStage';
+import { LockLadder, LOCK_RELEASE_THROTTLE, lockDriveRaw, packSupportsLockLadder } from './lockStage';
 import {
   clampIdleBand,
   DEFAULT_IDLE_BAND,
@@ -344,6 +344,9 @@ export class EngineSynthImpl implements EngineSynth {
   private valveTickWait = 0;
   /** Ion Twin lock ladder (scifi/ion-twin only) */
   private lockStage: LockStage = 'none';
+  /** Ion Twin lock ladder: smoothed drive value + hysteresis + minimum dwell (lockStage.ts). */
+  private lockLadder = new LockLadder();
+  private lockLastMs = -1;
   private lockSfxEnabled = false;
   /** Soft-cue for Frontend; prefer polling getHud().lockStage if unset. */
   onLockStageChange?: (stage: LockStage) => void;
@@ -500,6 +503,10 @@ export class EngineSynthImpl implements EngineSynth {
 
   stop(): void {
     this.started = false;
+    // Lock ladder idles at 'none' while stopped (silent, like CharacterEngine.stop).
+    this.lockLadder.reset();
+    this.lockStage = 'none';
+    this.hud.lockStage = 'none';
     this.callouts.reset();
     if (this.g.tcVoice && this.tcState.phase !== 'shutdown') {
       // Plain stop (no shutdown cue): output fades below; the next start() runs a fresh start sequence.
@@ -660,6 +667,7 @@ export class EngineSynthImpl implements EngineSynth {
       this.jetQueue = null;
       this.jetCold = createJetColdState();
       this.g = this.buildGraph(patch.kind, patch.topology);
+      this.lockLadder.reset();
       this.lockStage = 'none';
       this.hud.lockStage = 'none';
     }
@@ -2331,6 +2339,9 @@ export class EngineSynthImpl implements EngineSynth {
       const fromThr = d.throttle * (d.speed < 0.04 ? 0.55 : 0.35);
       rpmNorm = clamp(Math.max(fromSpeed, fromThr) + (d.speed >= 0.04 ? d.throttle * 0.12 : 0));
     }
+    // Lock ladder drive value: Frontend rpmNorm, else this fallback raised to parked Rev throttle.
+    // Taken before any per-topology gearbox model so the ladder never reads an acoustic sawtooth.
+    const lockRaw = lockDriveRaw({ speed: d.speed, throttle: d.throttle, rpmNorm: d.rpmNorm, fallbackRpmNorm: rpmNorm });
 
     // Night Pursuit: one continuous drive model. Frontend rpm/rpmNorm still win; without
     // them a 4-speed automatic + converter maps speed/throttle → rpm (glides, no cliffs).
@@ -2393,7 +2404,7 @@ export class EngineSynthImpl implements EngineSynth {
       this.applyScifiDriving(rpmNorm, d, tc);
     }
     this.hud.driveMood = this.driveMood;
-    this.updateLockStage(rpmNorm);
+    this.updateLockStage(lockRaw, d.throttle, immediate);
   }
 
   /**
@@ -3037,7 +3048,17 @@ export class EngineSynthImpl implements EngineSynth {
     return packSupportsLockLadder(this.patchMeta.kind, this.patchMeta.topology, this._id);
   }
 
-  private updateLockStage(rpmNorm: number): void {
+  private updateLockStage(lockRaw: number, throttle: number, immediate: boolean): void {
+    // Time base: same clock as the drive models (performance.now; offline harness follows audio time).
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const dt = immediate || this.lockLastMs < 0 ? 0 : Math.min(1, Math.max(0, (nowMs - this.lockLastMs) / 1000));
+    this.lockLastMs = nowMs;
+    if (!this.started || this.disposed) {
+      // Stopped: ladder idles at 'none' with a zero drive value; next start escalates from scratch.
+      this.lockLadder.reset();
+    } else {
+      this.lockLadder.step(lockRaw, dt, { released: throttle <= LOCK_RELEASE_THROTTLE });
+    }
     if (!this.supportsLockLadder()) {
       if (this.lockStage !== 'none') {
         this.lockStage = 'none';
@@ -3053,7 +3074,7 @@ export class EngineSynthImpl implements EngineSynth {
       return;
     }
     const prev = this.lockStage;
-    const next = nextLockStage(rpmNorm, prev, 0.04);
+    const next = this.lockLadder.stage;
     this.lockStage = next;
     this.hud.lockStage = next;
     if (next === prev) return;
