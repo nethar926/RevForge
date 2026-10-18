@@ -22,7 +22,8 @@ import { getWxObs, setWxObs, subscribeWxObs, wxValueAt } from '../carrier-jet/wx
 import { startWxPoller } from '../carrier-jet/weather/poller';
 import { storageKey } from '../../lib/storageKey';
 import { CjWxReadout } from './CjWxReadout';
-import { getWxRadar, setWxRadar, subscribeWxRadar, WX_RADAR_CREDIT } from '../carrier-jet/wxRadar';
+import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
+import { wxCreditRows } from '../carrier-jet/wxCredits';
 // live map + compass legend: a lazy chunk (CjLiveMap.tsx, Meghan's style + WMM2025); maplibre-gl is a further lazy chunk
 const CjLiveMap = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjLiveMap })));
 const CjHeadingReadout = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjHeadingReadout })));
@@ -247,6 +248,7 @@ function RadarScope({ view, reduced, status, label }: { view: MapView; reduced: 
 type LiveMapCtx = { demo: boolean; park: boolean; hdgRef: 'M' | 'T' };
 function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx; wx?: WxView | null; wxRadar?: boolean }) {
   const [info, setInfo] = useState(false);
+  const credits = wxCreditRows(wx?.source ?? null, !!wxRadar);
   return (
     <div className="cjv2-cell cjv2-map" data-radar={view.radar} style={boxStyle(box)}>
       <span className="cjv2-lab" aria-hidden="true">{view.radar ? 'RADAR' : 'MAP'}</span>
@@ -259,18 +261,32 @@ function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar 
         <Suspense fallback={view.radar ? <RadarScope view={view} reduced={reduced} status="" label={cjRadarScopeAria({ range: view.range, mode: view.mode }, '', false)} /> : null}>
           <CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} wxRadar={!!wxRadar} radar={view.radar ? { range: view.range, mode: view.mode, scope: (st) => <RadarScope view={view} reduced={reduced} status={st} /> } : undefined} />
         </Suspense>
-        <button type="button" className="cjv2-info" aria-expanded={info} aria-label="Map credit" onClick={() => setInfo((v) => !v)}>i</button>
-        {info && (
-          <p className="cjv2-attr" role="note" data-wx={wxRadar ? 'radar' : wx ? true : undefined}>
+        <button type="button" className="cjv2-info" aria-expanded={info} aria-label="Map credit" data-covered={(info && credits.length > 0) || undefined} onClick={() => setInfo((v) => !v)}>i</button>
+        {info && !credits.length && (
+          <p className="cjv2-attr" role="note">
             {MAP_CREDIT}
-            {/* weather credit: the source of the value on screen (Open-Meteo: required; NWS: courtesy). Plain text, not a
-                link: a link here would be a sub-44px target in the car (URL kept in wxView.WX_CREDIT_URL). */}
-            {wx && <span className="cjv2-wxcredit">{wx.credit}</span>}
-            {/* WX radar (RainViewer asks to be named as the source; plain text for the same 44px reason) */}
-            {wxRadar && <span className="cjv2-wxcredit" data-radar-credit>{WX_RADAR_CREDIT}</span>}
           </p>
         )}
       </div>
+      {/* with weather / radar credits: the map credit, then one full-width row per credit; links (Open-Meteo + its
+          CC BY 4.0 licence, RainViewer) are >= 44px rows, the whole row the target, new tab. Outside the CRT (it clips):
+          from the CRT top as before when it fits, else it grows UP from the CRT bottom (over the cell above; never down
+          into the shelf). It carries its own (i) in its top-right corner, over the map credit, to close it. */}
+      {info && credits.length > 0 && (
+        <div className="cjv2-attrwrap">
+          <div className="cjv2-attr" role="note" data-wx={wxRadar ? 'radar' : true} data-rows>
+            <button type="button" className="cjv2-info cjv2-attr-close" aria-expanded={true} aria-label="Map credit" onClick={() => setInfo(false)}>i</button>
+            <p className="cjv2-attr-map">{MAP_CREDIT}</p>
+            {credits.map((c) =>
+              c.href ? (
+                <a key={c.id} className="cjv2-credrow" data-credit={c.id} href={c.href} target="_blank" rel="noopener noreferrer">{c.text}</a>
+              ) : (
+                <span key={c.id} className="cjv2-credrow" data-credit={c.id} data-plain>{c.text}</span>
+              ),
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

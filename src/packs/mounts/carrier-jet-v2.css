@@ -416,13 +416,23 @@
   .cjwx-sep { display: none; }
 }
 @container (min-height: 140px) and (min-width: 260px) { .cjwx { font-size: 15px; line-height: 17px; left: 10px; top: 7px; } .cjwx-glyph { width: 20px; height: 20px; } }
-.cjv2-attr[data-wx] { right: 4px; }
-.cjv2-attr[data-wx]::before { content: ''; float: right; width: 27px; height: 27px; margin: -2px -5px 0 2px; }
-.cjv2-crt:has(> .cjv2-attr[data-wx]) > .cjv2-info { z-index: 2; }
-.cjv2-wxcredit { display: block; margin-top: 2px; padding-top: 2px; border-top: 1px solid #2f7a48; }
-/* WX radar on: weather + radar credits run on after the map credit (" · "), so the panel still fits the Park 773 CRT (90 px) */
-.cjv2-attr[data-wx='radar'] .cjv2-wxcredit { display: inline; margin: 0; padding: 0; border: 0; }
-.cjv2-attr[data-wx='radar'] .cjv2-wxcredit::before { content: ' · '; }
+/* (i) with weather / radar credits (CjV2Layer MapCell): outside the CRT (it clips), over the CRT's inner box (3px border
+   + the 4px inset of the plain panel); the map credit, then one full-width row per credit. Link rows are >= 44px tall
+   (Apple HIG 44pt; the whole row is the target), 11px text, phosphor on #041009 (15.7:1). The wrap is bottom-anchored
+   with a min-height of the CRT's inner box: a short panel sits at the CRT top as before, a taller one grows UP over the
+   cell above (never down into the shelf). The panel's own (i) closes it; the CRT's (i) is covered meanwhile.
+   `.cjv2-attr > a` outranks the app's `.forge a { text-decoration: none }`. */
+.cjv2-map > .cjv2-attrwrap { position: absolute; left: 7px; right: 7px; bottom: 6px; min-height: calc(100% - 12px); display: flex; flex-direction: column; z-index: 5; pointer-events: none; }
+.cjv2-attrwrap > .cjv2-attr[data-rows] { position: relative; left: auto; right: auto; top: auto; padding: 0; pointer-events: auto; display: flex; flex-direction: column; }
+.cjv2-info[data-covered] { visibility: hidden; }
+.cjv2-attr > .cjv2-attr-close { top: 0; right: 0; z-index: 1; }
+.cjv2-attr-map { margin: 0; padding: 2px 5px; }
+.cjv2-attr-map::before { content: ''; float: right; width: 34px; height: 32px; margin: -2px -5px 0 2px; }
+.cjv2-credrow { display: flex; align-items: center; min-height: 44px; box-sizing: border-box; padding: 0 5px; border-top: 1px solid #2f7a48; color: #8dffad; font-size: 11px; line-height: 13px; }
+.cjv2-attr > a.cjv2-credrow { color: #8dffad; text-decoration: underline; text-decoration-color: #45ad66; text-underline-offset: 2px; cursor: pointer; -webkit-tap-highlight-color: rgb(141 255 173 / 0.2); }
+.cjv2-attr > a.cjv2-credrow:focus-visible { outline: 2px solid #8dffad; outline-offset: -2px; }
+.cjv2-attr > a.cjv2-credrow:active { background: #0b2a16; }
+.cjv2-credrow[data-plain] { min-height: 0; padding: 4px 5px; }
 /* WX key off: the legend in the unlit engraving grey (#ccd2d6), as the mock's BezelKey `unlit` prop draws it. Mount-side
    because the skin's BezelKey has no `unlit` prop on this base (a7fce46 adds it under src/skins; not edited here). */
 .cjv2-key[data-unlit] .cjp-bezel text { fill: #ccd2d6; }

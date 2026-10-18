@@ -41,6 +41,8 @@ export interface WxView {
   night: boolean;
   aria: string;
   credit: string;
+  /** whose value this is (the credit rows: wxCredits.wxCreditRows) */
+  source: WxSource;
 }
 
 export const WX_CREDIT: Record<WxSource, string> = { om: 'Weather data by Open-Meteo.com', nws: 'Weather: NOAA/NWS' };
@@ -91,5 +93,6 @@ export function wxView(v: WxValue | null, temp: WxTempUnit): WxView | null {
     night: !v.isDay && !!v.cond && WX_NIGHT_CONDS.includes(v.cond),
     aria: parts.join(', '),
     credit: WX_CREDIT[v.source],
+    source: v.source,
   };
 }
