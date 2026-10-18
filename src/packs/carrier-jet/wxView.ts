@@ -2,7 +2,7 @@
  * Carrier Jet OAT (outside air temperature) readout + condition glyph (Meghan's mock a7fce46 / 36b7005, ported).
  * Pure model (node-testable). Values come from wxStore.ts, fed by the live weather module (carrier-jet/weather/);
  * test fixtures live in tests/cj-wx-view.test.ts. Data spec:
- * frontend-handoff/weather/RESEARCH.md (tempC stored, whole degrees in the units pref, age from the obs time,
+ * frontend-handoff/weather/RESEARCH.md (tempC stored, whole degrees in the TEMP units pref, age from the obs time,
  * aged > 20 min, dimmed > 90 min, hidden > 3 h or with no value; credit by source).
  */
 export type WxCond =
@@ -69,18 +69,22 @@ export function ageSpan(min: number): string {
 }
 const ageWords = (min: number) => `${ageSpan(min)} old`;
 
-/** Value → what the HUD shows (null = slot hidden). Units: 'mph' → °F, 'kph' → °C. */
-export function wxView(v: WxValue | null, unit: 'mph' | 'kph'): WxView | null {
+/** OAT unit: the CONFIG › TLM › UNITS › TEMP pref only ('f' → °F, 'c' → °C); never the speed unit. */
+export type WxTempUnit = 'f' | 'c';
+export const oatTempUnit = (prefs: { tempUnit: WxTempUnit }): WxTempUnit => (prefs.tempUnit === 'c' ? 'c' : 'f');
+
+/** Value → what the HUD shows (null = slot hidden). `temp`: the TEMP pref (oatTempUnit), 'f' → °F, 'c' → °C. */
+export function wxView(v: WxValue | null, temp: WxTempUnit): WxView | null {
   const st = v ? wxStaleness(v.ageMin) : null;
   if (!v || !st || v.tempC == null || !Number.isFinite(v.tempC) || st.hidden) return null;
-  const t = Math.round(unit === 'kph' ? v.tempC : v.tempC * 9 / 5 + 32);
-  const temp = `${t}°`;
+  const c = temp === 'c';
+  const t = Math.round(c ? v.tempC : v.tempC * 9 / 5 + 32);
   const aged = st.aged;
-  const parts = [`Outside air ${t} degrees ${unit === 'kph' ? 'Celsius' : 'Fahrenheit'}`];
+  const parts = [`Outside air ${t} degrees ${c ? 'Celsius' : 'Fahrenheit'}`];
   if (v.cond) parts.push(WX_WORDS[v.cond]);
   parts.push(aged ? ageWords(v.ageMin) : 'live');
   return {
-    temp,
+    temp: `${t}°`,
     age: aged ? fmtAge(v.ageMin) : null,
     dim: st.dim,
     cond: v.cond,

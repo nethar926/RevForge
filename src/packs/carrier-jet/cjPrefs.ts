@@ -11,7 +11,8 @@
  *  - motion auto | reduced | full (Reduce Motion override; AUTO follows the system)
  *  - hdgRef M | T (TLM › UNITS › HDG: which heading leads, magnetic or true; default M; GPS course is TRUE,
  *    MAG = TRUE − declination from the skin's offline WMM2025)
- *  - distUnit mi | km, tempUnit f | c, pressUnit psi | bar (TLM › UNITS; FLAGGED: no readout uses them yet)
+ *  - tempUnit f | c (TLM › UNITS › TEMP): the OAT readout's unit (wxView.oatTempUnit), independent of the speed unit
+ *  - distUnit mi | km, pressUnit psi | bar (TLM › UNITS; FLAGGED: no readout uses them yet)
  */
 import { storageKey } from '../../lib/storageKey.ts';
 import type { KV } from '../abArmed.ts';

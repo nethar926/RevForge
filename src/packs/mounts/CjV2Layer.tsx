@@ -17,7 +17,7 @@ import { cellKeys, KEY_CELLS, RIGHT_BANK, SPARE_INDEX, stripCount, wxSlot, type 
 import { cjNavAction, cjNavItems } from '../carrier-jet.nav';
 import { disabledReason, itemAria, itemValue, MAP_CREDIT, pageTiles, runItem, visibleItems, type ConfigCtx, type ConfigEffect, type ConfigItem } from '../configTable';
 import { CJ_CONFIG } from '../carrier-jet/configPages';
-import { wxView, type WxView } from '../carrier-jet/wxView';
+import { oatTempUnit, wxView, type WxView } from '../carrier-jet/wxView';
 import { getWxObs, setWxObs, subscribeWxObs, wxValueAt } from '../carrier-jet/wxStore';
 import { startWxPoller } from '../carrier-jet/weather/poller';
 import { storageKey } from '../../lib/storageKey';
@@ -316,11 +316,11 @@ export interface CjV2LayerProps {
   motion: boolean;
   heading: number | undefined;
   headingStale: boolean;
-  /** Speed unit pref (also the OAT unit: mph → °F, kph → °C). */
+  /** Speed unit pref (speed only; the OAT follows the TEMP pref, prefs.tempUnit). */
   unit?: 'mph' | 'kph';
 }
 
-export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, unit = 'mph' }: CjV2LayerProps) {
+export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }: CjV2LayerProps) {
   const selfRef = useRef<HTMLDivElement>(null);
   const geo = useGeo(selfRef, layout);
   const view = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
@@ -475,7 +475,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, u
   };
   const edge = geo.board2 && cells && !phone;
   // weather: Board 2 only (MATRIX look), in the COMPASS cell's top-left corner
-  const wx = geo.board2 && !phone ? wxView(wxValue, unit) : null;
+  const wx = geo.board2 && !phone ? wxView(wxValue, oatTempUnit(prefs)) : null;
   return (
     <div ref={selfRef} className="cjv2" data-config={cfg.open || undefined} data-motion={reduced ? 'static' : 'live'}>
       {cells && (

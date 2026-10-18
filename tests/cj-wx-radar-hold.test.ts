@@ -88,7 +88,7 @@ test('dims on the OAT schedule: the same wxStaleness, no second set of threshold
   reportWxRadarFetch(false, T + 1);
   for (const m of [12, WX_DIM_MIN, WX_DIM_MIN + 1, 150, 400]) {
     assert.equal(radarAgeView(getWxRadarStatus(), true, T + min(m))?.dim ?? true, wxStaleness(m).dim || wxStaleness(m).hidden, `${m} min`);
-    assert.equal(wxView({ tempC: 20, cond: null, isDay: true, source: 'om', ageMin: m }, 'mph')?.dim ?? true, wxStaleness(m).dim || wxStaleness(m).hidden);
+    assert.equal(wxView({ tempC: 20, cond: null, isDay: true, source: 'om', ageMin: m }, 'f')?.dim ?? true, wxStaleness(m).dim || wxStaleness(m).hidden);
   }
   assert.equal(radarAgeView(getWxRadarStatus(), true, T + min(91))?.dim, true);
   const radar = src('packs/carrier-jet/wxRadar.ts');
