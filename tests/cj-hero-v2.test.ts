@@ -286,7 +286,11 @@ test('AFTERBURNER: AB ARMED lamp never lit while the switch reads SAFE (one valu
     const readsArm = v.pos === 'up' && v.lidOpen;
     assert.equal(v.lamp, readsArm, `armed=${armed} guardOpen=${guardOpen}`);
   }
-  // fresh storage: getAbArmed() defaults to armed with the guard closed -> lid drawn open at ARM, not closed over SAFE
+  // fresh storage: getAbArmed() is SAFE -> guard closed, bat down, lamp dark (and a saved ARM shows the lid open)
+  const ab = readFileSync(new URL('../src/packs/abArmed.ts', import.meta.url), 'utf8');
+  assert.match(ab, /current = readAbArmed\(\) \?\? false;/, 'getAbArmed defaults to SAFE');
+  assert.match(ab, /setAfterburnerArmed\(readAbArmed\(kv\) \?\? false\)/, 'engine gets SAFE on a fresh load');
+  assert.deepEqual(abView(false, false), { pos: 'dn', lidOpen: false, lamp: false });
   assert.deepEqual(abView(true, false), { pos: 'up', lidOpen: true, lamp: true });
   assert.deepEqual(abGuardTap(false, false), { open: true, disarm: false }, 'closed lid: tap lifts');
   assert.deepEqual(abGuardTap(true, false), { open: false, disarm: true }, 'closing the lid over ARM throws SAFE');

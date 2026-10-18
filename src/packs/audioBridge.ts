@@ -27,7 +27,7 @@ export interface PackAudioHooks {
   getAfterburnerZone?(): number;
   /** Jet engines: zone change subscription; returns an unsubscribe. */
   onAfterburnerZoneChange?(listener: () => void): (() => void) | void;
-  /** Tomcat: Frontend ARM switch (default armed; engine stores nothing). */
+  /** Tomcat: Frontend ARM switch (fresh load SAFE; engine stores nothing). */
   setAfterburnerArmed?(armed: boolean): void;
 }
 

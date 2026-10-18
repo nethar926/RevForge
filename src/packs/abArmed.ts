@@ -2,7 +2,7 @@
  * Carrier Jet afterburner ARM switch state (framework). Audio's Tomcat engine (a599712) starts armed
  * and stores nothing; Frontend persists the switch under storageKey(AB_ARMED_KEY) and pushes it to
  * the engine over the pack runtime bus (sendPackEngineCommand → audioBridge →
- * engine.setAfterburnerArmed). No saved value → the engine is never called (default armed).
+ * engine.setAfterburnerArmed). No saved value → SAFE (setAfterburnerArmed(false); Dan: AB sound off until armed).
  */
 import { storageKey } from '../lib/storageKey.ts';
 
@@ -35,20 +35,19 @@ export function writeAbArmed(armed: boolean, kv: KV | null = local()): void {
   }
 }
 
-/** Engine side: apply the saved choice if there is one; never calls when none. Returns whether it called. */
+/** Engine side: apply the saved choice, or SAFE when nothing is saved (fresh load = SAFE, AB sound off until armed). Returns whether it called. */
 export function applySavedAbArmed(engine: { setAfterburnerArmed?(armed: boolean): void } | null | undefined, kv: KV | null = local()): boolean {
-  const saved = readAbArmed(kv);
-  if (saved === null || !engine || typeof engine.setAfterburnerArmed !== 'function') return false;
-  engine.setAfterburnerArmed(saved);
+  if (!engine || typeof engine.setAfterburnerArmed !== 'function') return false;
+  engine.setAfterburnerArmed(readAbArmed(kv) ?? false);
   return true;
 }
 
 // Tiny external store so the guard re-renders when ARM flips (useSyncExternalStore).
 const listeners = new Set<() => void>();
 let current: boolean | null = null;
-/** Displayed armed state: saved value, else the engine default (armed). */
+/** Displayed armed state: saved value, else SAFE (William's gate, Oct 18: a fresh load never shows ARM). */
 export function getAbArmed(): boolean {
-  if (current === null) current = readAbArmed() ?? true;
+  if (current === null) current = readAbArmed() ?? false;
   return current;
 }
 export function subscribeAbArmed(l: () => void): () => void {

@@ -86,13 +86,14 @@ test('compass switch state mapping', () => {
   assert.equal(compassSwitchState('denied', true), 'denied');
 });
 
-test('ARM persistence: no saved value → engine never called; saved value → applied', () => {
+test('ARM persistence: no saved value → engine set SAFE; saved value → applied', () => {
   const kv = memKV();
   const calls: boolean[] = [];
   const engine = { setAfterburnerArmed: (a: boolean) => void calls.push(a) };
   assert.equal(readAbArmed(kv), null);
-  assert.equal(applySavedAbArmed(engine, kv), false);
-  assert.deepEqual(calls, [], 'default armed: no call');
+  assert.equal(applySavedAbArmed(engine, kv), true);
+  assert.deepEqual(calls, [false], 'fresh storage: SAFE');
+  calls.length = 0;
   writeAbArmed(false, kv);
   assert.equal(kv.m.get(AB_ARMED_KEY), 'false', 'storageKey() is identity on root builds');
   assert.equal(applySavedAbArmed(engine, kv), true);
