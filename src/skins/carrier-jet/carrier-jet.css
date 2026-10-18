@@ -253,8 +253,8 @@
 .cj[data-layout='reflow'] .cj-spd-num { font-size: min(calc(100cqh - 44px), 56cqw); }
 .cj[data-layout='reflow'] .cj-rpm .cj-k-num { font-size: min(calc(100cqh - 34px), 42cqw); }
 /* HOLO RPM digits: the same 11px floor as the other text (container units alone gave 8.09px in phone landscape).
-   Kept before the portrait rules below on purpose: portrait keeps its own RPM sizing (its RPM cell has no room for an
-   11px line under SUPERSONIC; a floor there pushed the digits into the tag). */
+   Kept before the portrait rules below on purpose: portrait lays the MACH / RPM cell out in fixed lines instead
+   (see "HOLO portrait MACH / RPM cell" below). */
 .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-rpm .cj-k-num { font-size: max(11px, min(calc(100cqh - 34px), 42cqw)); }
 .cj[data-layout='reflow'] .cj-mach .cj-mach-num { font-size: max(13px, min(calc(100cqh - 48px), 30cqw)); }
 .cj[data-layout='reflow'] .cj-mach-tape { height: 12px; margin-top: 2px; }
@@ -315,6 +315,11 @@
 /* A: in the HSD label strip, right of the HSD label (directly over the HSD screen and its heading box) */
 .cj-plab-2:has(> .cj-hstale) { position: relative; }
 .cj-plab-2 > .cj-hstale { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); }
+/* Board 2 (MATRIX at 773/1280) sets every panel label position: static, so the chip above was placed against .cj-body and
+   ran past the board's right edge (68-80px clipped, off screen). Anchor it to its COMPASS label again: it then sits
+   right of the label inside the COMPASS column (col 5). Tracking is already 0 (VT323) and the chip fits on one line
+   there (773: 630-698 of 562-759; 1280: 999-1079 of 931-1258), so it does not need to wrap. */
+.cjm[data-cjm-v2] .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-mid > .cj-plab-2:has(> .cj-hstale) { position: relative; }
 /* B: over the ladder's top-left corner, just under the heading tape (the cells keep their rows) */
 .cj-b-mid:has(> .cj-hstale) > :nth-child(1) { grid-row: 1; grid-column: 1; }
 .cj-b-mid:has(> .cj-hstale) > :nth-child(2) { grid-row: 2; grid-column: 1; }
@@ -399,6 +404,37 @@
 [data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-deck .cj-c-tape { grid-column: 1; grid-row: 2; align-self: end; }
 [data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-deck .cj-c-plan { grid-column: 2; grid-row: 1 / 3; height: 100%; }
 
+/* HOLO portrait MACH / RPM cell. The cell's share of the card (37-58px) was smaller than its content, so the RPM digits
+   sized from it came out at 0px and SUPERSONIC sat on the RPM line. Here the cell takes its content height (the SPEED
+   cell keeps its old height: the card's row is calc(73px + 15.4%), i.e. the old 28fr share plus the extra lines) and is
+   laid out in fixed lines:
+     MACH  M 1.10  [mach tape]
+     RPM ............ SUPERSONIC      (tag at the right end of the RPM caption line)
+     5,901                            (digits on their own line, 16px)
+     [==== bar, full width ======]
+   The tag is placed on the cell itself (.cj-c-gr is its containing block; its bottom offset = the digits + bar lines
+   below the caption line), so it never shares a line with the digits. If the caption line is too narrow for RPM + tag
+   (cell < 112px, narrower than any supported phone), the tag moves to the right end of the bar and the bar shortens. */
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-body { grid-template-rows: minmax(0, calc(73px + 15.4%)) minmax(0, 40fr) minmax(calc((100% - 12px) * 0.32), 32fr); }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-left { grid-template-rows: minmax(0, 1fr) auto; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr { container: cj-hgr / inline-size; position: relative; grid-template-rows: auto auto; gap: 4px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr > * { container-type: normal; position: static; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr .cj-lab { line-height: 13px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr .cj-mach { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 8px; align-items: baseline; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr .cj-mach > .cj-lab { grid-column: 1; grid-row: 1; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr .cj-mach-num { grid-column: 2; grid-row: 1; margin: 0; font-size: 13px; line-height: 15px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr .cj-mach-tape { grid-column: 3; grid-row: 1; align-self: center; width: 100%; margin-top: 0; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr .cj-mach-tag { position: absolute; right: 0; bottom: 31px; margin: 0; padding: 0 3px; font-size: 11px; line-height: 13px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-rpm .cj-k-num { margin-top: 2px; font-size: 16px; line-height: 16px; }
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr .cj-rpm-bar { height: 10px; margin-top: 3px; }
+/* The taller card makes the engines svg height-bound, so the centred R LOAD caption (wider than its bar's share) ran
+   1-2px past the svg edge; it stays inside the card's padding, so let it draw there. */
+[data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-eng > .cj-svg { overflow: visible; }
+@container cj-hgr (max-width: 111.98px) {
+  [data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr .cj-mach-tag { bottom: -1.5px; }
+  [data-rf-layout="portrait"] .cj[data-layout='reflow'][data-variant='swing-wing'] .cj-c-gr .cj-rpm-bar { margin-right: 76px; }
+}
+
 /* ---------------- FLIGHT-block slot (flightSlot: the host's afterburner guard), phone portrait only. The slot is one more
    row of the left block of each look; the body gives that block the row's height back so the other blocks keep their
    share. Strip guard (cap · well · plate, 60px) where the block is >= 340px wide (A, C), else cap + plate over the
@@ -419,6 +455,10 @@
 /* C portrait */
 [data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'][data-variant='swing-wing'] .cj-body { grid-template-rows: 60px minmax(0, 28fr) minmax(0, 40fr) minmax(0, 32fr); }
 [data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'] .cj-c-left { grid-row: 1 / 3; grid-template-rows: minmax(0, 55fr) minmax(0, 45fr) auto; }
+
+/* HOLO portrait MACH / RPM cell with the slot (see "HOLO portrait MACH / RPM cell" above): same selectors as the slot rules above, so kept after them. */
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'][data-variant='swing-wing'] .cj-body { grid-template-rows: 60px minmax(0, calc(7px + 15.4%)) minmax(0, 40fr) minmax(calc((100% - 78px) * 0.32), 32fr); }
+[data-rf-layout="portrait"] .cj[data-flight-slot='true'][data-layout='reflow'][data-variant='swing-wing'] .cj-c-left { grid-template-rows: minmax(0, 1fr) auto auto; }
 
 /* Reduce Transparency: solid fills only (no scanlines, glows, dot texture or shadows). */
 @media (prefers-reduced-transparency: reduce) {

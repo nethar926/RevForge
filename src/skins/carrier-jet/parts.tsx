@@ -390,6 +390,9 @@ export function Approach({ x, y, w, h, P, cell, active, label }: { x: number; y:
 }
 
 // ------------------------------------------------------------------ paired engine strips + AB zones 1-5 (lit in the same render as the abZone prop)
+/** Horizontal Engines (VECTOR): AB word tracking (em) and inset (SVG units) inside its 70-unit label cell. */
+export const AB_WORD_LS = 0.02;
+export const AB_WORD_INSET = 4;
 export function Engines({ x, y, w, h, P, rpmN, load, ab, rpm, horizontal = false }: { x: number; y: number; w: number; h: number; P: CjPalette; rpmN: number; load: number; ab: number; rpm: number; horizontal?: boolean }) {
   const abWord = ab ? `AB ${ab}` : 'AB OFF';
   if (!horizontal) {
@@ -448,7 +451,10 @@ export function Engines({ x, y, w, h, P, rpmN, load, ab, rpm, horizontal = false
         );
       })}
       <g data-cj-el="ab-ladder">
-      <T x={x} y={zy + 18} fill={ab ? P.abLabel : P.text} weight={800} anchor="start">{abWord}</T>
+      {/* AB word in its 70-unit label cell: tighter tracking (0.02em, was the 0.06em default) and a 4-unit inset, so the
+          "A" ink no longer starts on the SVG's left edge (it was cut by 1.1px at 773x601) and the word ends well before
+          zone 1 (56 + 4 < 70 units at the boosted 20-unit size). */}
+      <T x={x + AB_WORD_INSET} y={zy + 18} fill={ab ? P.abLabel : P.text} weight={800} anchor="start" ls={AB_WORD_LS}>{abWord}</T>
       {[1, 2, 3, 4, 5].map((z) => {
         const zx = x + labW + (z - 1) * (zw + 6), lit = z <= ab;
         return (

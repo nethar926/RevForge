@@ -26,11 +26,11 @@ const over = (fg: number[], a: number, bg: number[]) => fg.map((v, i) => v * a +
 const PANEL_LIGHTEST = [92, 99, 104]; // lightest sampled gunmetal behind a shelf / bank legend (QUICK START plate area)
 const SHELF_HEADER = [94, 101, 104]; // COLD START header strip, luminance ~0.124
 const CELL = [86, 93, 98]; // a typical toggle cell / RADAR plate behind ON
-const HOLO_AB_GLOW = [92, 76, 49];
+const HOLO_AB_GLOW = [92, 76, 49]; // HOLO portrait Drive: amber AB glow behind the RPM label
 // BATT cell (the first cued cell) without its wash: 1280 Park measured rgb(91,103,105) with the 4% wash → ~[89,99,103]
-const CUED_CELL_BASE = [89, 99, 103]; // HOLO portrait Drive: amber AB glow behind the RPM label
+const CUED_CELL_BASE = [89, 99, 103];
 
-test('HOLO RPM digits keep an 11px floor in the reflowed board (phone landscape); portrait keeps its own sizing', () => {
+test('HOLO RPM digits keep an 11px floor in the reflowed board (phone landscape); portrait has its own fixed lines', () => {
   const base = css.match(/\.cj\[data-layout='reflow'\]\[data-variant='swing-wing'\] \.cj-rpm \.cj-k-num \{ font-size: ([^;]+); \}/);
   assert.ok(base, 'reflow swing-wing RPM rule');
   assert.match(base[1], /^max\(11px, min\(calc\(100cqh - 34px\), 42cqw\)\)$/, 'the reflow size, floored at 11px');
@@ -38,7 +38,9 @@ test('HOLO RPM digits keep an 11px floor in the reflowed board (phone landscape)
   const at = css.indexOf(base[0]);
   assert.ok(at > css.indexOf(".cj[data-layout='reflow'] .cj-rpm .cj-k-num {"), 'after the generic reflow rule');
   assert.ok(at < css.indexOf(`[data-rf-layout="portrait"] .cj[data-layout='reflow'] .cj-rpm .cj-k-num {`), 'before the portrait rule');
-  assert.doesNotMatch(css, /\[data-rf-layout="portrait"\][^{]*\[data-variant='swing-wing'\] \.cj-rpm \.cj-k-num/, 'no portrait floor (no room under SUPERSONIC)');
+  // portrait: a fixed >= 11px line of its own (tests/cj-holo-portrait-rpm.test.ts), not the container-unit size
+  const p = css.match(/\[data-rf-layout="portrait"\] \.cj\[data-layout='reflow'\]\[data-variant='swing-wing'\] \.cj-rpm \.cj-k-num \{[^}]*font-size: (\d+)px;/);
+  assert.ok(p && +p[1] >= 11, 'HOLO portrait RPM digits >= 11px');
 });
 
 test('HOLO label colour >= 4.5:1 on the amber AB glow', () => {
