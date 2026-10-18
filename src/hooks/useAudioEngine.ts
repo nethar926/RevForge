@@ -63,12 +63,19 @@ export function useAudioEngine(
         ctxRef.current = new AC();
       }
       try{mediaRef.current=new MediaOutput(ctxRef.current);}catch{setBackgroundStatus("Media streams unavailable · direct audio active");}
-      ctxRef.current.onstatechange = () =>
+      if(mediaRef.current)mediaRef.current.onFallback=()=>setBackgroundStatus("Background output paused by the browser · direct audio active");
+      ctxRef.current.onstatechange = () => {
+        const st = ctxRef.current?.state as string | undefined;
+        // The car/browser can suspend or interrupt the context (backup camera over the page in
+        // reverse). We never asked for that, so resume while the user still wants audio.
+        if (wantsRunning.current && (st === "suspended" || st === "interrupted"))
+          void ctxRef.current?.resume().catch(() => {});
         setRunning(
           wantsRunning.current &&
-            ctxRef.current?.state === "running" &&
+            st === "running" &&
             !!engineRef.current?.getDiag().running,
         );
+      };
     }
     if (!engineRef.current) {
       const patch =
@@ -248,6 +255,28 @@ export function useAudioEngine(
       mediaRef.current=null;
       void ctxRef.current?.close();
       ctxRef.current = null;
+    };
+  }, []);
+
+  // Keep-alive: resume the context and re-play the media element whenever audio should be running but
+  // isn't. Runs on page-visible and on a 1 s timer (timers keep ticking, throttled, while hidden; rAF does not).
+  // Only Stop/Shutdown (wantsRunning=false) ends playback.
+  useEffect(() => {
+    const keepAlive = () => {
+      if (!wantsRunning.current) return;
+      const ctx = ctxRef.current;
+      if (ctx && ctx.state !== "running" && ctx.state !== "closed") void ctx.resume().catch(() => {});
+      mediaRef.current?.kick();
+    };
+    const id = setInterval(keepAlive, 1000);
+    document.addEventListener("visibilitychange", keepAlive);
+    window.addEventListener("pageshow", keepAlive);
+    window.addEventListener("focus", keepAlive);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", keepAlive);
+      window.removeEventListener("pageshow", keepAlive);
+      window.removeEventListener("focus", keepAlive);
     };
   }, []);
 
