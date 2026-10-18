@@ -36,14 +36,14 @@ const SCHED_FAM = {
   'v8-rumble': 1,
   'i4-zip': 3,
   'i6-silk': 3,
-  'road-66': 1,
-  'apex-v8': 2,
-  'neon-drive': 2,
-  italia: 2,
-  miami: 1,
-  autobahn: 2,
-  'dune-runner': 1,
-  alpine: 3,
+  'copper-mile': 1,
+  'ember-dusk': 2,
+  'violet-grid': 2,
+  'azure-bend': 2,
+  'pink-current': 1,
+  'silver-run': 2,
+  sandwake: 1,
+  frostpass: 3,
   'rotary-hum': 4,
 };
 
@@ -94,7 +94,7 @@ test('ICE schedule family table', () => {
   for (const [id, fam] of Object.entries(SCHED_FAM)) {
     assert.equal(SCHED_FAM[id], fam);
   }
-  assert.equal('sakura-gtr' in SCHED_FAM, false);
+  assert.equal('blossom-run' in SCHED_FAM, false);
 });
 
 test('nextPulseDt grows for farther event', () => {
@@ -123,7 +123,7 @@ test('rotary twin stack angles + drop-chamber lope', () => {
   assert.ok(Math.max(...iv) > 60);
 });
 
-test('source files encode pack families + sakura exclusion', () => {
+test('source files encode pack families + blossom-run exclusion', () => {
   const bridge = readFileSync(join(root, 'src/audio/engineStateBridge.ts'), 'utf8');
   const catalog = readFileSync(join(root, 'src/forge/catalog.ts'), 'utf8');
   const builtins = readFileSync(join(root, 'src/audio/builtins.ts'), 'utf8');
@@ -131,36 +131,34 @@ test('source files encode pack families + sakura exclusion', () => {
     join(root, 'src/audio/worklets/pulse-engine-processor.js'),
     'utf8',
   );
-  assert.match(bridge, /miami:\s*\{[\s\S]*?firingFamily:\s*1/);
-  assert.match(bridge, /'apex-v8':\s*\{[\s\S]*?firingFamily:\s*2/);
-  assert.match(bridge, /alpine:\s*\{[\s\S]*?firingFamily:\s*3/);
+  assert.match(bridge, /'pink-current':\s*\{[\s\S]*?firingFamily:\s*1/);
+  assert.match(bridge, /'ember-dusk':\s*\{[\s\S]*?firingFamily:\s*2/);
+  assert.match(bridge, /frostpass:\s*\{[\s\S]*?firingFamily:\s*3/);
   assert.match(bridge, /'rotary-hum':\s*\{[\s\S]*?firingFamily:\s*4/);
   assert.match(builtins, /id: 'rotary-hum'/);
   assert.match(builtins, /firingFamily:\s*4/);
-  assert.match(bridge, /raw === 'sakura-gtr'/);
+  assert.match(bridge, /raw === 'blossom-run'/);
   assert.match(builtins, /firingFamily:\s*1/);
   assert.match(builtins, /collectorDelayMs:\s*1\.8/);
   assert.match(worklet, /family === 4/);
   assert.match(worklet, /chambersPerRotor/);
-  // sakura stays in packs JSON but is not an ICE_PACK_SCHEDULES key
-  assert.equal(/'sakura-gtr'\s*:/.test(bridge), false);
-  // catalog on this tip has no sakuraLegacyPatch special-case bind
-  assert.equal(catalog.includes('sakuraLegacyPatch'), false);
+  // blossom-run stays in packs JSON but is not an ICE_PACK_SCHEDULES key
+  assert.equal(/'blossom-run'\s*:/.test(bridge), false);
 });
 
-test('revforge-packs.json sakura-gtr unchanged checksum field', () => {
+test('revforge-packs.json blossom-run unchanged checksum field', () => {
   const packs = JSON.parse(
     readFileSync(join(root, 'src/forge/revforge-packs.json'), 'utf8'),
   );
-  const sakura = packs.find((p) => p.id === 'sakura-gtr');
-  assert.ok(sakura);
-  assert.equal(sakura.engine.cylinders, 6);
-  assert.equal(sakura.engine.firing, 'even');
-  assert.equal(sakura.engine.idleRpm, 950);
-  assert.equal(sakura.engine.turbo, 0.72);
+  const blossom = packs.find((p) => p.id === 'blossom-run');
+  assert.ok(blossom);
+  assert.equal(blossom.engine.cylinders, 6);
+  assert.equal(blossom.engine.firing, 'even');
+  assert.equal(blossom.engine.idleRpm, 950);
+  assert.equal(blossom.engine.turbo, 0.72);
 });
 
-test('catalog scenePatch legacy sakura params (source contains exact pulse values)', () => {
+test('catalog scenePatch legacy pulse values (source contains exact pulse values)', () => {
   const catalog = readFileSync(join(root, 'src/forge/catalog.ts'), 'utf8');
   assert.match(catalog, /pulseJitter: p\.firing === "crossplane" \? 0\.14 : 0\.045/);
   assert.match(catalog, /pulseWidth: p\.firing === "crossplane" \? 0\.44 : 0\.25/);

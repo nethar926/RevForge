@@ -4,7 +4,7 @@
  * Worklet owns sample-accurate crank schedule; bridge is HUD/QA + param push helper.
  *
  * Canonical schedules: product-research/ice-pack-firing-schedules-v1.md
- * (exclude sakura-gtr). Family 4 = rotary chamber-pulse (docs/rotary-chamber-pulse-v1.md).
+ * (exclude blossom-run). Family 4 = rotary chamber-pulse (docs/rotary-chamber-pulse-v1.md).
  */
 import type { EngineStateSnapshot } from './types';
 import { CHRONO_COUPE } from './chronoCoupePack';
@@ -65,7 +65,7 @@ export interface WorkletParamPush {
   rotors: number;
 }
 
-/** Pack physics constants from ice-pack-firing-schedules-v1.md (sakura excluded). */
+/** Pack physics constants from ice-pack-firing-schedules-v1.md (blossom-run excluded). */
 export interface IcePackSchedule {
   cylinders: number;
   firingFamily: number;
@@ -132,7 +132,7 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.007,
     misfireDefault: 0,
   },
-  'road-66': {
+  'copper-mile': {
     cylinders: 8,
     firingFamily: 1,
     bankSchedule: 'crossPlaneV8',
@@ -144,7 +144,7 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.022,
     misfireDefault: 0.06,
   },
-  'apex-v8': {
+  'ember-dusk': {
     cylinders: 8,
     firingFamily: 2,
     bankSchedule: 'flatPlaneV8',
@@ -156,7 +156,7 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.01,
     misfireDefault: 0.02,
   },
-  'neon-drive': {
+  'violet-grid': {
     cylinders: 8,
     firingFamily: 2,
     bankSchedule: 'flatPlaneV8',
@@ -168,7 +168,7 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.009,
     misfireDefault: 0.015,
   },
-  italia: {
+  'azure-bend': {
     cylinders: 8,
     firingFamily: 2,
     bankSchedule: 'flatPlaneV8',
@@ -180,7 +180,7 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.011,
     misfireDefault: 0.02,
   },
-  miami: {
+  'pink-current': {
     cylinders: 8,
     firingFamily: 1,
     bankSchedule: 'crossPlaneV8',
@@ -192,7 +192,7 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.024,
     misfireDefault: 0.07,
   },
-  autobahn: {
+  'silver-run': {
     cylinders: 8,
     firingFamily: 2,
     bankSchedule: 'flatPlaneV8',
@@ -204,7 +204,7 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.01,
     misfireDefault: 0.02,
   },
-  'dune-runner': {
+  sandwake: {
     cylinders: 8,
     firingFamily: 1,
     bankSchedule: 'crossPlaneV8',
@@ -216,7 +216,7 @@ export const ICE_PACK_SCHEDULES: Record<string, IcePackSchedule> = {
     pulseJitterFrac: 0.023,
     misfireDefault: 0.055,
   },
-  alpine: {
+  frostpass: {
     cylinders: 6,
     firingFamily: 3,
     bankSchedule: 'i6Even',
@@ -312,7 +312,7 @@ export function resolveIcePackSchedule(
 ): IcePackSchedule | undefined {
   if (!packId) return undefined;
   const raw = packId.startsWith('revforge-') ? packId.slice('revforge-'.length) : packId;
-  if (raw === 'sakura-gtr') return undefined;
+  if (raw === 'blossom-run') return undefined;
   return ICE_PACK_SCHEDULES[raw];
 }
 
@@ -419,7 +419,7 @@ export class EngineStateBridge {
     this.firingMask = (this.firingMask | (1 << s)) & 255;
   }
 
-  /** Apply pack-id schedule defaults (sakura-gtr → no-op). */
+  /** Apply pack-id schedule defaults (blossom-run → no-op). */
   applyPackId(packId: string | undefined): void {
     this.packId = packId;
     const sched = resolveIcePackSchedule(packId);
