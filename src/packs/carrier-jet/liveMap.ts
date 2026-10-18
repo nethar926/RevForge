@@ -7,7 +7,7 @@
  *  - Street labels: the BUILD.md collision walk (corner labels, (i), own-ship, bug, the other label, 6px edge).
  */
 import { magneticDeclinationDeg, trueToMagnetic } from '../../skins/carrier-jet/map/declination.ts';
-import type { CjMapStatus } from '../../skins/carrier-jet/map/style.ts';
+import { zoomForRangeMi, type CjMapStatus } from '../../skins/carrier-jet/map/style.ts';
 import type { MapView } from './mapView.ts';
 
 export interface TimedFix { lat: number; lon: number; t: number }
@@ -97,6 +97,26 @@ export const SCOPE_RING_UNITS = 46;
 export function scopeRingPx(w: number, h: number): number {
   return (Math.max(0, Math.min(w - 2 * SCOPE_INSET.x, h - 2 * SCOPE_INSET.y)) * SCOPE_RING_UNITS) / 100;
 }
+/**
+ * Camera zoom for the MAP cell. RADAR on (`radar` = scope range mi): the scope's outer ring (scopeRingPx) spans the
+ * range, so RNG 2 / 5 / 10 is what the map shows to the outer ring. RADAR off: the cell half-height spans `zoomMi`.
+ */
+export function cameraZoom(c: { radar: number; zoomMi: number; w: number; h: number }, lat: number): number {
+  return c.radar ? zoomForRangeMi(c.radar, lat, 2 * Math.max(1, scopeRingPx(c.w, c.h))) : zoomForRangeMi(c.zoomMi, lat, c.h);
+}
+/**
+ * How the camera may move. 'live': the glide loop (cell visible and not Park-without-live-GPS). 'still': the map is
+ * paused (Park, last fix older than CJ_GPS_LIVE_MS: the car is stationary so the GPS goes quiet) but still on screen,
+ * so a VIEW change (RNG± / ZM± / N-TRK / resize) re-frames it once at the last fix, no loop, no glide. Before this the
+ * paused map ignored view changes: RNG± redrew the scope rings while the map under them kept its old zoom.
+ * 'off': nothing to move (no map, or the cell is hidden).
+ */
+export function cameraMode(s: { active: boolean; cellVisible: boolean; hasMap: boolean }): 'live' | 'still' | 'off' {
+  if (!s.hasMap || !s.cellVisible) return 'off';
+  return s.active ? 'live' : 'still';
+}
+/** The paused map is removed (after CJ_MAP_REMOVE_AFTER_HIDDEN_MS) only while it is hidden; on screen it stays (frozen). */
+export const removeWhenPaused = (cellVisible: boolean) => !cellVisible;
 /** The scope's heading bug (top of the scope square, fixed: heading-up) in cell px. */
 export function scopeBugPoint(w: number, h: number): { x: number; y: number } {
   const side = Math.max(0, Math.min(w - 2 * SCOPE_INSET.x, h - 2 * SCOPE_INSET.y));
