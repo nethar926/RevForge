@@ -7,19 +7,15 @@
  * The wing, arc pointer and tape ACT marks carry data-cj-* hooks: the HUD's rAF loop moves
  * them with transform attributes only (no React re-render per frame).
  */
-import { createContext, useContext, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useContext, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { SWEEP_TAPE_HI, SWEEP_TAPE_LO, type IndexerState, type SweepMode } from './model';
 import type { CjPalette } from './palettes';
+import { roseNarrowGeom, SvgScale, type SvgFit } from './svgFit';
 
 const f1 = (n: number) => Math.round(n * 10) / 10;
 type Pt = [number, number];
 
 // ------------------------------------------------------------------ SVG frame + text
-/** Nearest <Svg>'s rendered px per viewBox unit (`s`) and the px from its parent cell's top edge to the drawing's top
- * (`top`, the svg's own offset plus the meet letterbox). s = 1 / top = 0 until measured and on the server. For parts
- * that change their layout, not just their text size, when the cell is small (the narrow compass rose). */
-export type SvgFit = { s: number; top: number };
-export const SvgScale = createContext<SvgFit>({ s: 1, top: 0 });
 export function Svg({ w, h, className = '', children, align = 'xMidYMid' }: { w: number; h: number; className?: string; children: ReactNode; align?: string }) {
   const ref = useRef<SVGSVGElement>(null);
   const [fit, setFit] = useState<SvgFit>({ s: 1, top: 0 });
@@ -319,22 +315,16 @@ export function Rose({ x, y, w, h, P, heading, stale = false }: { x: number; y: 
  * - the digit box is 46x22px and tagged .cj-rose-box so the host chip can hide it (see carrier-jet.css).
  */
 export const ROSE_NARROW_SCALE = 0.6;
-/** Cell-top px the host HDG chip can reach (4px inset + chip + 4px gap): 18px lead in wide cells, 13px under 130px. */
-const chipFloor = (cellW: number) => (cellW < 130 ? 28 : 34);
 function RoseNarrow({ x, y, w, h, P, hd, heading, dim, tone, id, sv, svTop }: { x: number; y: number; w: number; h: number; P: CjPalette; hd: number; heading?: number; dim: boolean; tone: { line: string; text: string; edge: string }; id: string; sv: number; svTop: number }) {
-  const u = 1 / sv;
-  // band: from the drawing's top down to just under the chip (less the letterbox above the drawing), never under 26px
-  const band = Math.max(26, chipFloor(w * sv) - svTop - y * sv) * u, top = y + band + 4 * u;
-  // the ring's centre sits on the cell floor, so the whole upper half (and its labels) is in view
-  const cx = x + w / 2, R = Math.min(w * 0.46, y + h - top - 2 * u), cy = top + R;
-  const inset = 17 * u, lr = R - inset;
+  // band under the chip, ring centred on the cell floor; R / lr / clip height clamp at 0 in a cell too short for a ring
+  const { u, band, top, cx, cy, R, lr, clipH } = roseNarrowGeom(x, y, w, h, sv, svTop);
   const showNums = 2 * lr * Math.sin(Math.PI / 12) * sv >= 20;
   const bw = 46 * u, bh = 22 * u;
   return (
     <g data-cj-el="heading" data-stale={dim ? 'true' : undefined} data-cj-rose="narrow">
       <defs>
         <clipPath id={`${id}c`}>
-          <rect x={x} y={y + band} width={w} height={h - band} />
+          <rect x={x} y={y + band} width={w} height={clipH} />
         </clipPath>
       </defs>
       <g clipPath={`url(#${id}c)`}>
