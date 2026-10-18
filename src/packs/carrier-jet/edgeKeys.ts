@@ -29,11 +29,13 @@ export interface EdgeCtx {
   moreOpen?: boolean;
   /** null = board; else the open CONFIG page's tiles per cell (label or null) and its sub-page count. */
   config: null | { tiles: Partial<Record<CellId, { label: string; reason?: string } | null>>; subs: number };
+  /** The cell under the bottom-right strip (the right bank); default RIGHT_BANK. Map-first: ACCEL (rightBankFor). */
+  bank?: CellId;
 }
 
 export function cellKeys(cell: CellId, n: number, c: EdgeCtx): (EdgeKey | null)[] {
   const keys: (EdgeKey | null)[] = [];
-  if (cell === RIGHT_BANK) {
+  if (cell === (c.bank ?? RIGHT_BANK)) {
     keys.push(
       { id: 'drive', legend: 'DRIVE', ariaLabel: c.config ? 'Drive, return to the board' : 'Drive, board showing', active: !c.config },
       { id: 'more', legend: 'MORE', ariaLabel: c.moreOpen ? 'More, open' : 'More', active: !!c.moreOpen },
@@ -58,6 +60,9 @@ export function cellKeys(cell: CellId, n: number, c: EdgeCtx): (EdgeKey | null)[
 /** The right bank (NAV → SPDS): the keys under COMPASS; K3 is the inert spare. */
 export const RIGHT_BANK: CellId = 'compass';
 export const SPARE_INDEX = 2;
+/** The right bank is positional (the bottom-right strip): map-first swaps COMPASS ⇄ ACCEL, so ACCEL's cell carries it
+ * there (DRIVE / MORE stay bottom-right with a full strip; COMPASS's narrow cell would fit one key at 773). */
+export const rightBankFor = (mapFirst: boolean | undefined): CellId => (mapFirst ? 'accel' : RIGHT_BANK);
 /** Old NAV switch → where it lives now (every function stays reachable; tests check each one). */
 export const NAV_HOMES = {
   drive: { key: 'drive', cell: RIGHT_BANK },

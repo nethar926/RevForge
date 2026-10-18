@@ -24,11 +24,13 @@ test('map-first is the layout on the Tesla layouts only, in Drive and Park (squa
   assert.doesNotMatch(src('packs/mounts/CarrierJetMount.tsx'), /MOCK_MAP_FIRST|URLSearchParams\(location\.search\)\.get\('cjMapFirst'\)/);
 });
 
-test('map-first cells: SPEED full column, MACH runs to RPM bottom, MAP spans both rows, ACCEL under VDI', () => {
+test('map-first cells: SPEED full column, MACH runs to RPM bottom, MAP spans both rows, ACCEL bottom-right', () => {
   const c = board2CellsMapFirst(r);
   assert.deepEqual(c.speed, r.speed);
   assert.equal(c.mach.top + c.mach.height, r.rpm.top + r.rpm.height);
-  assert.deepEqual(c.accel, { left: r.vdi.left, top: r.compass.top, width: r.vdi.width, height: r.compass.height });
+  // COMPASS ⇄ ACCEL (Oct 17): ACCEL in the bottom-right (WING SWEEP's column, COMPASS's row); COMPASS measured where CSS put it
+  assert.deepEqual(c.accel, { left: r.sweep.left, top: r.compass.top, width: r.sweep.width, height: r.compass.height });
+  assert.deepEqual(c.compass, r.compass);
   assert.equal(c.map.left, r.vdi.left + r.vdi.width + 4);
   assert.equal(c.map.left + c.map.width, r.sweep.left - 4);
   assert.equal(c.map.top, r.mach.top);

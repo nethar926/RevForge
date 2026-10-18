@@ -12,8 +12,8 @@ import { applyMapKey, getMapView, radarCue, rangeRings, setMapView, subscribeMap
 import { cjRadarScopeAria } from '../../skins/carrier-jet/map/radarAria';
 import { getCjPrefs, reducedMotion, setCjPrefs, subscribeCjPrefs, type CjPrefs } from '../carrier-jet/cjPrefs';
 import { closeCjConfig, getCjConfig, registerCjConfigHost, setCjConfig, subscribeCjConfig } from '../carrier-jet/configStore';
-import { CELL_ORDER, TILE_SLOTS } from '../carrier-jet/configCells';
-import { cellKeys, KEY_CELLS, RIGHT_BANK, SPARE_INDEX, type EdgeKey } from '../carrier-jet/edgeKeys';
+import { cellOrderFor, TILE_SLOTS } from '../carrier-jet/configCells';
+import { cellKeys, KEY_CELLS, rightBankFor, SPARE_INDEX, type EdgeKey } from '../carrier-jet/edgeKeys';
 import { cjNavAction, cjNavItems } from '../carrier-jet.nav';
 import { disabledReason, itemAria, itemValue, MAP_CREDIT, pageTiles, runItem, visibleItems, type ConfigCtx, type ConfigEffect, type ConfigItem } from '../configTable';
 import { CJ_CONFIG } from '../carrier-jet/configPages';
@@ -339,13 +339,16 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
   );
   const page = CJ_CONFIG[cfg.page];
   const items = visibleItems(page, ctx);
-  const slotBoxes: Box[] = geo?.board2 && geo.cells ? CELL_ORDER.map((id) => geo.cells![id]) : geo ? gridBoxes(geo.board, Math.min(items.length + 1, 12)) : [];
+  // tile slots by position (map-first swaps COMPASS ⇄ ACCEL, the slots stay put); the right bank is the bottom-right strip
+  const order = cellOrderFor(geo?.mapFirst);
+  const bank = rightBankFor(geo?.mapFirst);
+  const slotBoxes: Box[] = geo?.board2 && geo.cells ? order.map((id) => geo.cells![id]) : geo ? gridBoxes(geo.board, Math.min(items.length + 1, 12)) : [];
   const slots = geo?.board2 ? TILE_SLOTS : slotBoxes.length;
   const paged = pageTiles(items, Math.max(2, slots), cfg.sub);
   // CONFIG headers: each relabelled cell names the page its tile opens (blank if not a page; Drive name if no tile)
   const hdr: Partial<Record<ConfigHeaderCell, string>> = {};
   if (cfg.open) for (const c of CONFIG_HEADER_CELLS) {
-    const h = configCellHeader(paged.tiles[CELL_ORDER.indexOf(c)], CJ_CONFIG);
+    const h = configCellHeader(paged.tiles[order.indexOf(c)], CJ_CONFIG);
     if (h !== undefined) hdr[c] = h;
   }
 
@@ -399,7 +402,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
       case 'prev': cue('cursorStep'); return setCjConfig({ sub: cfg.sub - 1 });
       case 'next': cue('cursorStep'); return setCjConfig({ sub: cfg.sub + 1 });
       case 'sel': {
-        const i = CELL_ORDER.indexOf(cell);
+        const i = order.indexOf(cell);
         const t = paged.tiles[i];
         if (t) runTile(t);
         return;
@@ -425,7 +428,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
   if (!geo) return <div ref={selfRef} className="cjv2" />;
   const cells = geo.cells;
   const tileFor = (cell: CellId) => {
-    const t = paged.tiles[CELL_ORDER.indexOf(cell)];
+    const t = paged.tiles[order.indexOf(cell)];
     if (!t) return null;
     return t === 'next' ? { label: 'next tiles' } : { label: t.label, reason: disabledReason(t, ctx) };
   };
@@ -444,7 +447,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
           {cells && (['sweep', 'compass'] as const).map((c) => hdr[c] !== undefined && (
             <span key={c} className="cjv2-lab cjv2-config-hdr" data-cell={c} data-blank={hdr[c] ? undefined : true} style={{ left: cells[c].left + 4, top: cells[c].top - 16 }} aria-hidden="true">{hdr[c] || '\u00a0'}</span>
           ))}
-          {cells && <span className="cjv2-config-title" style={{ left: cells.mach.left, top: cells.mach.top - 16, width: cells.accel.left + cells.accel.width - cells.mach.left }} aria-hidden="true">{cfg.page === 'home' ? 'CONFIG' : `CONFIG › ${page.title}`}</span>}
+          {cells && <span className="cjv2-config-title" style={{ left: cells.mach.left, top: cells.mach.top - 16, width: (geo.mapFirst ? cells.vdi : cells.accel).left + (geo.mapFirst ? cells.vdi : cells.accel).width - cells.mach.left }} aria-hidden="true">{cfg.page === 'home' ? 'CONFIG' : `CONFIG › ${page.title}`}</span>}
           {paged.tiles.map((t, i) =>
             slotBoxes[i] ? <Tile key={t === 'next' ? 'next' : t.id} it={t} c={ctx} box={slotBoxes[i]} onRun={runTile} next={`${(((cfg.sub % paged.subs) + paged.subs) % paged.subs) + 1} of ${paged.subs}`} /> : null,
           )}
@@ -455,13 +458,13 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
           // drive window: SPEED's keys sit in the ENG strip (no top key row; see carrier-jet-v2.css)
           const b = layout === 'window' && cell === 'speed' ? cells.eng : cells[cell];
           const n = keyCount(b.width);
-          const keys = cellKeys(cell, n, { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(CELL_ORDER.map((c) => [c, tileFor(c)])), subs: paged.subs } : null });
+          const keys = cellKeys(cell, n, { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(order.map((c) => [c, tileFor(c)])), subs: paged.subs } : null, bank });
           const xs = keyXs(b, n);
           const top = b.top + b.height + geo.gap;
           return (
             <div key={cell} className="cjv2-keys" data-cell={cell} role="group" aria-label={`${(hdr as Partial<Record<CellId, string>>)[cell]?.toLowerCase() || cell} keys`}>
               {keys.map((k, i) => (
-                <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k?.id} data-reason={k?.reason ? true : cell === RIGHT_BANK && i >= SPARE_INDEX && !k ? 'spare' : undefined}>
+                <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k?.id} data-reason={k?.reason ? true : cell === bank && i >= SPARE_INDEX && !k ? 'spare' : undefined}>
                   <BezelKey legend={k?.legend} active={!!k?.active} ariaLabel={k?.ariaLabel} onPress={k ? () => onKey(cell, k) : undefined} />
                 </div>
               ))}
@@ -469,7 +472,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
           );
         })}
       {moreOpen && edge && (() => {
-        const b = cells[RIGHT_BANK];
+        const b = cells[bank];
         const tray = cjNavItems({ current: 'drive', muted: shell.muted, moreOpen: true }).overflow;
         const go = (f: () => void) => {
           cue('selectConfirm');
