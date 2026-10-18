@@ -59,6 +59,7 @@ import type {
   TopologyId,
 } from './types';
 import { nextLockStage, packSupportsLockLadder } from './lockStage';
+import { sanitizeDrivingInput } from './drivingInput';
 import {
   clampIdleBand,
   DEFAULT_IDLE_BAND,
@@ -304,6 +305,8 @@ export class EngineSynthImpl implements EngineSynth {
   private patchMeta: EnginePatch;
   private params: EngineParams;
   private driving: DrivingInput = { speed: 0, throttle: 0, load: 0, reverse: false };
+  /** Last sanitised setDriving input (source of "last good" values for non-finite fields). */
+  private lastDriveIn: DrivingInput | undefined;
   private disposed = false;
   private g: GraphHandles;
   private hud: {
@@ -550,6 +553,9 @@ export class EngineSynthImpl implements EngineSynth {
   }
 
   setDriving(d: DrivingInput): void {
+    // NaN / ±Infinity → not supplied (last good or fallback): never reaches the models or an AudioParam.
+    d = sanitizeDrivingInput(d, this.lastDriveIn);
+    this.lastDriveIn = d;
     this.refreshIdleBandFromPrefs();
     this.lastLoadProvided = d.load !== undefined && d.load !== null && Number.isFinite(Number(d.load));
     // Preserve Frontend rpmNorm/rpm when supplied (Forge rAF / GPS+Rev).
