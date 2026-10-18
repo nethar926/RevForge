@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { useCjBank } from './useCjBank';
 import { createPortal } from 'react-dom';
 import { CarrierJetAfterburnerGuard, CarrierJetHud, useCarrierJetVariant } from '../../skins/carrier-jet';
@@ -31,6 +31,9 @@ import { cjMapFirst } from '../carrier-jet/geometry';
 import { CJ_GRID } from '../carrier-jet/cells';
 import { getPackJet, subscribePackJet } from '../jetBridge';
 import { LAUNCH_OFF, launchAbZone, launchStep, readLaunchActive } from '../carrier-jet/launchLight';
+import { AnnunciatorPlate, HeroRail } from './CjHeroV2';
+import { clearsAfter, forcedLamps, HV_LAMPS, HV_START, lampStates, radarApply, radarPos, startPositions, type LampId, type StartId } from '../carrier-jet/heroRail';
+import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
 
 /**
  * Framework adapter: ThemeStage telemetry → Visual Skins' Carrier Jet HUD.
@@ -259,12 +262,78 @@ export function CarrierJetMount(props: PackHudProps) {
   // (MASTER ARM guard) · [host chips] · EMER STOP · QUICK START · FASTEN SEAT BELT · SHELF. Every size, 773 included.
   // Spacing / heights in carrier-jet-v2.css.
   const row = bankRowOn({ spds, coldOn, docked: !!vp.dock });
+  // Hero v2 (Meghan's cj-hero-2026/v2 + rail v2; CjHeroV2.tsx): with the one bottom row on (Tesla, cold start, docked),
+  // the row's parts become the start rail and the top bar's empty right half gets the annunciator plate.
+  const hero = row && tesla;
+  const topbar = hero ? vp.viewport?.querySelector<HTMLElement>(':scope > .rev-topbar') ?? null : null;
+  const heroLayout = layout === 'window' ? 'window' : 'board';
+  const lampIn = { cold: coldOn, running: props.running, batt: !!cold.sys.on.batt, seatbelt: cold.seatbelt, engines: cold.sys.engines, apuOn: !!cold.sys.on.apu, apuReady: cold.sys.apuReady, caution: cold.caution, emergency: !!cold.sys.emergency };
+  const rawLamps = lampStates(lampIn);
+  const rawKey = JSON.stringify(rawLamps);
+  const [cleared, setCleared] = useState<Partial<Record<LampId, boolean>>>({});
+  const prevLamps = useRef(rawLamps);
+  useEffect(() => {
+    const prev = prevLamps.current;
+    prevLamps.current = rawLamps;
+    setCleared((c) => (Object.keys(c).length ? clearsAfter(prev, rawLamps, c) : c));
+  }, [rawKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ?lamps=cw: Meghan's colour-check state (the five caution / warning caps lit), read once
+  const forced = useMemo(() => (typeof location === 'undefined' ? null : forcedLamps(location.search)), []);
+  const lamps = forced ?? lampStates({ ...lampIn, cleared });
+  const onClearLamp = (id: LampId) => {
+    const d = HV_LAMPS.find((x) => x.id === id);
+    if (!lamps[id] || !d) return cold.announce(`${d?.spoken ?? id}: nothing to clear`);
+    if (id === 'masterCaution' && !forced) cold.resetCaution();
+    else setCleared((c) => ({ ...c, [id]: true }));
+    cold.announce(`${d.spoken} cleared`);
+  };
+  const wxRadar = useSyncExternalStore(subscribeWxRadar, getWxRadar, getWxRadar);
+  const startPos = startPositions({ cold: coldOn, running: props.running, on: cold.sys.on, engines: cold.sys.engines });
+  const NEXT: Record<string, StartId> = { batt: 'batt', apu: 'apu', apuGuard: 'apu', engL: 'engL', engR: 'engR', inertialNav: 'nav' };
+  const heroRail = hero ? (
+    <HeroRail
+      layout={heroLayout}
+      gps={props.demo ? 'none' : cjGps(gpsStatus)}
+      radar={radarPos(mapView.radar, wxRadar)}
+      onRadar={(pos) => {
+        const r = radarApply(pos);
+        if (r.radar !== mapView.radar) onRadar(r.radar);
+        else if (getCjPrefs().switchSound) sendPackEngineCommand(ID.id, { type: 'jet-cue', cue: 'toggle' });
+        if (r.wx !== wxRadar) setWxRadar(r.wx);
+      }}
+      armed={armed}
+      guardOpen={guardOpen}
+      onGuard={() => setGuardOpen((o) => !o)}
+      onArm={onArm}
+      launch={launch.lit}
+      start={startPos}
+      startCue={cold.nextId ? NEXT[cold.nextId] ?? null : null}
+      startLive={coldOn}
+      onStart={(id, on) => {
+        const sys = HV_START.find((s) => s.id === id)?.system;
+        if (sys) cold.railTap(sys, on);
+      }}
+      live={cold.live}
+      onQuickStart={cold.quickStart}
+      onEmergencyStop={cold.emergencyStop}
+      holdRev={!!props.demo && props.running}
+      onHoldRev={(on) => void requestPackShell({ type: 'hold-rev', on })}
+      running={props.running}
+      onShutdown={() => void requestPackShell({ type: 'shutdown' })}
+      say={cold.announce}
+    />
+  ) : null;
   const shelf = coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div>;
-  const bank = (
+  const bank = !hero ? (
     <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined} data-cjm-row={row || undefined}>
       {plate}
       <div className="cjm-bank-ab">{guard}</div>
       {row ? null : spds ? shelf : <div className="cjm-bank-nav" ref={setNavSlot} />}
+    </div>
+  ) : (
+    // hero v2: the start rail takes the plate + guard's place (same bank element, so the dock / board padding rules hold)
+    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined} data-cjm-row={row || undefined}>
+      {heroRail}
     </div>
   );
   const shutdownGuard = sdGuardShown(sdShow, sbCtx) ? (
@@ -272,7 +341,7 @@ export function CarrierJetMount(props: PackHudProps) {
       <ShutdownGuard guardOpen={sdOpen} onGuardToggle={() => setSdOpen((o) => sdCoverTap(o, sdDeps))} on={props.running} onToggle={() => setSdOpen((o) => sdLever(o, props.running, sdDeps).open)} reduceMotion={reduced} />
     </div>
   ) : null;
-  const bankB = row ? (
+  const bankB = row ? (!hero ? (
     <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} data-rf-reduce-motion={reduced || undefined} data-cjm-row>
       {/* EMER STOP: Meghan's wide pull (76 px, caption 'EMER STOP' in full) at every size; the narrow one reads 'EMER' */}
       <div className="cjm-bank-es" role="group" aria-label="Engine start and stop">
@@ -281,7 +350,12 @@ export function CarrierJetMount(props: PackHudProps) {
       {sbLamp}
       {shelf}
     </div>
-  ) : null;
+  ) : (
+    // hero v2: QUICK START / EMER STOP are on the rail and FASTEN SEAT BELT is an annunciator cap; only SHELF stays here
+    <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} data-rf-reduce-motion={reduced || undefined} data-cjm-row>
+      {shelf}
+    </div>
+  )) : null;
   return (
     <div
       ref={ref}
@@ -300,7 +374,7 @@ export function CarrierJetMount(props: PackHudProps) {
             <div className="cjm-fill">
               <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} bank={vdiBank} />
             </div>
-            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} />}
+            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} hero={hero ? (topbar ? 'ann+rail' : 'rail') : ''} />}
           </>
         )}
       </CjHeadingEase>
@@ -308,6 +382,7 @@ export function CarrierJetMount(props: PackHudProps) {
       {coldOn && <p className="cjcs-say" role="status" aria-live="polite">{cold.say}</p>}
       <p className="rf-sr-only cjm-launch-say" role="status" aria-live="polite">{launch.say}</p>
       {bankB && vp.dock && createPortal(bankB, vp.dock)}
+      {hero && topbar && createPortal(<AnnunciatorPlate lamps={lamps} layout={heroLayout} onClear={onClearLamp} />, topbar)}
       {shutdownGuard && vp.dock && createPortal(shutdownGuard, vp.dock)}
       {bankHost ? createPortal(layout === 'portrait' ? <div className="cjm-below">{bank}</div> : bank, bankHost) : layout !== 'portrait' && <div className="cjm-ab">{bank}</div>}
     </div>

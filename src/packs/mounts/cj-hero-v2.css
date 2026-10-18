@@ -1,0 +1,184 @@
+/* Carrier Jet hero v2 (CjHeroV2.tsx; Meghan's cj-hero-2026/v2 mock + rail v2 layout). Photoreal cockpit hardware from
+   CSS + inline SVG + two baked tiles (grain 256, frost 128; Meghan's tex/): matte FS 36231-style paint, engraved backlit
+   cream legends, one top-left key light, depth by layering (plate → well → control) with only small contact shadows.
+   Frosted texture ONLY on lit lamp diffusers. No transitions, no keyframes, no backdrop-filter, no CSS blur, no WebGL.
+   Board 1280 / 1256 and the 773 drive window only (the grid's CJ layouts); phones keep their own bank. */
+
+.cjhv-ann, .cjhv-rail {
+  --hv-paint: #2e3236; --hv-paint-lo: #25282b; --hv-edge: #15171a; --hv-cream: #e8e4d8; --hv-unlit: #a9afb4;
+  --hv-grain: url('./assets/cj-hero/grain-256.webp'); --hv-frost: url('./assets/cj-hero/frost-128.webp');
+  font-family: 'Barlow Semi Condensed', 'B612', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.cjhv-lg {
+  display: block; font: 600 11px/13px 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--hv-cream); white-space: nowrap; text-align: center;
+  /* backlit engraving: light bleed hugging the letterform + the engraved lower lip (no blur filter) */
+  text-shadow: 0 0 1px rgba(255, 240, 214, 0.5), 0 -1px 0 rgba(0, 0, 0, 0.55);
+}
+.cjhv-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* ---------------- annunciator plate (top bar, right half; the top bar is already absolutely placed: its box is the plate's) */
+.cjhv-ann {
+  position: absolute; right: 0; top: 50%; translate: 0 -50%; z-index: 2;
+  display: flex; gap: 8px; padding: 4px; box-sizing: border-box; border-radius: 3px;
+  background: var(--hv-grain) 0 0 / 256px 256px, linear-gradient(170deg, #34383d, var(--hv-paint) 45%, var(--hv-paint-lo));
+  background-blend-mode: soft-light, normal;
+  border: 1px solid var(--hv-edge);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.07), inset -1px -1px 0 rgba(0, 0, 0, 0.45), 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.cjhv-ann[data-rf-layout='window'] { gap: 4px; }
+.cjhv-cap {
+  position: relative; box-sizing: border-box; width: 104px; height: 44px; margin: 0; padding: 7px 4px 0; border: 0; border-radius: 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 1px;
+  /* dead-front: dark grey lens in a recessed well (dark top/left inner wall, lit lower/right lip) */
+  background: linear-gradient(180deg, #232527, #1d1f21);
+  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.75), inset -1px -1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px #0c0d0e;
+  color: inherit; font: inherit; cursor: pointer; overflow: hidden;
+}
+div.cjhv-cap { cursor: default; }
+.cjhv-ann[data-rf-layout='window'] .cjhv-cap { width: 70px; padding-left: 2px; padding-right: 2px; }
+.cjhv-ann[data-rf-layout='window'] .cjhv-cap .cjhv-lg { letter-spacing: 0.02em; }
+.cjhv-cap .cjhv-lg { color: var(--hv-unlit); text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7); line-height: 14px; }
+.cjhv-mark { position: absolute; left: 5px; top: 5px; width: 7px; height: 7px; fill: #8d949a; stroke: #8d949a; }
+.cjhv-mark [data-stroke] { fill: none; }
+.cjhv-cap:focus-visible, .cjhv-hit:focus-visible, .cjhv-push:focus-visible, .cjhv-es-grip:focus-visible { outline: 2px solid #8dffad; outline-offset: 1px; }
+/* lit: a faint frosted wash of the lamp colour on the lens + the coloured legend and shape mark. Steady. */
+.cjhv-cap[data-lit]::after { content: ''; position: absolute; inset: 0; background: var(--hv-frost) 0 0 / 128px 128px; mix-blend-mode: soft-light; opacity: 0.16; pointer-events: none; }
+.cjhv-cap[data-lit][data-color='amber'] { background: radial-gradient(70% 90% at 50% 45%, rgba(255, 179, 71, 0.22), rgba(255, 179, 71, 0.11) 60%, rgba(255, 179, 71, 0.05)), linear-gradient(180deg, #232527, #1d1f21); }
+.cjhv-cap[data-lit][data-color='red'] { background: radial-gradient(70% 90% at 50% 45%, rgba(255, 106, 90, 0.22), rgba(255, 106, 90, 0.11) 60%, rgba(255, 106, 90, 0.05)), linear-gradient(180deg, #232527, #1d1f21); }
+.cjhv-cap[data-lit][data-color='green'] { background: radial-gradient(70% 90% at 50% 45%, rgba(108, 255, 154, 0.2), rgba(108, 255, 154, 0.1) 60%, rgba(108, 255, 154, 0.05)), linear-gradient(180deg, #232527, #1d1f21); }
+.cjhv-cap[data-lit][data-color='amber'] .cjhv-lg { color: #ffd07a; text-shadow: 0 0 1px rgba(255, 199, 102, 0.9), 0 0 4px rgba(255, 179, 71, 0.45); }
+/* MASTER WARNING: the tightest cap (4.80 worst, measure.json). Do not brighten this wash without lifting the legend
+   toward #FFB3A8 in the same change (heroRail.ts HV_RED_LEGEND_LIFT). */
+.cjhv-cap[data-lit][data-color='red'] .cjhv-lg { color: #ffa497; text-shadow: 0 0 1px rgba(255, 164, 151, 0.9), 0 0 4px rgba(255, 106, 90, 0.35); }
+.cjhv-cap[data-lit][data-color='green'] .cjhv-lg { color: #a6ffbf; text-shadow: 0 0 1px rgba(166, 255, 191, 0.9), 0 0 4px rgba(108, 255, 154, 0.45); }
+.cjhv-cap[data-lit][data-color='amber'] .cjhv-mark { fill: #ffc766; stroke: #ffc766; }
+.cjhv-cap[data-lit][data-color='red'] .cjhv-mark { fill: #ff8a7c; stroke: #ff8a7c; }
+.cjhv-cap[data-lit][data-color='green'] .cjhv-mark { fill: #a6ffbf; stroke: #a6ffbf; }
+.cjhv-cap[data-lit] .cjhv-mark [data-stroke] { fill: none; }
+
+/* ---------------- Korry split caps on the edge keys (decoration over Meghan's BezelKey cap; taps go through) */
+.cjv2-key { --hv-cap-x: 4px; --hv-cap-y: 22px; }
+.cjhv-korry {
+  position: absolute; left: calc(var(--hv-cap-x) + 1px); top: calc(var(--hv-cap-y) + 1px); width: 42px; height: 40px; box-sizing: border-box;
+  display: grid; grid-template-rows: 1fr 1fr; border-radius: 3px; overflow: hidden; pointer-events: none;
+  background: linear-gradient(180deg, #34383c, #2a2d31 55%, #222528);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.16), inset -1px -1px 0 rgba(0, 0, 0, 0.6), 0 0 0 1px #121416;
+  font: 600 11px/1 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; letter-spacing: 0.02em; text-transform: uppercase;
+}
+.cjhv-korry[data-single] { grid-template-rows: 1fr; }
+.cjhv-korry > span { display: flex; align-items: center; justify-content: center; white-space: nowrap; color: #c9cdd0; text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6); }
+.cjhv-korry-bot { border-top: 1px solid #0f1112; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); margin: 0 2px 2px; border-radius: 0 0 2px 2px; }
+/* Korry type C: black letters on the lit cyan field */
+.cjhv-korry[data-lit] > .cjhv-korry-bot { background: #5fd3ff; color: #04141c; text-shadow: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); font-weight: 700; }
+.cjv2-key[data-reason] .cjhv-korry > span { color: #a9afb4; }
+
+/* ---------------- start rail (dock) */
+.cjhv-rail { position: relative; display: flex; align-items: stretch; justify-content: space-between; gap: 6px; height: 118px; flex: 1 1 auto; min-width: 0; box-sizing: border-box; }
+.cjhv-mod {
+  position: relative; box-sizing: border-box; height: 118px; flex: none; border-radius: 3px; display: flex; align-items: stretch;
+  background: var(--hv-grain) 0 0 / 256px 256px, linear-gradient(165deg, #363a3f, var(--hv-paint) 40%, var(--hv-paint-lo));
+  background-blend-mode: soft-light, normal;
+  border: 1px solid var(--hv-edge);
+  /* raised module: lit top-left rim, dark lower-right rim, one small contact shadow (dock modules sit higher than plates) */
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.08), inset -1px -1px 0 rgba(0, 0, 0, 0.5), 1px 2px 0 rgba(0, 0, 0, 0.5);
+}
+/* Dzus studs (two corners): slotted quarter-turn heads */
+.cjhv-mod:not(.cjhv-mod-gps)::before, .cjhv-mod:not(.cjhv-mod-gps)::after {
+  content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; pointer-events: none;
+  background: linear-gradient(45deg, transparent 42%, #15171a 42%, #15171a 58%, transparent 58%), radial-gradient(circle at 35% 30%, #7d8388, #3c4145 60%, #202326);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+.cjhv-mod::before { left: 3px; top: 3px; }
+.cjhv-mod::after { right: 3px; bottom: 3px; }
+.cjhv-title {
+  position: absolute; left: 0; right: 0; top: 4px; text-align: center; white-space: nowrap; pointer-events: none;
+  font: 600 12px/14px 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; letter-spacing: 0.075em; color: var(--hv-cream);
+  text-shadow: 0 0 1px rgba(255, 240, 214, 0.55), 0 -1px 0 rgba(0, 0, 0, 0.55);
+}
+.cjhv-mod-gps { width: 50px; background: none; border: 0; box-shadow: none; }
+.cjhv-mod-gps > * { width: 100%; height: 100%; }
+.cjhv-hit { position: absolute; left: 0; right: 0; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 1; }
+.cjhv-hit-up { top: 0; height: 50%; }
+.cjhv-hit-dn { bottom: 0; height: 50%; }
+.cjhv-hit[aria-disabled], .cjhv-push[aria-disabled] { cursor: default; }
+
+/* a toggle column: legend above, the toggle, legend below */
+.cjhv-sw { position: relative; flex: 1 1 0; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.cjhv-sw .cjhv-sw-up { position: absolute; top: 18px; left: 0; right: 0; }
+.cjhv-sw .cjhv-sw-dn { position: absolute; bottom: 4px; left: 0; right: 0; }
+.cjhv-tg { position: absolute; top: 31px; left: 50%; translate: -50% 0; width: auto; height: 66px; pointer-events: none; }
+/* start-order cue: only the next switch, a static green legend (rail v2) */
+.cjhv-sw[data-cue] .cjhv-sw-up { color: #8dffad; text-shadow: 0 0 1px rgba(141, 255, 173, 0.6), 0 -1px 0 rgba(0, 0, 0, 0.55); }
+
+/* RADAR 3-position: toggle left, MID / SCOPE to its right */
+.cjhv-mod-radar { width: 92px; }
+.cjhv-sw3 { flex: 1 1 auto; }
+.cjhv-sw3 .cjhv-sw-up, .cjhv-sw3 .cjhv-sw-dn { right: auto; width: 44px; left: 4px; }
+.cjhv-sw3 .cjhv-tg { left: 26px; }
+.cjhv-sw3 .cjhv-sw-mid { position: absolute; left: 48px; top: 54px; text-align: left; line-height: 13px; }
+.cjhv-rail[data-rf-layout='window'] { gap: 4px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-mod-radar { width: 60px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-sw3 .cjhv-sw-up, .cjhv-rail[data-rf-layout='window'] .cjhv-sw3 .cjhv-sw-dn { left: 0; width: 40px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-sw3 .cjhv-tg { left: 20px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-sw3 .cjhv-sw-mid { left: 36px; top: 60px; letter-spacing: 0.02em; }
+
+/* AFTERBURNER: red flip guard over the ARM / SAFE toggle, + the AB ARMED cap (1280) */
+.cjhv-mod-ab { width: 150px; }
+.cjhv-ab { position: relative; width: 64px; height: 100%; flex: none; }
+.cjhv-ab .cjhv-sw-up { position: absolute; top: 18px; left: 0; right: 0; }
+.cjhv-ab .cjhv-sw-dn { position: absolute; bottom: 4px; left: 0; right: 0; }
+.cjhv-ab-well { position: absolute; left: 50%; top: 31px; width: 44px; height: 66px; translate: -50% 0; }
+.cjhv-ab-well .cjhv-tg { top: 0; }
+.cjhv-guard { position: absolute; left: 2px; top: 1px; width: 40px; height: 64px; pointer-events: none; }
+.cjhv-hit-guard { top: 18px; bottom: 0; }
+.cjhv-ab[data-open] .cjhv-hit-guard { top: 18px; bottom: auto; height: 44px; }
+.cjhv-hit-arm { top: 62px; bottom: 0; }
+.cjhv-abcap { position: absolute; right: 10px; top: 38px; width: 62px; height: 40px; padding-top: 6px; cursor: default; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-mod-ab { width: 54px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-ab { width: 52px; }
+
+/* START bank: six toggles, an engraved divider before GEN */
+.cjhv-mod-start { width: 432px; padding: 0 6px; }
+.cjhv-start { position: relative; flex: 1 1 0; display: flex; }
+.cjhv-start[data-div]::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 1px; background: rgba(0, 0, 0, 0.55); box-shadow: 1px 0 0 rgba(255, 255, 255, 0.07); }
+.cjhv-start > .cjhv-title { z-index: 0; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-mod-start { width: 272px; padding: 0 3px; }
+
+/* QUICK START: yellow-black striped guard (6-knuckle hinge) over the START cap, LIFT tag */
+.cjhv-mod-qs { width: 118px; }
+.cjhv-qs { position: absolute; left: 8px; right: 8px; top: 22px; height: 70px; }
+.cjhv-qs-guard { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cjhv-qs-tag { position: absolute; left: 50%; top: 38px; translate: -50% 0; padding: 2px 6px; border-radius: 2px; background: #0d0e10; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.6); font: 700 11px/13px 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; letter-spacing: 0.06em; color: var(--hv-cream); white-space: nowrap; }
+.cjhv-hit-qs { top: 0; bottom: 0; }
+.cjhv-foot { position: absolute; left: 0; right: 0; bottom: 4px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-mod-qs { width: 82px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-foot { letter-spacing: 0.02em; }
+
+/* EMER STOP: red plate, striped well, red T-handle (PULL: a deliberate 40 px pull; taps never fire) */
+.cjhv-mod-es { width: 80px; background: var(--hv-grain) 0 0 / 256px 256px, linear-gradient(165deg, #5a1a15, #3c100d 45%, #2d0c0a); background-blend-mode: soft-light, normal; }
+.cjhv-es-well { position: absolute; left: 8px; right: 8px; top: 22px; height: 70px; border-radius: 2px; padding: 4px; box-sizing: border-box;
+  background: repeating-linear-gradient(-45deg, #d9a521 0 5px, #141414 5px 10px); box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.6); }
+.cjhv-es-well::before { content: ''; position: absolute; inset: 5px; background: #0b0c0d; border-radius: 1px; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.8); }
+.cjhv-es-grip { position: absolute; left: 50%; top: 6px; width: 48px; height: 58px; margin: 0 0 0 -24px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; z-index: 1; }
+.cjhv-es-grip svg { width: 44px; height: 52px; display: block; margin: 3px auto 0; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-mod-es { width: 60px; }
+.cjhv-rail[data-rf-layout='window'] .cjhv-es-well { left: 4px; right: 4px; }
+
+/* HOLD TO REV / SHUTDOWN: raised push caps */
+.cjhv-mod-push { width: 108px; flex-direction: column; gap: 4px; padding: 4px; }
+.cjhv-push {
+  flex: 1 1 0; margin: 0; padding: 0; border: 0; border-radius: 3px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(170deg, #2e3033, #232527 60%, #1c1e20);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.1), inset -1px -1px 0 rgba(0, 0, 0, 0.6), 0 0 0 1px #0d0e10, 1px 2px 0 rgba(0, 0, 0, 0.45);
+}
+.cjhv-push:active:not([aria-disabled]) { box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.7), inset 2px 2px 0 rgba(0, 0, 0, 0.35), 0 0 0 1px #0d0e10; }
+.cjhv-push[aria-disabled] .cjhv-lg { color: var(--hv-unlit); text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7); }
+.cjhv-rail[data-rf-layout='window'] .cjhv-mod-push { width: 62px; }
+
+/* ---------------- dock: the rail takes the old row's parts' places; the shell's Shutdown / Hold to rev chips are the
+   rail's SHUTDOWN / HOLD TO REV caps now */
+.rev-dock:has(.cjhv-rail) > .rev-stop { display: none !important; }
+.rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row] > .cjhv-rail { flex: 1 1 auto !important; }
+.rev-dock:has(.cjhv-rail) .cjhv-mod-gps .cjp-gps { height: 118px; }

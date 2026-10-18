@@ -196,7 +196,9 @@ export type PackShellAction =
   | { type: 'nav'; action: import('./carrier-jet.nav').CjNavAction }
   /** CJ v2 CONFIG: change Drive settings in place. */
   | { type: 'set-ui'; partial: Partial<PackShellUi> }
-  | { type: 'retry-gps' };
+  | { type: 'retry-gps' }
+  /** CJ hero v2 HOLD TO REV cap: the same pedal as the Drive dock's "Hold to rev" (demo source; pressed = full). */
+  | { type: 'hold-rev'; on: boolean };
 export interface PackShellState {
   connected: boolean;
   muted: boolean;

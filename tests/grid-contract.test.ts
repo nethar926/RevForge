@@ -8,7 +8,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { GRID_LAYOUTS, gridFitArgs, gridHandles, requiredCells, resolveCells, validateSpec, type GridSpec, type Rect } from '../src/packs/grid/contract.ts';
 import { checkGrid, HIG_MIN_TARGET_PX, HIG_MIN_TEXT_PX, warnGridIssues } from '../src/packs/grid/hig.ts';
 import { railCount, railSlots, railTop, railXs } from '../src/packs/grid/rail.ts';
-import { CJ_GRID, type CjAnchors } from '../src/packs/carrier-jet/cells.ts';
+import { CJ_GRID, type CjAnchors, type CjCellId } from '../src/packs/carrier-jet/cells.ts';
+import { heroCells } from '../src/packs/carrier-jet/heroRail.ts';
 import { board2Cells, board2CellsMapFirst, keyCount, keyXs, KEY_GAP, KEY_H, KEY_W, type CellId } from '../src/packs/carrier-jet/geometry.ts';
 
 const src = (f: string) => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
@@ -122,14 +123,21 @@ const ANCHORS: CjAnchors = {
   sweep: R(974, 154, 236, 186), eng: R(22, 382, 256, 156), compass: R(282, 382, 132, 156),
 };
 
+/** Board 2 cells plus the hero v2 plate / rail (their reserved slots when nothing is measured). */
+const withHero = (c: ReturnType<typeof board2Cells>) => ({ ...c, ...heroCells(c) });
+
 test('Carrier Jet declares its cells through the contract: same rects as geometry.ts (Board 2 and map-first)', () => {
-  assert.deepEqual(resolveCells(CJ_GRID, 'board', { anchors: ANCHORS, mapFirst: false }), board2Cells(ANCHORS));
-  assert.deepEqual(resolveCells(CJ_GRID, 'window', { anchors: ANCHORS, mapFirst: false }), board2Cells(ANCHORS));
-  assert.deepEqual(resolveCells(CJ_GRID, 'board', { anchors: ANCHORS, mapFirst: true }), board2CellsMapFirst(ANCHORS));
-  assert.deepEqual(resolveCells(CJ_GRID, 'window', { anchors: ANCHORS, mapFirst: true }), board2CellsMapFirst(ANCHORS));
-  const ids: CellId[] = ['speed', 'mach', 'accel', 'vdi', 'sweep', 'eng', 'map', 'compass'];
+  assert.deepEqual(resolveCells(CJ_GRID, 'board', { anchors: ANCHORS, mapFirst: false }), withHero(board2Cells(ANCHORS)));
+  assert.deepEqual(resolveCells(CJ_GRID, 'window', { anchors: ANCHORS, mapFirst: false }), withHero(board2Cells(ANCHORS)));
+  assert.deepEqual(resolveCells(CJ_GRID, 'board', { anchors: ANCHORS, mapFirst: true }), withHero(board2CellsMapFirst(ANCHORS)));
+  assert.deepEqual(resolveCells(CJ_GRID, 'window', { anchors: ANCHORS, mapFirst: true }), withHero(board2CellsMapFirst(ANCHORS)));
+  // the Board 2 cells themselves are exactly geometry.ts's (hero v2 only adds two cells)
+  const b2 = resolveCells(CJ_GRID, 'board', { anchors: ANCHORS, mapFirst: true })!;
+  for (const [id, r] of Object.entries(board2CellsMapFirst(ANCHORS))) assert.deepEqual(b2[id as CellId], r, id);
+  const ids: CjCellId[] = ['speed', 'mach', 'accel', 'vdi', 'sweep', 'eng', 'map', 'compass', 'ann', 'rail'];
   assert.deepEqual(CJ_GRID.cells.map((c) => c.id), ids);
-  assert.ok(CJ_GRID.cells.every((c) => c.rail), 'every Board 2 cell has a key strip');
+  assert.ok(CJ_GRID.cells.filter((c) => c.id !== 'ann' && c.id !== 'rail').every((c) => c.rail), 'every Board 2 cell has a key strip');
+  assert.ok(CJ_GRID.cells.filter((c) => c.id === 'ann' || c.id === 'rail').every((c) => !c.rail), 'the hero cells carry no edge keys');
   assert.deepEqual(gridFitArgs(CJ_GRID), [1280, 520, 740, 720], 'the mount’s useFitBox box');
   assert.deepEqual(CJ_GRID.rail, { key: { w: 52, h: 66, gap: 4 }, hit: { w: 44, h: 44 }, max: 4 });
 });
@@ -185,7 +193,7 @@ test('HIG floors: 11 px text and 44 px targets after the fit scale; rails; min s
   assert.deepEqual(checkGrid(NP_EXAMPLE, noGear, { layout: 'board' }).map((i) => `${i.rule}:${i.cell}`), ['missing:gear']);
   assert.deepEqual(checkGrid(NP_EXAMPLE, (({ badge: _b, ...r }) => r)(npBoard), { layout: 'portrait' }), [], 'optional on phones');
   // CJ: 44 px caps and its 44 px (i) at scale 1 pass; at 0.9 both would fail
-  const cj = board2CellsMapFirst(ANCHORS);
+  const cj = withHero(board2CellsMapFirst(ANCHORS));
   assert.deepEqual(checkGrid(CJ_GRID, cj, { layout: 'board' }), []);
   const cj09 = checkGrid(CJ_GRID, cj, { layout: 'board', scale: 0.9 });
   assert.ok(cj09.some((i) => i.rule === 'rail') && cj09.some((i) => i.rule === 'target' && /\(i\)/.test(i.message)));

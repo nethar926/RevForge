@@ -8,7 +8,9 @@ import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompa
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
 import { mapSquareSide, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
-import { CJ_GRID, type CjAnchors } from '../carrier-jet/cells';
+import { CJ_GRID, type CjAnchors, type CjCellId, type CjHeroAnchors } from '../carrier-jet/cells';
+import { heroKeyActive, splitCap, type CapCtx } from '../carrier-jet/heroRail';
+import { KorryCap } from './CjHeroV2';
 import { GridLayer } from '../grid/GridLayer';
 import { rectStyle, useGrid, useGridMeasure, useSystemReducedMotion } from '../grid/useGrid';
 import { railTop } from '../grid/rail';
@@ -87,7 +89,8 @@ function cue(c: Extract<PackEngineCommand, { type: 'jet-cue' }>['cue']) {
   sendPackEngineCommand(ID.id, { type: 'jet-cue', cue: c });
 }
 
-type Cells = Record<CellId, Box>;
+/** Board 2's eight cells + the hero v2 plate / rail (CJ_GRID). */
+type Cells = Record<CjCellId, Box>;
 interface Geo {
   board2: boolean;
   cells: Cells | null;
@@ -104,13 +107,15 @@ interface Measured {
   gap: number;
   mapFirst: boolean;
   anchors: CjAnchors | null;
+  /** Hero v2: the annunciator plate / start rail boxes (portaled into the top bar / dock), when on screen. */
+  hero: CjHeroAnchors | null;
 }
 const rel = (r: DOMRect, o: DOMRect): Box => ({ left: r.left - o.left, top: r.top - o.top, width: r.width, height: r.height });
 /** Re-measure on these attribute changes under the host (look / layout / map-first swaps). */
 const GEO_OBSERVE = { attributeFilter: ['data-variant', 'data-layout', 'class', 'data-cj-mapfirst'] };
 
 /** Read the skin's Board 2 anchors off the host (.cjm). Pure DOM reads, plus the square-MAP column it sets first. */
-function measureCj(host: HTMLElement, layout: RfLayout): Measured | null {
+function measureCj(host: HTMLElement, layout: RfLayout, hero: boolean): Measured | null {
   const root = host.querySelector<HTMLElement>('.cj');
   if (!root) return null;
   const o = host.getBoundingClientRect();
@@ -142,7 +147,17 @@ function measureCj(host: HTMLElement, layout: RfLayout): Measured | null {
       gap = body ? parseFloat(getComputedStyle(body).rowGap) || 4 : 4;
     }
   }
-  return { board, gap, mapFirst, anchors };
+  // hero v2 (CjHeroV2): the plate and rail live outside the host (top bar / dock portals); measured relative to it
+  let heroBoxes: CjHeroAnchors | null = null;
+  if (anchors && hero && (layout === 'board' || layout === 'window')) {
+    const vp = host.closest<HTMLElement>('.rev-viewport') ?? document;
+    const box = (s: string) => {
+      const r = vp.querySelector<HTMLElement>(s)?.getBoundingClientRect();
+      return r && r.width > 0 && r.height > 0 ? rel(r, o) : null;
+    };
+    heroBoxes = { ann: box('.cjhv-ann'), rail: box('.cjhv-rail'), layout };
+  }
+  return { board, gap, mapFirst, anchors, hero: heroBoxes };
 }
 
 /**
@@ -150,10 +165,11 @@ function measureCj(host: HTMLElement, layout: RfLayout): Measured | null {
  * layer's own root, the host .cjm its parent) and CJ_GRID resolves the eight cells for the live layout
  * (board2Cells / board2CellsMapFirst; phones: none).
  */
-function useGeo(selfRef: RefObject<HTMLElement | null>, layout: RfLayout): Geo | null {
-  const read = useCallback((host: HTMLElement) => measureCj(host, layout), [layout]);
+function useGeo(selfRef: RefObject<HTMLElement | null>, layout: RfLayout, hero: string): Geo | null {
+  // `hero` (the mount's hero v2 key: off / ann / ann+rail) re-measures when the plate or rail comes on screen
+  const read = useCallback((host: HTMLElement) => measureCj(host, layout, hero !== ''), [layout, hero]);
   const m = useGridMeasure(selfRef, read, GEO_OBSERVE);
-  const ctx = useMemo(() => (m?.anchors ? { anchors: m.anchors, mapFirst: m.mapFirst } : null), [m]);
+  const ctx = useMemo(() => (m?.anchors ? { anchors: m.anchors, mapFirst: m.mapFirst, hero: m.hero ?? { layout: layout === 'window' ? 'window' as const : 'board' as const } } : null), [m, layout]);
   const cells = useGrid(CJ_GRID, layout, ctx);
   return useMemo(() => (m ? { board2: !!cells, cells, board: m.board, gap: m.gap, mapFirst: m.mapFirst } : null), [m, cells]);
 }
@@ -340,11 +356,13 @@ export interface CjV2LayerProps {
   headingStale: boolean;
   /** Speed unit pref (speed only; the OAT follows the TEMP pref, prefs.tempUnit). */
   unit?: 'mph' | 'kph';
+  /** Hero v2 key from the mount ('' = off; else which hero parts are on screen): Korry caps on, plate / rail measured. */
+  hero?: string;
 }
 
-export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }: CjV2LayerProps) {
+export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, hero = '' }: CjV2LayerProps) {
   const selfRef = useRef<HTMLDivElement>(null);
-  const geo = useGeo(selfRef, layout);
+  const geo = useGeo(selfRef, layout, hero);
   const view = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
   const wxRadar = useSyncExternalStore(subscribeWxRadar, getWxRadar, getWxRadar);
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
@@ -511,6 +529,8 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
   // weather: Board 2 only (MATRIX look), in the COMPASS cell's top-left corner
   const wx = geo.board2 && !phone ? wxView(wxValue, oatTempUnit(prefs)) : null;
   // edge-key rails (grid rail slots): every key cell; the drive window drops the top row's strips but SPEED's (they sit in the ENG strip)
+  // hero v2: every live key's blank cap carries a Korry split legend (function above, state below; decoration only)
+  const capCtx: CapCtx = { zoom: view.zoom, range: view.range, northUp: view.northUp, terr: view.mode === 'terr', radar: view.radar, wx: wxRadar, driveActive: !cfg.open };
   const railCells = KEY_CELLS.filter((c) => !(layout === 'window' && ((geo.mapFirst ? TOP_CELLS_MAP_FIRST : TOP_CELLS).includes(c) && c !== 'speed' || c === 'eng')));
   return (
     <GridLayer ref={selfRef} className="cjv2" spec={CJ_GRID} layout={layout} cells={cells} ready reduced={reduced} railCells={edge ? railCells : []} data-config={cfg.open || undefined} data-hdr-sweep={hdr.sweep !== undefined || undefined} data-hdr-compass={hdr.compass !== undefined || undefined}>
@@ -549,7 +569,8 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale }:
                 // hidden from VoiceOver (Meghan: dead caps under FLIGHT / AOA / VDI / COMPASS / WING SWEEP read as broken keys)
                 k?.legend ? (
                   <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k.id} data-reason={k.reason ? true : undefined} data-unlit={k.unlit || undefined}>
-                    <BezelKey legend={k.legend} active={!!k.active} ariaLabel={k.ariaLabel} onPress={() => onKey(cell, k)} />
+                    <BezelKey legend={k.legend} active={hero ? heroKeyActive(k.id, !!k.active) : !!k.active} ariaLabel={k.ariaLabel} onPress={() => onKey(cell, k)} />
+                    {hero && <KorryCap cap={splitCap(k.id, capCtx)} />}
                   </div>
                 ) : (
                   <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-rail="" data-reason={cell === bank && i >= SPARE_INDEX ? 'spare' : undefined} aria-hidden="true" />

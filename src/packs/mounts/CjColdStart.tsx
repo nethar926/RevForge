@@ -61,6 +61,20 @@ export interface ColdStart {
   say: string;
   /** SEAT BELT sign on (Dan's seatbelt system), for the dash lamp. */
   seatbelt: boolean;
+  /** Hero v2 (CjHeroV2): the systems snapshot the annunciators and START bank read. */
+  sys: CsSystems;
+  /** MASTER CAUTION lit (power on, not yet reset). */
+  caution: boolean;
+  /** MASTER CAUTION reset (the same momentary press as the shelf's MASTER CAUTION). */
+  resetCaution(): void;
+  /** Hero v2 START bank: one tap per switch, through the same start-order / Park rules as the shelf. */
+  railTap(id: string, on: boolean): void;
+  /** Hero v2 EMER STOP: a completed pull (or the VoiceOver action) fires the same emergency stop as the PULL handle. */
+  emergencyStop(): void;
+  /** Announce a line in the cold start's live region. */
+  announce(text: string): void;
+  /** The switch the start order wants next (Dan's system id; 'apuGuard' for the APU ARM step), else null. */
+  nextId: string | null;
   render: {
     shelf: (size?: 'wide' | 'narrow') => ReactElement | null;
     shelfKey: (size: 'wide' | 'narrow') => ReactElement | null;
@@ -254,6 +268,21 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     const open = !guards[g];
     cue(open ? 'guardOpen' : 'guardClose');
     setGuards((p) => ({ ...p, [g]: open }));
+  };
+  // Hero v2 START bank: the rail's lever-lock toggles stand in for the shelf covers (APU ARM, L / R ENG guards), so ON
+  // lifts that cover and starts in one tap; the start order and the Park lock stay csHoldStart / csTap's.
+  const railTap = (id: string, want: boolean) => {
+    const guardId = id === 'apu' ? 'apuGuard' : id === 'engL' || id === 'engR' ? id : null;
+    if (want && guardId) {
+      const g = { ...guards, [guardId]: true };
+      const it = csHoldStart(id, { ...inp, guards: g });
+      if (it.type === 'set') {
+        if (!guards[guardId as CsGuardId]) setGuards(g);
+        set(it.system, it.on);
+      } else if (it.type === 'none') announce(`${view.switches[id]?.name ?? id}: ${it.reason}`);
+      return;
+    }
+    onToggle(id, want ? 'on' : 'off');
   };
   const quickStart = () => {
     setShelf('closed');
@@ -490,5 +519,8 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       </>
     );
   };
-  return { on, park, live, shelf, toggleShelf, quickStart, pamphlet, setPamphlet, say, seatbelt: !!sys.on.seatbelt, render: { shelf: shelfEl, shelfKey, pullQs } };
+  return {
+    on, park, live, shelf, toggleShelf, quickStart, pamphlet, setPamphlet, say, seatbelt: !!sys.on.seatbelt, render: { shelf: shelfEl, shelfKey, pullQs },
+    sys, caution: view.caution.lit, resetCaution: () => onToggle('masterCaution', 'momentary'), railTap, emergencyStop: () => applyPull(pullAction(pullRef.current)), announce, nextId: view.next?.id ?? null,
+  };
 }
