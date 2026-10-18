@@ -426,8 +426,9 @@
 .cjv2-attrwrap > .cjv2-attr[data-rows] { position: relative; left: auto; right: auto; top: auto; padding: 0; pointer-events: auto; display: flex; flex-direction: column; }
 .cjv2-info[data-covered] { visibility: hidden; }
 .cjv2-attr > .cjv2-attr-close { top: 0; right: 0; z-index: 1; }
-.cjv2-attr-map { margin: 0; padding: 2px 5px; }
-.cjv2-attr-map::before { content: ''; float: right; width: 34px; height: 32px; margin: -2px -5px 0 2px; }
+/* the panel's own (i) is a 44px tap box in the top-right corner: the map credit keeps 44 + 6px gap clear on the right so
+   its text wraps before the (i) (Meghan, 773: it touched 'Tiles:'); min-height keeps the first link row below the (i) */
+.cjv2-attr-map { margin: 0; padding: 2px 50px 2px 5px; min-height: 44px; box-sizing: border-box; }
 .cjv2-credrow { display: flex; align-items: center; min-height: 44px; box-sizing: border-box; padding: 0 5px; border-top: 1px solid #2f7a48; color: #8dffad; font-size: 11px; line-height: 13px; }
 .cjv2-attr > a.cjv2-credrow { color: #8dffad; text-decoration: underline; text-decoration-color: #45ad66; text-underline-offset: 2px; cursor: pointer; -webkit-tap-highlight-color: rgb(141 255 173 / 0.2); }
 .cjv2-attr > a.cjv2-credrow:focus-visible { outline: 2px solid #8dffad; outline-offset: -2px; }

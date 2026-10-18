@@ -64,4 +64,9 @@ test('popover CSS: rows >= 44px full width, 11px, >= 4.5:1 (also pressed); grows
   assert.match(css, /\.cjv2-map > \.cjv2-attrwrap \{ position: absolute; left: 7px; right: 7px; bottom: 6px; min-height: calc\(100% - 12px\); display: flex; flex-direction: column;/);
   assert.match(css, /\.cjv2-attrwrap > \.cjv2-attr\[data-rows\] \{[^}]*pointer-events: auto;/);
   assert.match(css, /\.cjv2-info\[data-covered\] \{ visibility: hidden; \}/);
+  // the panel's (i) (44px box, top-right): the map credit keeps 44 + 6px clear on the right and is >= 44px tall, so
+  // neither its text nor the first link row sits under the (i)
+  assert.match(css, /\.cjv2-attr-map \{ margin: 0; padding: 2px 50px 2px 5px; min-height: 44px; box-sizing: border-box; \}/);
+  assert.match(css, /\.cjv2-attr > \.cjv2-attr-close \{ top: 0; right: 0;/);
+  assert.match(css, /\.cjv2-info \{[^}]*width: 44px; height: 44px;/);
 });
