@@ -182,3 +182,19 @@ div.cjhv-cap { cursor: default; }
 .rev-dock:has(.cjhv-rail) > .rev-stop { display: none !important; }
 .rev-dock > .cjm-bank[data-cjm-v2][data-cjm-row] > .cjhv-rail { flex: 1 1 auto !important; }
 .rev-dock:has(.cjhv-rail) .cjhv-mod-gps .cjp-gps { height: 118px; }
+
+/* ---------------- hero v2 mock match: LOOK keys (Meghan's mock: three dark raised caps in one recessed bezel; the
+   selected look is the brighter legend + a 76×4 backlit blue bar 4 px off the bottom, not a filled key). Hero board only.
+   The 3 px black ring per cap forms the recessed bezel (rings meet across the 4 px gaps); no layout change. */
+.rev-viewport:has(.cjhv-rail) .cjm[data-cjm-v2] .cj .cj-tab,
+.rev-viewport:has(.cjhv-rail) .cjm[data-cjm-v2] .cj .cj-tab[aria-checked='true'] {
+  background: linear-gradient(180deg, #2a2c30, #232428 55%, #1f2023); border: 1px solid #070708; border-radius: 2px; color: #e8e4d8;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.07), inset -1px -1px 0 rgba(0, 0, 0, 0.55), 0 0 0 3px #050506;
+  font-family: 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; font-weight: 600; font-size: 14px; letter-spacing: 0.075em;
+  text-shadow: 0 0 1px rgba(255, 240, 214, 0.55), 0 -1px 0 rgba(0, 0, 0, 0.55);
+}
+.rev-viewport:has(.cjhv-rail) .cjm[data-cjm-v2] .cj .cj-tab[aria-checked='true'] { color: #f1eee4; }
+.rev-viewport:has(.cjhv-rail) .cjm[data-cjm-v2] .cj .cj-tab[aria-checked='true']::after {
+  left: 50%; bottom: 4px; width: 76px; height: 4px; margin-left: -38px; border-radius: 1px; background: linear-gradient(180deg, #bfefff, #5fd3ff 60%, #2a8ebd);
+}
+.rev-viewport:has(.cjhv-rail) .cjm[data-cjm-v2][data-rf-layout='window'] .cj .cj-tab[aria-checked='true']::after { width: 60px; margin-left: -30px; }
