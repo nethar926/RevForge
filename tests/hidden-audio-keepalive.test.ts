@@ -131,7 +131,7 @@ test('ForgePage: hidden releases the pedal and brake only; audio stops only on S
 test('useVehicleMedia + ForgePage: car pause mutes through the app mute (never stop / shutoff / element pause); muted chip on screen', () => {
   const vm = src('forge/useVehicleMedia.ts');
   assert.match(vm, /runMediaCommand\(command,\{session,arm,fire:o\.fire,start:o\.start,stop:o\.stop,mute:o\.mute,unmute:o\.unmute,shift:o\.shift\}\);/);
-  assert.match(vm, /const actions:VehicleMediaAction\[\]=\['play','pause','stop','nexttrack','previoustrack'\];/, "'stop' handled");
+  assert.match(vm, /const actions=VEHICLE_MEDIA_ACTIONS;/, "'stop' handled (one list, mediaActions.ts)");
   assert.doesNotMatch(vm, /visibilityState/, 'a car play while the camera covers the page can re-arm the session');
   assert.match(vm, /playbackState=options\.paused\?'paused':'playing'/, 'the running effect keeps a paused session paused');
   const ma = src('forge/mediaActions.ts');

@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {mediaCommand,runMediaCommand,type VehicleMediaAction} from './mediaActions';
+import {mediaCommand,runMediaCommand,VEHICLE_MEDIA_ACTIONS,type VehicleMediaAction} from './mediaActions';
 interface Options {getMediaElement?:()=>HTMLAudioElement|null;blasters?:boolean;fire?:()=>void;enabled:boolean;running:boolean;manual:boolean;/** false = the pack has no gearbox (Carrier Jet): no gearbox wording, never shifts. */gearbox?:boolean;pauseShifts:boolean;name:string;start:()=>void;/** car 'stop' only: the full Shutdown */stop:()=>void;/** car pause: mute the engine output (engine + sim keep running) */mute:()=>void;/** car play while running: unmute */unmute:()=>void;/** muted by the app (media pause or the mute control): the session reads 'paused' */paused?:boolean;shift:(direction:number)=>void;}
 function carrierUrl() {
  // Original one-second silent PCM clip. It activates a native media element without duplicating the synth output.
@@ -30,7 +30,7 @@ export function useVehicleMedia(options:Options) {
    setLastEvent(`${action} → ${command} · ${new Date().toLocaleTimeString()}`);
    runMediaCommand(command,{session,arm,fire:o.fire,start:o.start,stop:o.stop,mute:o.mute,unmute:o.unmute,shift:o.shift});
   };
-  const actions:VehicleMediaAction[]=['play','pause','stop','nexttrack','previoustrack'];const registered:string[]=[];
+  const actions=VEHICLE_MEDIA_ACTIONS;const registered:string[]=[];
   for(const action of actions){try{session.setActionHandler(action,()=>dispatch.current(action));registered.push(action);}catch{/* Unsupported actions remain visible as unregistered. */}}
   setAccepted(registered);
   const pause=()=>{if(!closing&&!current.current.getMediaElement?.()&&current.current.running&&a.paused){dispatch.current('pause');if(current.current.blasters||(current.current.manual&&current.current.pauseShifts))arm();}};

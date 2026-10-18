@@ -1,4 +1,11 @@
 export type VehicleMediaAction = 'play'|'pause'|'stop'|'nexttrack'|'previoustrack';
+/** The MediaSession actions useVehicleMedia registers: one list for registering and for the Tesla input check count. */
+export const VEHICLE_MEDIA_ACTIONS: readonly VehicleMediaAction[] = ['play','pause','stop','nexttrack','previoustrack'];
+/** Tesla input check 'Media handlers': registered actions out of the same list (never more than the total). */
+export function mediaHandlersText(registered: readonly string[], actions: readonly string[] = VEHICLE_MEDIA_ACTIONS): string {
+ const n = new Set(registered.filter((a) => actions.includes(a))).size;
+ return `${Math.min(n, actions.length)}/${actions.length} registered`;
+}
 /**
  * Car media button → Drive command. A car pause is a real PAUSE: 'mute' silences the engine output through the app's
  * transient mute (mediaPause.ts, in memory, never the saved masterMuted → output gain 0) and keeps the engine and the sim running (no stop(), no shutoff, the

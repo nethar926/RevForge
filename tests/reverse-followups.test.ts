@@ -1,10 +1,10 @@
 // William's follow-ups on release 0e9c3cd. Bug 2: a car media pause is a transient in-memory mute (mediaPause.ts), never
 // the saved masterMuted; Ignition / Shutdown clear it, a reload never comes up muted; a Muted key shows whenever the
-// engine is muted.
+// engine is muted. Bug 3: Tesla input check 'Media handlers' counts the same action list on both sides.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mediaCommand, runMediaCommand } from '../src/forge/mediaActions.ts';
+import { mediaCommand, mediaHandlersText, runMediaCommand, VEHICLE_MEDIA_ACTIONS } from '../src/forge/mediaActions.ts';
 import * as mp from '../src/forge/mediaPause.ts';
 
 const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
@@ -91,3 +91,14 @@ test('Muted key next to Shutdown renders whenever the engine is muted (saved Mut
   assert.match(page, /const mutedChip = mutedKey\(prefs\.masterMuted, mediaPaused, audio\.running\);/);
 });
 
+test('Tesla input check: Media handlers counts the registered actions out of the same list, never over the total', () => {
+  assert.equal(VEHICLE_MEDIA_ACTIONS.length, 5);
+  assert.equal(mediaHandlersText([...VEHICLE_MEDIA_ACTIONS]), '5/5 registered');
+  assert.equal(mediaHandlersText(['play', 'pause']), '2/5 registered');
+  assert.equal(mediaHandlersText([]), '0/5 registered');
+  assert.equal(mediaHandlersText(['play', 'play', 'seekto', 'pause', 'stop', 'nexttrack', 'previoustrack', 'skipad']), '5/5 registered', 'duplicates / unknown actions never push it over');
+  assert.equal(mediaHandlersText(['play', 'pause', 'stop'], ['play', 'pause']), '2/2 registered');
+  assert.match(src('forge/ForgePage.tsx'), /<dt>Media handlers<\/dt><dd>\{mediaHandlersText\(media\.accepted\)\}<\/dd>/);
+  assert.doesNotMatch(src('forge/ForgePage.tsx'), /accepted\.length\}\/4/);
+  assert.match(src('forge/useVehicleMedia.ts'), /const actions=VEHICLE_MEDIA_ACTIONS;/, 'registration uses the same list');
+});

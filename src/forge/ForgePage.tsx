@@ -36,6 +36,7 @@ import { ThemePicker } from "../themes/ThemePicker";
 import { LISTED_THEMES, SPLASH_BACKDROP_THEME, isThemeListed, themeForId } from "../themes/catalog";
 import type { useThemes } from "../themes/useThemes";
 import { useVehicleMedia } from "./useVehicleMedia";
+import { mediaHandlersText } from "./mediaActions";
 import { NativeStudio } from "./NativeStudio";
 import { useDriveSimulation } from "./useDriveSimulation";
 import { effectiveMuted, getMediaPaused, mutedKey, setMediaPaused, subscribeMediaPaused } from "./mediaPause";
@@ -435,7 +436,7 @@ export function ForgePage({
                 {hasGears?<><label>Play/pause button upshifts in Manual<input type="checkbox" checked={pauseShifts} onChange={e=>setPauseShifts(e.target.checked)}/></label>
                 <p className="forge-control-hint">Twin-Ion: received play/pause events fire a pulse burst. Other engines: pause mutes the sound and the engine keeps running (or upshifts in Manual with the option above); play unmutes. Next/previous shift gears. Touch Shutdown always stops.</p></>
                 :<p className="forge-control-hint">{theme.name} has no gearbox: play starts the engine or unmutes it, pause mutes it and the engine keeps running, next/previous do nothing. Touch Shutdown always stops.</p>}
-                <div className="compatibility-box"><h3>Tesla input check</h3><dl><dt>Location API</dt><dd>{typeof navigator!=='undefined'&&'geolocation' in navigator?'Available':'Unavailable'}</dd><dt>GPS status</dt><dd>{gps.status}</dd><dt>Position accuracy</dt><dd>{gps.accuracy===null?'No reading':`±${Math.round(gps.accuracy)} m`}</dd><dt>Speed reading</dt><dd>{gps.timestamp===null?'Not received':`${gps.mph.toFixed(1)} mph`}</dd><dt>Media handlers</dt><dd>{media.accepted.length}/4 registered</dd><dt>Media session</dt><dd>{media.carrier}</dd></dl><p className="input-check-log" role="status">{media.lastEvent}</p><button className="forge-text-button" disabled={!mediaEnabled || !audio.running} onClick={media.arm}>Enable controls / recheck</button><p>While parked, start the engine and press your media buttons. An event appearing here confirms delivery to this browser. Button registration alone does not mean Tesla delivers the event. GPS speed requires an actual location reading.</p></div>
+                <div className="compatibility-box"><h3>Tesla input check</h3><dl><dt>Location API</dt><dd>{typeof navigator!=='undefined'&&'geolocation' in navigator?'Available':'Unavailable'}</dd><dt>GPS status</dt><dd>{gps.status}</dd><dt>Position accuracy</dt><dd>{gps.accuracy===null?'No reading':`±${Math.round(gps.accuracy)} m`}</dd><dt>Speed reading</dt><dd>{gps.timestamp===null?'Not received':`${gps.mph.toFixed(1)} mph`}</dd><dt>Media handlers</dt><dd>{mediaHandlersText(media.accepted)}</dd><dt>Media session</dt><dd>{media.carrier}</dd></dl><p className="input-check-log" role="status">{media.lastEvent}</p><button className="forge-text-button" disabled={!mediaEnabled || !audio.running} onClick={media.arm}>Enable controls / recheck</button><p>While parked, start the engine and press your media buttons. An event appearing here confirms delivery to this browser. Button registration alone does not mean Tesla delivers the event. GPS speed requires an actual location reading.</p></div>
 
                 <label>
                   Speed units
