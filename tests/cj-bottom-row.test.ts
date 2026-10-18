@@ -36,9 +36,24 @@ test('one even row: space-between, every part a flex item, one baseline, shared 
 test('773 window: all six parts fit one row (dock on the board width, AFTERBURNER caption over the guard)', () => {
   assert.match(css, /\.rev-dock:has\(> \.cjm-bank\[data-cjm-v2\]\[data-cjm-row\]\[data-rf-layout='window'\]\) \{ --cjrow-h: 66px; left: 8px !important; right: 8px !important; \}/);
   // widths (CSS px, measured): plate 89 (narrow), AFTERBURNER 254 (caption over the 144 px well + 88 px AB ARMED),
-  // EMER STOP 66, QUICK START 96, SEAT BELT 104, SHELF 80; dock 773 - 16
-  const parts = 89 + 254 + 66 + 96 + 104 + 80, dock = 773 - 16;
+  // EMER STOP 76 (wide pull: the full 'EMER STOP' caption), QUICK START 96, SEAT BELT 104, SHELF 80; dock 773 - 16
+  const parts = 89 + 254 + 76 + 96 + 104 + 80, dock = 773 - 16;
   assert.ok((dock - parts) / 5 >= 8, `gap ${(dock - parts) / 5}`);
   // AFTERBURNER at 66 px: 2 + 11 (caption) + 2 + 48 (well) + 2 = 65
   assert.ok(2 + 11 + 2 + 48 + 2 <= 66);
+});
+
+test('EMER STOP reads in full at every size: the row always takes the wide pull (76 px)', () => {
+  assert.match(mount, /cold\.render\.pullQs\(layout === 'board' \? 'wide' : 'narrow', 'wide'\)/);
+  const cs = src('packs/mounts/CjColdStart.tsx');
+  assert.match(cs, /const pullQs = \(size: 'wide' \| 'narrow', pullSize: 'wide' \| 'narrow' = size\) =>/);
+  assert.match(cs, /<PullHandle [^>]*size=\{pullSize\}/);
+  assert.doesNotMatch(css, /\.cjp-pull \{ width: 66px; \}/);
+  // Meghan's PullHandle: narrow → 'EMER', wide → 'EMER STOP' (read only)
+  assert.match(src('skins/carrier-jet/parts/PullHandle.tsx'), /\{size === 'narrow' \? 'EMER' : 'EMER STOP'\}/);
+});
+
+test('GPS plate ACQ legend: 4px more inset from the plate bottom (both states)', () => {
+  assert.match(css, /\.cjm-bank-plate \.cjp-gps svg > g:is\(\[data-acq='unlit'\], \[data-acq='lit'\]\) \{ transform: translateY\(-4px\); \}/);
+  assert.match(src('skins/carrier-jet/parts/GpsPlate.tsx'), /<g data-acq="unlit">[\s\S]*<g data-acq="lit"/);
 });

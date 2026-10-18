@@ -272,8 +272,9 @@ export function CarrierJetMount(props: PackHudProps) {
   ) : null;
   const bankB = row ? (
     <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} data-rf-reduce-motion={reduced || undefined} data-cjm-row>
+      {/* EMER STOP: Meghan's wide pull (76 px, caption 'EMER STOP' in full) at every size; the narrow one reads 'EMER' */}
       <div className="cjm-bank-es" role="group" aria-label="Engine start and stop">
-        {cold.render.pullQs(layout === 'board' ? 'wide' : 'narrow')}
+        {cold.render.pullQs(layout === 'board' ? 'wide' : 'narrow', 'wide')}
       </div>
       {sbLamp}
       {shelf}

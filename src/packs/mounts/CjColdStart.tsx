@@ -64,7 +64,8 @@ export interface ColdStart {
   render: {
     shelf: (size?: 'wide' | 'narrow') => ReactElement | null;
     shelfKey: (size: 'wide' | 'narrow') => ReactElement | null;
-    pullQs: (size: 'wide' | 'narrow') => ReactElement | null;
+    /** QUICK START at `size`; the EMER STOP pull at `pullSize` (default `size`). */
+    pullQs: (size: 'wide' | 'narrow', pullSize?: 'wide' | 'narrow') => ReactElement | null;
   };
 }
 
@@ -472,12 +473,12 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       </button>
     );
   };
-  const pullQs = (size: 'wide' | 'narrow') => {
+  const pullQs = (size: 'wide' | 'narrow', pullSize: 'wide' | 'narrow' = size) => {
     if (!on) return null;
     return (
       <>
         <div className="cjcs-pull">
-          <PullHandle phase={pull.phase} progress={pull.progress} size={size} gripProps={grip} ariaDescription="Pull the handle down past the line to stop the engines. A tap does nothing." />
+          <PullHandle phase={pull.phase} progress={pull.progress} size={pullSize} gripProps={grip} ariaDescription="Pull the handle down past the line to stop the engines. A tap does nothing." />
           {/* VoiceOver / keyboard: the only non-pull path (visually hidden, so a finger can't tap it) */}
           <button type="button" className="cjp-sr" data-cjcs-sr onClick={() => applyPull(pullAction(pullRef.current))}>Emergency stop, stop the engines now</button>
         </div>

@@ -42,7 +42,6 @@
 .rev-dock > .cjm-bank-b { order: 3; flex: none; display: flex; align-items: flex-end; gap: 8px; align-self: flex-end; margin-bottom: -6px; }
 .cjm-bank-es > .cjcs-pull { position: relative; display: flex; }
 .cjm-bank-b .cjp-pull { width: 76px; flex: none; }
-.cjm-bank-b[data-rf-layout='window'] .cjp-pull { width: 66px; }
 .cjm-bank-b .cjp-pull-grip { touch-action: none; }
 .cjm-bank-es > .cjcs-qs { display: flex; }
 .cjm-bank-b .cjp-qs { width: 118px; flex: none; }
@@ -251,6 +250,9 @@
 
 /* plate size: Meghan's GpsRadarPlate fills its width (aspect-ratio), so the slot fixes it: 107×118 wide, 89×118 narrow */
 .cjm-bank-plate > .cjp-gpsradar { width: 107px; flex: none; }
+/* GPS plate ACQ legend: 4px more inset from the plate's bottom edge (its baseline 108 of 118 read as sitting on the
+   edge); both states (unlit engraving / lit), the plate renders 1:1 so 4 units = 4 CSS px. Skin unchanged. */
+.cjm-bank-plate .cjp-gps svg > g:is([data-acq='unlit'], [data-acq='lit']) { transform: translateY(-4px); }
 .cjm-bank[data-rf-layout='window'] > .cjm-bank-plate > .cjp-gpsradar,
 .cjm-bank[data-rf-layout='portrait'] > .cjm-bank-plate > .cjp-gpsradar { width: 89px; }
 
@@ -318,6 +320,10 @@
   text-shadow: 0 0 2px #041009, 0 0 2px #041009, 1px 1px 0 #041009, -1px -1px 0 #041009, 1px -1px 0 #041009, -1px 1px 0 #041009; }
 /* compass readout: Meghan's HeadingLegend over the HSD rose's top digit box (HDG 047 M / HDG 040 T) */
 .cjv2 > .cjv2-hdgcell { pointer-events: none; }
+/* no heading yet: the same chip, dashed (Meghan's HeadingLegend lead size: 18px, 13px in cells under 130px = the 773
+   window), so Park lays out like Drive and the OAT line never meets the rose's own '---' box (hidden under the chip) */
+.cjv2-hdg-dash { display: block; font: 700 18px/1.15 'B612', system-ui, sans-serif; color: #8dffad; letter-spacing: 0.02em; }
+.cjm[data-rf-layout='window'] .cjv2-hdg-dash { font-size: 13px; }
 .cjv2-hdgro { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); padding: 1px 6px; background: #041009; border: 1px solid #2f7a48; border-radius: 4px; white-space: nowrap; }
 
 /* Guarded SHUTDOWN (Meghan's ShutdownGuard, 108.67x48): portaled into .rev-dock while the engine runs, on the host

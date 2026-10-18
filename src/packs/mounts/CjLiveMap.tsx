@@ -426,12 +426,20 @@ export function CjHeadingReadout({ heading, headingStale, hdgRef }: { heading: n
   useEffect(() => subscribeGpsFixes((f) => setFix((p) => (p && Math.abs(p.latitude - f.latitude) < 0.01 && Math.abs(p.longitude - f.longitude) < 0.01 ? p : f))), []);
   const pos = fix ? { lat: fix.latitude, lon: fix.longitude } : null;
   const pair = useMemo(() => (heading == null ? null : headingPair(heading, pos)), [heading, fix]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!pair) return null;
+  // no heading yet (Park from a cold load, no fix): the host chip still shows, dashed, in the Drive spot (Meghan's rose
+  // box hides under it via its data-cj-hdg-chip hook), so the OAT line sits under the chip exactly as in Drive
+  if (!pair) {
+    return (
+      <div className="cjv2-hdgro" data-hdg-none>
+        <span className="cjv2-hdg-dash" role="img" aria-label="Compass, no heading yet" data-cj-hdg-chip="">{`HDG --- ${hdgRef}`}</span>
+      </div>
+    );
+  }
   const label = `Compass, ${compassSpeech(pair, hdgRef)}${headingStale ? ', held' : ''}`;
   return (
     // the accessible name sits on Meghan's legend (ariaLabel → role=group); the wrapper carries none
     <div className="cjv2-hdgro">
-      {pair.m != null ? <CjHeadingLegend trueHdg={pair.t} magHdg={pair.m} lead={hdgRef} stale={headingStale} ariaLabel={label} single /> : <span role="img" aria-label={label} data-stale={headingStale || undefined}>{`HDG ${String(Math.round(pair.t) % 360).padStart(3, '0')} T`}</span>}
+      {pair.m != null ? <CjHeadingLegend trueHdg={pair.t} magHdg={pair.m} lead={hdgRef} stale={headingStale} ariaLabel={label} single /> : <span role="img" aria-label={label} data-stale={headingStale || undefined} data-cj-hdg-chip="">{`HDG ${String(Math.round(pair.t) % 360).padStart(3, '0')} T`}</span>}
     </div>
   );
 }

@@ -22,3 +22,16 @@ test('corner too narrow for the OAT column: the readout goes under the HDG chip 
   assert.ok(31 >= chipTop + 24.7 + 2, 'board: below the chip');
   assert.ok(25 >= chipTop + 18.9 + 2, 'window: below the chip');
 });
+
+test('no heading yet (Park): the host chip still shows, dashed, in the Drive spot, so the OAT line clears it the same way', async () => {
+  const live = readFileSync(new URL('../src/packs/mounts/CjLiveMap.tsx', import.meta.url), 'utf8');
+  const body = live.slice(live.indexOf('export function CjHeadingReadout'));
+  assert.doesNotMatch(body.slice(0, body.indexOf('const label')), /if \(!pair\) return null;/);
+  assert.match(body, /<div className="cjv2-hdgro" data-hdg-none>\s*<span className="cjv2-hdg-dash" role="img" aria-label="Compass, no heading yet" data-cj-hdg-chip="">\{`HDG --- \$\{hdgRef\}`\}<\/span>/);
+  // same box rules as the live chip; lead size as Meghan's legend (18px, 13px in the 773 window), >= 11px
+  assert.match(css, /\.cjv2-hdg-dash \{ display: block; font: 700 18px\/1\.15 /);
+  assert.match(css, /\.cjm\[data-rf-layout='window'\] \.cjv2-hdg-dash \{ font-size: 13px; \}/);
+  // Meghan's rose '---' box hides under any host chip (her hook); every host chip variant carries it
+  assert.match(readFileSync(new URL('../src/skins/carrier-jet/carrier-jet.css', import.meta.url), 'utf8'), /:root:has\(\[data-cj-hdg-chip\]\) \[data-cj-rose='narrow'\] \.cj-rose-box \{ visibility: hidden; \}/);
+  assert.equal((body.match(/data-cj-hdg-chip=""/g) ?? []).length, 2, 'dashed chip + TRUE-only chip (the M/T legend sets its own)');
+});
