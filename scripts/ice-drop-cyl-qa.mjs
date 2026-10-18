@@ -9,9 +9,9 @@ import assert from 'node:assert/strict';
 const SR = 48000;
 const CROSS_PACKS = {
   'v8-rumble': { fam: 1, collectorDelayMs: 1.8 },
-  'road-66': { fam: 1, collectorDelayMs: 2.0 },
-  miami: { fam: 1, collectorDelayMs: 2.4 },
-  'dune-runner': { fam: 1, collectorDelayMs: 2.2 },
+  'copper-mile': { fam: 1, collectorDelayMs: 2.0 },
+  'pink-current': { fam: 1, collectorDelayMs: 2.4 },
+  sandwake: { fam: 1, collectorDelayMs: 2.2 },
 };
 
 const GLOBAL_8 = [0, 90, 180, 270, 360, 450, 540, 630];
