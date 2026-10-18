@@ -146,3 +146,104 @@ test('real worklet render: idle audible + lumpy, high rpm does not collapse', as
   });
   assert.ok(rms(high, 0.8, 1.5) > -30, `high rpm collapsed: ${rms(high, 0.8, 1.5).toFixed(1)} dB`);
 });
+
+// ——— Visual skin: v3 quick pass (drive-mode key colours, red-first scanner, grey captions) ———
+const NP_TSX = 'src/skins/night-pursuit/NightPursuitOverlay.tsx';
+const NP_CSS = 'src/skins/night-pursuit/night-pursuit.css';
+const cssRule = (css, selector) => {
+  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = css.match(new RegExp(`(?:^|[},])\\s*${esc}\\s*(?:,[^{]*)?\\{([^}]*)\\}`, 'm'));
+  return m ? m[1] : '';
+};
+const hexLum = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+};
+const contrast = (a, b) => {
+  const [x, y] = [hexLum(a), hexLum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
+
+test('NP drive-mode keys: CRUISE green, PURSUIT red, AUTO white legend (never red)', () => {
+  const tsx = read(NP_TSX);
+  const css = read(NP_CSS);
+  assert.match(tsx, /\{ id: 'norm', label: 'Cruise', tone: 'g' \}/);
+  assert.match(tsx, /\{ id: 'pursuit', label: 'Pursuit', tone: 'r' \}/);
+  assert.match(tsx, /\{ id: 'auto', label: 'Auto', tone: 'w' \}/);
+  assert.doesNotMatch(tsx, /label: 'Norm'/);
+  assert.match(tsx, /np-mode-btn tone-\$\{m\.tone\}/);
+  assert.match(cssRule(css, '.np-mode-btn.tone-g.active'), /color: #6af59a/);
+  assert.match(cssRule(css, '.np-mode-btn.tone-r.active'), /color: #ff7a6a/);
+  const auto = cssRule(css, '.np-mode-btn.tone-w.active');
+  assert.match(auto, /color: #f4eee2/);
+  assert.doesNotMatch(auto, /#ff|255, 50, 30|crimson/i, 'AUTO is never red');
+  const unlit = cssRule(css, '.np-mode-btn');
+  assert.match(unlit, /color: #a3a5ab/, 'unlit legend grey');
+  assert.match(unlit, /#2a2c30/, 'unlit key dark');
+  assert.match(cssRule(css, '.np-overlay .np-mode-btn'), /color: #a3a5ab/, 'unlit legend beats host button reset');
+  assert.doesNotMatch(css, /\.np-mode-btn\.amber/, 'old amber AUTO/NORM keys removed');
+});
+
+test('NP scanner is red-first: red chase, red idle eye, one red lamp-test sweep', () => {
+  const tsx = read(NP_TSX);
+  const css = read(NP_CSS);
+  assert.match(tsx, /data-scan=\{pursuitHot \? 'chase' : 'idle'\}/);
+  assert.match(tsx, /np-scanner-test" onAnimationEnd=\{\(\) => setLampTest\(false\)\}/);
+  const idle = cssRule(css, '.np-scanner[data-scan="idle"] .np-scanner-eye');
+  assert.match(idle, /animation: none/, 'idle eye is steady');
+  assert.match(idle, /255, 40, 20/, 'idle eye is red');
+  const sweep = cssRule(css, '.np-scanner-test');
+  assert.match(sweep, /animation: np-lamp-sweep \d+ms ease-out 1 forwards/, 'lamp test runs once');
+  assert.match(sweep, /#d81808/, 'lamp test is red');
+  // No green / cyan anywhere in the scanner styles.
+  const scannerCss = css.slice(css.indexOf('/* Top scanner'), css.indexOf('/* Dash grid */'));
+  assert.doesNotMatch(scannerCss, /green|cyan|#00c853|#00e5ff|60, 230, 110/);
+});
+
+test('NP motion: nothing faster than 3 flashes/s; Reduce Motion stops chase and sweep', () => {
+  const css = read(NP_CSS);
+  const tsx = read(NP_TSX);
+  // Chase: one alternate pass per period, so at most 1000/period edge-hits per second.
+  for (const ms of [...tsx.matchAll(/'(\d+)ms'/g)].map((m) => Number(m[1]))) {
+    assert.ok(1000 / ms < 3, `scanner period ${ms}ms`);
+  }
+  const sweepMs = Number(css.match(/np-lamp-sweep (\d+)ms/)[1]);
+  assert.ok(sweepMs >= 334, 'lamp test is one slow pass');
+  assert.doesNotMatch(css, /animation:[^;]*np-lamp-sweep[^;]*infinite/);
+  for (const block of [
+    css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'), css.indexOf('.motion-off .np-scanner-cell {')),
+    css.slice(css.indexOf('.motion-off .np-scanner-eye'), css.indexOf('/* Dash grid */')),
+  ]) {
+    assert.match(block, /\.np-scanner-eye,\s*\n\s*(\.motion-off )?\.np-scanner-test \{\s*animation: none !important;\s*display: none;/);
+  }
+});
+
+test('NP grey status and captions: neutral grey, >= 11px, >= 4.5:1 on the panel', () => {
+  const css = read(NP_CSS);
+  assert.match(css, /--skin-caption: #a9abb0;/);
+  assert.match(css, /--skin-status: #c4c6ca;/);
+  for (const sel of ['.np-pod-label', '.np-bar-label', '.np-status']) {
+    const rule = cssRule(css, sel);
+    assert.ok(rule, `${sel} rule found`);
+    assert.ok(Number(rule.match(/font-size: (\d+)px/)[1]) >= 11, `${sel} >= 11px`);
+    assert.match(rule, /color: var\(--skin-(caption|status)/, `${sel} uses the grey token`);
+    assert.doesNotMatch(rule, /cyan|crimson|amber/, `${sel} neutral`);
+  }
+  // Lightest panel / footer / key surfaces the captions sit on.
+  for (const bg of ['#1d1f22', '#111214', '#080808', '#2a2c30']) {
+    assert.ok(contrast('#a9abb0', bg) >= 4.5, `caption on ${bg}: ${contrast('#a9abb0', bg).toFixed(2)}`);
+    assert.ok(contrast('#c4c6ca', bg) >= 4.5, `status on ${bg}`);
+    assert.ok(contrast('#a3a5ab', bg) >= 4.5, `unlit key legend on ${bg}`);
+  }
+});
+
+test('NP skin copy stays original (no banned names)', () => {
+  for (const rel of [NP_TSX, NP_CSS]) {
+    const src = read(rel);
+    for (const re of BANNED) assert.doesNotMatch(src, re, `${rel} contains ${re}`);
+  }
+});

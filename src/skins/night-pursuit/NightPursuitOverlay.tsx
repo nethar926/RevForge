@@ -120,18 +120,23 @@ function SegBar({
   );
 }
 
-const MODES: { id: NightPursuitMode; label: string; amber?: boolean }[] = [
-  { id: 'power', label: 'Power' },
-  { id: 'auto', label: 'Auto', amber: true },
-  { id: 'norm', label: 'Norm', amber: true },
-  { id: 'pursuit', label: 'Pursuit' },
+/**
+ * Drive-mode keys (v3): each key has its own lit colour. CRUISE (mode id `norm`) lights green,
+ * PURSUIT (and POWER) red, AUTO a white legend, never red. Unlit keys are dark with grey legends.
+ */
+type NightPursuitKeyTone = 'w' | 'g' | 'r';
+const NP_MODE_KEYS: { id: NightPursuitMode; label: string; tone: NightPursuitKeyTone }[] = [
+  { id: 'power', label: 'Power', tone: 'r' },
+  { id: 'auto', label: 'Auto', tone: 'w' },
+  { id: 'norm', label: 'Cruise', tone: 'g' },
+  { id: 'pursuit', label: 'Pursuit', tone: 'r' },
 ];
 
 const SCANNER_CELLS = 36;
 
 /**
- * Night Pursuit Drive HUD — matte-black command dash with crimson scanner,
- * 7-seg banks, dual CRT pods, and POWER/AUTO/NORM/PURSUIT mode rail.
+ * Night Pursuit Drive HUD — satin-black command dash with red scanner,
+ * 7-seg banks, dual CRT pods, and POWER/AUTO/CRUISE/PURSUIT mode rail.
  * Original art only. Decorative SPEED 7-seg mirrors telemetry; app may still own hero SPEED.
  */
 export function NightPursuitOverlay({
@@ -180,6 +185,8 @@ export function NightPursuitOverlay({
     return base.map((v) => Math.max(0.08, Math.min(1, v * (pursuitHot ? 1.15 : 0.9))));
   }, [env, thr, load, rpm, pursuitHot]);
 
+  // Power-up lamp test: one red scanner sweep (runs once per mount; hidden under Reduce Motion).
+  const [lampTest, setLampTest] = useState(true);
   const [edge, setEdge] = useState<'left' | 'right'>('left');
   const handleSweepIteration = (_e: AnimationEvent<HTMLDivElement>) => {
     const next = edge === 'left' ? 'right' : 'left';
@@ -189,7 +196,7 @@ export function NightPursuitOverlay({
 
   return (
     <div
-      className={`np-overlay${pursuitHot ? ' np-hot' : ''}`}
+      className={`np-overlay${pursuitHot ? ' np-hot' : ''}${lampTest ? ' np-lamp-test' : ''}`}
       data-mode={mode}
       style={
         {
@@ -201,14 +208,16 @@ export function NightPursuitOverlay({
         } as CSSProperties
       }
     >
-      {/* Mandatory top scanner — ping-pong sweep eye over a dim LED bank.
-          Reduced motion → static center glow via CSS. */}
-      <div className="np-scanner" aria-hidden>
+      {/* Mandatory top scanner, red-first: red chase in PURSUIT / POWER, a dim steady red idle eye
+          otherwise, and a single red lamp-test sweep at power-up.
+          Reduced motion → no chase, no sweep, static center glow via CSS. */}
+      <div className="np-scanner" data-scan={pursuitHot ? 'chase' : 'idle'} aria-hidden>
         {Array.from({ length: SCANNER_CELLS }, (_, i) => (
           <i key={i} className="np-scanner-cell" />
         ))}
         <div className="np-scanner-track">
           <div className="np-scanner-eye" onAnimationIteration={handleSweepIteration} />
+          {lampTest ? <div className="np-scanner-test" onAnimationEnd={() => setLampTest(false)} /> : null}
         </div>
       </div>
 
@@ -289,11 +298,11 @@ export function NightPursuitOverlay({
         </section>
 
         <div className="np-mode-rail" role="group" aria-label="Drive mode" onClick={(e) => e.stopPropagation()}>
-          {MODES.map((m) => (
+          {NP_MODE_KEYS.map((m) => (
             <button
               key={m.id}
               type="button"
-              className={`np-mode-btn${m.amber ? ' amber' : ''}${mode === m.id ? ' active' : ''}`}
+              className={`np-mode-btn tone-${m.tone}${mode === m.id ? ' active' : ''}`}
               aria-pressed={mode === m.id}
               onClick={() => setMode(m.id)}
             >
@@ -315,7 +324,8 @@ export function NightPursuitOverlay({
         <div className="np-status">
           <span className="np-pack-tag">Night Pursuit · Experimental</span>
           <span>
-            {pursuitHot ? 'Scanner chase' : 'Scanner idle'} · Mode {mode.toUpperCase()}
+            {pursuitHot ? 'Scanner chase' : 'Scanner idle'} · Mode{' '}
+            {(NP_MODE_KEYS.find((k) => k.id === mode)?.label ?? mode).toUpperCase()}
           </span>
         </div>
         <div className="np-yoke" title="Decorative yoke motif" />
