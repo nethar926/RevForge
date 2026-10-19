@@ -138,12 +138,13 @@ export function CarrierJetMount(props: PackHudProps) {
   // CJ v2 Board 2 (MATRIX look, board / window): the skin's reflowed board (container-unit sizing), re-gridded by
   // carrier-jet-v2.css; the full 1280 layout's fixed-size blocks do not fit the Board 2 cells.
   const [look] = useCarrierJetVariant();
-  // Wilson, Oct 18 9:41 PM: HOLO is off for now, and every load opens on VECTOR.
+  // Wilson, Oct 18 9:41 PM: HOLO is off for now. Oct 19: every load / refresh opens on MATRIX (overrides the saved
+  // pick; VECTOR stays one tap away on the LOOK tabs).
   useEffect(() => {
-    writeCarrierJetVariant('tomcat');
+    writeCarrierJetVariant('carrier-jet');
   }, []);
   useEffect(() => {
-    if (look === 'swing-wing') writeCarrierJetVariant('tomcat');
+    if (look === 'swing-wing') writeCarrierJetVariant('carrier-jet');
   }, [look]);
   const board2 = FEATURES.cjV2 && look === 'carrier-jet' && (layout === 'board' || layout === 'window');
   const compact: boolean | 'auto' = board2 ? true : fullBoard ? false : props.compact === true ? true : 'auto';
@@ -388,7 +389,7 @@ export function CarrierJetMount(props: PackHudProps) {
       onSource={onSource}
       live={cold.live}
       onQuickStart={() => cold.quickStart()}
-      onEmergencyStop={cold.emergencyStop}
+      onFuelGuardOff={(id) => cold.guardOff(railSw(id).system!)}
       holdRev={!!props.demo && props.running}
       onHoldRev={(on) => void requestPackShell({ type: 'hold-rev', on })}
       running={props.running}
@@ -430,9 +431,21 @@ export function CarrierJetMount(props: PackHudProps) {
     // hero v3.1: every switch is on the rail; no SHELF key and no shelf pop-up (NOTES.md)
     null
   )) : null;
+  // Instrument power (Wilson, Oct 19 round 2; hero cold start on MATRIX): BATT off = dark glass; BATT on = backlight +
+  // fixed legends; data per group: AVION (AOA, LOAD, ACCEL, WING SWEEP) · INS = NAV, one switch in Dan's list
+  // (inertialNav: VDI, FLIGHT, map, compass) · RADAR MX / WX (the radar layer). RPM reads 0 until an engine spools.
+  const pwr = hero && coldOn && board2;
+  const sysOn = cold.sys.on as Record<string, boolean | undefined>;
+  const engDark = cold.sys.engines.L === 'off' && cold.sys.engines.R === 'off';
+  const hudRpm = pwr && engDark ? { rpm: 0, rpmNorm: 0 } : null;
   return (
     <div
       ref={ref}
+      data-cj-pwr={pwr || undefined}
+      data-pwr-batt={(pwr && sysOn.batt) || undefined}
+      data-pwr-avion={(pwr && sysOn.batt && sysOn.avionics) || undefined}
+      data-pwr-ins={(pwr && sysOn.batt && sysOn.inertialNav) || undefined}
+      data-pwr-radar={(pwr && sysOn.batt && mapView.radar) || undefined}
       className="rf-pack-fit cjm"
       data-pack={ID.id}
       data-box={driveWindow ? 'drive' : undefined}
@@ -446,7 +459,7 @@ export function CarrierJetMount(props: PackHudProps) {
         {(h) => (
           <>
             <div className="cjm-fill">
-              <CarrierJetHud {...props} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} bank={vdiBank} />
+              <CarrierJetHud {...props} {...hudRpm} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} bank={vdiBank} />
             </div>
             {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} hero={hero ? (topbar ? 'ann+rail' : 'rail') : ''} />}
           </>
@@ -468,6 +481,7 @@ export function CarrierJetMount(props: PackHudProps) {
           onThemes={() => void requestPackShell({ type: 'nav', action: { type: 'panel', panel: 'themes' } })}
           batt={railState.on.batt}
           lampTest={lampTest}
+          onEmergencyStop={cold.emergencyStop}
         />,
         vp.viewport,
       )}

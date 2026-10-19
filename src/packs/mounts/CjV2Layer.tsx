@@ -561,7 +561,8 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
           const b = layout === 'window' && cell === 'speed' ? cells.eng : cells[cell];
           const kctx = { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(order.map((c) => [c, tileFor(c)])), subs: paged.subs } : null, wx: { on: wxKeyOn, slot: wxSlot(cells.map.width, view) }, bank };
           const n = stripCount(cell, b.width, kctx);
-          const keys = cellKeys(cell, n, kctx);
+          // hero (Wilson, Oct 19 round 2): no DRIVE / MORE keys (CONFIG's RTN returns to the board; MORE's items: see CONFIG)
+          const keys = cellKeys(cell, n, kctx).map((k) => (hero && k && (k.id === 'drive' || k.id === 'more') ? null : k));
           const xs = keyXs(b, n);
           const top = railTop(b, geo.gap);
           return (

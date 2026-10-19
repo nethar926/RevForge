@@ -301,3 +301,58 @@ img.cjhv-tg { object-fit: contain; display: block; }
 .cjhv-gen .cjhv-bulb-lg { color: var(--hv-cream) !important; }
 /* 773: the AFTERBURNER cover sits a little higher so it stays inside its 66 px module (art only; the hit box is unchanged) */
 .cjhv-rail[data-rf-layout='window'] .cjhv-ab-well > .cjhv-gpiv { top: 25px; }
+
+/* ---------------- Oct 19 round 2 (Wilson) */
+/* map keys: a face that repeats its edge-slot caption hides the caption (+ / − glyph keys, TERR) */
+.cjv2-key:has(.cjhv-korry[data-cap-only]) .cjp-bezel svg text { visibility: hidden; }
+.cjhv-korry > span:empty { display: none; }
+/* MASTER CAUTION / WARNING: Wilson's square lamp at its true aspect */
+.cjhv-top .cjhv-cap.cjhv-top-master { background-size: contain !important; background-position: center !important; padding: 0; justify-content: center; gap: 0; }
+.cjhv-top .cjhv-cap.cjhv-top-master .cjhv-lg { font-size: 11px; line-height: 12px; letter-spacing: 0; }
+.cjhv-top .cjhv-cap.cjhv-top-master .cjhv-mark { left: 8px; top: 7px; width: 6px; height: 6px; }
+/* THEMES: jet icon */
+.cjhv-top .cjhv-top-themes { padding: 0; justify-content: center; align-items: center; }
+.cjhv-jet { width: 26px; height: 26px; fill: #c9cdd0; filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.6)); }
+.cjhv-top[data-rf-layout='window'] .cjhv-jet { width: 24px; height: 24px; }
+/* EMER STOP on the top plate */
+.cjhv-top-es { position: absolute; height: auto; }
+.cjhv-top-es .cjhv-es-well { top: 19px; height: auto; bottom: 17px; }
+.cjhv-top-es .cjhv-es-grip { top: 2px; }
+.cjhv-top-es[data-narrow] .cjhv-es-grip { width: 44px; margin-left: -22px; }
+.cjhv-top-es .cjhv-title { font-size: 11px; letter-spacing: 0.02em; }
+/* QUICK START lifted: the neutral switch plate + hex, the Push Square full lamp centred on the nut */
+.cjhv-qs-base { position: absolute; left: -22px; top: -34px; width: 44px; height: 68px; max-width: none; object-fit: contain; display: block; }
+.cjhv-qs[data-open] .cjhv-qs-art .cjhv-qs-key { position: absolute; left: -8px; top: -8px; right: auto; bottom: auto; width: 16px; height: 16px; border-image: var(--sq) 26 fill / 4px / 0 stretch; }
+.cjhv-qs[data-open] .cjhv-qs-art .cjhv-qs-key[data-lamp='unlit'] { border-image-source: var(--sq-off); }
+.cjhv-qs-art .cjhv-qs-unlit { border-image: var(--sq-off) 26 fill / 4px / 0 stretch; }
+/* GEN legends */
+.cjhv-gen .cjhv-bulb-lg { color: var(--hv-cream) !important; }
+
+/* ---------------- instrument power (hero cold start, CarrierJetMount data-cj-pwr). BATT off: dark green-black glass,
+   nothing on it. BATT on: a faint backlight and the fixed legends only; each group's data shows only with its switch:
+   AVION = AOA / LOAD, ACCEL, WING SWEEP · INS (= NAV, one switch) = FLIGHT speed / mach, VDI, map, compass ·
+   RADAR = the radar layer. Visibility only: every box keeps its size (no layout shift). */
+.cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cj-crt, .cjv2-crt) { background: radial-gradient(ellipse at 50% 40%, #04100a, #020805 70%) !important; }
+.cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cj-crt, .cjv2-crt) *,
+.cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cjv2-hdgcell, .cjwx-host, .cj-hstale),
+.cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cjv2-hdgcell, .cjwx-host) * { visibility: hidden !important; }
+.cjm[data-pwr-batt] :is(.cj-crt, .cjv2-crt) { box-shadow: 0 0 0 2px #535c62, inset 0 0 24px rgb(0 0 0 / 0.8), inset 0 0 36px rgb(90 255 140 / 0.07); }
+/* INS off: no speed, source, mach, VDI, compass, map */
+.cjm[data-pwr-batt]:not([data-pwr-ins]) :is(.cj-spd-num, .cj-spd-src, .cj-mach-num, .cj-mach-tape, .cj-mach-tag),
+.cjm[data-pwr-batt]:not([data-pwr-ins]) .cj-a-mid .cj-crt > svg,
+.cjm[data-pwr-batt]:not([data-pwr-ins]) :is(.cjv2-hdgcell, .cjwx-host, .cj-hstale),
+.cjm[data-pwr-batt]:not([data-pwr-ins]) :is(.cjv2-hdgcell, .cjwx-host) *,
+.cjm[data-pwr-batt]:not([data-pwr-ins]) .cjv2-map :is(.cjv2-mapgl, .cjv2-hsd-ov, .cjv2-corner, .cjv2-alerts, .cjv2-info) { visibility: hidden !important; }
+/* RADAR off: no radar layer */
+.cjm[data-pwr-batt]:not([data-pwr-radar]) .cjv2-map .cjv2-scan { visibility: hidden !important; }
+/* AVION off: no AOA / LOAD, ACCEL, WING SWEEP data */
+.cjm[data-pwr-batt]:not([data-pwr-avion]) .cj-a-eng svg,
+.cjm[data-pwr-batt]:not([data-pwr-avion]) .cj-a-sweep :is(svg, .cj-sw-num, .cj-mode),
+.cjm[data-pwr-batt]:not([data-pwr-avion]) .cjv2-acc .cjv2-crt :is(svg, .cjv2-cap) { visibility: hidden !important; }
+/* caption hidden: its empty edge slot goes too */
+.cjv2-key:has(.cjhv-korry[data-cap-only]) .cjp-bezel svg > rect:nth-of-type(-n+2), .cjv2-key:has(.cjhv-korry[data-cap-only]) .cjp-bezel svg > rect[stroke='#7ef7a1'] { visibility: hidden; }
+/* BATT off: every key lamp dark (the 1/3 strip unlit) */
+.cjm[data-cj-pwr]:not([data-pwr-batt]) ~ * .cjhv-korry, .rev-viewport:has(.cjm[data-cj-pwr]:not([data-pwr-batt])) .cjhv-korry[data-lit] { border-image-source: var(--sq-dark, var(--sq)); }
+.rev-viewport:has(.cjm[data-cj-pwr]:not([data-pwr-batt])) .cjhv-korry[data-lit] > .cjhv-korry-bot { color: #c9cdd0 !important; }
+/* rail legends stay readable over a guard plate that overhangs its cell (773) */
+.cjhv-rail .cjhv-rname { z-index: 2; }

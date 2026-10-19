@@ -15,7 +15,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as RPointerEvent, type ReactElement } from 'react';
 import { ApuBlock, GndAirBlock, PullHandle, QuickStartGuard, SwitchShelf } from '../../skins/carrier-jet/parts/index';
 import type { CjShelfOpen, CjToggleState } from '../../skins/carrier-jet/parts/index';
-import type { JetCue, JetSystem } from '../../audio/types';
+import type { JetCue, JetSwitchFoley, JetSystem } from '../../audio/types';
 import { getPackJet, subscribePackJet } from '../jetBridge';
 import { csQuickSteps, QS_STEP_MS, QS_UNTIL_MAX_MS, type QsStep } from '../carrier-jet/coldStart';
 import { getMapView, setRadar } from '../carrier-jet/mapView';
@@ -72,6 +72,8 @@ export interface ColdStart {
   resetCaution(): void;
   /** Hero v2 START bank: one tap per switch, through the same start-order / Park rules as the shelf. */
   railTap(id: string, on: boolean): void;
+  /** a guard closed over an ON switch (L / R FUEL): that system off with the guard-close foley */
+  guardOff(id: string): void;
   /** Hero v2 EMER STOP: a completed pull (or the VoiceOver action) fires the same emergency stop as the PULL handle. */
   emergencyStop(): void;
   /** QUICK START sequence (csQuickSteps) in progress, and the FUEL guards it has lifted on the way. */
@@ -152,9 +154,10 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       /* engine not ready */
     }
   };
-  const set = (id: string, v: boolean) => {
+  const set = (id: string, v: boolean, opts?: { foley?: JetSwitchFoley | false }) => {
     try {
-      api?.setJetSystem(id as JetSystem, v);
+      if (opts) api?.setJetSystem(id as JetSystem, v, opts);
+      else api?.setJetSystem(id as JetSystem, v);
     } catch {
       /* engine not ready */
     }
@@ -609,6 +612,6 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
   return {
     on, park, live, shelf, toggleShelf, quickStart, pamphlet, setPamphlet, say, seatbelt: !!sys.on.seatbelt, render: { shelf: shelfEl, shelfKey, pullQs },
     qsRunning, qsLift,
-    sys, caution: view.caution.lit, resetCaution: () => onToggle('masterCaution', 'momentary'), railTap, emergencyStop: () => applyPull(pullAction(pullRef.current)), announce, nextId: view.next?.id ?? null,
+    sys, caution: view.caution.lit, resetCaution: () => onToggle('masterCaution', 'momentary'), railTap, guardOff: (id: string) => set(id, false, { foley: 'guardClose' }), emergencyStop: () => applyPull(pullAction(pullRef.current)), announce, nextId: view.next?.id ?? null,
   };
 }

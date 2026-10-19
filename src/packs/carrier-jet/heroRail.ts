@@ -106,7 +106,7 @@ export const lampAria = (d: LampDecl, lit: boolean): string => `${d.spoken}, ${l
 
 /* ------------------------------------------------------------------ Korry split caps (upper-board keys) */
 
-export interface SplitCap { top: string; bottom: string; /** lower field lit cyan (Korry type C: black letters on cyan) */ lit: boolean }
+export interface SplitCap { top: string; bottom: string; /** lower field lit cyan (Korry type C: black letters on cyan) */ lit: boolean; /** the edge-slot caption above the key repeats the face: hidden (round 2) */ capOnly?: boolean }
 export interface CapCtx { zoom: number; range: number; northUp: boolean; terr: boolean; radar: boolean; wx: boolean; driveActive: boolean }
 
 /** N/TRK-UP is a split cap like MAP/TERR: ORIENT on top, the CURRENT state in the lit field below. */
@@ -125,15 +125,18 @@ export function heroKeyActive(id: string, active: boolean): boolean {
 /** Split legend for an edge key id (null: leave the cap blank, e.g. an inert key). */
 export function splitCap(id: string, c: CapCtx): SplitCap | null {
   switch (id) {
-    case 'config': return { top: 'SET', bottom: '', lit: false };
-    case 'zoomIn': return { top: '+', bottom: `${c.zoom} MI`, lit: false };
-    case 'zoomOut': return { top: '\u2212', bottom: `${c.zoom} MI`, lit: false };
-    case 'rngUp': return { top: '+', bottom: `${c.range} MI`, lit: false };
-    case 'rngDown': return { top: '\u2212', bottom: `${c.range} MI`, lit: false };
+    // Wilson, Oct 19 round 2: no text on the faces where the edge-slot caption says it; +/− keys show only the glyph
+    // (their caption is hidden as redundant); state stays in the aria labels
+    case 'config': return { top: '', bottom: '', lit: false };
+    case 'zoomIn': return { top: '+', bottom: '', lit: false, capOnly: true };
+    case 'zoomOut': return { top: '\u2212', bottom: '', lit: false, capOnly: true };
+    case 'rngUp': return { top: '+', bottom: '', lit: false, capOnly: true };
+    case 'rngDown': return { top: '\u2212', bottom: '', lit: false, capOnly: true };
     case 'orient': return orientCap(c.northUp);
     // Wilson, Oct 19: the map key reads TERRAIN, a toggle (lit = terrain on); the radar MODE key keeps its own legend
-    case 'mode': return c.radar ? { top: 'MODE', bottom: c.terr ? 'TERR' : 'MAP', lit: c.terr } : { top: 'TERRAIN', bottom: c.terr ? 'ON' : 'OFF', lit: c.terr };
-    case 'wx': return { top: 'WX', bottom: c.wx ? 'ON' : 'OFF', lit: c.wx };
+    // radar MODE: blank face under its MODE caption; map TERRAIN key: TERR face (caption hidden), 1/3 lamp = on / off
+    case 'mode': return c.radar ? { top: '', bottom: '', lit: c.terr } : { top: 'TERR', bottom: '', lit: c.terr, capOnly: true };
+    case 'wx': return { top: '', bottom: '', lit: c.wx };
     case 'drive': return { top: 'DRV', bottom: 'BOARD', lit: c.driveActive };
     case 'more': return { top: '\u2022\u2022\u2022', bottom: '', lit: false };
     case 'rtn': return { top: 'RTN', bottom: '', lit: false };
@@ -278,6 +281,8 @@ export interface TopGeo {
   mc: R; mw: R; masterHit: { dx: number; dy: number; w: number; h: number };
   bulb: { cx: number; cy: number; r: number }; fsb: { x: number; y: number; w: number };
   ab: R; themes: R; themesHit: R;
+  /** EMER STOP (moved up from the rail, Oct 19 round 2) */
+  es: R;
 }
 export const HV_TOP: Readonly<Record<HeroLayout, TopGeo>> = {
   board: {
@@ -285,18 +290,20 @@ export const HV_TOP: Readonly<Record<HeroLayout, TopGeo>> = {
     mods: [{ x: 8, w: 118 }, { x: 150.5, w: 128 }, { x: 303, w: 124 }, { x: 451.5, w: 60 }, { x: 536, w: 122 }], modY: 4, modH: 112,
     cols: [{ x: 12, w: 58 }, { x: 70, w: 52 }, { x: 154.5, w: 58 }, { x: 212.5, w: 62 }, { x: 307, w: 58 }, { x: 365, w: 58 }, { x: 455.5, w: 52 }, { x: 540, w: 62 }, { x: 602, w: 52 }],
     nameY: 7, nameSize: 12, onY: 22, offY: 102, upY: 18, upH: 46, dnY: 64, dnH: 52, tgY: 68, tgScale: 1.05,
-    mc: { x: 668, y: 7, w: 114, h: 40 }, mw: { x: 790, y: 7, w: 114, h: 40 }, masterHit: { dx: -2, dy: -2, w: 118, h: 44 },
-    bulb: { cx: 679, cy: 93, r: 10 }, fsb: { x: 693, y: 80, w: 65 },
-    ab: { x: 764, y: 73, w: 66, h: 40 }, themes: { x: 838, y: 73, w: 66, h: 40 }, themesHit: { x: 836, y: 71, w: 70, h: 44 },
+    mc: { x: 668, y: 6, w: 56, h: 56 }, mw: { x: 730, y: 6, w: 56, h: 56 }, masterHit: { dx: 0, dy: 0, w: 56, h: 56 },
+    bulb: { cx: 680, cy: 90, r: 10 }, fsb: { x: 695, y: 77, w: 65 },
+    ab: { x: 792, y: 6, w: 48, h: 48 }, themes: { x: 792, y: 62, w: 48, h: 48 }, themesHit: { x: 792, y: 62, w: 48, h: 48 },
+    es: { x: 846, y: 4, w: 62, h: 109 },
   },
   window: {
     plate: { right: 8, y: 9, w: 619, h: 117 },
-    mods: [{ x: 5, w: 409 }], modY: 4, modH: 108,
-    cols: HV_BONUS.map((_, i) => ({ x: 7 + 45 * i, w: 45 })),
+    mods: [{ x: 5, w: 400 }], modY: 4, modH: 108,
+    cols: HV_BONUS.map((_, i) => ({ x: 7 + 44 * i, w: 44 })),
     nameY: 6, nameSize: 11, onY: 19, offY: 97, upY: 16, upH: 44, dnY: 60, dnH: 52, tgY: 62, tgScale: 0.9,
-    mc: { x: 429, y: 7, w: 88, h: 40 }, mw: { x: 525, y: 7, w: 88, h: 40 }, masterHit: { dx: -2, dy: -2, w: 92, h: 44 },
-    bulb: { cx: 438, cy: 89, r: 8 }, fsb: { x: 450, y: 76, w: 59 },
-    ab: { x: 515, y: 69, w: 44, h: 40 }, themes: { x: 567, y: 69, w: 46, h: 40 }, themesHit: { x: 565, y: 67, w: 50, h: 44 },
+    mc: { x: 409, y: 5, w: 50, h: 50 }, mw: { x: 463, y: 5, w: 50, h: 50 }, masterHit: { dx: 0, dy: 0, w: 50, h: 50 },
+    bulb: { cx: 418, cy: 87, r: 8 }, fsb: { x: 430, y: 74, w: 59 },
+    ab: { x: 517, y: 5, w: 44, h: 48 }, themes: { x: 517, y: 61, w: 44, h: 48 }, themesHit: { x: 517, y: 61, w: 44, h: 48 },
+    es: { x: 565, y: 4, w: 50, h: 107 },
   },
 };
 /** Every tap target on the plate (plate-relative), for the 44 pt floor check. */
@@ -307,6 +314,7 @@ export function topTargets(l: HeroLayout): { name: string; w: number; h: number 
     { name: 'Master caution, clear', w: g.masterHit.w, h: g.masterHit.h },
     { name: 'Master warning, clear', w: g.masterHit.w, h: g.masterHit.h },
     { name: 'Themes', w: g.themesHit.w, h: g.themesHit.h },
+    { name: 'Emergency stop handle', w: 44, h: 52 },
   ];
 }
 export const bonusAria = (b: BonusDecl, on: boolean, pos: 'on' | 'off') => `${b.spoken} ${pos === 'on' ? 'on' : 'off'}, now ${on ? 'on' : 'off'}`;
@@ -351,8 +359,8 @@ export const railSw = (id: RailSwId) => HV_RAIL_SW.find((d) => d.id === id)!;
 export type RailPart = 'gps' | 'radar' | 'ab' | RailSwId | 'qs' | 'estop' | 'push';
 /** DOM = visual = VoiceOver order. Board: NOTES.md one line. 773: three zones (left tall, middle 2 rows, right tall). */
 export const HV_RAIL_ORDER: Readonly<Record<HeroLayout, readonly RailPart[]>> = {
-  board: ['gps', 'radar', 'ab', 'batt', 'source', 'xbleed', 'seatbelt', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'gen', 'nav', 'qs', 'estop', 'push'],
-  window: ['gps', 'radar', 'source', 'xbleed', 'batt', 'seatbelt', 'ab', 'gen', 'nav', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'qs', 'estop', 'push'],
+  board: ['gps', 'radar', 'ab', 'batt', 'source', 'xbleed', 'seatbelt', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'gen', 'nav', 'qs', 'push'],
+  window: ['gps', 'radar', 'source', 'xbleed', 'batt', 'seatbelt', 'ab', 'gen', 'nav', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'qs', 'push'],
 };
 /** Rail id a start-order step (Dan's system id) lands on, for the static green "next" legend. */
 export function railCue(next: string | null): RailSwId | null {
@@ -422,7 +430,7 @@ export function qsAria(target: QsTarget, open: boolean, live: boolean): string {
 
 /* ---------------- rail geometry (design px from bake/dock-A-c-*.json + mock/A-c-*.html; module-relative) */
 export interface RailCol { x: number; w: number; tx: number }
-export interface RailMod { id: string; w: number; titles?: { t: string; x: number; w: number }[]; dividers?: number[] }
+export interface RailMod { id: string; w: number; /** design width the columns were drawn at (w / base = x stretch) */ base?: number; titles?: { t: string; x: number; w: number }[]; dividers?: number[] }
 export interface RailGeo {
   mods: readonly RailMod[];
   /** switch column per part (module-relative): hit x / w and the toggle centre tx */
@@ -433,10 +441,10 @@ export const HV_RAIL_GEO: Readonly<Record<'board', RailGeo>> = {
   board: {
     mods: [
       { id: 'gps', w: 52 }, { id: 'radar', w: 72 }, { id: 'ab', w: 88 },
-      { id: 'air', w: 240, titles: [{ t: 'POWER', x: 4, w: 52 }, { t: 'START AIR', x: 56, w: 120 }, { t: 'CABIN', x: 176, w: 60 }], dividers: [56, 176] },
-      { id: 'engL', w: 176, titles: [{ t: 'L ENG', x: 4, w: 168 }] }, { id: 'engR', w: 176, titles: [{ t: 'R ENG', x: 4, w: 168 }] },
-      { id: 'elec', w: 112, titles: [{ t: 'ELEC · NAV', x: 4, w: 104 }] },
-      { id: 'qs', w: 100 }, { id: 'estop', w: 68 }, { id: 'push', w: 68 },
+      { id: 'air', w: 264, base: 240, titles: [{ t: 'POWER', x: 4, w: 52 }, { t: 'START AIR', x: 56, w: 120 }, { t: 'CABIN', x: 176, w: 60 }], dividers: [56, 176] },
+      { id: 'engL', w: 192, base: 176, titles: [{ t: 'L ENG', x: 4, w: 168 }] }, { id: 'engR', w: 192, base: 176, titles: [{ t: 'R ENG', x: 4, w: 168 }] },
+      { id: 'elec', w: 128, base: 112, titles: [{ t: 'ELEC · NAV', x: 4, w: 104 }] },
+      { id: 'qs', w: 100 }, { id: 'push', w: 68 },
     ],
     col: {
       radar: { x: 4, w: 64, tx: 26 }, ab: { x: 4, w: 80, tx: 30 },
@@ -445,12 +453,14 @@ export const HV_RAIL_GEO: Readonly<Record<'board', RailGeo>> = {
       fuelR: { x: 4, w: 50, tx: 29 }, ignR: { x: 54, w: 48, tx: 78 }, engR: { x: 102, w: 70, tx: 124 },
       gen: { x: 4, w: 52, tx: 30 }, nav: { x: 56, w: 52, tx: 82 },
     },
-    nameY: 4, onY: 22, offY: 107, upY: 18, upH: 54, dnY: 72, dnH: 44, tgY: 72, tgK: 1.1, titleY: 121,
+    nameY: 4, onY: 22, offY: 107, upY: 18, upH: 54, dnY: 72, dnH: 44, tgY: 72, tgK: 1.05, titleY: 121,
   },
 };
 /** 773: three zones. Middle zone parts are single tap-to-flip targets (x / y zone-relative, w x h). */
 export const HV_RAIL_773 = {
-  zones: { gps: 40, radar: 62, air: 114, mid: 333, qs: 70, estop: 52, push: 52 },
+  zones: { gps: 40, radar: 62, air: 114, mid: 388, qs: 70, push: 52 },
+  /** the middle zone's design width (its parts are drawn at 333; the freed EMER STOP width stretches them in x) */
+  midBase: 333,
   left: { radar: { x: 4, w: 54, tx: 24 }, source: { x: 4, w: 58, tx: 24 }, xbleed: { x: 62, w: 48, tx: 86 }, nameY: 4, onY: 22, offY: 114, upY: 18, upH: 52, dnY: 70, dnH: 65, tgY: 70 },
   midMods: [
     { x: 0, y: 0, w: 50, h: 66 }, { x: 55.7, y: 0, w: 100, h: 66 }, { x: 161.3, y: 0, w: 70, h: 66 }, { x: 237, y: 0, w: 96, h: 66 },
@@ -463,7 +473,7 @@ export const HV_RAIL_773 = {
     fuelR: { x: 179, y: 69, w: 44, h: 66, tx: 201 }, ignR: { x: 223, y: 69, w: 44, h: 66, tx: 245 }, engR: { x: 267, y: 69, w: 64, h: 66, tx: 283 },
   } as Record<string, { x: number; y: number; w: number; h: number; tx: number }>,
   bulbs: { L: { cx: 134, cy: 99, r: 8 }, R: { cx: 311, cy: 99, r: 8 } },
-  tgK: 0.8,
+  tgK: 0.9,
 } as const;
 /** Every rail target (design px, smallest size it renders at). */
 export function railTargets(l: HeroLayout): { name: string; w: number; h: number }[] {
@@ -474,12 +484,12 @@ export function railTargets(l: HeroLayout): { name: string; w: number; h: number
       if (id === 'ab') t.push({ name: 'Afterburner guard band', w: c!.w, h: 44 }, { name: 'Afterburner switch band', w: c!.w, h: 52 });
       else t.push({ name: `${id} up`, w: c!.w, h: g.upH }, { name: `${id} down`, w: c!.w, h: g.dnH });
     }
-    t.push({ name: 'Quick start guard', w: 94, h: 44 }, { name: 'Quick start press', w: 94, h: 44 }, { name: 'Emergency stop handle', w: 62, h: 49 }, { name: 'Hold to rev', w: 60, h: 52 }, { name: 'Shutdown', w: 60, h: 52 });
+    t.push({ name: 'Quick start guard', w: 94, h: 44 }, { name: 'Quick start press', w: 94, h: 44 }, { name: 'Hold to rev', w: 60, h: 52 }, { name: 'Shutdown', w: 60, h: 52 });
   } else {
     const g = HV_RAIL_773;
     for (const id of ['radar', 'source', 'xbleed'] as const) t.push({ name: `${id} up`, w: g.left[id].w, h: g.left.upH }, { name: `${id} down`, w: g.left[id].w, h: g.left.dnH });
     for (const [id, c] of Object.entries(g.mid)) t.push({ name: id === 'ab' ? 'Afterburner (two taps)' : `${id} flip`, w: c.w, h: c.h });
-    t.push({ name: 'Quick start guard', w: 64, h: 44 }, { name: 'Quick start press', w: 64, h: 44 }, { name: 'Emergency stop handle', w: 46, h: 56 }, { name: 'Hold to rev', w: 48, h: 60 }, { name: 'Shutdown', w: 48, h: 60 });
+    t.push({ name: 'Quick start guard', w: 64, h: 44 }, { name: 'Quick start press', w: 64, h: 44 }, { name: 'Hold to rev', w: 48, h: 60 }, { name: 'Shutdown', w: 48, h: 60 });
   }
   return t;
 }

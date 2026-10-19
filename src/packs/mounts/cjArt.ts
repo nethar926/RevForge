@@ -31,12 +31,13 @@ export function guardSrc(color: 'red' | 'black', open: boolean, pos: TgPos = 'mi
 
 export type RoundMode = 'off' | 'powered' | 'lit';
 /** Small round lamp: off (BATT off), powered (BATT on, item inactive), lit (item active). */
-export const roundSrc = (color: 'amber' | 'green', mode: RoundMode) => pick(lp, 'lamps', `small-${color}-${mode}`);
+export const roundSrc = (color: 'amber' | 'green' | 'red', mode: RoundMode) => pick(lp, 'lamps', `small-${color}-${mode}`);
 export const roundMode = (batt: boolean, test: boolean, active: boolean): RoundMode => (!batt ? 'off' : test || active ? 'lit' : 'powered');
 
-/** MASTER CAUTION / MASTER WARNING lens + bezel (sheet art, its printed text taken out; the HTML legend stays). */
-export const masterSrc = (id: 'masterCaution' | 'masterWarning', lit: boolean, layout: 'board' | 'window') =>
-  pick(lp, 'lamps', `master-${id === 'masterCaution' ? 'caution' : 'warning'}-${lit ? 'lit' : 'unlit'}-${layout}`);
+/** MASTER CAUTION / MASTER WARNING square lamp (sheet art at its true square aspect, printed text taken out; the HTML
+ * legend stays). Red round lamps (GEN) are Wilson's amber lamp re-hued (assets/lamps/README.md). */
+export const masterSrc = (id: 'masterCaution' | 'masterWarning', lit: boolean) =>
+  pick(lp, 'lamps', `master-${id === 'masterCaution' ? 'caution' : 'warning'}-${lit ? 'lit' : 'unlit'}-sq`);
 
 /** Square keys: full lamp (whole face lights), 1/3 lamp (lit legend strip), plain push (unpressed / pressed). */
 export const squareFullSrc = (lit: boolean) => pick(lp, 'lamps', `square-full-${lit ? 'lit' : 'unlit'}`);
