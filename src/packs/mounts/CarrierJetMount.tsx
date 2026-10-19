@@ -289,7 +289,9 @@ export function CarrierJetMount(props: PackHudProps) {
   // viewport holds both at design size (a fine-pointer phone also reads board / window): else the pre-hero row bank.
   const heroLayout: HeroLayout = layout === 'window' ? 'window' : 'board';
   const heroRoom = useHeroRoom(heroLayout, viewport);
-  const hero = row && tesla && heroRoom;
+  // Wilson, Oct 18: the hero plate takes the skin's LOOK row, and only MATRIX (Board 2) has CONFIG to change looks,
+  // so VECTOR / HOLO keep the pre-hero bank and the skin's own LOOK tabs (always a way back to MATRIX).
+  const hero = row && tesla && heroRoom && look === 'carrier-jet';
   const topbar = hero ? vp.viewport?.querySelector<HTMLElement>(':scope > .rev-topbar') ?? null : null;
   const lampIn = { cold: coldOn, running: props.running, batt: !!cold.sys.on.batt, seatbelt: cold.seatbelt, engines: cold.sys.engines, apuOn: !!cold.sys.on.apu, apuReady: cold.sys.apuReady, caution: cold.caution, emergency: !!cold.sys.emergency };
   const rawLamps = lampStates(lampIn);
