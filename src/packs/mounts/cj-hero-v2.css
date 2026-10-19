@@ -340,8 +340,8 @@ img.cjhv-tg { object-fit: contain; display: block; }
 .cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cjv2-hdgcell, .cjwx-host) * { visibility: hidden !important; }
 .cjm[data-pwr-batt] :is(.cj-crt, .cjv2-crt) { box-shadow: 0 0 0 2px #535c62, inset 0 0 24px rgb(0 0 0 / 0.8), inset 0 0 36px rgb(90 255 140 / 0.07); }
 /* INS off: no speed, source, mach, VDI, compass, map */
-.cjm[data-pwr-batt]:not([data-pwr-ins]) :is(.cj-spd-num, .cj-spd-src, .cj-mach-num, .cj-mach-tape, .cj-mach-tag),
-.cjm[data-pwr-batt]:not([data-pwr-ins]) .cj-a-mid .cj-crt > svg,
+.cjm[data-pwr-batt]:not([data-pwr-inst]) :is(.cj-spd-num, .cj-spd-src, .cj-mach-num, .cj-mach-tape, .cj-mach-tag),
+.cjm[data-pwr-batt]:not([data-pwr-inst]) .cj-a-mid .cj-crt > svg,
 .cjm[data-pwr-batt]:not([data-pwr-ins]) :is(.cjv2-hdgcell, .cjwx-host, .cj-hstale),
 .cjm[data-pwr-batt]:not([data-pwr-ins]) :is(.cjv2-hdgcell, .cjwx-host) *,
 .cjm[data-pwr-batt]:not([data-pwr-ins]) .cjv2-map :is(.cjv2-mapgl, .cjv2-hsd-ov, .cjv2-corner, .cjv2-alerts, .cjv2-info) { visibility: hidden !important; }
@@ -395,3 +395,25 @@ img.cjhv-tg { object-fit: contain; display: block; }
 .cjhv-push.cjhv-lamp-push .cjhv-lg { color: #e0cfae; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8); }
 .cjhv-push.cjhv-lamp-push[data-lit] .cjhv-lg { color: #1a0d00; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35); }
 .cjhv-push.cjhv-sd-push[data-lit] .cjhv-lg { color: #fff1ec; text-shadow: 0 1px 1px rgba(60, 0, 0, 0.9); }
+
+/* ---------------- Oct 19 round 4 (Wilson) */
+/* QUICK START lifted: the guard art only (no plain box behind it) */
+.cjhv-qs[data-open] { background: transparent !important; box-shadow: none !important; }
+/* BATT off (cold, dark): every key caption and key lamp unlit, at every size */
+.cjv2[data-batt-off] .cjv2-key .cjp-bezel svg text { fill: #8f969b !important; }
+.cjv2[data-batt-off] .cjv2-key .cjp-bezel svg rect[stroke='#7ef7a1'] { stroke: #3a4044 !important; }
+.cjv2[data-batt-off] .cjhv-korry, .cjv2[data-batt-off] .cjhv-korry[data-lit] { border-image-source: var(--sq-dark2, var(--sq-dark, var(--sq))) !important; }
+.cjv2[data-batt-off] .cjhv-korry > span { color: #9aa0a4 !important; text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6) !important; }
+.cjhv-bulb[data-mode='off']::before, .cjhv-top-bulb[data-mode='off']::before { filter: brightness(0.5) saturate(0.35); }
+/* map face: no text (credit stays a 44 px tap zone, top right); BATT on + NAV off: a faint grid that fades as the map comes up */
+.cjv2-map .cjv2-corner { display: none !important; }
+.cjv2-map .cjv2-info:not(.cjv2-attr-close) { color: transparent !important; }
+.cjv2-map .cjv2-info:not(.cjv2-attr-close)::before { border-color: transparent !important; }
+.cjv2-grid { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 900ms ease; z-index: 0;
+  background-image: linear-gradient(rgba(126, 247, 161, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(126, 247, 161, 0.09) 1px, transparent 1px);
+  background-size: 24px 24px; background-position: center; }
+.cjm[data-pwr-batt]:not([data-pwr-ins]) .cjv2-grid { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .cjv2-grid { transition: none; } }
+[data-motion='static'] .cjv2-grid { transition: none; }
+/* lamp TEST: Push Square key art (lit while held) */
+.cjv2-test-btn img { border-radius: 3px; }

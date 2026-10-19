@@ -357,6 +357,8 @@ export function CarrierJetMount(props: PackHudProps) {
   const lampTest0 = useFirstBattLampTest(coldOn && !!cold.sys.on.batt);
   // lamp TEST push (right of CONFIG): while held with BATT on, every lamp / bulb / lit switch shows lit (not the screens)
   const [testHeld, setTestHeld] = useState(false);
+  // round 4: INS (instruments: FLIGHT, VDI) is its own switch; NAV (inertialNav) alone powers the map and compass
+  const [insOn, setInsOn] = useState(false);
   const lampTest = lampTest0 || (testHeld && !!railState.on.batt);
   const onRailSwitch = (id: RailSwId, on: boolean) => {
     const d = railSw(id);
@@ -399,12 +401,12 @@ export function CarrierJetMount(props: PackHudProps) {
       onSwitch={onRailSwitch}
       onSource={onSource}
       live={cold.live}
-      onQuickStart={() => cold.quickStart()}
+      onQuickStart={() => { cold.quickStart(); setTimeout(() => setInsOn(true), 720); }}
       onFuelGuardOff={(id) => cold.guardOff(railSw(id).system!)}
       holdRev={props.running}
       onHoldRev={(on) => void requestPackShell({ type: 'hold-rev', on })}
       running={props.running}
-      onShutdown={() => (coldOn ? cold.shutdownSeq(() => void requestPackShell({ type: 'shutdown' })) : void requestPackShell({ type: 'shutdown' }))}
+      onShutdown={() => (coldOn ? (setTimeout(() => setInsOn(false), 3600), cold.shutdownSeq(() => void requestPackShell({ type: 'shutdown' }))) : void requestPackShell({ type: 'shutdown' }))}
       say={cold.announce}
       lampTest={lampTest}
       qsRunning={cold.qsRunning}
@@ -456,6 +458,7 @@ export function CarrierJetMount(props: PackHudProps) {
       data-pwr-batt={(pwr && sysOn.batt) || undefined}
       data-pwr-avion={(pwr && sysOn.batt && sysOn.avionics) || undefined}
       data-pwr-ins={(pwr && sysOn.batt && sysOn.inertialNav) || undefined}
+      data-pwr-inst={(pwr && sysOn.batt && insOn) || undefined}
       data-pwr-radar={(pwr && sysOn.batt && mapView.radar) || undefined}
       className="rf-pack-fit cjm"
       data-pack={ID.id}
@@ -472,7 +475,7 @@ export function CarrierJetMount(props: PackHudProps) {
             <div className="cjm-fill">
               <CarrierJetHud {...props} {...hudRpm} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} bank={vdiBank} />
             </div>
-            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} hero={hero ? (topbar ? 'ann+rail' : 'rail') : ''} abLamp={hero && topbar ? { lit: !!railState.on.batt && (ab.lamp || lampTest), armed: ab.lamp, launch: launch.lit } : null} lampTest={hero && topbar ? { batt: !!railState.on.batt, held: testHeld && !!railState.on.batt, on: lampTest && !!railState.on.batt, onHold: setTestHeld } : null} />}
+            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} hero={hero ? (topbar ? 'ann+rail' : 'rail') : ''} dark={!!(hero && coldOn && !cold.sys.on.batt)} abLamp={hero && topbar ? { lit: !!railState.on.batt && (ab.lamp || lampTest), armed: ab.lamp, launch: launch.lit } : null} lampTest={hero && topbar ? { batt: !!railState.on.batt, held: testHeld && !!railState.on.batt, on: lampTest && !!railState.on.batt, onHold: setTestHeld } : null} />}
           </>
         )}
       </CjHeadingEase>
@@ -485,8 +488,8 @@ export function CarrierJetMount(props: PackHudProps) {
           layout={heroLayout}
           lamps={lamps}
           onClear={onClearLamp}
-          bonus={cold.sys.on as Record<string, boolean>}
-          onBonus={(sys, on) => cold.railTap(sys, on)}
+          bonus={{ ...(cold.sys.on as Record<string, boolean>), instruments: insOn }}
+          onBonus={(sys, on) => (sys === 'instruments' ? setInsOn(on) : cold.railTap(sys, on))}
           armed={ab.lamp}
           launch={launch.lit}
           onThemes={() => void requestPackShell({ type: 'nav', action: { type: 'panel', panel: 'themes' } })}

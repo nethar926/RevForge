@@ -118,8 +118,8 @@ export function orientCap(northUp: boolean): SplitCap {
  * Backlit legend box on the edge key in hero v2 (Scott, Oct 18): N/TRK-UP is always a LIT split button, styled and
  * backlit like MAP/TERR (both orientations are a selected mode, the lit field says which). Other keys keep their state.
  */
-export function heroKeyActive(id: string, active: boolean): boolean {
-  return id === 'orient' ? true : active;
+export function heroKeyActive(_id: string, active: boolean): boolean {
+  return active;
 }
 
 /** Split legend for an edge key id (null: leave the cap blank, e.g. an inert key). */
@@ -132,7 +132,8 @@ export function splitCap(id: string, c: CapCtx): SplitCap | null {
     case 'zoomOut': return { top: '\u2212', bottom: '', lit: false, capOnly: true };
     case 'rngUp': return { top: '+', bottom: '', lit: false, capOnly: true };
     case 'rngDown': return { top: '\u2212', bottom: '', lit: false, capOnly: true };
-    case 'orient': return orientCap(c.northUp);
+    // round 4: one TRK-UP legend, no caption; unlit = north up, lit = track up
+    case 'orient': return { top: 'TRK-UP', bottom: '', lit: !c.northUp, capOnly: true };
     // Wilson, Oct 19: the map key reads TERRAIN, a toggle (lit = terrain on); the radar MODE key keeps its own legend
     // radar MODE: blank face under its MODE caption; map TERRAIN key: TERR face (caption hidden), 1/3 lamp = on / off
     // round 3: the same permanent TERR legend in every state (map / radar, lit / unlit, BATT off); only the lamp changes
@@ -259,7 +260,8 @@ export const HV_ANN_TARGETS = HV_LAMPS.filter((d) => d.clearable).map((d) => ({ 
 export interface BonusDecl { id: string; label: string; spoken: string; system: string }
 export const HV_BONUS: readonly BonusDecl[] = [
   { id: 'avion', label: 'AVION', spoken: 'Avionics', system: 'avionics' },
-  { id: 'ins', label: 'INS', spoken: 'Inertial nav', system: 'inertialNav' },
+  // round 4: INS powers the instruments only (FLIGHT, VDI); NAV alone is inertialNav (map, compass)
+  { id: 'ins', label: 'INS', spoken: 'Instruments', system: 'instruments' },
   { id: 'posLt', label: 'POS LT', spoken: 'Position lights', system: 'navLights' },
   { id: 'beacon', label: 'BEACON', spoken: 'Beacon', system: 'anticollision' },
   { id: 'idleL', label: 'L IDLE', spoken: 'Left throttle idle', system: 'throttleL' },
@@ -267,6 +269,7 @@ export const HV_BONUS: readonly BonusDecl[] = [
   { id: 'hyd', label: 'HYD', spoken: 'Hydraulics', system: 'hydraulics' },
   { id: 'canopy', label: 'CANOPY', spoken: 'Canopy', system: 'canopy' },
   { id: 'oxy', label: 'OXY', spoken: 'Oxygen', system: 'oxygen' },
+  { id: 'seatbelt', label: 'SEAT BELT', spoken: 'Fasten seat belt', system: 'seatbelt' },
 ];
 type R = { x: number; y: number; w: number; h: number };
 /**
@@ -288,8 +291,8 @@ export interface TopGeo {
 export const HV_TOP: Readonly<Record<HeroLayout, TopGeo>> = {
   board: {
     plate: { right: 10, y: 8, w: 914, h: 119 },
-    mods: [{ x: 8, w: 118 }, { x: 150.5, w: 128 }, { x: 303, w: 124 }, { x: 451.5, w: 60 }, { x: 536, w: 122 }], modY: 4, modH: 112,
-    cols: [{ x: 12, w: 58 }, { x: 70, w: 52 }, { x: 154.5, w: 58 }, { x: 212.5, w: 62 }, { x: 307, w: 58 }, { x: 365, w: 58 }, { x: 455.5, w: 52 }, { x: 540, w: 62 }, { x: 602, w: 52 }],
+    mods: [{ x: 8, w: 118 }, { x: 138.5, w: 128 }, { x: 279, w: 124 }, { x: 415.5, w: 60 }, { x: 488, w: 174 }], modY: 4, modH: 112,
+    cols: [{ x: 12, w: 58 }, { x: 70, w: 52 }, { x: 142.5, w: 58 }, { x: 200.5, w: 62 }, { x: 283, w: 58 }, { x: 341, w: 58 }, { x: 419.5, w: 52 }, { x: 492, w: 62 }, { x: 554, w: 52 }, { x: 606, w: 52 }],
     nameY: 7, nameSize: 12, onY: 22, offY: 102, upY: 18, upH: 46, dnY: 64, dnH: 52, tgY: 68, tgScale: 1.05,
     mc: { x: 668, y: 6, w: 56, h: 56 }, mw: { x: 730, y: 6, w: 56, h: 56 }, masterHit: { dx: 0, dy: 0, w: 56, h: 56 },
     bulb: { cx: 680, cy: 90, r: 10 }, fsb: { x: 695, y: 77, w: 65 },
@@ -297,14 +300,14 @@ export const HV_TOP: Readonly<Record<HeroLayout, TopGeo>> = {
     es: { x: 846, y: 4, w: 62, h: 109 },
   },
   window: {
-    plate: { right: 8, y: 9, w: 619, h: 117 },
-    mods: [{ x: 5, w: 400 }], modY: 4, modH: 108,
+    plate: { right: 4, y: 9, w: 649, h: 117 },
+    mods: [{ x: 5, w: 444 }], modY: 4, modH: 108,
     cols: HV_BONUS.map((_, i) => ({ x: 7 + 44 * i, w: 44 })),
     nameY: 6, nameSize: 11, onY: 19, offY: 97, upY: 16, upH: 44, dnY: 60, dnH: 52, tgY: 62, tgScale: 0.9,
-    mc: { x: 409, y: 5, w: 50, h: 50 }, mw: { x: 463, y: 5, w: 50, h: 50 }, masterHit: { dx: 0, dy: 0, w: 50, h: 50 },
-    bulb: { cx: 418, cy: 87, r: 8 }, fsb: { x: 430, y: 74, w: 59 },
-    ab: { x: 517, y: 5, w: 44, h: 48 }, themes: { x: 517, y: 33, w: 44, h: 48 }, themesHit: { x: 517, y: 33, w: 44, h: 48 },
-    es: { x: 565, y: 4, w: 50, h: 107 },
+    mc: { x: 453, y: 5, w: 46, h: 46 }, mw: { x: 503, y: 5, w: 46, h: 46 }, masterHit: { dx: 0, dy: 0, w: 46, h: 46 },
+    bulb: { cx: 462, cy: 87, r: 8 }, fsb: { x: 474, y: 74, w: 59 },
+    ab: { x: 553, y: 5, w: 44, h: 48 }, themes: { x: 553, y: 33, w: 44, h: 48 }, themesHit: { x: 553, y: 33, w: 44, h: 48 },
+    es: { x: 601, y: 4, w: 44, h: 107 },
   },
 };
 /** Every tap target on the plate (plate-relative), for the 44 pt floor check. */
@@ -360,8 +363,8 @@ export const railSw = (id: RailSwId) => HV_RAIL_SW.find((d) => d.id === id)!;
 export type RailPart = 'gps' | 'radar' | 'ab' | RailSwId | 'qs' | 'estop' | 'push';
 /** DOM = visual = VoiceOver order. Board: NOTES.md one line. 773: three zones (left tall, middle 2 rows, right tall). */
 export const HV_RAIL_ORDER: Readonly<Record<HeroLayout, readonly RailPart[]>> = {
-  board: ['gps', 'radar', 'ab', 'batt', 'source', 'xbleed', 'seatbelt', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'gen', 'nav', 'qs', 'push'],
-  window: ['gps', 'radar', 'source', 'xbleed', 'batt', 'seatbelt', 'ab', 'gen', 'nav', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'qs', 'push'],
+  board: ['gps', 'nav', 'radar', 'ab', 'batt', 'source', 'xbleed', 'gen', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'qs', 'push'],
+  window: ['gps', 'nav', 'radar', 'source', 'xbleed', 'batt', 'gen', 'ab', 'fuelL', 'ignL', 'engL', 'fuelR', 'ignR', 'engR', 'qs', 'push'],
 };
 /** Rail id a start-order step (Dan's system id) lands on, for the static green "next" legend. */
 export function railCue(next: string | null): RailSwId | null {
@@ -442,9 +445,9 @@ export const HV_RAIL_GEO: Readonly<Record<'board', RailGeo>> = {
   board: {
     mods: [
       { id: 'gps', w: 100 }, { id: 'radar', w: 72 }, { id: 'ab', w: 88 },
-      { id: 'air', w: 264, base: 240, titles: [{ t: 'POWER', x: 4, w: 52 }, { t: 'START AIR', x: 56, w: 120 }, { t: 'CABIN', x: 176, w: 60 }], dividers: [56, 176] },
+      { id: 'air', w: 214, base: 176, titles: [{ t: 'POWER', x: 4, w: 52 }, { t: 'START AIR', x: 56, w: 120 }], dividers: [56] },
+      { id: 'elec', w: 130, base: 130, titles: [{ t: 'ELEC', x: 4, w: 122 }] },
       { id: 'engL', w: 192, base: 176, titles: [{ t: 'L ENG', x: 4, w: 168 }] }, { id: 'engR', w: 192, base: 176, titles: [{ t: 'R ENG', x: 4, w: 168 }] },
-      { id: 'elec', w: 80, base: 80, titles: [{ t: 'ELEC', x: 4, w: 72 }] },
       { id: 'qs', w: 100 }, { id: 'push', w: 68 },
     ],
     col: {
@@ -452,7 +455,7 @@ export const HV_RAIL_GEO: Readonly<Record<'board', RailGeo>> = {
       batt: { x: 4, w: 52, tx: 30 }, source: { x: 56, w: 66, tx: 78 }, xbleed: { x: 122, w: 54, tx: 149 }, seatbelt: { x: 176, w: 60, tx: 206 },
       fuelL: { x: 4, w: 50, tx: 29 }, ignL: { x: 54, w: 48, tx: 78 }, engL: { x: 102, w: 70, tx: 124 },
       fuelR: { x: 4, w: 50, tx: 29 }, ignR: { x: 54, w: 48, tx: 78 }, engR: { x: 102, w: 70, tx: 124 },
-      gen: { x: 4, w: 72, tx: 40 }, nav: { x: 46, w: 52, tx: 72 },
+      gen: { x: 4, w: 122, tx: 65 }, nav: { x: 46, w: 52, tx: 72 },
     },
     nameY: 4, onY: 22, offY: 107, upY: 18, upH: 54, dnY: 72, dnH: 44, tgY: 72, tgK: 1.05, titleY: 121,
   },
@@ -464,12 +467,12 @@ export const HV_RAIL_773 = {
   midBase: 333,
   left: { nav: { x: 38, w: 46, tx: 61 }, radar: { x: 4, w: 54, tx: 24 }, source: { x: 4, w: 58, tx: 24 }, xbleed: { x: 62, w: 48, tx: 86 }, nameY: 4, onY: 22, offY: 114, upY: 18, upH: 52, dnY: 70, dnH: 65, tgY: 70 },
   midMods: [
-    { x: 0, y: 0, w: 50, h: 66 }, { x: 55.7, y: 0, w: 100, h: 66 }, { x: 161.3, y: 0, w: 70, h: 66 }, { x: 237, y: 0, w: 96, h: 66 },
+    { x: 0, y: 0, w: 50, h: 66 }, { x: 55.7, y: 0, w: 156, h: 66 }, { x: 217.3, y: 0, w: 115.7, h: 66 },
     { x: 0, y: 69, w: 156, h: 66 }, { x: 177, y: 69, w: 156, h: 66 },
   ],
   mid: {
-    batt: { x: 2, y: 0, w: 46, h: 66, tx: 25 }, seatbelt: { x: 57.7, y: 0, w: 96, h: 66, tx: 105.7 }, ab: { x: 163.3, y: 14, w: 66, h: 52, tx: 183.3 },
-    gen: { x: 239, y: 0, w: 92, h: 66, tx: 285 },
+    batt: { x: 2, y: 0, w: 46, h: 66, tx: 25 }, ab: { x: 236, y: 14, w: 66, h: 52, tx: 256 },
+    gen: { x: 57.7, y: 0, w: 152, h: 66, tx: 133.7 },
     fuelL: { x: 2, y: 69, w: 44, h: 66, tx: 24 }, ignL: { x: 46, y: 69, w: 44, h: 66, tx: 68 }, engL: { x: 90, y: 69, w: 64, h: 66, tx: 106 },
     fuelR: { x: 179, y: 69, w: 44, h: 66, tx: 201 }, ignR: { x: 223, y: 69, w: 44, h: 66, tx: 245 }, engR: { x: 267, y: 69, w: 64, h: 66, tx: 283 },
   } as Record<string, { x: number; y: number; w: number; h: number; tx: number }>,

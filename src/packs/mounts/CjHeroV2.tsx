@@ -15,7 +15,7 @@ import type { CjGps } from '../../skins/carrier-jet/parts/index';
 import type { CjGpsSeq } from '../carrier-jet/gpsAcqSeq';
 import { abAria, bonusAria, ENG_BULB_LEGEND, fsbAria, HV_BONUS, HV_GUARD_CLOSE_MS, HV_LAMPS, HV_RAIL_773, HV_RAIL_GEO, HV_TOP, lampAria, lampColor, qsAria, qsTap, RADAR_SPOKEN, radarStep, railFlipAria, railSw, railSwAria, type AbTarget, type EngBulb, type HeroLayout, type LampId, type LampMark, type LampState, type QsTarget, type RadarPos, type RailCol, type RailPart, type RailState, type RailSwDecl, type RailSwId, type SourcePos, type SplitCap } from '../carrier-jet/heroRail';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
-import { guardSrc, masterSrc, pushSquareSrc, roundMode, roundSrc, squareFullRedSrc, squareFullSrc, squareThirdSrc, toggleSrc } from './cjArt';
+import { guardSrc, masterSrc, pushSquareSrc, roundMode, roundSrc, darkSrc, squareFullRedSrc, squareFullSrc, squareThirdSrc, toggleSrc } from './cjArt';
 import './cj-hero-v2.css';
 
 /* ------------------------------------------------------------------ Korry split cap (upper-board keys) */
@@ -27,8 +27,8 @@ export function KorryCap({ cap, id }: { cap: SplitCap | null; id?: string }) {
   if (!cap) return null;
   const toggle = !!id && KORRY_TOGGLE.has(id);
   const art: CSSProperties = (toggle
-    ? { '--sq': `url(${squareThirdSrc(cap.lit)})`, '--sq-dark': `url(${squareThirdSrc(false)})` }
-    : { '--sq': `url(${pushSquareSrc(false)})`, '--sq-on': `url(${pushSquareSrc(true)})` }) as Record<string, string>;
+    ? { '--sq': `url(${squareThirdSrc(cap.lit)})`, '--sq-dark': `url(${squareThirdSrc(false)})`, '--sq-dark2': `url(${darkSrc('third')})` }
+    : { '--sq': `url(${pushSquareSrc(false)})`, '--sq-on': `url(${pushSquareSrc(true)})`, '--sq-dark2': `url(${darkSrc('full')})` }) as Record<string, string>;
   return (
     <span className="cjhv-korry" data-lit={cap.lit || undefined} data-cap-only={cap.capOnly || undefined} data-push={toggle ? undefined : true} data-single={cap.bottom ? undefined : true} aria-hidden="true" style={art}>
       <span className="cjhv-korry-top">{cap.top}</span>
@@ -88,7 +88,7 @@ export function TopPlate(p: TopPlateProps) {
     const up = () => setPressTest((v) => (v === id ? null : v));
     return (
       <button key={id} type="button" className="cjhv-cap cjhv-top-master" data-lamp={id} data-color={lampColor(id)} data-lit={lit || undefined}
-        style={{ left: r.x + g.masterHit.dx, top: r.y + g.masterHit.dy, width: g.masterHit.w, height: g.masterHit.h, backgroundImage: `url(${masterSrc(id, lit)})` }} aria-label={lampAria(d, active)} onClick={() => { if (active) p.onClear(id); }}
+        style={{ left: r.x + g.masterHit.dx, top: r.y + g.masterHit.dy, width: g.masterHit.w, height: g.masterHit.h, backgroundImage: `url(${lit || p.batt ? masterSrc(id, lit) : darkSrc('master')})` }} aria-label={lampAria(d, active)} onClick={() => { if (active) p.onClear(id); }}
         onPointerDown={down} onPointerUp={up} onPointerCancel={up} onPointerLeave={up}
         onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') down(); }} onKeyUp={up} onBlur={up}>
         {/* Wilson, Oct 19: no circle / triangle mark on MASTER CAUTION / WARNING, legends only */}
@@ -213,11 +213,15 @@ function ToggleArt({ pos, lit }: { pos: 'up' | 'mid' | 'dn'; lit: boolean }) {
   return <img className="cjhv-tg cjhv-art" src={toggleSrc(pos, lit || test)} width={44} height={68} alt="" aria-hidden="true" draggable={false} decoding="async" />;
 }
 /** Wilson's guarded toggle / closed cover, centred on the toggle pivot of its 44x68 box (overflows it; no layout). */
-function GuardArt({ color, open, pos, lit: lit0, h }: { color: 'red' | 'black'; open: boolean; pos?: 'up' | 'mid' | 'dn'; lit?: boolean; h: number }) {
+function GuardArt({ color, open, pos, lit: lit0, h }: { color: 'red' | 'black' | 'yellow'; open: boolean; pos?: 'up' | 'mid' | 'dn'; lit?: boolean; h: number }) {
   const test = useContext(LampTestCtx);
   const lit = lit0 || (test && open && pos !== 'dn');
   const w = Math.round((h * 460) / 1040);
-  return <img className="cjhv-gart cjhv-art" src={guardSrc(color, open, pos, lit)} width={w} height={h} style={{ width: w, height: h, marginLeft: -w / 2, marginTop: -h / 2 }} alt="" aria-hidden="true" draggable={false} decoding="async" />;
+  const st = { width: w, height: h, marginLeft: -w / 2, marginTop: -h / 2 };
+  const img = (src: string, k: string) => <img key={k} className="cjhv-gart cjhv-art" src={src} width={w} height={h} style={st} alt="" aria-hidden="true" draggable={false} decoding="async" />;
+  // round 4: a closed gunmetal / yellow guard is its cover over the hinge frame (Wilson: no bare grey blocks)
+  if (!open && color !== 'red') return <>{img(guardSrc(color, true, 'dn'), 'f')}{img(guardSrc(color, false), 'c')}</>;
+  return img(guardSrc(color, open, pos, lit), 'g');
 }
 /** Guard art height that draws its toggle + hex at the plain toggle's size (same sheet scale: 1040 / 780 x 68). */
 const GUARD_H = 91;
@@ -305,16 +309,10 @@ function Col3({ name, spoken, c, g, pos, labels, onStep, k, lit }: { name: strin
   );
 }
 /** Engine START/RUN bulb: dark OFF, amber START, green RUN, with its legend (never colour alone). Steady. */
-function Bulb({ state, cx, cy, r, lgX, lgY, lgW, batt, test }: { state: EngBulb; cx: number; cy: number; r: number; lgX: number; lgY: number; lgW: number; batt: boolean; test: boolean }) {
-  // amber while START, green for RUN (and its dark / powered states); off with BATT off, all lit in the lamp test
-  const mode = roundMode(batt, test, state !== 'off');
-  const color = state === 'start' ? 'amber' : 'green';
-  return (
-    <>
-      <span className="cjhv-bulb" data-state={state} data-mode={mode} aria-hidden="true" style={{ left: cx - r, top: cy - r, width: 2 * r, height: 2 * r, '--lamp': `url(${roundSrc(color, mode)})` } as CSSProperties} />
-      <span className="cjhv-lg cjhv-bulb-lg" data-state={state} aria-hidden="true" style={lgAt(lgX, lgY, lgW)}>{ENG_BULB_LEGEND[state]}</span>
-    </>
-  );
+function Bulb({ state, fuel, cx, cy, r, batt, test }: { state: EngBulb; fuel: boolean; cx: number; cy: number; r: number; lgX?: number; lgY?: number; lgW?: number; batt: boolean; test: boolean }) {
+  // round 4: green, lit while that side's FUEL is on (no legend under it); off with BATT off, lit in the lamp test
+  const mode = roundMode(batt, test, fuel);
+  return <span className="cjhv-bulb" data-state={state} data-mode={mode} role="img" aria-label={`${ENG_BULB_LEGEND[state].toLowerCase()}, fuel ${fuel ? 'on' : 'off'}`} style={{ left: cx - r, top: cy - r, width: 2 * r, height: 2 * r, '--lamp': `url(${roundSrc('green', mode)})` } as CSSProperties} />;
 }
 /** AFTERBURNER art: Wilson's red guard, closed cover or lifted lid with the ARM (up) / SAFE (down) toggle. */
 function AbArt({ armed, open, batt, h = GUARD_H }: { armed: boolean; open: boolean; batt: boolean; h?: number }) {
@@ -338,17 +336,16 @@ function QsArt({ open, lamp, aria, k }: { open: boolean; lamp: QsLamp; aria: str
       {open ? (
         <>
           <span className="cjhv-gpiv cjhv-qs-art" style={piv}>
-            {/* round 3: the Push Square full lamp replaces the neutral hex base (no hex under it) */}
+            {/* round 4: the lifted yellow guard (like FUEL), the Push Square full lamp over the nut in place of the toggle */}
+            <GuardArt color="yellow" open pos="mid" h={GUARD_H} />
             <span className="cjhv-qs-key" data-lamp={lamp} role="img" aria-label={aria} style={{ '--sq': `url(${squareFullSrc(true)})`, '--sq-off': `url(${squareFullSrc(false)})` } as CSSProperties}>
               <span className="cjhv-qs-unlit" aria-hidden="true" />
             </span>
           </span>
-          <span className="cjhv-qs-lid" aria-hidden="true" />
         </>
       ) : (
         <>
-          <span className="cjhv-gpiv cjhv-qs-art" style={piv}><GuardArt color="black" open={false} h={GUARD_H} /></span>
-          <span className="cjhv-qs-tag" aria-hidden="true">LIFT ▲</span>
+          <span className="cjhv-gpiv cjhv-qs-art" style={piv}><GuardArt color="yellow" open={false} h={GUARD_H} /></span>
           <span className="rf-sr-only" role="img" aria-label={aria} />
         </>
       )}
@@ -522,7 +519,6 @@ export function HeroRail(p: HeroRailProps) {
     <Mod kind="qs" w={narrow ? Z.qs : bmod.qs} title="QUICK START" label="Quick start">
       <QsArt open={qsOpen} lamp={qsLamp} aria={qsLampAria(p.qsRunning, p.live)} k={narrow ? HV_RAIL_773.tgK : G.tgK} />
       {narrow ? qsHits(3, 64, 64) : qsHits(3, 94, 62)}
-      <span className="cjhv-lg cjhv-foot" aria-hidden="true">LIFT · PRESS</span>
     </Mod>
   );
   const push = (
@@ -531,7 +527,7 @@ export function HeroRail(p: HeroRailProps) {
         type="button"
         className="cjhv-push cjhv-lamp-push"
         data-lit={((revHeld || p.lampTest) && batt) || undefined}
-        style={{ '--sq-off': `url(${squareFullSrc(false)})`, '--sq-on': `url(${squareFullSrc(true)})` } as CSSProperties}
+        style={{ '--sq-off': `url(${batt ? squareFullSrc(false) : darkSrc('full')})`, '--sq-on': `url(${squareFullSrc(true)})` } as CSSProperties}
         aria-label={p.holdRev ? 'Hold to rev' : 'Hold to rev, engine not running'}
         aria-disabled={!p.holdRev || undefined}
         onPointerDown={(e) => {
@@ -547,7 +543,7 @@ export function HeroRail(p: HeroRailProps) {
         <span className="cjhv-lg">HOLD</span>
         <span className="cjhv-lg">TO REV</span>
       </button>
-      <button type="button" className="cjhv-push cjhv-lamp-push cjhv-sd-push" data-lit={((p.running || p.lampTest) && batt) || undefined} style={{ '--sq-off': `url(${squareFullRedSrc(false)})`, '--sq-on': `url(${squareFullRedSrc(true)})` } as CSSProperties} aria-label={p.running ? 'Shutdown' : 'Shutdown, engine already off'} aria-disabled={!p.running || undefined} onClick={() => (p.running ? p.onShutdown() : p.say('Engine already off'))}>
+      <button type="button" className="cjhv-push cjhv-lamp-push cjhv-sd-push" data-lit={((p.running || p.lampTest) && batt) || undefined} style={{ '--sq-off': `url(${batt ? squareFullRedSrc(false) : darkSrc('fullRed')})`, '--sq-on': `url(${squareFullRedSrc(true)})` } as CSSProperties} aria-label={p.running ? 'Shutdown' : 'Shutdown, engine already off'} aria-disabled={!p.running || undefined} onClick={() => (p.running ? p.onShutdown() : p.say('Engine already off'))}>
         {narrow ? <><span className="cjhv-lg">SHUT</span><span className="cjhv-lg">DOWN</span></> : <span className="cjhv-lg">SHUTDOWN</span>}
       </button>
     </Mod>
@@ -615,9 +611,8 @@ export function HeroRail(p: HeroRailProps) {
         <div className="cjhv-zone" style={{ width: Z.mid }} role="group" aria-label="Start switches">
           {HV_RAIL_773.midMods.map((m, i) => <span key={i} className="cjhv-mod cjhv-submod" aria-hidden="true" style={px({ ...m, x: m.x * fm, w: m.w * fm })} />)}
           {flip('batt')}
-          {flip('seatbelt')}
           <div className="cjhv-col cjhv-ab" data-open={p.guardOpen || undefined} data-armed={p.armed || undefined}>
-            <span className="cjhv-lg cjhv-rname" aria-hidden="true" style={lgAt(161.3 * fm, 3, 70 * fm, { letterSpacing: 0 })}>AFTERBURNER</span>
+            <span className="cjhv-lg cjhv-rname" aria-hidden="true" style={lgAt(217.3 * fm, 3, 115.7 * fm, { letterSpacing: 0 })}>AFTERBURNER</span>
             <span className="cjhv-ab-k" style={{ left: ab.tx - 22, top: 48 - 33, '--tg-k': k } as CSSProperties}><AbArt armed={p.armed} open={p.guardOpen} batt={batt} /></span>
             <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(ab.tx + 18, 24, 35, { textAlign: 'left' })}>ARM</span>
             <span className="cjhv-lg cjhv-rpos" aria-hidden="true" style={lgAt(ab.tx + 18, 46, 35, { textAlign: 'left' })}>SAFE</span>
@@ -627,11 +622,11 @@ export function HeroRail(p: HeroRailProps) {
           {flip('fuelL')}
           {flip('ignL')}
           {flip('engL')}
-          <Bulb state={p.rail.bulb.L} {...HV_RAIL_773.bulbs.L} cx={HV_RAIL_773.bulbs.L.cx * fm} lgX={116 * fm} lgY={112} lgW={36} batt={batt} test={p.lampTest} />
+          <Bulb state={p.rail.bulb.L} fuel={p.rail.on.fuelL} {...HV_RAIL_773.bulbs.L} cx={HV_RAIL_773.bulbs.L.cx * fm} lgX={116 * fm} lgY={112} lgW={36} batt={batt} test={p.lampTest} />
           {flip('fuelR')}
           {flip('ignR')}
           {flip('engR')}
-          <Bulb state={p.rail.bulb.R} {...HV_RAIL_773.bulbs.R} cx={HV_RAIL_773.bulbs.R.cx * fm} lgX={293 * fm} lgY={112} lgW={36} batt={batt} test={p.lampTest} />
+          <Bulb state={p.rail.bulb.R} fuel={p.rail.on.fuelR} {...HV_RAIL_773.bulbs.R} cx={HV_RAIL_773.bulbs.R.cx * fm} lgX={293 * fm} lgY={112} lgW={36} batt={batt} test={p.lampTest} />
         </div>
         {qs}
         {push}
@@ -661,27 +656,26 @@ export function HeroRail(p: HeroRailProps) {
           <button type="button" className="cjhv-hit" style={{ left: 4, width: 80, top: 62, height: 52 }} aria-label={abAria(p.armed, p.guardOpen, 'switch')} aria-pressed={p.armed} onClick={() => p.onAb('switch')} />
         </div>
       </Mod>
-      <Mod kind="air" w={bmod.air} label="Power, start air, cabin">
+      <Mod kind="air" w={bmod.air} label="Power, start air">
         {divs('air')}
         <Col {...sw('batt')} c={C.batt!} g={G} />
         <Col3 name="SOURCE" spoken="Start source" c={C.source!} g={G} pos={p.rail.source} labels={SRC_LABELS} onStep={srcStep} k={G.tgK} lit={batt && p.rail.source !== 'mid'} />
         <Col {...sw('xbleed')} c={C.xbleed!} g={G} />
-        <Col {...sw('seatbelt')} c={C.seatbelt!} g={G} />
         {titles('air')}
+      </Mod>
+      <Mod kind="elec" w={bmod.elec} label="Electrics">
+        <GenLamps x={C.gen!.x} w={C.gen!.w} y={58} r={8} nameY={G.nameY} bulb={p.rail.bulb} apu={!!p.apuRun} batt={batt} test={p.lampTest} />
+        {titles('elec')}
       </Mod>
       {(['L', 'R'] as const).map((s) => (
         <Mod key={s} kind="eng" w={bmod[`eng${s}`]} label={`${s} engine`}>
           <Col {...sw(`fuel${s}`)} c={C[`fuel${s}`]!} g={G} />
           <Col {...sw(`ign${s}`)} c={C[`ign${s}`]!} g={G} />
           <Col {...sw(`eng${s}`)} c={C[`eng${s}`]!} g={G} />
-          <Bulb state={p.rail.bulb[s]} cx={152 * bf[`eng${s}`]} cy={58} r={9} lgX={134 * bf[`eng${s}`]} lgY={70} lgW={36} batt={batt} test={p.lampTest} />
+          <Bulb state={p.rail.bulb[s]} fuel={p.rail.on[`fuel${s}`]} cx={152 * bf[`eng${s}`]} cy={58} r={9} lgX={134 * bf[`eng${s}`]} lgY={70} lgW={36} batt={batt} test={p.lampTest} />
           {titles(`eng${s}`)}
         </Mod>
       ))}
-      <Mod kind="elec" w={bmod.elec} label="Electrics">
-        <GenLamps x={C.gen!.x} w={C.gen!.w} y={58} r={8} nameY={G.nameY} bulb={p.rail.bulb} apu={!!p.apuRun} batt={batt} test={p.lampTest} />
-        {titles('elec')}
-      </Mod>
       {qs}
       {push}
     </div></LampTestCtx.Provider>

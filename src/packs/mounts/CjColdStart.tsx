@@ -347,7 +347,8 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     qsRun.current = run;
     setQsRunning(true);
     announce('Quick start running');
-    const steps = csQuickSteps(mode, start);
+    // round 4: the start route follows SOURCE as set (APU up = APU start, AIR CART down = air-cart start), else the pref
+    const steps = csQuickSteps(start.on.aircart ? 'gndAir' : start.on.apu ? 'apu' : mode, start);
     const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
     const stop = (why?: string) => {
       run.dead = true;

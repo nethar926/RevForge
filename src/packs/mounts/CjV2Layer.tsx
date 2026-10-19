@@ -10,7 +10,7 @@ import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelSta
 import { mapSquareSide, keyXs, KEY_GAP, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
 import { CJ_GRID, type CjAnchors, type CjCellId, type CjHeroAnchors } from '../carrier-jet/cells';
 import { abArmedAria, heroKeyActive, HV_TOP, splitCap, type CapCtx } from '../carrier-jet/heroRail';
-import { masterSrc, pushHexSrc } from './cjArt';
+import { darkSrc, masterSrc, pushSquareSrc } from './cjArt';
 import type { SplitCap } from '../carrier-jet/heroRail';
 
 /** Lamp TEST held: every key lamp shows lit (legends unchanged). */
@@ -278,6 +278,7 @@ function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar,
   const credits = wxCreditRows(wx?.source ?? null, !!wxRadar);
   return (
     <div className="cjv2-cell cjv2-map" data-radar={view.radar} style={boxStyle(box)}>
+      <span className="cjv2-grid" aria-hidden="true" />
       <CellLab text={view.radar ? 'RADAR' : 'MAP'} header={header} />
       <div className="cjv2-crt">
         {/* Alerts: reserved top third (no alert source on base) */}
@@ -366,13 +367,28 @@ export interface CjV2LayerProps {
   /** Hero AB ARMED lamp (Wilson, Oct 19 round 3): MASTER CAUTION's square lamp, immediately left of CONFIG.
    * lit = BATT on and (armed or the BATT lamp test); indicator only (not tappable). */
   abLamp?: { lit: boolean; armed: boolean; launch: boolean } | null;
+  /** Hero cold start with BATT off: every key caption and key lamp unlit (round 4). */
+  dark?: boolean;
   /** Hero lamp TEST push right of CONFIG (momentary; BATT on only) and the lamp-test state for the key lamps. */
   lampTest?: { batt: boolean; held: boolean; on: boolean; onHold: (held: boolean) => void } | null;
 }
 
-export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, hero = '', abLamp = null, lampTest = null }: CjV2LayerProps) {
+export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, hero = '', abLamp = null, lampTest = null, dark = false }: CjV2LayerProps) {
   const selfRef = useRef<HTMLDivElement>(null);
   const geo = useGeo(selfRef, layout, hero);
+  const [themesX, setThemesX] = useState<number | null>(null);
+  useEffect(() => {
+    if (!hero || layout === 'window') return setThemesX(null);
+    const read = () => {
+      const t = document.querySelector('.cjhv-top-themes')?.getBoundingClientRect();
+      const me = selfRef.current?.getBoundingClientRect();
+      setThemesX(t && me && t.width ? Math.round(t.left + t.width / 2 - me.left) : null);
+    };
+    read();
+    const id = setTimeout(read, 300);
+    addEventListener('resize', read);
+    return () => { clearTimeout(id); removeEventListener('resize', read); };
+  }, [hero, layout, geo?.cells]);
   const view = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
   // WX key = show / hide weather only (never the RADAR switch); weather draws while RADAR is MX or WX and the key is on
   const wxKeyOn = useSyncExternalStore(subscribeWxKey, getWxKey, getWxKey);
@@ -545,7 +561,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
   const capCtx: CapCtx = { zoom: view.zoom, range: view.range, northUp: view.northUp, terr: view.mode === 'terr', radar: view.radar, wx: wxKeyOn, driveActive: !cfg.open };
   const railCells = KEY_CELLS.filter((c) => !(layout === 'window' && ((geo.mapFirst ? TOP_CELLS_MAP_FIRST : TOP_CELLS).includes(c) && c !== 'speed' || c === 'eng')));
   return (
-    <GridLayer ref={selfRef} className="cjv2" spec={CJ_GRID} layout={layout} cells={cells} ready reduced={reduced} railCells={edge ? railCells : []} data-config={cfg.open || undefined} data-hdr-sweep={hdr.sweep !== undefined || undefined} data-hdr-compass={hdr.compass !== undefined || undefined}>
+    <GridLayer ref={selfRef} className="cjv2" spec={CJ_GRID} layout={layout} cells={cells} ready reduced={reduced} railCells={edge ? railCells : []} data-config={cfg.open || undefined} data-batt-off={dark || undefined} data-hdr-sweep={hdr.sweep !== undefined || undefined} data-hdr-compass={hdr.compass !== undefined || undefined}>
       {cells && (
         <>
           <AccelCell box={cells.accel} demo={demo} reduced={reduced} header={hdr.accel} />
@@ -573,13 +589,20 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
           const n = stripCount(cell, b.width, kctx);
           // hero (Wilson, Oct 19 round 2): no DRIVE / MORE keys (CONFIG's RTN returns to the board; MORE's items: see CONFIG)
           const keys = cellKeys(cell, n, kctx).map((k) => (hero && k && (k.id === 'drive' || k.id === 'more') ? null : k));
-          // hero AB ARMED: CONFIG moves one slot right and the lamp takes the slot to its left (same strip, no overlap)
-          const abHere = !!(abLamp && cell === 'speed' && n >= 2 && keys[0]?.id === 'config' && !keys[1]);
-          if (abHere) { keys[1] = keys[0]; keys[0] = null; }
-          const testHere = !!(abHere && lampTest && n >= 3 && !keys[2]);
+          // hero AB ARMED · CONFIG · TEST. Drive window: in the SPEED strip (CONFIG one slot right, the lamp left of it,
+          // TEST right of it). Full screen (round 4): the three move to the bottom row, TEST centred under THEMES' x.
+          const cfgKey = cell === 'speed' && keys[0]?.id === 'config' ? keys[0] : null;
+          const trio = !!(hero && abLamp && cfgKey && layout !== 'window' && themesX != null);
+          const abHere = !!(abLamp && cfgKey && (trio || (n >= 2 && !keys[1])));
+          if (abHere) { keys[0] = null; if (!trio) keys[1] = cfgKey; }
+          const testHere = !!(abHere && lampTest && (trio || (n >= 3 && !keys[2])));
           const xs = keyXs(b, n);
-          const top = railTop(b, geo.gap);
+          const top0 = railTop(b, geo.gap);
           const abW = layout === 'window' ? HV_TOP.window.mc.w : HV_TOP.board.mc.w;
+          const tTop = trio ? railTop(cells.map, geo.gap) : top0;
+          const tX = trio ? themesX! - KEY_W / 2 : xs[2];
+          const cX = trio ? tX - KEY_GAP - KEY_W : xs[1];
+          const top = top0;
           return (
             <div key={cell} className="cjv2-keys" data-cell={cell} {...(keys.some((k) => k?.legend) ? { role: 'group', 'aria-label': `${(hdr as Partial<Record<CellId, string>>)[cell]?.toLowerCase() || cell} keys` } : { 'aria-hidden': true })}>
               {keys.map((k, i) => (
@@ -594,22 +617,28 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
                   <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-rail="" data-reason={cell === bank && i >= SPARE_INDEX ? 'spare' : undefined} aria-hidden="true" />
                 )
               ))}
+              {trio && cfgKey && (
+                <div className="cjv2-key" style={{ left: cX, top: tTop, width: KEY_W, height: KEY_H }} data-key="config">
+                  <BezelKey legend={cfgKey.legend} active={heroKeyActive(cfgKey.id, !!cfgKey.active)} ariaLabel={cfgKey.ariaLabel} onPress={() => onKey(cell, cfgKey)} />
+                  <KorryCap cap={testCap(splitCap(cfgKey.id, capCtx), !!lampTest?.on)} id={cfgKey.id} />
+                </div>
+              )}
               {testHere && lampTest && (
-                <div className="cjv2-key cjv2-testkey" style={{ left: xs[2], top, width: KEY_W, height: KEY_H }} data-key="lamptest">
+                <div className="cjv2-key cjv2-testkey" style={{ left: tX, top: tTop, width: KEY_W, height: KEY_H }} data-key="lamptest">
                   <span className="cjv2-test-lg" aria-hidden="true">TEST</span>
                   <button type="button" className="cjv2-test-btn" aria-label={lampTest.batt ? 'Lamp test, hold' : 'Lamp test, needs battery'} aria-pressed={lampTest.held}
                     onPointerDown={(e) => { if (!lampTest.batt) return; e.currentTarget.setPointerCapture?.(e.pointerId); lampTest.onHold(true); }}
                     onPointerUp={() => lampTest.onHold(false)} onPointerCancel={() => lampTest.onHold(false)} onLostPointerCapture={() => lampTest.onHold(false)}
                     onKeyDown={(e) => { if (lampTest.batt && (e.key === ' ' || e.key === 'Enter')) lampTest.onHold(true); }} onKeyUp={() => lampTest.onHold(false)} onBlur={() => lampTest.onHold(false)}
                     onContextMenu={(e) => e.preventDefault()}>
-                    <img src={pushHexSrc(lampTest.held && lampTest.batt)} width={44} height={44} alt="" aria-hidden="true" draggable={false} />
+                    <img src={lampTest.batt ? pushSquareSrc(lampTest.held) : darkSrc('full')} width={44} height={44} alt="" aria-hidden="true" draggable={false} />
                   </button>
                 </div>
               )}
               {abHere && abLamp && (
-                <div className="cjv2-ablamp" style={{ left: xs[1] - KEY_GAP - abW, top: top + KEY_H - abW - 4, width: abW, height: abW }}>
+                <div className="cjv2-ablamp" style={{ left: cX - KEY_GAP - abW, top: tTop + KEY_H - abW - 4, width: abW, height: abW }}>
                   <div className="cjhv-cap cjhv-ab-master" data-color="amber" data-lit={abLamp.lit || undefined} role="img" aria-label={abArmedAria(abLamp.armed, abLamp.launch)}
-                    style={{ left: 0, top: 0, width: abW, height: abW, backgroundImage: `url(${masterSrc('masterCaution', abLamp.lit)})` }}>
+                    style={{ left: 0, top: 0, width: abW, height: abW, backgroundImage: `url(${abLamp.lit ? masterSrc('masterCaution', true) : lampTest?.batt ? masterSrc('masterCaution', false) : darkSrc('master')})` }}>
                     <span className="cjhv-lg">AB</span>
                     <span className="cjhv-lg">{abLamp.launch ? 'LAUNCH' : 'ARMED'}</span>
                   </div>
