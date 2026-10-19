@@ -27,6 +27,7 @@ import { DriveDynamicsPanel } from "../components/visuals/DriveDynamicsPanel";
 import { drivetrainFor } from "./catalog";
 import { ThemeStage } from "../themes/ThemeStage";
 import { ThemePicker } from "../themes/ThemePicker";
+import { SplashCarousel } from "./SplashCarousel";
 import { LISTED_THEMES, SPLASH_ACCENT, SPLASH_BACKDROP_THEME, isThemeListed, themeForId } from "../themes/catalog";
 import type { useThemes } from "../themes/useThemes";
 import { useVehicleMedia } from "./useVehicleMedia";
@@ -333,7 +334,7 @@ export function ForgePage({
           {stageTheme&&<ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={onTimeJump} timeJumpActive={timeJumpActive} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>}
         </section>
         <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{garage.active?.name??theme.name}</small>}</div><button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button></header>
-        {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>
+        {!ignited?<div className="rev-launch has-car"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><SplashCarousel selected={themes.skinId} onOpen={id=>{selectCluster(id);start();}}/><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>
           {source==='demo'&&<label className="rev-throttle">Throttle <span>{Math.round(pedal*100)}%</span><input aria-label="Throttle" type="range" min="0" max="1" step=".01" disabled={!revReady} value={pedal} onChange={e=>setPedal(Number(e.target.value))}/></label>}
           <footer className="rev-dock" aria-label="Drive controls">
             <div className="rev-segment"><button aria-pressed={mode==='auto'} onClick={()=>setMode('auto')}>Auto</button><button aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>Manual</button></div>

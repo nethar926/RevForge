@@ -4,7 +4,7 @@ import {listExperimentalPacks,packForThemeId} from '../packs/registry';
 import {isExperimentalPackEnabled,setExperimentalPackEnabled} from '../packs/experimental';
 import '../packs/packs.css';
 
-function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | 'pack'; accent: string; secondary: string; uid: string}) {
+export function ThumbPreview({layout, accent, secondary, uid}: {layout: ThemeLayout | 'pack'; accent: string; secondary: string; uid: string}) {
   const a = accent;
   const s = secondary;
   const common = {width: '100%', height: '100%'} as const;
