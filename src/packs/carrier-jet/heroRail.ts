@@ -133,12 +133,13 @@ export function splitCap(id: string, c: CapCtx): SplitCap | null {
     case 'rngUp': return { top: '+', bottom: '', lit: false, capOnly: true };
     case 'rngDown': return { top: '\u2212', bottom: '', lit: false, capOnly: true };
     // round 4: one TRK-UP legend, no caption; unlit = north up, lit = track up
-    case 'orient': return { top: 'TRK-UP', bottom: '', lit: !c.northUp, capOnly: true };
+    case 'orient': return { top: 'UP', bottom: '', lit: !c.northUp, capOnly: true };
     // Wilson, Oct 19: the map key reads TERRAIN, a toggle (lit = terrain on); the radar MODE key keeps its own legend
     // radar MODE: blank face under its MODE caption; map TERRAIN key: TERR face (caption hidden), 1/3 lamp = on / off
     // round 3: the same permanent TERR legend in every state (map / radar, lit / unlit, BATT off); only the lamp changes
     case 'mode': return { top: 'TERR', bottom: '', lit: c.terr, capOnly: true };
-    case 'wx': return { top: '', bottom: '', lit: c.wx };
+    // round 5: the DATA tab header spans TERR + WX; the key itself reads WX (no separate WX slot caption)
+    case 'wx': return { top: 'WX', bottom: '', lit: c.wx, capOnly: true };
     case 'drive': return { top: 'DRV', bottom: 'BOARD', lit: c.driveActive };
     case 'more': return { top: '\u2022\u2022\u2022', bottom: '', lit: false };
     case 'rtn': return { top: 'RTN', bottom: '', lit: false };

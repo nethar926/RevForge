@@ -52,3 +52,7 @@ export const pushSquareSrc = (pressed: boolean) => pick(lp, 'lamps', `push-squar
 
 /** Lamp TEST push (Wilson's PUSH UNLIT / PUSH LIT: chrome hex nut, brushed round face, red ring lit while held). */
 export const pushHexSrc = (lit: boolean) => pick(sw, 'switches', `push-hex-${lit ? 'lit' : 'unlit'}`);
+
+/** QUICK START (Oct 19 round 5, Wilson's mock): the yellow guard's mounting plate with the hinge + strap above;
+ * open = lifted guard (the Push Square full lamp sits over the plate), closed = the cover down over the lamp. */
+export const qsPlateSrc = (open: boolean) => pick(sw, 'switches', open ? 'qs-open-yellow' : 'qs-closed-yellow');

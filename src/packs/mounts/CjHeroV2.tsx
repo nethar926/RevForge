@@ -15,7 +15,7 @@ import type { CjGps } from '../../skins/carrier-jet/parts/index';
 import type { CjGpsSeq } from '../carrier-jet/gpsAcqSeq';
 import { abAria, bonusAria, ENG_BULB_LEGEND, fsbAria, HV_BONUS, HV_GUARD_CLOSE_MS, HV_LAMPS, HV_RAIL_773, HV_RAIL_GEO, HV_TOP, lampAria, lampColor, qsAria, qsTap, RADAR_SPOKEN, radarStep, railFlipAria, railSw, railSwAria, type AbTarget, type EngBulb, type HeroLayout, type LampId, type LampMark, type LampState, type QsTarget, type RadarPos, type RailCol, type RailPart, type RailState, type RailSwDecl, type RailSwId, type SourcePos, type SplitCap } from '../carrier-jet/heroRail';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
-import { guardSrc, masterSrc, pushSquareSrc, roundMode, roundSrc, darkSrc, squareFullRedSrc, squareFullSrc, squareThirdSrc, toggleSrc } from './cjArt';
+import { guardSrc, qsPlateSrc, masterSrc, pushSquareSrc, roundMode, roundSrc, darkSrc, squareFullRedSrc, squareFullSrc, squareThirdSrc, toggleSrc } from './cjArt';
 import './cj-hero-v2.css';
 
 /* ------------------------------------------------------------------ Korry split cap (upper-board keys) */
@@ -330,25 +330,19 @@ export const qsLampAria = (running: boolean, live: boolean) => (running ? 'Quick
 function QsArt({ open, lamp, aria, k }: { open: boolean; lamp: QsLamp; aria: string; k: number }) {
   // Wilson, Oct 19 round 2: closed = the gunmetal cover (LIFT tag); lifted = his unguarded neutral switch's plate + hex
   // with the Push Square full lamp in the centre where the toggle would be (ready lit / running 1 Hz / complete unlit)
-  const piv = { scale: String(k), transformOrigin: '0 0' } as CSSProperties;
+  // round 5 (Wilson's mock): the plate with the big Push Square full lamp, hinge + strap above; closed = cover over it
+  const h = Math.round(96 * k), w = Math.round((h * 92) / 132), ls = Math.round((w * 80) / 92);
   return (
     <div className="cjhv-qs" data-open={open || undefined}>
-      {open ? (
-        <>
-          <span className="cjhv-gpiv cjhv-qs-art" style={piv}>
-            {/* round 4: the lifted yellow guard (like FUEL), the Push Square full lamp over the nut in place of the toggle */}
-            <GuardArt color="yellow" open pos="mid" h={GUARD_H} />
-            <span className="cjhv-qs-key" data-lamp={lamp} role="img" aria-label={aria} style={{ '--sq': `url(${squareFullSrc(true)})`, '--sq-off': `url(${squareFullSrc(false)})` } as CSSProperties}>
-              <span className="cjhv-qs-unlit" aria-hidden="true" />
-            </span>
+      <span className="cjhv-qs2" style={{ width: w, height: h, marginLeft: -w / 2, marginTop: -h / 2 }}>
+        <img className="cjhv-art" src={qsPlateSrc(open)} width={w} height={h} alt="" aria-hidden="true" draggable={false} decoding="async" />
+        {open ? (
+          <span className="cjhv-qs-key" data-lamp={lamp} role="img" aria-label={aria}
+            style={{ left: Math.round((w * 6) / 92), top: Math.round((h * 50) / 132), width: ls, height: ls, '--sq': `url(${squareFullSrc(true)})`, '--sq-off': `url(${squareFullSrc(false)})` } as CSSProperties}>
+            <span className="cjhv-qs-unlit" aria-hidden="true" />
           </span>
-        </>
-      ) : (
-        <>
-          <span className="cjhv-gpiv cjhv-qs-art" style={piv}><GuardArt color="yellow" open={false} h={GUARD_H} /></span>
-          <span className="rf-sr-only" role="img" aria-label={aria} />
-        </>
-      )}
+        ) : <span className="rf-sr-only" role="img" aria-label={aria} />}
+      </span>
     </div>
   );
 }

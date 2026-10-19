@@ -7,6 +7,7 @@ import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompass } from '../heading';
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
+import { mapKeys } from '../carrier-jet/mapView';
 import { mapSquareSide, keyXs, KEY_GAP, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
 import { CJ_GRID, type CjAnchors, type CjCellId, type CjHeroAnchors } from '../carrier-jet/cells';
 import { abArmedAria, heroKeyActive, HV_TOP, splitCap, type CapCtx } from '../carrier-jet/heroRail';
@@ -585,8 +586,10 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
         railCells.map((cell) => {
           // drive window: SPEED's keys sit in the ENG strip (no top key row; see carrier-jet-v2.css)
           const b = layout === 'window' && cell === 'speed' ? cells.eng : cells[cell];
-          const kctx = { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(order.map((c) => [c, tileFor(c)])), subs: paged.subs } : null, wx: { on: wxKeyOn, slot: wxSlot(cells.map.width, view) }, bank };
-          const n = stripCount(cell, b.width, kctx);
+          const kctx = { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(order.map((c) => [c, tileFor(c)])), subs: paged.subs } : null, wx: { on: wxKeyOn, slot: hero ? ('map' as const) : wxSlot(cells.map.width, view) }, bank };
+          // hero map keys (Oct 19 round 5): every map key + WX in one strip, grouped RNG (+ −) · TRK (UP) · DATA (TERR, WX)
+          const heroMap = !!(hero && cell === 'map' && !cfg.open);
+          const n = heroMap ? mapKeys(view).length + 1 : stripCount(cell, b.width, kctx);
           // hero (Wilson, Oct 19 round 2): no DRIVE / MORE keys (CONFIG's RTN returns to the board; MORE's items: see CONFIG)
           const keys = cellKeys(cell, n, kctx).map((k) => (hero && k && (k.id === 'drive' || k.id === 'more') ? null : k));
           // hero AB ARMED · CONFIG · TEST. Drive window: in the SPEED strip (CONFIG one slot right, the lamp left of it,
@@ -596,7 +599,8 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
           const abHere = !!(abLamp && cfgKey && (trio || (n >= 2 && !keys[1])));
           if (abHere) { keys[0] = null; if (!trio) keys[1] = cfgKey; }
           const testHere = !!(abHere && lampTest && (trio || (n >= 3 && !keys[2])));
-          const xs = keyXs(b, n);
+          const grp = (id?: string) => (id === 'orient' ? 'TRK' : id === 'mode' || id === 'wx' ? 'DATA' : 'RNG');
+          const xs = heroMap ? groupXs(b, keys.map((k) => grp(k?.id))) : keyXs(b, n);
           const top0 = railTop(b, geo.gap);
           const abW = layout === 'window' ? HV_TOP.window.mc.w : HV_TOP.board.mc.w;
           const tTop = trio ? railTop(cells.map, geo.gap) : top0;
@@ -617,6 +621,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
                   <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-rail="" data-reason={cell === bank && i >= SPARE_INDEX ? 'spare' : undefined} aria-hidden="true" />
                 )
               ))}
+              {heroMap && tabHeads(keys.map((k) => grp(k?.id)), xs, top0)}
               {trio && cfgKey && (
                 <div className="cjv2-key" style={{ left: cX, top: tTop, width: KEY_W, height: KEY_H }} data-key="config">
                   <BezelKey legend={cfgKey.legend} active={heroKeyActive(cfgKey.id, !!cfgKey.active)} ariaLabel={cfgKey.ariaLabel} onPress={() => onKey(cell, cfgKey)} />
@@ -670,4 +675,19 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
       <p className="cjv2-say" role="status" aria-live="polite">{say}</p>
     </GridLayer>
   );
+}
+
+/** Hero map strip x positions: the keys centred under the map, an extra gap between header groups (Oct 19 round 5). */
+const GROUP_GAP = 8;
+function groupXs(b: Box, groups: string[]): number[] {
+  const breaks = groups.filter((g, i) => i > 0 && g !== groups[i - 1]).length;
+  const total = groups.length * KEY_W + (groups.length - 1) * KEY_GAP + breaks * GROUP_GAP;
+  let x = Math.round(b.left + (b.width - total) / 2);
+  return groups.map((g, i) => { if (i > 0) x += KEY_W + KEY_GAP + (g !== groups[i - 1] ? GROUP_GAP : 0); return x; });
+}
+/** Small tab headers (the WX edge-slot style) spanning each group: RNG · TRK · DATA. */
+function tabHeads(groups: string[], xs: number[], top: number) {
+  const out: { g: string; l: number; r: number }[] = [];
+  groups.forEach((g, i) => { const last = out[out.length - 1]; if (last && last.g === g) last.r = xs[i] + KEY_W; else out.push({ g, l: xs[i], r: xs[i] + KEY_W }); });
+  return out.map((h) => <span key={h.g} className="cjv2-tabhdr" aria-hidden="true" style={{ left: h.l, top, width: h.r - h.l }}>{h.g}</span>);
 }

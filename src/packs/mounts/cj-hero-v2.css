@@ -417,3 +417,15 @@ img.cjhv-tg { object-fit: contain; display: block; }
 [data-motion='static'] .cjv2-grid { transition: none; }
 /* lamp TEST: Push Square key art (lit while held) */
 .cjv2-test-btn img { border-radius: 3px; }
+
+/* ---------------- Oct 19 round 5 */
+/* QUICK START: plate + big lamp (Wilson's mock); no box, no hex, no LIFT text */
+.cjhv-qs2 { position: absolute; left: 50%; top: 50%; z-index: 1; pointer-events: none; }
+.cjhv-qs2 > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cjhv-qs[data-open] .cjhv-qs2 .cjhv-qs-key { position: absolute; right: auto; bottom: auto; background: none; box-shadow: none; border-radius: 0; border-image: var(--sq) 26 fill / 12px / 0 stretch; }
+.cjhv-qs[data-open] .cjhv-qs2 .cjhv-qs-key[data-lamp='unlit'] { border-image-source: var(--sq-off); }
+.cjhv-qs2 .cjhv-qs-unlit { border-image: var(--sq-off) 26 fill / 12px / 0 stretch; }
+/* map keys: small tab headers over the groups (RNG · TRK · DATA), the WX edge-slot look */
+.cjv2-tabhdr { position: absolute; height: 18px; box-sizing: border-box; border: 1px solid #000; border-radius: 2px; background: #041009; color: #8dffad;
+  font: 700 11px/16px 'B612', system-ui, sans-serif; letter-spacing: 0.06em; text-align: center; pointer-events: none; z-index: 2; }
+.cjv2[data-batt-off] .cjv2-tabhdr { color: #8f969b; }
