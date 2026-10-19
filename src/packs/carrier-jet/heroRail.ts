@@ -135,7 +135,8 @@ export function splitCap(id: string, c: CapCtx): SplitCap | null {
     case 'orient': return orientCap(c.northUp);
     // Wilson, Oct 19: the map key reads TERRAIN, a toggle (lit = terrain on); the radar MODE key keeps its own legend
     // radar MODE: blank face under its MODE caption; map TERRAIN key: TERR face (caption hidden), 1/3 lamp = on / off
-    case 'mode': return c.radar ? { top: '', bottom: '', lit: c.terr } : { top: 'TERR', bottom: '', lit: c.terr, capOnly: true };
+    // round 3: the same permanent TERR legend in every state (map / radar, lit / unlit, BATT off); only the lamp changes
+    case 'mode': return { top: 'TERR', bottom: '', lit: c.terr, capOnly: true };
     case 'wx': return { top: '', bottom: '', lit: c.wx };
     case 'drive': return { top: 'DRV', bottom: 'BOARD', lit: c.driveActive };
     case 'more': return { top: '\u2022\u2022\u2022', bottom: '', lit: false };
@@ -292,7 +293,7 @@ export const HV_TOP: Readonly<Record<HeroLayout, TopGeo>> = {
     nameY: 7, nameSize: 12, onY: 22, offY: 102, upY: 18, upH: 46, dnY: 64, dnH: 52, tgY: 68, tgScale: 1.05,
     mc: { x: 668, y: 6, w: 56, h: 56 }, mw: { x: 730, y: 6, w: 56, h: 56 }, masterHit: { dx: 0, dy: 0, w: 56, h: 56 },
     bulb: { cx: 680, cy: 90, r: 10 }, fsb: { x: 695, y: 77, w: 65 },
-    ab: { x: 792, y: 6, w: 48, h: 48 }, themes: { x: 792, y: 62, w: 48, h: 48 }, themesHit: { x: 792, y: 62, w: 48, h: 48 },
+    ab: { x: 792, y: 6, w: 48, h: 48 }, themes: { x: 792, y: 34, w: 48, h: 48 }, themesHit: { x: 792, y: 34, w: 48, h: 48 },
     es: { x: 846, y: 4, w: 62, h: 109 },
   },
   window: {
@@ -302,7 +303,7 @@ export const HV_TOP: Readonly<Record<HeroLayout, TopGeo>> = {
     nameY: 6, nameSize: 11, onY: 19, offY: 97, upY: 16, upH: 44, dnY: 60, dnH: 52, tgY: 62, tgScale: 0.9,
     mc: { x: 409, y: 5, w: 50, h: 50 }, mw: { x: 463, y: 5, w: 50, h: 50 }, masterHit: { dx: 0, dy: 0, w: 50, h: 50 },
     bulb: { cx: 418, cy: 87, r: 8 }, fsb: { x: 430, y: 74, w: 59 },
-    ab: { x: 517, y: 5, w: 44, h: 48 }, themes: { x: 517, y: 61, w: 44, h: 48 }, themesHit: { x: 517, y: 61, w: 44, h: 48 },
+    ab: { x: 517, y: 5, w: 44, h: 48 }, themes: { x: 517, y: 33, w: 44, h: 48 }, themesHit: { x: 517, y: 33, w: 44, h: 48 },
     es: { x: 565, y: 4, w: 50, h: 107 },
   },
 };
@@ -440,10 +441,10 @@ export interface RailGeo {
 export const HV_RAIL_GEO: Readonly<Record<'board', RailGeo>> = {
   board: {
     mods: [
-      { id: 'gps', w: 52 }, { id: 'radar', w: 72 }, { id: 'ab', w: 88 },
+      { id: 'gps', w: 100 }, { id: 'radar', w: 72 }, { id: 'ab', w: 88 },
       { id: 'air', w: 264, base: 240, titles: [{ t: 'POWER', x: 4, w: 52 }, { t: 'START AIR', x: 56, w: 120 }, { t: 'CABIN', x: 176, w: 60 }], dividers: [56, 176] },
       { id: 'engL', w: 192, base: 176, titles: [{ t: 'L ENG', x: 4, w: 168 }] }, { id: 'engR', w: 192, base: 176, titles: [{ t: 'R ENG', x: 4, w: 168 }] },
-      { id: 'elec', w: 128, base: 112, titles: [{ t: 'ELEC · NAV', x: 4, w: 104 }] },
+      { id: 'elec', w: 80, base: 80, titles: [{ t: 'ELEC', x: 4, w: 72 }] },
       { id: 'qs', w: 100 }, { id: 'push', w: 68 },
     ],
     col: {
@@ -451,24 +452,24 @@ export const HV_RAIL_GEO: Readonly<Record<'board', RailGeo>> = {
       batt: { x: 4, w: 52, tx: 30 }, source: { x: 56, w: 66, tx: 78 }, xbleed: { x: 122, w: 54, tx: 149 }, seatbelt: { x: 176, w: 60, tx: 206 },
       fuelL: { x: 4, w: 50, tx: 29 }, ignL: { x: 54, w: 48, tx: 78 }, engL: { x: 102, w: 70, tx: 124 },
       fuelR: { x: 4, w: 50, tx: 29 }, ignR: { x: 54, w: 48, tx: 78 }, engR: { x: 102, w: 70, tx: 124 },
-      gen: { x: 4, w: 52, tx: 30 }, nav: { x: 56, w: 52, tx: 82 },
+      gen: { x: 4, w: 72, tx: 40 }, nav: { x: 46, w: 52, tx: 72 },
     },
     nameY: 4, onY: 22, offY: 107, upY: 18, upH: 54, dnY: 72, dnH: 44, tgY: 72, tgK: 1.05, titleY: 121,
   },
 };
 /** 773: three zones. Middle zone parts are single tap-to-flip targets (x / y zone-relative, w x h). */
 export const HV_RAIL_773 = {
-  zones: { gps: 40, radar: 62, air: 114, mid: 388, qs: 70, push: 52 },
+  zones: { gps: 86, radar: 62, air: 114, mid: 342, qs: 70, push: 52 },
   /** the middle zone's design width (its parts are drawn at 333; the freed EMER STOP width stretches them in x) */
   midBase: 333,
-  left: { radar: { x: 4, w: 54, tx: 24 }, source: { x: 4, w: 58, tx: 24 }, xbleed: { x: 62, w: 48, tx: 86 }, nameY: 4, onY: 22, offY: 114, upY: 18, upH: 52, dnY: 70, dnH: 65, tgY: 70 },
+  left: { nav: { x: 38, w: 46, tx: 61 }, radar: { x: 4, w: 54, tx: 24 }, source: { x: 4, w: 58, tx: 24 }, xbleed: { x: 62, w: 48, tx: 86 }, nameY: 4, onY: 22, offY: 114, upY: 18, upH: 52, dnY: 70, dnH: 65, tgY: 70 },
   midMods: [
     { x: 0, y: 0, w: 50, h: 66 }, { x: 55.7, y: 0, w: 100, h: 66 }, { x: 161.3, y: 0, w: 70, h: 66 }, { x: 237, y: 0, w: 96, h: 66 },
     { x: 0, y: 69, w: 156, h: 66 }, { x: 177, y: 69, w: 156, h: 66 },
   ],
   mid: {
     batt: { x: 2, y: 0, w: 46, h: 66, tx: 25 }, seatbelt: { x: 57.7, y: 0, w: 96, h: 66, tx: 105.7 }, ab: { x: 163.3, y: 14, w: 66, h: 52, tx: 183.3 },
-    gen: { x: 239, y: 0, w: 46, h: 66, tx: 262 }, nav: { x: 285, y: 0, w: 46, h: 66, tx: 308 },
+    gen: { x: 239, y: 0, w: 92, h: 66, tx: 285 },
     fuelL: { x: 2, y: 69, w: 44, h: 66, tx: 24 }, ignL: { x: 46, y: 69, w: 44, h: 66, tx: 68 }, engL: { x: 90, y: 69, w: 64, h: 66, tx: 106 },
     fuelR: { x: 179, y: 69, w: 44, h: 66, tx: 201 }, ignR: { x: 223, y: 69, w: 44, h: 66, tx: 245 }, engR: { x: 267, y: 69, w: 64, h: 66, tx: 283 },
   } as Record<string, { x: number; y: number; w: number; h: number; tx: number }>,

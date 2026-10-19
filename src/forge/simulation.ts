@@ -127,14 +127,14 @@ export function stepSimulation(
           config.idleRpm + (state.speedMps < 2 ? pedal * 1500 : 0),
           wheelRpm(state.speedMps, config, state.gear),
         );
+  // live (GPS) drive: a held REV (pedal) free-revs over the measured feed, then eases back to it on release
+  const revRpm = input.source === "gps" && pedal > 0 ? Math.max(targetRpm, config.idleRpm + pedal * 0.75 * (config.redline - config.idleRpm)) : targetRpm;
   state.rpm +=
-    (clamp(targetRpm, config.idleRpm, config.redline) - state.rpm) *
+    (clamp(revRpm, config.idleRpm, config.redline) - state.rpm) *
     (1 - Math.exp(-dt * 12));
   const load =
     input.source === "gps"
-      ? input.gpsSpeed === null
-        ? 0
-        : clamp(0.12 + state.accel / 5, 0, 1)
+      ? Math.max(pedal, input.gpsSpeed === null ? 0 : clamp(0.12 + state.accel / 5, 0, 1))
       : input.brake
         ? 0
         : pedal;

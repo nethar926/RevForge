@@ -59,6 +59,8 @@ export interface ColdStart {
   toggleShelf(): void;
   /** QUICK START; `instant`: Dan's straight start (phones, no switches on screen). */
   quickStart(instant?: boolean): void;
+  /** Animated shutdown (QUICK START in reverse, BATT last); `done` after the last step. */
+  shutdownSeq(done?: () => void): void;
   pamphlet: PamphletPhase;
   setPamphlet(open: boolean): void;
   say: string;
@@ -387,6 +389,41 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       announce('Quick start complete');
     })();
   };
+  // SHUTDOWN (Wilson, Oct 19 round 3): QUICK START in reverse, one switch every QS_STEP_MS so each flip shows; the
+  // engines spool down on FUEL off (guards close over OFF), BATT last. `done` runs after the last step (host shutdown).
+  const shutdownSeq = (done?: () => void) => {
+    if (qsRun.current && !qsRun.current.dead) return announce('Quick start running');
+    const s0 = readSys();
+    if (!api || !s0) { done?.(); return; }
+    const run = { dead: false };
+    qsRun.current = run;
+    setQsRunning(true);
+    announce('Shutdown running');
+    const order = ['throttleL', 'throttleR', 'fuelPumpR', 'fuelPumpL', 'engR', 'engL', 'ignR', 'ignL', 'crossbleed', 'radar',
+      'inertialNav', 'avionics', 'apu', 'aircart', 'anticollision', 'navLights', 'hydraulics', 'oxygen', 'canopy', 'seatbelt', 'batt'];
+    const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+    void (async () => {
+      for (const id of order) {
+        if (run.dead) return;
+        const now = readSys();
+        if (now?.emergency) break;
+        if (id === 'radar') {
+          if (!getMapView().radar) continue;
+          setRadar(false);
+        } else {
+          if (!now?.on[id]) continue;
+          set(id, false, id.startsWith('fuelPump') ? { foley: 'guardClose' } : undefined);
+          if (!id.startsWith('fuelPump')) cue('toggle');
+        }
+        await sleep(QS_STEP_MS);
+      }
+      run.dead = true;
+      if (qsRun.current === run) qsRun.current = null;
+      setQsRunning(false);
+      announce('Shutdown complete');
+      done?.();
+    })();
+  };
   const applyPull = (r: PullResult, el?: HTMLElement | null, pid?: number) => {
     setPull(r.state);
     for (const e of r.effects) {
@@ -611,7 +648,7 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
   };
   return {
     on, park, live, shelf, toggleShelf, quickStart, pamphlet, setPamphlet, say, seatbelt: !!sys.on.seatbelt, render: { shelf: shelfEl, shelfKey, pullQs },
-    qsRunning, qsLift,
+    qsRunning, qsLift, shutdownSeq,
     sys, caution: view.caution.lit, resetCaution: () => onToggle('masterCaution', 'momentary'), railTap, guardOff: (id: string) => set(id, false, { foley: 'guardClose' }), emergencyStop: () => applyPull(pullAction(pullRef.current)), announce, nextId: view.next?.id ?? null,
   };
 }

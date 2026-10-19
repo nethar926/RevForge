@@ -33,7 +33,8 @@ export function parseMapView(raw: string | null): MapView {
   try {
     const o = raw ? (JSON.parse(raw) as Partial<MapView>) : {};
     return {
-      radar: o.radar === true,
+      // round 3: RADAR is OFF on every load / cold start (never restored); MX / WX only by the switch or QUICK START
+      radar: false,
       range: isRange(o.range) ? o.range : MAP_VIEW_DEFAULT.range,
       mode: o.mode === 'terr' ? 'terr' : 'map',
       zoom: isZoom(o.zoom) ? o.zoom : MAP_VIEW_DEFAULT.zoom,

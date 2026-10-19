@@ -323,9 +323,10 @@ img.cjhv-tg { object-fit: contain; display: block; }
 /* QUICK START lifted: the neutral switch plate + hex, the Push Square full lamp centred on the nut */
 .cjhv-qs-base { position: absolute; left: -22px; top: -34px; width: 44px; height: 68px; max-width: none; object-fit: contain; display: block; }
 /* Wilson, Oct 19: the square sits inside the hex with a visible rim (14 px = ~62 % of the hex face, centred on the nut at y -1) */
-.cjhv-qs[data-open] .cjhv-qs-art .cjhv-qs-key { position: absolute; left: -7px; top: -8px; right: auto; bottom: auto; width: 14px; height: 14px; border-image: var(--sq) 26 fill / 3.5px / 0 stretch; }
+.cjhv-qs[data-open] .cjhv-qs-art .cjhv-qs-key { position: absolute; left: -16px; top: -16px; right: auto; bottom: auto; width: 32px; height: 32px; border-image: var(--sq) 26 fill / 8px / 0 stretch; }
 .cjhv-qs[data-open] .cjhv-qs-art .cjhv-qs-key[data-lamp='unlit'] { border-image-source: var(--sq-off); }
-.cjhv-qs-art .cjhv-qs-unlit { border-image: var(--sq-off) 26 fill / 3.5px / 0 stretch; }
+.cjhv-qs-art .cjhv-qs-unlit { border-image: var(--sq-off) 26 fill / 8px / 0 stretch; }
+/* round 3: the Push Square lamp covers the hex footprint (hex base no longer drawn), centred on the nut, inside the guard */
 /* GEN legends */
 .cjhv-gen .cjhv-bulb-lg { color: var(--hv-cream) !important; }
 
@@ -357,3 +358,40 @@ img.cjhv-tg { object-fit: contain; display: block; }
 .rev-viewport:has(.cjm[data-cj-pwr]:not([data-pwr-batt])) .cjhv-korry[data-lit] > .cjhv-korry-bot { color: #c9cdd0 !important; }
 /* rail legends stay readable over a guard plate that overhangs its cell (773) */
 .cjhv-rail .cjhv-rname { z-index: 2; }
+
+/* ---------------- Oct 19 round 3 (Wilson) */
+/* legends are printed on the panel UNDER the switches, toggles and guards (a thrown toggle or a lifted guard may cover
+   part of its text, as on the real panel). Same positions and sizes; lamps and map keys untouched. */
+.cjhv-col .cjhv-lg:not(.cjhv-bulb-lg), .cjhv-rail .cjhv-rname, .cjhv-title, .cjhv-foot, .cjhv-qs-open, .cjhv-gtitle, .cjhv-top-sw .cjhv-lg { z-index: 0; }
+.cjhv-rtg, .cjhv-top-tg, .cjhv-ab-k, .cjhv-guard, .cjhv-gpiv, .cjhv-qs-lid, .cjhv-es-well { z-index: 1; }
+
+/* ---------------- Oct 19 round 3 (Wilson) */
+/* legends are printed on the panel UNDER the switches, toggles and guards (a thrown toggle or a lifted guard may cover
+   part of its text, as on the real panel). Same positions and sizes; lamps and map keys untouched. */
+.cjhv-col .cjhv-lg:not(.cjhv-bulb-lg), .cjhv-rail .cjhv-rname, .cjhv-title, .cjhv-foot, .cjhv-qs-open, .cjhv-gtitle, .cjhv-top-sw .cjhv-lg { z-index: 0; }
+.cjhv-rtg, .cjhv-top-tg, .cjhv-ab-k, .cjhv-guard, .cjhv-gpiv, .cjhv-qs-lid, .cjhv-es-well { z-index: 1; }
+/* AB ARMED beside CONFIG: MASTER CAUTION's square lamp (same art, size, legend style; no mark) */
+.cjv2-ablamp { position: absolute; pointer-events: none; z-index: 2; }
+.cjv2-ablamp .cjhv-cap { position: absolute; padding: 0; justify-content: center; gap: 0; border: 0; box-shadow: none; cursor: default;
+  background-color: transparent !important; background-size: contain !important; background-position: center !important; background-repeat: no-repeat !important; }
+.cjv2-ablamp .cjhv-cap::after { display: none; }
+.cjv2-ablamp .cjhv-cap .cjhv-lg { font-size: 11px; line-height: 12px; letter-spacing: 0; color: #e9dcc0; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8); }
+.cjv2-ablamp .cjhv-cap[data-lit] .cjhv-lg { color: #1a0d00; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35); }
+/* GPS · NAV module: Wilson's small lamps; ACQ green pulse ~1 Hz (0.5 s each way), only inside the 3 s window */
+.cjhv-gps-lamp[data-pulse]::before { animation: cjhv-gps-pulse 500ms ease-in-out infinite alternate; }
+@keyframes cjhv-gps-pulse { from { opacity: 0.35; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cjhv-gps-lamp[data-pulse]::before { animation: none; } }
+[data-rf-reduce-motion] .cjhv-gps-lamp[data-pulse]::before { animation: none; }
+.cjhv-gps-lg { color: var(--hv-cream) !important; }
+/* lamp TEST push right of CONFIG: Wilson's PUSH (hex nut, brushed face; red ring lit while held). Legend above, like CONFIG */
+.cjv2-testkey { position: absolute; }
+.cjv2-test-lg { position: absolute; left: 0; right: 0; top: 2px; text-align: center; font: 700 11px/13px 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; letter-spacing: 0.04em; color: #c9cdd0; text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6); z-index: 0; }
+.cjv2-test-btn { position: absolute; left: 50%; bottom: 2px; width: 48px; height: 48px; margin-left: -24px; padding: 2px; border: 0; background: transparent; cursor: pointer; touch-action: none; -webkit-touch-callout: none; user-select: none; z-index: 1; }
+.cjv2-test-btn img { display: block; width: 44px; height: 44px; pointer-events: none; }
+.cjv2-test-btn:focus-visible { outline: 2px solid #8dffad; outline-offset: 1px; }
+/* HOLD TO REV (amber) / SHUTDOWN (red): Wilson's Square Push full lamp. REV lit while held; SHUTDOWN lit while an engine runs */
+.cjhv-push.cjhv-lamp-push, .cjhv-push.cjhv-lamp-push:active:not([aria-disabled]) { border-image: var(--sq-off) 26 fill / 10px / 0 stretch; }
+.cjhv-push.cjhv-lamp-push[data-lit] { border-image-source: var(--sq-on); }
+.cjhv-push.cjhv-lamp-push .cjhv-lg { color: #e0cfae; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8); }
+.cjhv-push.cjhv-lamp-push[data-lit] .cjhv-lg { color: #1a0d00; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35); }
+.cjhv-push.cjhv-sd-push[data-lit] .cjhv-lg { color: #fff1ec; text-shadow: 0 1px 1px rgba(60, 0, 0, 0.9); }

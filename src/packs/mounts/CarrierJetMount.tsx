@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { gpsCaution, useGpsAcqSeq } from '../carrier-jet/gpsAcqSeq';
 import { useCjBank } from './useCjBank';
 import { createPortal } from 'react-dom';
 import { CarrierJetAfterburnerGuard, CarrierJetHud, useCarrierJetVariant, writeCarrierJetVariant } from '../../skins/carrier-jet';
@@ -324,6 +325,10 @@ export function CarrierJetMount(props: PackHudProps) {
   // Wilson, Oct 18: the hero plate takes the skin's LOOK row, and only MATRIX (Board 2) has CONFIG to change looks,
   // so VECTOR / HOLO keep the pre-hero bank and the skin's own LOOK tabs (always a way back to MATRIX).
   const hero = row && tesla && heroRoom && look === 'carrier-jet';
+  // GPS ACQ lamp: NAV (inertialNav, with BATT and instrument power) drives the sequence; caution only while NAV is on
+  const navOn = !!(hero && coldOn && board2 && cold.sys.on.batt && (cold.sys.on as Record<string, boolean | undefined>).inertialNav);
+  const gpsSeq = useGpsAcqSeq(navOn, reduced);
+  const gpsCau = gpsCaution(navOn, props.demo, cjGps(gpsStatus));
   const topbar = hero ? vp.viewport?.querySelector<HTMLElement>(':scope > .rev-topbar') ?? null : null;
   const lampIn = { cold: coldOn, running: props.running, batt: !!cold.sys.on.batt, seatbelt: cold.seatbelt, engines: cold.sys.engines, apuOn: !!cold.sys.on.apu, apuReady: cold.sys.apuReady, caution: cold.caution, emergency: !!cold.sys.emergency };
   const rawLamps = lampStates(lampIn);
@@ -349,7 +354,10 @@ export function CarrierJetMount(props: PackHudProps) {
   const railState = railPositions({ cold: coldOn, running: props.running, on: cold.sys.on, engines: cold.sys.engines });
   // Wilson, Oct 19: round lamps start OFF; the first BATT on (off -> on) lights every round lamp for 2 s (steady, also
   // under Reduce Motion: one on, one off, nothing flashes), then they drop to POWERED (Dan's real BATT, cold start on).
-  const lampTest = useFirstBattLampTest(coldOn && !!cold.sys.on.batt);
+  const lampTest0 = useFirstBattLampTest(coldOn && !!cold.sys.on.batt);
+  // lamp TEST push (right of CONFIG): while held with BATT on, every lamp / bulb / lit switch shows lit (not the screens)
+  const [testHeld, setTestHeld] = useState(false);
+  const lampTest = lampTest0 || (testHeld && !!railState.on.batt);
   const onRailSwitch = (id: RailSwId, on: boolean) => {
     const d = railSw(id);
     // GEN has no switch of its own in Dan's list: it follows the engines (said and shown, never a silent no-op)
@@ -367,6 +375,9 @@ export function CarrierJetMount(props: PackHudProps) {
     <HeroRail
       layout={heroLayout}
       gps={props.demo ? 'none' : cjGps(gpsStatus)}
+      gpsSeq={gpsSeq}
+      apuRun={coldOn ? !!cold.sys.on.apu && cold.sys.apuReady : props.running}
+      gpsCaution={gpsCau}
       radar={radarPos(mapView.radar, wxRadar)}
       onRadar={(pos) => {
         const r = radarApply(pos);
@@ -390,10 +401,10 @@ export function CarrierJetMount(props: PackHudProps) {
       live={cold.live}
       onQuickStart={() => cold.quickStart()}
       onFuelGuardOff={(id) => cold.guardOff(railSw(id).system!)}
-      holdRev={!!props.demo && props.running}
+      holdRev={props.running}
       onHoldRev={(on) => void requestPackShell({ type: 'hold-rev', on })}
       running={props.running}
-      onShutdown={() => void requestPackShell({ type: 'shutdown' })}
+      onShutdown={() => (coldOn ? cold.shutdownSeq(() => void requestPackShell({ type: 'shutdown' })) : void requestPackShell({ type: 'shutdown' }))}
       say={cold.announce}
       lampTest={lampTest}
       qsRunning={cold.qsRunning}
@@ -461,7 +472,7 @@ export function CarrierJetMount(props: PackHudProps) {
             <div className="cjm-fill">
               <CarrierJetHud {...props} {...hudRpm} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} bank={vdiBank} />
             </div>
-            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} hero={hero ? (topbar ? 'ann+rail' : 'rail') : ''} />}
+            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} hero={hero ? (topbar ? 'ann+rail' : 'rail') : ''} abLamp={hero && topbar ? { lit: !!railState.on.batt && (ab.lamp || lampTest), armed: ab.lamp, launch: launch.lit } : null} lampTest={hero && topbar ? { batt: !!railState.on.batt, held: testHeld && !!railState.on.batt, on: lampTest && !!railState.on.batt, onHold: setTestHeld } : null} />}
           </>
         )}
       </CjHeadingEase>

@@ -7,9 +7,14 @@ import { latestGpsFix, subscribeGpsFixes } from '../../hooks/gpsFixes';
 import { compassFlowAvailable, getCompassSnapshot, subscribeCompass, toggleCompass } from '../heading';
 import type { RfLayout } from '../layout';
 import { ACCEL_INIT, accelEase, accelStep, accelTarget, accelText, type AccelState } from '../carrier-jet/accelBall';
-import { mapSquareSide, keyXs, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
+import { mapSquareSide, keyXs, KEY_GAP, KEY_H, KEY_W, TOP_CELLS, TOP_CELLS_MAP_FIRST, type Box, type CellId } from '../carrier-jet/geometry';
 import { CJ_GRID, type CjAnchors, type CjCellId, type CjHeroAnchors } from '../carrier-jet/cells';
-import { heroKeyActive, splitCap, type CapCtx } from '../carrier-jet/heroRail';
+import { abArmedAria, heroKeyActive, HV_TOP, splitCap, type CapCtx } from '../carrier-jet/heroRail';
+import { masterSrc, pushHexSrc } from './cjArt';
+import type { SplitCap } from '../carrier-jet/heroRail';
+
+/** Lamp TEST held: every key lamp shows lit (legends unchanged). */
+const testCap = (c: SplitCap | null, on: boolean): SplitCap | null => (c && on ? { ...c, lit: true } : c);
 import { KorryCap } from './CjHeroV2';
 import { GridLayer } from '../grid/GridLayer';
 import { rectStyle, useGrid, useGridMeasure, useSystemReducedMotion } from '../grid/useGrid';
@@ -358,9 +363,14 @@ export interface CjV2LayerProps {
   unit?: 'mph' | 'kph';
   /** Hero v2 key from the mount ('' = off; else which hero parts are on screen): Korry caps on, plate / rail measured. */
   hero?: string;
+  /** Hero AB ARMED lamp (Wilson, Oct 19 round 3): MASTER CAUTION's square lamp, immediately left of CONFIG.
+   * lit = BATT on and (armed or the BATT lamp test); indicator only (not tappable). */
+  abLamp?: { lit: boolean; armed: boolean; launch: boolean } | null;
+  /** Hero lamp TEST push right of CONFIG (momentary; BATT on only) and the lamp-test state for the key lamps. */
+  lampTest?: { batt: boolean; held: boolean; on: boolean; onHold: (held: boolean) => void } | null;
 }
 
-export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, hero = '' }: CjV2LayerProps) {
+export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, hero = '', abLamp = null, lampTest = null }: CjV2LayerProps) {
   const selfRef = useRef<HTMLDivElement>(null);
   const geo = useGeo(selfRef, layout, hero);
   const view = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
@@ -563,8 +573,13 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
           const n = stripCount(cell, b.width, kctx);
           // hero (Wilson, Oct 19 round 2): no DRIVE / MORE keys (CONFIG's RTN returns to the board; MORE's items: see CONFIG)
           const keys = cellKeys(cell, n, kctx).map((k) => (hero && k && (k.id === 'drive' || k.id === 'more') ? null : k));
+          // hero AB ARMED: CONFIG moves one slot right and the lamp takes the slot to its left (same strip, no overlap)
+          const abHere = !!(abLamp && cell === 'speed' && n >= 2 && keys[0]?.id === 'config' && !keys[1]);
+          if (abHere) { keys[1] = keys[0]; keys[0] = null; }
+          const testHere = !!(abHere && lampTest && n >= 3 && !keys[2]);
           const xs = keyXs(b, n);
           const top = railTop(b, geo.gap);
+          const abW = layout === 'window' ? HV_TOP.window.mc.w : HV_TOP.board.mc.w;
           return (
             <div key={cell} className="cjv2-keys" data-cell={cell} {...(keys.some((k) => k?.legend) ? { role: 'group', 'aria-label': `${(hdr as Partial<Record<CellId, string>>)[cell]?.toLowerCase() || cell} keys` } : { 'aria-hidden': true })}>
               {keys.map((k, i) => (
@@ -573,12 +588,33 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
                 k?.legend ? (
                   <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k.id} data-reason={k.reason ? true : undefined} data-unlit={k.unlit || undefined}>
                     <BezelKey legend={k.legend} active={hero ? heroKeyActive(k.id, !!k.active) : !!k.active} ariaLabel={k.ariaLabel} onPress={() => onKey(cell, k)} />
-                    {hero && <KorryCap cap={splitCap(k.id, capCtx)} id={k.id} />}
+                    {hero && <KorryCap cap={testCap(splitCap(k.id, capCtx), !!lampTest?.on)} id={k.id} />}
                   </div>
                 ) : (
                   <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-rail="" data-reason={cell === bank && i >= SPARE_INDEX ? 'spare' : undefined} aria-hidden="true" />
                 )
               ))}
+              {testHere && lampTest && (
+                <div className="cjv2-key cjv2-testkey" style={{ left: xs[2], top, width: KEY_W, height: KEY_H }} data-key="lamptest">
+                  <span className="cjv2-test-lg" aria-hidden="true">TEST</span>
+                  <button type="button" className="cjv2-test-btn" aria-label={lampTest.batt ? 'Lamp test, hold' : 'Lamp test, needs battery'} aria-pressed={lampTest.held}
+                    onPointerDown={(e) => { if (!lampTest.batt) return; e.currentTarget.setPointerCapture?.(e.pointerId); lampTest.onHold(true); }}
+                    onPointerUp={() => lampTest.onHold(false)} onPointerCancel={() => lampTest.onHold(false)} onLostPointerCapture={() => lampTest.onHold(false)}
+                    onKeyDown={(e) => { if (lampTest.batt && (e.key === ' ' || e.key === 'Enter')) lampTest.onHold(true); }} onKeyUp={() => lampTest.onHold(false)} onBlur={() => lampTest.onHold(false)}
+                    onContextMenu={(e) => e.preventDefault()}>
+                    <img src={pushHexSrc(lampTest.held && lampTest.batt)} width={44} height={44} alt="" aria-hidden="true" draggable={false} />
+                  </button>
+                </div>
+              )}
+              {abHere && abLamp && (
+                <div className="cjv2-ablamp" style={{ left: xs[1] - KEY_GAP - abW, top: top + KEY_H - abW - 4, width: abW, height: abW }}>
+                  <div className="cjhv-cap cjhv-ab-master" data-color="amber" data-lit={abLamp.lit || undefined} role="img" aria-label={abArmedAria(abLamp.armed, abLamp.launch)}
+                    style={{ left: 0, top: 0, width: abW, height: abW, backgroundImage: `url(${masterSrc('masterCaution', abLamp.lit)})` }}>
+                    <span className="cjhv-lg">AB</span>
+                    <span className="cjhv-lg">{abLamp.launch ? 'LAUNCH' : 'ARMED'}</span>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}

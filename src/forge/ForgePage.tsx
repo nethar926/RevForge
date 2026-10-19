@@ -284,7 +284,8 @@ export function ForgePage({
       else if (a.type === 'open-panel') setPanel(a.panel);
       else if (a.type === 'nav') onCjNav(a.action);
       else if (a.type === 'retry-gps') gps.start();
-      else if (a.type === 'hold-rev') setPedal(a.on && source === 'demo' && revReady ? 1 : 0);
+      // round 3: REV works in live drive too (engine running); the sim blends a free rev over the live feed while held
+      else if (a.type === 'hold-rev') setPedal(a.on && audio.running ? 1 : 0);
       else if (a.type === 'set-ui') {
         const { hudScale, jitter, jitterAmount, background, demo, media, gpsLabel: _l, ...ui } = a.partial;
         if (Object.keys(ui).length) update(ui);

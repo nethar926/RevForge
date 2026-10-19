@@ -114,13 +114,8 @@ export const WX_RADAR_KEY = 'revforge.pack.carrier-jet.wxRadar';
 type Listener = () => void;
 const listeners = new Set<Listener>();
 const forced = typeof location !== 'undefined' && new URLSearchParams(location.search).get('cjWxRadar') === '1';
-let on = forced || (() => {
-  try {
-    return typeof localStorage !== 'undefined' && localStorage.getItem(storageKey(WX_RADAR_KEY)) === '1';
-  } catch {
-    return false;
-  }
-})();
+// round 3: the RADAR switch starts at OFF on every load (WX is not restored either)
+let on = forced;
 export const getWxRadar = () => on;
 export function setWxRadar(v: boolean) {
   if (v === on) return;

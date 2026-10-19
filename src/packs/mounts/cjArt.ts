@@ -41,5 +41,10 @@ export const masterSrc = (id: 'masterCaution' | 'masterWarning', lit: boolean) =
 
 /** Square keys: full lamp (whole face lights), 1/3 lamp (lit legend strip), plain push (unpressed / pressed). */
 export const squareFullSrc = (lit: boolean) => pick(lp, 'lamps', `square-full-${lit ? 'lit' : 'unlit'}`);
+/** SHUTDOWN: the full lamp re-hued to red (same treatment as the red GEN lamps). */
+export const squareFullRedSrc = (lit: boolean) => pick(lp, 'lamps', `square-full-red-${lit ? 'lit' : 'unlit'}`);
 export const squareThirdSrc = (lit: boolean) => pick(lp, 'lamps', `square-third-${lit ? 'lit' : 'unlit'}`);
 export const pushSquareSrc = (pressed: boolean) => pick(lp, 'lamps', `push-square-${pressed ? 'on' : 'off'}`);
+
+/** Lamp TEST push (Wilson's PUSH UNLIT / PUSH LIT: chrome hex nut, brushed round face, red ring lit while held). */
+export const pushHexSrc = (lit: boolean) => pick(sw, 'switches', `push-hex-${lit ? 'lit' : 'unlit'}`);
