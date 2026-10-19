@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { useCjBank } from './useCjBank';
 import { createPortal } from 'react-dom';
-import { CarrierJetAfterburnerGuard, CarrierJetHud, useCarrierJetVariant } from '../../skins/carrier-jet';
+import { CarrierJetAfterburnerGuard, CarrierJetHud, useCarrierJetVariant, writeCarrierJetVariant } from '../../skins/carrier-jet';
 import ID from '../carrier-jet.identity';
 import { readPackAbZone, requestPackShell, sendPackEngineCommand, subscribePackAbZone } from '../runtime';
 import { ShutdownGuard } from '../../skins/carrier-jet';
@@ -114,6 +114,13 @@ export function CarrierJetMount(props: PackHudProps) {
   // CJ v2 Board 2 (MATRIX look, board / window): the skin's reflowed board (container-unit sizing), re-gridded by
   // carrier-jet-v2.css; the full 1280 layout's fixed-size blocks do not fit the Board 2 cells.
   const [look] = useCarrierJetVariant();
+  // Wilson, Oct 18 9:41 PM: HOLO is off for now, and every load opens on VECTOR.
+  useEffect(() => {
+    writeCarrierJetVariant('tomcat');
+  }, []);
+  useEffect(() => {
+    if (look === 'swing-wing') writeCarrierJetVariant('tomcat');
+  }, [look]);
   const board2 = FEATURES.cjV2 && look === 'carrier-jet' && (layout === 'board' || layout === 'window');
   const compact: boolean | 'auto' = board2 ? true : fullBoard ? false : props.compact === true ? true : 'auto';
   // stale: no live GPS / compass heading; the HUD gets the held or saved value and dims it (NEEDS MOTION).

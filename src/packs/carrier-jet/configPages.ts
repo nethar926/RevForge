@@ -10,7 +10,7 @@ import { CARRIER_JET_VARIANTS, LOOK_LABELS } from '../../skins/carrier-jet/model
 export const CJ_CONFIG_SPEC: PackConfigSpec = {
   role: 'PILOT',
   roleShort: 'PLT',
-  looks: CARRIER_JET_VARIANTS.map((v) => ({ id: v.id, label: LOOK_LABELS[v.id] })),
+  looks: CARRIER_JET_VARIANTS.filter((v) => v.id !== 'swing-wing').map((v) => ({ id: v.id, label: LOOK_LABELS[v.id] })),
 };
 
 export const CJ_CONFIG = buildConfig(CJ_CONFIG_SPEC);

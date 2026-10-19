@@ -144,3 +144,6 @@
 .rev-viewport:has(> .rev-dock):has(.cjm[data-rf-layout='phone-landscape']) .rev-dock .rev-stop {
   margin-left: 0;
 }
+
+/* Wilson, Oct 18: HOLO is off for now. */
+.cj-tab[data-variant-option='swing-wing'] { display: none; }
