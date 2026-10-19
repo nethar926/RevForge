@@ -322,9 +322,10 @@ img.cjhv-tg { object-fit: contain; display: block; }
 .cjhv-top-es .cjhv-title { font-size: 11px; letter-spacing: 0.02em; }
 /* QUICK START lifted: the neutral switch plate + hex, the Push Square full lamp centred on the nut */
 .cjhv-qs-base { position: absolute; left: -22px; top: -34px; width: 44px; height: 68px; max-width: none; object-fit: contain; display: block; }
-.cjhv-qs[data-open] .cjhv-qs-art .cjhv-qs-key { position: absolute; left: -8px; top: -8px; right: auto; bottom: auto; width: 16px; height: 16px; border-image: var(--sq) 26 fill / 4px / 0 stretch; }
+/* Wilson, Oct 19: the square sits inside the hex with a visible rim (14 px = ~62 % of the hex face, centred on the nut at y -1) */
+.cjhv-qs[data-open] .cjhv-qs-art .cjhv-qs-key { position: absolute; left: -7px; top: -8px; right: auto; bottom: auto; width: 14px; height: 14px; border-image: var(--sq) 26 fill / 3.5px / 0 stretch; }
 .cjhv-qs[data-open] .cjhv-qs-art .cjhv-qs-key[data-lamp='unlit'] { border-image-source: var(--sq-off); }
-.cjhv-qs-art .cjhv-qs-unlit { border-image: var(--sq-off) 26 fill / 4px / 0 stretch; }
+.cjhv-qs-art .cjhv-qs-unlit { border-image: var(--sq-off) 26 fill / 3.5px / 0 stretch; }
 /* GEN legends */
 .cjhv-gen .cjhv-bulb-lg { color: var(--hv-cream) !important; }
 
