@@ -67,7 +67,7 @@ export function mapKeys(v: MapView): MapKey[] {
     { id: 'zoomIn', legend: 'ZM+', ariaLabel: `Zoom in, ${v.zoom} ${v.zoom === 1 ? 'mile' : 'miles'}`, disabledReason: v.zoom === 1 ? 'Already at 1 mile' : undefined },
     { id: 'zoomOut', legend: 'ZM−', ariaLabel: `Zoom out, ${v.zoom} miles`, disabledReason: v.zoom === 10 ? 'Already at 10 miles' : undefined },
     { id: 'orient', legend: 'N/TRK-UP', ariaLabel: v.northUp ? 'North up, switch to track up' : 'Track up, switch to north up' },
-    { id: 'mode', legend: 'MAP/TERR', ariaLabel: v.mode === 'terr' ? 'Terrain on, switch to map' : 'Map, switch to terrain' },
+    { id: 'mode', legend: 'TERRAIN', ariaLabel: v.mode === 'terr' ? 'Terrain on, switch to map' : 'Map, switch to terrain' },
   ];
 }
 

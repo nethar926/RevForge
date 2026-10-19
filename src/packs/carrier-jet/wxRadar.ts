@@ -135,6 +135,33 @@ export function subscribeWxRadar(f: Listener) {
   return () => listeners.delete(f);
 }
 
+/* ---- WX map key (Wilson, Oct 19): show / hide the weather overlay only. It never moves the RADAR switch (MX / WX /
+   OFF, getWxRadar above). Weather shows while RADAR is MX or WX AND this key is on. Default on. */
+export const WX_KEY_KEY = 'revforge.pack.carrier-jet.wxKey';
+const keyLs = new Set<Listener>();
+let keyOn = (() => {
+  try {
+    return typeof localStorage === 'undefined' || localStorage.getItem(storageKey(WX_KEY_KEY)) !== '0';
+  } catch {
+    return true;
+  }
+})();
+export const getWxKey = () => keyOn;
+export function setWxKey(v: boolean) {
+  if (v === keyOn) return;
+  keyOn = v;
+  try {
+    localStorage.setItem(storageKey(WX_KEY_KEY), v ? '1' : '0');
+  } catch { /* private mode */ }
+  for (const f of keyLs) f();
+}
+export function subscribeWxKey(f: Listener) {
+  keyLs.add(f);
+  return () => keyLs.delete(f);
+}
+/** Weather overlay on the map: RADAR on (MX or WX) and the WX key on. */
+export const wxShown = (radarOn: boolean, key: boolean) => radarOn && key;
+
 /* ---- last good frame (radar offline / a fetch failed): keep showing it, with its age.
    cjWxRadarLayer reports every radar fetch here (the weather-maps.json frame list and each tile). A failed fetch
    never blanks the overlay: the frame list keeps the last good frame, and a tile that fails is answered from the

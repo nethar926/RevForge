@@ -531,3 +531,62 @@ export function csCoverNext(view: Pick<CsView, 'next' | 'checklist'>, inp: Pick<
   const cover: CsGuardId | null = st.id === 'engL' || st.id === 'engR' ? st.id : inp.mode === 'apu' && (st.id === 'apu' || st.id === 'apuGuard') ? 'apuGuard' : null;
   return cover && !inp.guards[cover] ? code : null;
 }
+
+/* ------------------------------------------------------------------ QUICK START, flipped on screen (Wilson, Oct 19) */
+
+/**
+ * One QUICK START step: flip a switch (Dan's system id), lift an L / R FUEL guard (host-drawn lid), turn RADAR on,
+ * or wait for Dan's engine (APU / cart ready, an engine at idle). The host runs these one at a time, >= QS_STEP_MS apart,
+ * calling setJetSystem(id, on) on each flip, so the pilot sees every switch move in the manual start order.
+ */
+export type QsStep = { set: string; on: boolean } | { lift: 'fuelL' | 'fuelR' } | { radar: true } | { until: 'apuReady' | 'cartReady' | 'engLRun' | 'engRRun' };
+export const QS_STEP_MS = 360;
+/** An `until` step gives up after this long (engine stuck): the sequence stops and says so. */
+export const QS_UNTIL_MAX_MS = 60000;
+
+/** Manual start order (the shelf checklist), skipping switches already in place. Engines: ignition + idle before the
+ * start switch (Dan's quickStartSteps), then wait for idle. After both run: APU (or the cart and X-BLEED) back off. */
+export function csQuickSteps(mode: CsMode, s: CsSystems): QsStep[] {
+  const cart = mode === 'gndAir';
+  const out: QsStep[] = [];
+  const on = (id: string) => {
+    if (!s.on[id]) out.push({ set: id, on: true });
+  };
+  on('batt');
+  on('avionics');
+  on('inertialNav');
+  out.push({ radar: true });
+  if (cart) {
+    on('aircart');
+    out.push({ until: 'cartReady' });
+  } else {
+    on('apu');
+    out.push({ until: 'apuReady' });
+  }
+  for (const side of ['L', 'R'] as const) {
+    if (!s.on[`fuelPump${side}`]) out.push({ lift: `fuel${side}` }, { set: `fuelPump${side}`, on: true });
+  }
+  on('navLights');
+  on('anticollision');
+  const eng = (side: 'L' | 'R') => {
+    on(`ign${side}`);
+    on(`throttle${side}`);
+    on(`eng${side}`);
+    out.push({ until: `eng${side}Run` });
+  };
+  if (cart) {
+    eng('R');
+    on('crossbleed');
+    eng('L');
+  } else {
+    eng('L');
+    eng('R');
+  }
+  on('seatbelt');
+  on('hydraulics');
+  on('canopy');
+  on('oxygen');
+  if (cart) out.push({ set: 'crossbleed', on: false }, { set: 'aircart', on: false });
+  else out.push({ set: 'apu', on: false });
+  return out;
+}

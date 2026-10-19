@@ -89,6 +89,30 @@ const subSysReduced = (f: () => void) => {
  * Hero v2 width guard (heroRail.ts heroFits): does the viewport hold the annunciator plate (clear of the REVFORGE brand)
  * and the start rail at their fixed design px? Re-read on resize only (one brand width read per event).
  */
+/** true for 2 s after the first BATT off -> on transition of this mount (round-lamp test). */
+function useFirstBattLampTest(batt: boolean): boolean {
+  const [test, setTest] = useState(false);
+  const seen = useRef<{ prev: boolean; done: boolean } | null>(null);
+  useEffect(() => {
+    if (!seen.current) {
+      seen.current = { prev: batt, done: false };
+      return;
+    }
+    const s = seen.current;
+    if (batt && !s.prev && !s.done) {
+      s.done = true;
+      setTest(true);
+    }
+    if (!batt) setTest(false);
+    s.prev = batt;
+  }, [batt]);
+  useEffect(() => {
+    if (!test) return;
+    const t = setTimeout(() => setTest(false), 2000);
+    return () => clearTimeout(t);
+  }, [test]);
+  return test;
+}
 function useHeroRoom(l: HeroLayout, viewport: HTMLElement | null): boolean {
   const [room, setRoom] = useState(() => typeof window === 'undefined' || heroFits(window.innerWidth, l));
   useLayoutEffect(() => {
@@ -247,7 +271,7 @@ export function CarrierJetMount(props: PackHudProps) {
   // Phones (no shelf / PULL / QUICK START placement yet): skip the cold start, so the engine is never locked out.
   const coldPhone = coldOn && !tesla && !cold.live;
   useLayoutEffect(() => {
-    if (coldPhone) cold.quickStart();
+    if (coldPhone) cold.quickStart(true);
   }, [coldPhone]); // eslint-disable-line react-hooks/exhaustive-deps
   // EMER STOP PULL + QUICK START: a second dock group AFTER Shutdown (Hold to rev must stay directly before Shutdown,
   // whose pair styling is the skin's). Kept last in the dock's DOM, like the bank is kept first.
@@ -322,6 +346,9 @@ export function CarrierJetMount(props: PackHudProps) {
   };
   const wxRadar = useSyncExternalStore(subscribeWxRadar, getWxRadar, getWxRadar);
   const railState = railPositions({ cold: coldOn, running: props.running, on: cold.sys.on, engines: cold.sys.engines });
+  // Wilson, Oct 19: round lamps start OFF; the first BATT on (off -> on) lights every round lamp for 2 s (steady, also
+  // under Reduce Motion: one on, one off, nothing flashes), then they drop to POWERED (Dan's real BATT, cold start on).
+  const lampTest = useFirstBattLampTest(coldOn && !!cold.sys.on.batt);
   const onRailSwitch = (id: RailSwId, on: boolean) => {
     const d = railSw(id);
     // GEN has no switch of its own in Dan's list: it follows the engines (said and shown, never a silent no-op)
@@ -360,13 +387,16 @@ export function CarrierJetMount(props: PackHudProps) {
       onSwitch={onRailSwitch}
       onSource={onSource}
       live={cold.live}
-      onQuickStart={cold.quickStart}
+      onQuickStart={() => cold.quickStart()}
       onEmergencyStop={cold.emergencyStop}
       holdRev={!!props.demo && props.running}
       onHoldRev={(on) => void requestPackShell({ type: 'hold-rev', on })}
       running={props.running}
       onShutdown={() => void requestPackShell({ type: 'shutdown' })}
       say={cold.announce}
+      lampTest={lampTest}
+      qsRunning={cold.qsRunning}
+      qsLift={cold.qsLift}
     />
   ) : null;
   const shelf = coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div>;
@@ -436,6 +466,8 @@ export function CarrierJetMount(props: PackHudProps) {
           armed={ab.lamp}
           launch={launch.lit}
           onThemes={() => void requestPackShell({ type: 'nav', action: { type: 'panel', panel: 'themes' } })}
+          batt={railState.on.batt}
+          lampTest={lampTest}
         />,
         vp.viewport,
       )}

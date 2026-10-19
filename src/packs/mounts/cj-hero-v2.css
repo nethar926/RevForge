@@ -247,3 +247,57 @@ div.cjhv-cap { cursor: default; }
 .cjhv-top-fsb { position: absolute; text-align: left; letter-spacing: 0.02em; line-height: 14px; }
 /* the plate takes the LOOK row: the skin's tabs are hidden (not removed from layout, so MATRIX keeps its place) */
 .rev-viewport:has(.cjhv-top) .cjm[data-cjm-v2] .cj .cj-tabs { visibility: hidden; }
+
+/* ---------------- Wilson's Pixelmator art (Oct 19; cjArt.ts, assets/{switches,lamps}/README.md). Art swaps only: every
+   element keeps its box, hit targets and aria. Static images, no transitions (Reduce Motion unchanged). */
+.cjhv-art { pointer-events: none; user-select: none; -webkit-user-drag: none; }
+img.cjhv-tg { object-fit: contain; display: block; }
+/* guard art: a zero-size pivot on the toggle centre; the image centres on it and may overflow its old box */
+.cjhv-gpiv { position: absolute; left: 22px; top: 34px; width: 0; height: 0; pointer-events: none; }
+.cjhv-rtg > .cjhv-gpiv { scale: var(--tg-k); transform-origin: 0 0; }
+.cjhv-ab-well > .cjhv-gpiv { top: 33px; }
+.cjhv-gart { position: absolute; left: 0; top: 0; max-width: none; display: block; }
+.cjhv-qs { background: transparent; box-shadow: none; }
+.cjhv-qs > .cjhv-qs-art { left: 50%; top: 50%; }
+.cjhv-qs-open { z-index: 1; }
+.cjhv-qs-tag { z-index: 1; }
+/* small round lamps: off / powered / lit art, the lamp body fills the old bulb circle (glow spills past it) */
+.cjhv-bulb[data-mode], .cjhv-top-bulb[data-mode] { background: none !important; box-shadow: none !important; }
+.cjhv-bulb[data-mode]::before, .cjhv-top-bulb[data-mode]::before {
+  content: ''; position: absolute; inset: -27%; background: var(--lamp) center / contain no-repeat; pointer-events: none;
+}
+/* MASTER CAUTION / WARNING: the sheet's lens + bezel (printed text removed), HTML legend on top */
+.cjhv-top .cjhv-cap.cjhv-top-master { background-size: 100% 100% !important; background-repeat: no-repeat !important; background-color: transparent !important; box-shadow: none; }
+.cjhv-top .cjhv-cap.cjhv-top-master::after { display: none; }
+.cjhv-top .cjhv-cap.cjhv-top-master .cjhv-lg { color: #e9dcc0; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8); }
+.cjhv-top .cjhv-cap.cjhv-top-master .cjhv-mark { fill: #e9dcc0; stroke: #e9dcc0; }
+.cjhv-top .cjhv-cap.cjhv-top-master[data-lit] .cjhv-lg { color: #1a0d00; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35); }
+.cjhv-top .cjhv-cap.cjhv-top-master[data-lit] .cjhv-mark { fill: #1a0d00; stroke: #1a0d00; }
+.cjhv-top .cjhv-cap.cjhv-top-master[data-lit] .cjhv-mark [data-stroke], .cjhv-top .cjhv-cap.cjhv-top-master .cjhv-mark [data-stroke] { fill: none; }
+/* square keys and lamps (9-slice of the sheet art, so the bezel corners stay square at any key size) */
+.cjhv-top .cjhv-top-ab, .cjhv-korry { background: none !important; box-shadow: none !important; border-image: var(--sq) 26 fill / 10px / 0 stretch; }
+.cjhv-top .cjhv-top-ab::after { display: none; }
+.cjhv-top .cjhv-top-ab[data-lit] .cjhv-lg { color: #1a0d00; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35); }
+.cjhv-top .cjhv-top-ab:not([data-lit]) .cjhv-lg { color: #e0cfae; }
+.cjhv-push, .cjhv-top .cjhv-top-themes { background: none !important; box-shadow: none !important; border-image: var(--sq-off) 26 fill / 10px / 0 stretch; }
+.cjhv-push:active:not([aria-disabled]), .cjhv-top .cjhv-top-themes:active { border-image-source: var(--sq-on); box-shadow: none !important; }
+.cjhv-korry > span { position: relative; }
+.cjhv-korry-bot { border-top: 0 !important; box-shadow: none !important; background: none !important; }
+.cjhv-korry[data-lit] > .cjhv-korry-bot { color: #1a0d00 !important; }
+/* QUICK START lifted: the START key is Wilson's Push Square full lamp (lit = ready; 1 Hz on / off while the sequence
+   runs, 0.5 s each = 1 flash a second; Reduce Motion: steady lit; complete / BATT off: unlit) under the gunmetal lid edge */
+.cjhv-qs[data-open] { background: #0b0c0d; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05); }
+.cjhv-qs[data-open] .cjhv-qs-key { background: none; box-shadow: none; border-radius: 0; border-image: var(--sq) 26 fill / 10px / 0 stretch; }
+.cjhv-qs[data-open] .cjhv-qs-key[data-lamp='unlit'] { border-image-source: var(--sq-off); }
+.cjhv-qs-unlit { position: absolute; inset: 0; opacity: 0; pointer-events: none; border-image: var(--sq-off) 26 fill / 10px / 0 stretch; }
+.cjhv-qs-key[data-lamp='blink'] .cjhv-qs-unlit { animation: cjhv-qs-blink 1s steps(1, end) infinite; }
+@keyframes cjhv-qs-blink { 0% { opacity: 0; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cjhv-qs-key[data-lamp='blink'] .cjhv-qs-unlit { animation: none; opacity: 0; } }
+[data-rf-reduce-motion] .cjhv-qs-key[data-lamp='blink'] .cjhv-qs-unlit { animation: none; opacity: 0; }
+.cjhv-qs[data-open] .cjhv-qs-key .cjhv-lg { position: relative; color: #1a0d00; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35); }
+.cjhv-qs[data-open] .cjhv-qs-key[data-lamp='unlit'] .cjhv-lg { color: #e0cfae; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8); }
+.cjhv-qs[data-open] .cjhv-qs-lid { height: 10px; border-radius: 2px; background: linear-gradient(180deg, #6a6f76, #43474d 55%, #2c2f33); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+/* GEN lamps (the GEN switch is gone) */
+.cjhv-gen .cjhv-bulb-lg { color: var(--hv-cream) !important; }
+/* 773: the AFTERBURNER cover sits a little higher so it stays inside its 66 px module (art only; the hit box is unchanged) */
+.cjhv-rail[data-rf-layout='window'] .cjhv-ab-well > .cjhv-gpiv { top: 25px; }

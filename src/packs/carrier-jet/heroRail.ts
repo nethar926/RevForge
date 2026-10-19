@@ -131,7 +131,8 @@ export function splitCap(id: string, c: CapCtx): SplitCap | null {
     case 'rngUp': return { top: '+', bottom: `${c.range} MI`, lit: false };
     case 'rngDown': return { top: '\u2212', bottom: `${c.range} MI`, lit: false };
     case 'orient': return orientCap(c.northUp);
-    case 'mode': return c.radar ? { top: 'MODE', bottom: c.terr ? 'TERR' : 'MAP', lit: true } : { top: 'MAP', bottom: c.terr ? 'TERR' : 'OFF', lit: c.terr };
+    // Wilson, Oct 19: the map key reads TERRAIN, a toggle (lit = terrain on); the radar MODE key keeps its own legend
+    case 'mode': return c.radar ? { top: 'MODE', bottom: c.terr ? 'TERR' : 'MAP', lit: c.terr } : { top: 'TERRAIN', bottom: c.terr ? 'ON' : 'OFF', lit: c.terr };
     case 'wx': return { top: 'WX', bottom: c.wx ? 'ON' : 'OFF', lit: c.wx };
     case 'drive': return { top: 'DRV', bottom: 'BOARD', lit: c.driveActive };
     case 'more': return { top: '\u2022\u2022\u2022', bottom: '', lit: false };

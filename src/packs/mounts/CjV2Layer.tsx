@@ -28,7 +28,7 @@ import { getWxObs, setWxObs, subscribeWxObs, wxValueAt } from '../carrier-jet/wx
 import { startWxPoller } from '../carrier-jet/weather/poller';
 import { storageKey } from '../../lib/storageKey';
 import { CjWxReadout } from './CjWxReadout';
-import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
+import { getWxKey, setWxKey, subscribeWxKey, wxShown } from '../carrier-jet/wxRadar';
 import { wxCreditRows } from '../carrier-jet/wxCredits';
 import { CONFIG_HEADER_CELLS, configCellHeader, type ConfigHeaderCell } from '../carrier-jet/configHeaders';
 import { getPreferTaps, setPreferTaps, subscribePreferTaps } from '../../lib/preferTaps.ts';
@@ -364,7 +364,9 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
   const selfRef = useRef<HTMLDivElement>(null);
   const geo = useGeo(selfRef, layout, hero);
   const view = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
-  const wxRadar = useSyncExternalStore(subscribeWxRadar, getWxRadar, getWxRadar);
+  // WX key = show / hide weather only (never the RADAR switch); weather draws while RADAR is MX or WX and the key is on
+  const wxKeyOn = useSyncExternalStore(subscribeWxKey, getWxKey, getWxKey);
+  const wxRadar = wxShown(view.radar, wxKeyOn);
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const cfg = useSyncExternalStore(subscribeCjConfig, getCjConfig, getCjConfig);
   const shell = useSyncExternalStore(onPackShellState, getPackShellState, getPackShellState);
@@ -485,8 +487,8 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
       case 'more': cue('bezelPress'); return setMoreOpen((o) => !o);
       case 'wx':
         cue('bezelPress');
-        setWxRadar(!wxRadar);
-        return setSay(`WX radar ${wxRadar ? 'off' : 'on'}`);
+        setWxKey(!wxKeyOn);
+        return setSay(`Weather ${wxKeyOn ? 'hidden' : 'shown'}`);
       case 'config': cue('pageChange'); setMoreOpen(false); return setCjConfig({ open: true, page: 'home', sub: 0 });
       case 'rtn': return apply({ type: 'rtn' });
       case 'prev': cue('cursorStep'); return setCjConfig({ sub: cfg.sub - 1 });
@@ -530,7 +532,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
   const wx = geo.board2 && !phone ? wxView(wxValue, oatTempUnit(prefs)) : null;
   // edge-key rails (grid rail slots): every key cell; the drive window drops the top row's strips but SPEED's (they sit in the ENG strip)
   // hero v2: every live key's blank cap carries a Korry split legend (function above, state below; decoration only)
-  const capCtx: CapCtx = { zoom: view.zoom, range: view.range, northUp: view.northUp, terr: view.mode === 'terr', radar: view.radar, wx: wxRadar, driveActive: !cfg.open };
+  const capCtx: CapCtx = { zoom: view.zoom, range: view.range, northUp: view.northUp, terr: view.mode === 'terr', radar: view.radar, wx: wxKeyOn, driveActive: !cfg.open };
   const railCells = KEY_CELLS.filter((c) => !(layout === 'window' && ((geo.mapFirst ? TOP_CELLS_MAP_FIRST : TOP_CELLS).includes(c) && c !== 'speed' || c === 'eng')));
   return (
     <GridLayer ref={selfRef} className="cjv2" spec={CJ_GRID} layout={layout} cells={cells} ready reduced={reduced} railCells={edge ? railCells : []} data-config={cfg.open || undefined} data-hdr-sweep={hdr.sweep !== undefined || undefined} data-hdr-compass={hdr.compass !== undefined || undefined}>
@@ -557,7 +559,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
         railCells.map((cell) => {
           // drive window: SPEED's keys sit in the ENG strip (no top key row; see carrier-jet-v2.css)
           const b = layout === 'window' && cell === 'speed' ? cells.eng : cells[cell];
-          const kctx = { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(order.map((c) => [c, tileFor(c)])), subs: paged.subs } : null, wx: { on: wxRadar, slot: wxSlot(cells.map.width, view) }, bank };
+          const kctx = { map: view, moreOpen, config: cfg.open ? { tiles: Object.fromEntries(order.map((c) => [c, tileFor(c)])), subs: paged.subs } : null, wx: { on: wxKeyOn, slot: wxSlot(cells.map.width, view) }, bank };
           const n = stripCount(cell, b.width, kctx);
           const keys = cellKeys(cell, n, kctx);
           const xs = keyXs(b, n);
@@ -570,7 +572,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
                 k?.legend ? (
                   <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-key={k.id} data-reason={k.reason ? true : undefined} data-unlit={k.unlit || undefined}>
                     <BezelKey legend={k.legend} active={hero ? heroKeyActive(k.id, !!k.active) : !!k.active} ariaLabel={k.ariaLabel} onPress={() => onKey(cell, k)} />
-                    {hero && <KorryCap cap={splitCap(k.id, capCtx)} />}
+                    {hero && <KorryCap cap={splitCap(k.id, capCtx)} id={k.id} />}
                   </div>
                 ) : (
                   <div key={i} className="cjv2-key" style={{ left: xs[i], top, width: KEY_W, height: KEY_H }} data-rail="" data-reason={cell === bank && i >= SPARE_INDEX ? 'spare' : undefined} aria-hidden="true" />

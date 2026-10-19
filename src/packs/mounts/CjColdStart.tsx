@@ -17,6 +17,8 @@ import { ApuBlock, GndAirBlock, PullHandle, QuickStartGuard, SwitchShelf } from 
 import type { CjShelfOpen, CjToggleState } from '../../skins/carrier-jet/parts/index';
 import type { JetCue, JetSystem } from '../../audio/types';
 import { getPackJet, subscribePackJet } from '../jetBridge';
+import { csQuickSteps, QS_STEP_MS, QS_UNTIL_MAX_MS, type QsStep } from '../carrier-jet/coldStart';
+import { getMapView, setRadar } from '../carrier-jet/mapView';
 import { csCoverNext, csEngineMode, csFromJet, csHoldStart, csTap, csVariant, csView, CS_DARK, parkStep, PARK_DWELL_MS, shelfAutoClose, shelfAutoStep, shelfStartLit, shelfToggle, SHELF_START_ARIA, type CsGuardId, type CsInput, type CsMode, type CsSystems, type ParkState } from '../carrier-jet/coldStart';
 import { PULL_REST, pullAction, pullDown, pullMove, pullUp, type PullResult, type PullState } from '../carrier-jet/pullGesture';
 import { getCjPrefs, setCjPrefs, subscribeCjPrefs } from '../carrier-jet/cjPrefs';
@@ -55,7 +57,8 @@ export interface ColdStart {
   live: boolean;
   shelf: CjShelfOpen;
   toggleShelf(): void;
-  quickStart(): void;
+  /** QUICK START; `instant`: Dan's straight start (phones, no switches on screen). */
+  quickStart(instant?: boolean): void;
   pamphlet: PamphletPhase;
   setPamphlet(open: boolean): void;
   say: string;
@@ -71,6 +74,9 @@ export interface ColdStart {
   railTap(id: string, on: boolean): void;
   /** Hero v2 EMER STOP: a completed pull (or the VoiceOver action) fires the same emergency stop as the PULL handle. */
   emergencyStop(): void;
+  /** QUICK START sequence (csQuickSteps) in progress, and the FUEL guards it has lifted on the way. */
+  qsRunning: boolean;
+  qsLift: { fuelL?: boolean; fuelR?: boolean };
   /** Announce a line in the cold start's live region. */
   announce(text: string): void;
   /** The switch the start order wants next (Dan's system id; 'apuGuard' for the APU ARM step), else null. */
@@ -283,18 +289,100 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
     }
     onToggle(id, want ? 'on' : 'off');
   };
-  const quickStart = () => {
-    setShelf('closed');
+  // QUICK START (Wilson, Oct 19): the host runs the manual start order itself (csQuickSteps), one switch at a time
+  // >= QS_STEP_MS apart, setJetSystem on every flip, so each rail / plate switch moves on screen; engine steps wait for
+  // Dan's engine at idle. Was: api.jetQuickStart() (Dan's queue: BATT, L ENG, R ENG at once). No engine: that fallback.
+  const qsRun = useRef<{ dead: boolean } | null>(null);
+  const [qsRunning, setQsRunning] = useState(false);
+  const [qsLift, setQsLift] = useState<{ fuelL?: boolean; fuelR?: boolean }>({});
+  useEffect(() => () => {
+    if (qsRun.current) qsRun.current.dead = true;
+  }, []);
+  const readSys = (): CsSystems | null => {
     try {
-      if (api?.jetQuickStart) api.jetQuickStart();
-      else {
+      return api ? csFromJet(api.getJetSystems()) : null;
+    } catch {
+      return null;
+    }
+  };
+  const reached = (u: Extract<QsStep, { until: string }>['until']): boolean => {
+    const s = readSys();
+    if (!s) return false;
+    if (u === 'apuReady') return s.apuReady;
+    if (u === 'cartReady') return s.cartReady;
+    const side = u === 'engLRun' ? 'L' : 'R';
+    if (s.engines[side] !== 'run') return false;
+    // Dan's engine at idle: the engine state reads a live rpm once it runs (feature-detected)
+    const es = (api as { getEngineState?: () => { rpm?: number } } | null)?.getEngineState?.();
+    return !es || typeof es.rpm !== 'number' || es.rpm > 0;
+  };
+  const quickStart = (instant = false) => {
+    setShelf('closed');
+    if (instant && api?.jetQuickStart) {
+      // phones (no switches on screen): Dan's straight start, as before
+      try {
+        api.jetQuickStart();
+      } catch {
+        /* engine not ready */
+      }
+      return;
+    }
+    if (qsRun.current && !qsRun.current.dead) return announce('Quick start running');
+    const start = readSys();
+    if (!api || !start) {
+      try {
         set('quickStartGuard', true);
         set('quickStart', true);
+      } catch {
+        /* engine not ready */
       }
-    } catch {
-      /* engine not ready */
+      return announce('Quick start running');
     }
+    const run = { dead: false };
+    qsRun.current = run;
+    setQsRunning(true);
     announce('Quick start running');
+    const steps = csQuickSteps(mode, start);
+    const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+    const stop = (why?: string) => {
+      run.dead = true;
+      if (qsRun.current === run) qsRun.current = null;
+      setQsRunning(false);
+      setQsLift({});
+      if (why) announce(why);
+    };
+    void (async () => {
+      for (const st of steps) {
+        if (run.dead) return;
+        const now = readSys();
+        // the pilot pulled EMER STOP or killed BATT mid-run: stop flipping
+        if (now?.emergency || (now && !now.on.batt && !('set' in st && st.set === 'batt'))) return stop('Quick start stopped');
+        if ('until' in st) {
+          const t0 = Date.now();
+          while (!reached(st.until)) {
+            if (run.dead) return;
+            if (readSys()?.emergency) return stop('Quick start stopped');
+            if (Date.now() - t0 > QS_UNTIL_MAX_MS) return stop('Quick start stopped: engine did not reach idle');
+            await sleep(100);
+          }
+          continue;
+        }
+        if ('lift' in st) {
+          cue('guardOpen');
+          setQsLift((l) => ({ ...l, [st.lift]: true }));
+        } else if ('radar' in st) {
+          if (getMapView().radar) continue;
+          setRadar(true);
+          cue('toggle');
+        } else {
+          cue('toggle');
+          set(st.set, st.on);
+        }
+        await sleep(QS_STEP_MS);
+      }
+      stop();
+      announce('Quick start complete');
+    })();
   };
   const applyPull = (r: PullResult, el?: HTMLElement | null, pid?: number) => {
     setPull(r.state);
@@ -512,7 +600,7 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
         </div>
         {!live && (
           <div className="cjcs-qs">
-            <QuickStartGuard guardOpen={qsOpen} onGuardToggle={() => { cue(qsOpen ? 'guardClose' : 'guardOpen'); setQsOpen((o) => !o); }} onStart={quickStart} running={snap.auto} size={size} />
+            <QuickStartGuard guardOpen={qsOpen} onGuardToggle={() => { cue(qsOpen ? 'guardClose' : 'guardOpen'); setQsOpen((o) => !o); }} onStart={() => quickStart()} running={snap.auto || qsRunning} size={size} />
           </div>
         )}
       </>
@@ -520,6 +608,7 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
   };
   return {
     on, park, live, shelf, toggleShelf, quickStart, pamphlet, setPamphlet, say, seatbelt: !!sys.on.seatbelt, render: { shelf: shelfEl, shelfKey, pullQs },
+    qsRunning, qsLift,
     sys, caution: view.caution.lit, resetCaution: () => onToggle('masterCaution', 'momentary'), railTap, emergencyStop: () => applyPull(pullAction(pullRef.current)), announce, nextId: view.next?.id ?? null,
   };
 }
