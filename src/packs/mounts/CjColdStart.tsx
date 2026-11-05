@@ -60,7 +60,7 @@ export interface ColdStart {
   /** QUICK START; `instant`: Dan's straight start (phones, no switches on screen). */
   quickStart(instant?: boolean): void;
   /** Animated shutdown (QUICK START in reverse, BATT last); `done` after the last step. */
-  shutdownSeq(done?: () => void): void;
+  shutdownSeq(done?: () => void): boolean;
   pamphlet: PamphletPhase;
   setPamphlet(open: boolean): void;
   say: string;
@@ -392,10 +392,10 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
   };
   // SHUTDOWN (Wilson, Oct 19 round 3): QUICK START in reverse, one switch every QS_STEP_MS so each flip shows; the
   // engines spool down on FUEL off (guards close over OFF), BATT last. `done` runs after the last step (host shutdown).
-  const shutdownSeq = (done?: () => void) => {
-    if (qsRun.current && !qsRun.current.dead) return announce('Quick start running');
+  const shutdownSeq = (done?: () => void): boolean => {
+    if (qsRun.current && !qsRun.current.dead) { announce('Quick start running'); return false; }
     const s0 = readSys();
-    if (!api || !s0) { done?.(); return; }
+    if (!api || !s0) { done?.(); return true; }
     const run = { dead: false };
     qsRun.current = run;
     setQsRunning(true);
@@ -424,6 +424,7 @@ export function useColdStart({ park, mode, reduced, tesla = false }: { park: boo
       announce('Shutdown complete');
       done?.();
     })();
+    return true;
   };
   const applyPull = (r: PullResult, el?: HTMLElement | null, pid?: number) => {
     setPull(r.state);

@@ -153,7 +153,7 @@ test('layer wiring: failed tile → last good copy; failed frame list → last g
 test('map: label in the TR corner (both modes), dim attr, spoken after the map name', () => {
   const m = src('packs/mounts/CjLiveMap.tsx');
   assert.match(m, /const radarAge = useWxRadarAge\(!!wxRadar && hasMap\);/);
-  assert.match(m, /const ariaFull = radarAge \? `\$\{aria\}\. \$\{radarAge\.aria\}` : aria;/);
+  assert.match(m, /const ariaFull = `\$\{aria\}\$\{noFeed \? '\. No aircraft feed' : ''\}\$\{radarAge \? `\. \$\{radarAge\.aria\}` : ''\}`;/);
   assert.match(m, /aria-label=\{ariaFull\}/);
   assert.match(m, /\{radarAge && <span className="cjv2-corner cjv2-tr cjwx-rage" data-cjmap-ob data-dim=\{radarAge\.dim \|\| undefined\} data-held=\{radarAge\.stale \|\| undefined\} aria-hidden="true"><span className="cjwx-rage-t">\{radarAge\.text\}<\/span><\/span>\}\n\s*<\/div>/);
   assert.doesNotMatch(m, /cjwx-rage[^\n]*data-stale=/, 'not data-stale: .cjv2-tr[data-stale] greys the whole chip to 0.45');

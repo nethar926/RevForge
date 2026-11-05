@@ -238,6 +238,17 @@ export function heroMinW(l: HeroLayout, brandW: number = HV_BRAND_W): number {
 export const heroFits = (vw: number, l: HeroLayout, brandW?: number) => vw >= heroMinW(l, brandW && brandW > 0 ? brandW : HV_BRAND_W);
 
 /**
+ * Which hero geometry to draw. The board rail needs 1236px; the window rail needs 757px.
+ * Widths in between (iPad landscape, about 1024 CSS px) have no board hero, so they were
+ * falling through to the pre-hero bank with no power gating. They draw the window hero.
+ * 1280, 1256 and 773 stay on the geometry they already fit.
+ */
+export function cjPresentedLayout<L extends string>(layout: L, vw: number): L | 'window' {
+  if (layout === 'board' && heroFits(vw, 'window') && !heroFits(vw, 'board')) return 'window';
+  return layout;
+}
+
+/**
  * The hero's two cells for CJ_GRID: the measured plate / rail boxes once they are on screen, else their reserved
  * slots (top-right above the board, and the dock band under it) so the board never half-draws before IGNITION
  * puts the dock on screen.

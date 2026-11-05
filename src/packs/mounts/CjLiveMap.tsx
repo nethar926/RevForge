@@ -108,9 +108,11 @@ export interface CjLiveMapProps {
   radar?: { range: 2 | 5 | 10; mode: 'map' | 'terr'; scope: (status: CjMapStatus) => ReactNode };
   /** WX key: precipitation radar overlay (RainViewer, recoloured) under the roads. */
   wxRadar?: boolean;
+  /** MX has the scope and weather, and no aircraft-radar feed. */
+  noFeed?: boolean;
 }
 
-export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hidden = false, wxRadar, radar }: CjLiveMapProps) {
+export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hidden = false, wxRadar, noFeed, radar }: CjLiveMapProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const glRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -411,7 +413,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   // RADAR: the map shows under the scope once it exists and has tiles; else the scope alone on the dark CRT
   const mapShown = hasMap && status !== 'NO TILES' && status !== 'NO MAP DATA';
   const aria = radar ? cjRadarScopeAria({ range: radar.range, mode: radar.mode }, status, mapShown) : mapAria(view, status, null); // heading: once, on COMPASS (sheet panel 7)
-  const ariaFull = radarAge ? `${aria}. ${radarAge.aria}` : aria;
+  const ariaFull = `${aria}${noFeed ? '. No aircraft feed' : ''}${radarAge ? `. ${radarAge.aria}` : ''}`;
   const boxStyle: CSSProperties | undefined = hidden ? { visibility: 'hidden' } : undefined;
   return (
     <div ref={boxRef} className="cjv2-hsd" role="img" aria-label={ariaFull} style={boxStyle} data-status={status || 'ok'} data-radar={radar ? (mapShown ? 'over-map' : 'alone') : undefined}>
