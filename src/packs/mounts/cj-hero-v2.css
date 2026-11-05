@@ -346,6 +346,12 @@ img.cjhv-tg { object-fit: contain; display: block; }
 .cjm[data-pwr-batt]:not([data-pwr-inst]) .cj-a-eng svg,
 .cjm[data-pwr-batt]:not([data-pwr-inst]) .cj-a-sweep :is(svg, .cj-sw-num, .cj-mode),
 .cjm[data-pwr-batt]:not([data-pwr-inst]) .cjv2-acc .cjv2-crt :is(svg, .cjv2-cap) { visibility: hidden !important; }
+/* Wilson wing sweep. BATT off: the CRT rule above hides the face (dark glass). BATT on with the
+   instrument bus off, or with AVION off (the sheet's backlight panel): arc and caption only.
+   The jet, the degree readout and the parked badge are the data. */
+.cjm[data-pwr-batt]:not([data-pwr-inst]) .cjv2-wsw-data,
+.cjm[data-pwr-batt]:not([data-pwr-avion]) .cjv2-wsw-data { visibility: hidden !important; }
+.cjm[data-pwr-batt]:is(:not([data-pwr-inst]), :not([data-pwr-avion])) .cjv2-wsw { --cjw-arc: #4ea86a; --cjw-cap: #4ea86a; }
 /* NAV off: the map picture only. The radar scope and its weather stay with RADAR. */
 .cjm[data-pwr-batt]:not([data-pwr-ins]) .cjv2-map :is(.cjv2-mapgl, .cjv2-hsd-ov, .cjv2-street) { visibility: hidden !important; }
 /* AVION off: compass rose, heading readout, GPS-stale tag */

@@ -6,7 +6,8 @@
  *    the root build don't carry it.
  *  - Camera: jumpTo only (never easeTo), from rAF capped at ~12 fps while the shown fix / heading is still moving,
  *    then the loop stops (MapLibre redraws only on change). Position glides prev fix → latest fix over one interval;
- *    bearing = the v3 eased heading (CjHeadingEase, shortest arc). Reduce Motion: jump per fix, nothing animates.
+ *    bearing = the held GPS course (coords.heading; null/NaN holds the last value). North-up bearing stays 0.
+ *    Reduce Motion: jump per fix, nothing animates. The own-ship jet uses that same course and stays nose-up in track-up.
  *  - RADAR (Wilson, Oct 16): the scope is a transparent overlay ON the live map (`radar` prop, drawn between the map
  *    and the labels). Under it the base map + roads are dimmed (CJ_RADAR_MAP_DIM, paint colours; WX rain stays full strength), heading-up, centred, scaled to the scope range.
  *  - Pause: hidden (IntersectionObserver / tab hidden) or Park with no live GPS → no glide + map.stop(); a paused map
@@ -26,6 +27,8 @@ import { CjHeadingLegend } from '../../skins/carrier-jet/map/HeadingLegend';
 import { attachContours, contourStats, type CjContours } from './cjContours';
 import { CJ_CONTOUR_SRC } from '../carrier-jet/contours';
 import { bugPoint, cameraMode, cameraZoom, removeWhenPaused, classifyMapError, CJ_RADAR_MAP_DIM, radarDimPaint, scopeBugPoint, CJ_GPS_LIVE_MS, CJ_MAP_FRAME_MS, densify, easedPosition, compassSpeech, headingPair, mapAria, ownShip, placeLabels, pushFix, TRK_PAD, type PlacedLabel, type Rect, type TimedFix } from '../carrier-jet/liveMap';
+import { holdGpsHeading, markerPx } from '../carrier-jet/wingSweep';
+import { WingSweepMarker } from '../carrier-jet/WingSweepGauge';
 import { attachWxRadar, setWxScopeTint, WX_SRC } from './cjWxRadarLayer';
 import { NEAREST_ROAD_INIT, nearestRoadRadiusM, nearestRoadStep, type NearestRoadState, type RoadFeature } from '../carrier-jet/nearestRoad';
 import { getWxRadarStatus, radarAgeView, subscribeWxRadarStatus, type WxRadarAgeView } from '../carrier-jet/wxRadar';
@@ -129,12 +132,21 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   const radarAge = useWxRadarAge(!!wxRadar && hasMap);
   const online = useOnline();
 
+  // GPS course for the own-ship nose only. coords.heading is null / NaN when stopped, so the last
+  // finite value is held. The fused compass heading (the `heading` prop) is not used for the marker.
+  const courseRef = useRef<number | null>(null);
+  const [course, setCourse] = useState<number | null>(null);
   // --- fixes (the app's one geolocation watch, via gpsFixes)
   useEffect(() => {
-    const take = (f: { latitude: number; longitude: number }) => {
+    const take = (f: { latitude: number; longitude: number; heading: number | null }) => {
       const t = performance.now();
       fixes.current = pushFix(fixes.current, { lat: f.latitude, lon: f.longitude, t });
       setFixAt(t);
+      const next = holdGpsHeading(courseRef.current, f.heading);
+      if (next !== courseRef.current) {
+        courseRef.current = next;
+        setCourse(next);
+      }
       kick.current();
     };
     const f0 = latestGpsFix();
@@ -172,7 +184,9 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
 
   // --- camera target (read by the rAF loop through refs)
   // RADAR: heading-up, centred on own-ship (padding 0), zoom so the scope's outer ring = radar.range
-  const camOf = () => ({ northUp: view.northUp, zoomMi: view.zoom, heading, reduced, h: size.h, w: size.w, radar: radar ? radar.range : 0 });
+  // Track-up / radar bearing is the held GPS course, so a nose-up marker points along that course.
+  // North-up keeps bearing 0. The fused `heading` still places the heading bug.
+  const camOf = () => ({ northUp: view.northUp, zoomMi: view.zoom, heading, course, reduced, h: size.h, w: size.w, radar: radar ? radar.range : 0 });
   const cam = useRef(camOf());
   cam.current = camOf();
   const lastApplied = useRef<{ lat: number; lon: number; bearing: number; zoom: number; top: number } | null>(null);
@@ -195,7 +209,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       raf.current = requestAnimationFrame(frame);
       return;
     }
-    const bearing = c.northUp && !c.radar ? 0 : (c.heading ?? lastApplied.current?.bearing ?? 0);
+    const bearing = c.northUp && !c.radar ? 0 : (c.course ?? lastApplied.current?.bearing ?? 0);
     const zoom = cameraZoom(c, pos.lat);
     const top = c.northUp || c.radar ? 0 : Math.round(c.h * TRK_PAD);
     const p = lastApplied.current;
@@ -217,7 +231,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   };
   const activeRef = useRef(active);
   activeRef.current = active;
-  useEffect(() => kick.current(), [heading, view.northUp, view.zoom, size.h, size.w, active, cellVisible, reduced, radar?.range]);
+  useEffect(() => kick.current(), [heading, course, view.northUp, view.zoom, size.h, size.w, active, cellVisible, reduced, radar?.range]);
 
   // --- street labels: BUILD.md collision walk, on idle and ≤ 2 Hz while moving
   relabel.current = () => {
@@ -231,7 +245,8 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       const r = e.getBoundingClientRect();
       return { x: r.left - b0.left, y: r.top - b0.top, w: r.width, h: r.height };
     });
-    obstacles.push({ x: o.x - 12, y: o.y - 12, w: 24, h: 24 });
+    const ship = markerPx(c.h);
+    obstacles.push({ x: o.x - ship / 2, y: o.y - ship / 2, w: ship, h: ship });
     const bp = c.radar ? scopeBugPoint(c.w, c.h) : bugPoint(c.w, c.h, c.northUp, c.northUp ? (c.heading ?? 0) : 0);
     obstacles.push({ x: bp.x - 9, y: bp.y - 9, w: 18, h: 18 });
     // OpenMapTiles keeps road names in `transportation_name` (no layer of ours draws it), so read the loaded tiles of
@@ -296,7 +311,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       const c = cam.current;
       const map = new ml.Map({
         container: glRef.current, style: style as unknown as StyleSpecification, ...CJ_MAP_OPTIONS,
-        center: [pos.lon, pos.lat], zoom: cameraZoom({ ...c, h: c.h || 100 }, pos.lat), bearing: c.northUp && !c.radar ? 0 : (c.heading ?? 0),
+        center: [pos.lon, pos.lat], zoom: cameraZoom({ ...c, h: c.h || 100 }, pos.lat), bearing: c.northUp && !c.radar ? 0 : (c.course ?? 0),
       });
       map.on('error', (e: MapLibreEvent & { error?: { status?: number; message?: string }; tile?: unknown; sourceId?: string }) => {
         if (e.sourceId === WX_SRC) return; // WX radar is an extra: its failures never flag the map itself
@@ -408,7 +423,9 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
   const { w, h } = size;
   const o = ownShip(w, h, view.northUp);
   const bp = bugPoint(w, h, view.northUp, view.northUp ? (heading ?? 0) : 0);
-  const shipRot = view.northUp ? (heading ?? 0) : 0;
+  // North-up: the nose turns to the held GPS course. Track-up (TRK lit): the map carries the course and the jet stays nose-up.
+  const shipRot = view.northUp ? (course ?? 0) : 0;
+  const shipPx = markerPx(h);
   const acq = status === 'GPS ACQ' || fixAt == null;
   // RADAR: the map shows under the scope once it exists and has tiles; else the scope alone on the dark CRT
   const mapShown = hasMap && status !== 'NO TILES' && status !== 'NO MAP DATA';
@@ -425,7 +442,7 @@ export function CjLiveMap({ view, heading, headingStale, reduced, demo, park, hi
       {w > 0 && !radar && (
         <svg className="cjv2-hsd-ov" viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
           {heading != null && <path d="M0 -6 L-6 4 L6 4 Z" className="cjv2-bug" data-stale={headingStale || undefined} transform={`translate(${bp.x} ${bp.y + (view.northUp ? 0 : 1)}) rotate(${bp.rot})`} />}
-          <path d="M0 -9 L7 9 L0 4.5 L-7 9 Z" className="cjv2-own" data-acq={acq || undefined} transform={`translate(${o.x} ${o.y}) rotate(${shipRot})`} />
+          <WingSweepMarker x={o.x} y={o.y} rot={shipRot} stale={acq} px={shipPx} />
         </svg>
       )}
       {labels.map((l) => (
