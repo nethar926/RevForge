@@ -1,0 +1,40 @@
+/* Twin Ion CJ-grid mount: scales a native mock design box into the Drive scene. No live backdrop filters, no canvas. */
+.itm-cj {
+  position: relative;
+  flex: none;
+  width: calc(var(--itm-w) * var(--itm-s));
+  height: calc(var(--itm-h) * var(--itm-s));
+  margin: 0 auto;
+  pointer-events: none; /* host chrome keeps taps; board keys re-enable */
+}
+.itm-cj .ti-key,
+.itm-cj .ti-cell,
+.itm-cj .ti-scope,
+.itm-cj .ti-power,
+.itm-cj .ti-hostfoot,
+.itm-cj .ti-title {
+  pointer-events: auto;
+}
+.itm-cj-box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--itm-w);
+  height: var(--itm-h);
+  transform: scale(var(--itm-s));
+  transform-origin: 0 0;
+  container-type: size;
+}
+/* Fill the Drive scene; mock design boxes already reserve host chrome gutters. */
+.rev-scene .theme-stage.is-fullscreen .skin-body:has(> .itm-cj) {
+  padding: 0;
+  display: block;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.rev-scene .theme-stage.is-fullscreen .skin-body:has(> .itm-cj) > .itm-cj {
+  position: absolute;
+  left: 0;
+  top: 0;
+}

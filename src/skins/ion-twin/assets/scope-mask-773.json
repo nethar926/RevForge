@@ -1,0 +1,8 @@
+{
+ "source": "773",
+ "diameter": 210,
+ "dpr": 2,
+ "protectedRadiusCSS": 100.75,
+ "maskedDevicePixels": 21752,
+ "rule": "circular annulus outside protected disc; RGB=(45,52,62); alpha unchanged"
+}

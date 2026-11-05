@@ -18,6 +18,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CjNavRow } from "../packs/mounts/CjNavRow";
 import { currentCjPage, isDrivePanel, type CjNavAction, type DrivePanel } from "../packs/carrier-jet.nav";
+import { packWantsEngineTelemetry, readIonEngine } from "../packs/ionTwin";
 import CARRIER_JET_IDENTITY from "../packs/carrier-jet.identity";
 import { BUILTIN_PATCHES, getBuiltin } from "../audio";
 import { isEngineIdVisible, packForThemeId, resolveVisibleEnginePatch } from "../packs/registry";
@@ -367,7 +368,7 @@ export function ForgePage({
     >
       <main className={`rev-viewport ${!ignited&&source==='demo'?'is-launch':''}`} style={{'--hud-scale':scale,'--hud-opacity':opacity} as CSSProperties}>
         <section className="rev-scene" aria-label="Full-screen dashboard">
-          <ThemeStage maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={()=>audio.triggerUiCue('time-jump')} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
+          <ThemeStage packEngine={packWantsEngineTelemetry(activePackId)?{...readIonEngine(audio.getEngine()),demoThrottle:source==='demo'?pedal:undefined,stale:source==='gps'&&gps.status!=='live'}:undefined} maxSpeedMps={config.topSpeedMps} fonts={themes.fonts[stageTheme.id]} widgets={themes.widgets} lockStage={audio.getLockStage()} onTimeJump={()=>audio.triggerUiCue('time-jump')} colors={themes.colors[stageTheme.id]} sceneColors={themes.colors[themes.atmosphereId+'-scene']} atmosphereId={themeForId(themes.atmosphereId).sceneId} theme={stageTheme} state={hud} simulation={simulation} warningRpm={config.warningRpm} redline={config.redline} unit={prefs.speedUnit} demo={source==='demo'} motion={motion} running={audio.running} gpsLabel={gpsLabel}/>
         </section>
         <header className="rev-topbar"><div><strong>REVFORGE</strong>{ignited&&<small>{(FEATURES.account?garage.active?.name:undefined)??theme.name}</small>}</div>{cjNav?<CjNavRow current={currentCjPage('/drive',panel)} muted={engineMuted} labPanel={dashLabListed?'dashlab':'studio'} onAction={onCjNav}/>:<button className="rev-chip" onClick={()=>setPanel('tuner')}>Tuner <Icon name="tune" size={18}/></button>}</header>
         {!ignited?<div className="rev-launch"><p>ENGINE SOUND · YOUR ATMOSPHERE</p><h1>RevForge</h1><button type="button" className="rev-ignite" disabled={audio.starting} onClick={start}>{audio.starting?'Starting…':'IGNITION'}</button><small>Set up while parked · Keep the browser visible</small></div>:<>

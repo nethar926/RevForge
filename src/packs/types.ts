@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import type { EngineKind } from '../audio/types';
+import type { EngineKind, EngineStateSnapshot, LockStage } from '../audio/types';
 
 /**
  * Live drive telemetry handed to a pack's HUD/cluster component.
@@ -41,6 +41,20 @@ export interface PackHudProps {
    * Mirrors `data-drive-window="true"` on `.theme-stage`. Optional; safe to ignore.
    */
   driveWindow?: boolean;
+  /**
+   * Engine-owned lock ladder stage, read from the live engine's `getHud().lockStage`
+   * (ForgePage only fills it for packs that ask for engine telemetry, e.g. Twin Ion). Optional.
+   */
+  lockStage?: LockStage;
+  /** Live engine `getEngineState()` snapshot when the engine provides one (same opt-in). Optional. */
+  engineState?: EngineStateSnapshot;
+  /**
+   * Demo Drive pedal 0..1 (ForgePage slider). Twin Ion binds THR readout to this so it matches
+   * the host throttle card; other packs ignore it.
+   */
+  demoThrottle?: number;
+  /** GPS freshness: true when position/heading should show OFF flags (Twin Ion). */
+  stale?: boolean;
 }
 
 /** How the pack behaves under prefers-reduced-motion / Animated environment off. */
