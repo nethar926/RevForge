@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { getJetSystemList, jetAutoStartSteps } from '../src/audio/jetColdStart.js';
 import { csTap } from '../src/packs/carrier-jet/coldStart.ts';
 import {
-  annSize, clearsAfter, heroFits, heroKeyActive, heroMinW, forcedLamps, GREEN_LAMPS, heroCells, HV_ANN_BORDER, HV_BRAND_W, HV_FIT, HV_ANN_CAP, HV_CONTRAST_TARGET, HV_LAMPS, HV_LEGEND, HV_RAIL_H, HV_RAIL_MIN_W,
+  annSize, cjPresentedLayout, clearsAfter, heroFits, heroKeyActive, heroMinW, forcedLamps, GREEN_LAMPS, heroCells, HV_ANN_BORDER, HV_BRAND_W, HV_FIT, HV_ANN_CAP, HV_CONTRAST_TARGET, HV_LAMPS, HV_LEGEND, HV_RAIL_H, HV_RAIL_MIN_W,
   HV_RED_LEGEND_LIFT, HV_START, LAMPS_DARK, lampAria, lampColor, lampStates, orientCap, radarApply, radarPos, radarStep, RED_LAMPS, splitCap,
   startPositions, type CapCtx, type LampId, type LampInput,
   abGuardTap, abView, HV_BONUS, HV_TOP, abTap, abAria, qsTap, qsAria, HV_GUARD_CLOSE_MS, HV_RAIL_ORDER, HV_RAIL_SW, HV_RAIL_GEO, HV_RAIL_773, railTargets, railPositions, railFlipAria, railCue, ENG_BULB_LEGEND, topTargets, bonusAria, fsbAria, abArmedAria,
@@ -252,6 +252,22 @@ test('width guard: hero only where the plate clears the brand and the rail fits 
   assert.match(mount, /addEventListener\('resize', check\)/);
   assert.match(css, /\.cjhv-ann \{[^}]*max-width: calc\(100% - 108px\)/);
   assert.equal(HV_BRAND_W + HV_FIT.brandGap, 108);
+});
+
+test('iPad widths draw the window hero; 1280, 1256 and 773 stay on the geometry they fit', () => {
+  assert.equal(cjPresentedLayout('board', 1024), 'window');
+  assert.equal(cjPresentedLayout('board', 1194), 'window');
+  assert.equal(cjPresentedLayout('board', 800), 'window');
+  assert.equal(cjPresentedLayout('board', 1280), 'board');
+  assert.equal(cjPresentedLayout('board', 1256), 'board');
+  assert.equal(cjPresentedLayout('board', 1236), 'board');
+  assert.equal(cjPresentedLayout('board', 756), 'board');
+  assert.equal(cjPresentedLayout('window', 773), 'window');
+  assert.equal(cjPresentedLayout('portrait', 1024), 'portrait');
+  const mount = src('packs/mounts/CarrierJetMount.tsx');
+  assert.match(mount, /cjPresentedLayout\(layout, vw\)/);
+  const hero = src('packs/mounts/CjHeroV2.tsx');
+  assert.match(hero, /if \(!open && color !== 'red'\) return img\(guardSrc\(color, false\), 'c'\);/);
 });
 
 /* ---------------- v3.1 top plate (push 1) */

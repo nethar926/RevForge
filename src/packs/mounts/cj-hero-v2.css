@@ -267,7 +267,7 @@ img.cjhv-tg { object-fit: contain; display: block; }
   content: ''; position: absolute; inset: -27%; background: var(--lamp) center / contain no-repeat; pointer-events: none;
 }
 /* MASTER CAUTION / WARNING: the sheet's lens + bezel (printed text removed), HTML legend on top */
-.cjhv-top .cjhv-cap.cjhv-top-master { background-size: 100% 100% !important; background-repeat: no-repeat !important; background-color: transparent !important; box-shadow: none; }
+.cjhv-top .cjhv-cap.cjhv-top-master { background-size: 100% 100% !important; background-repeat: no-repeat !important; background-color: #121416 !important; box-shadow: none; }
 .cjhv-top .cjhv-cap.cjhv-top-master::after { display: none; }
 .cjhv-top .cjhv-cap.cjhv-top-master .cjhv-lg { color: #e9dcc0; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8); }
 .cjhv-top .cjhv-cap.cjhv-top-master .cjhv-mark { fill: #e9dcc0; stroke: #e9dcc0; }
@@ -275,11 +275,11 @@ img.cjhv-tg { object-fit: contain; display: block; }
 .cjhv-top .cjhv-cap.cjhv-top-master[data-lit] .cjhv-mark { fill: #1a0d00; stroke: #1a0d00; }
 .cjhv-top .cjhv-cap.cjhv-top-master[data-lit] .cjhv-mark [data-stroke], .cjhv-top .cjhv-cap.cjhv-top-master .cjhv-mark [data-stroke] { fill: none; }
 /* square keys and lamps (9-slice of the sheet art, so the bezel corners stay square at any key size) */
-.cjhv-top .cjhv-top-ab, .cjhv-korry { background: none !important; box-shadow: none !important; border-image: var(--sq) 26 fill / 10px / 0 stretch; }
+.cjhv-top .cjhv-top-ab, .cjhv-korry { background-color: #16181b !important; background-image: none !important; box-shadow: none !important; border-image: var(--sq) 26 fill / 10px / 0 stretch; }
 .cjhv-top .cjhv-top-ab::after { display: none; }
 .cjhv-top .cjhv-top-ab[data-lit] .cjhv-lg { color: #1a0d00; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35); }
 .cjhv-top .cjhv-top-ab:not([data-lit]) .cjhv-lg { color: #e0cfae; }
-.cjhv-push, .cjhv-top .cjhv-top-themes { background: none !important; box-shadow: none !important; border-image: var(--sq-off) 26 fill / 10px / 0 stretch; }
+.cjhv-push, .cjhv-top .cjhv-top-themes { background-color: #16181b !important; background-image: none !important; box-shadow: none !important; border-image: var(--sq-off) 26 fill / 10px / 0 stretch; }
 .cjhv-push:active:not([aria-disabled]), .cjhv-top .cjhv-top-themes:active { border-image-source: var(--sq-on); box-shadow: none !important; }
 .cjhv-korry > span { position: relative; }
 .cjhv-korry-bot { border-top: 0 !important; box-shadow: none !important; background: none !important; }
@@ -332,25 +332,27 @@ img.cjhv-tg { object-fit: contain; display: block; }
 
 /* ---------------- instrument power (hero cold start, CarrierJetMount data-cj-pwr). BATT off: dark green-black glass,
    nothing on it. BATT on: a faint backlight and the fixed legends only; each group's data shows only with its switch:
-   AVION = AOA / LOAD, ACCEL, WING SWEEP · INS (= NAV, one switch) = FLIGHT speed / mach, VDI, map, compass ·
-   RADAR = the radar layer. Visibility only: every box keeps its size (no layout shift). */
+   NAV = the map · RADAR = the scope and weather · INS = speed and the instrument faces
+   (FLIGHT, VDI, RPM, AOA, ACCEL, WING SWEEP) · AVION = the compass and GPS.
+   Visibility only: every box keeps its size (no layout shift). */
 .cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cj-crt, .cjv2-crt) { background: radial-gradient(ellipse at 50% 40%, #04100a, #020805 70%) !important; }
 .cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cj-crt, .cjv2-crt) *,
-.cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cjv2-hdgcell, .cjwx-host, .cj-hstale),
+.cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cjv2-hdgcell, .cjwx-host, .cj-hstale, [data-cj-el='heading']),
 .cjm[data-cj-pwr]:not([data-pwr-batt]) :is(.cjv2-hdgcell, .cjwx-host) * { visibility: hidden !important; }
 .cjm[data-pwr-batt] :is(.cj-crt, .cjv2-crt) { box-shadow: 0 0 0 2px #535c62, inset 0 0 24px rgb(0 0 0 / 0.8), inset 0 0 36px rgb(90 255 140 / 0.07); }
-/* INS off: no speed, source, mach, VDI, compass, map */
-.cjm[data-pwr-batt]:not([data-pwr-inst]) :is(.cj-spd-num, .cj-spd-src, .cj-mach-num, .cj-mach-tape, .cj-mach-tag),
+/* INS off: speed, mach, VDI, RPM, AOA / LOAD, ACCEL, WING SWEEP */
+.cjm[data-pwr-batt]:not([data-pwr-inst]) :is(.cj-spd-num, .cj-spd-src, .cj-mach-num, .cj-mach-tape, .cj-mach-tag, .cj-rpm),
 .cjm[data-pwr-batt]:not([data-pwr-inst]) .cj-a-mid .cj-crt > svg,
-.cjm[data-pwr-batt]:not([data-pwr-ins]) :is(.cjv2-hdgcell, .cjwx-host, .cj-hstale),
-.cjm[data-pwr-batt]:not([data-pwr-ins]) :is(.cjv2-hdgcell, .cjwx-host) *,
-.cjm[data-pwr-batt]:not([data-pwr-ins]) .cjv2-map :is(.cjv2-mapgl, .cjv2-hsd-ov, .cjv2-corner, .cjv2-alerts, .cjv2-info) { visibility: hidden !important; }
-/* RADAR off: no radar layer */
-.cjm[data-pwr-batt]:not([data-pwr-radar]) .cjv2-map .cjv2-scan { visibility: hidden !important; }
-/* AVION off: no AOA / LOAD, ACCEL, WING SWEEP data */
-.cjm[data-pwr-batt]:not([data-pwr-avion]) .cj-a-eng svg,
-.cjm[data-pwr-batt]:not([data-pwr-avion]) .cj-a-sweep :is(svg, .cj-sw-num, .cj-mode),
-.cjm[data-pwr-batt]:not([data-pwr-avion]) .cjv2-acc .cjv2-crt :is(svg, .cjv2-cap) { visibility: hidden !important; }
+.cjm[data-pwr-batt]:not([data-pwr-inst]) .cj-a-eng svg,
+.cjm[data-pwr-batt]:not([data-pwr-inst]) .cj-a-sweep :is(svg, .cj-sw-num, .cj-mode),
+.cjm[data-pwr-batt]:not([data-pwr-inst]) .cjv2-acc .cjv2-crt :is(svg, .cjv2-cap) { visibility: hidden !important; }
+/* NAV off: the map picture only. The radar scope and its weather stay with RADAR. */
+.cjm[data-pwr-batt]:not([data-pwr-ins]) .cjv2-map :is(.cjv2-mapgl, .cjv2-hsd-ov, .cjv2-street) { visibility: hidden !important; }
+/* AVION off: compass rose, heading readout, GPS-stale tag */
+.cjm[data-pwr-batt]:not([data-pwr-avion]) :is(.cjv2-hdgcell, .cj-hstale, [data-cj-el='heading']),
+.cjm[data-pwr-batt]:not([data-pwr-avion]) .cjv2-hdgcell * { visibility: hidden !important; }
+/* RADAR off: no scope, scan, or weather */
+.cjm[data-pwr-batt]:not([data-pwr-radar]) .cjv2-map :is(.cjv2-scan, .cjv2-scope, .cjwx-host) { visibility: hidden !important; }
 /* caption hidden: its empty edge slot goes too */
 .cjv2-key:has(.cjhv-korry[data-cap-only]) .cjp-bezel svg > rect:nth-of-type(-n+2), .cjv2-key:has(.cjhv-korry[data-cap-only]) .cjp-bezel svg > rect[stroke='#7ef7a1'] { visibility: hidden; }
 /* BATT off: every key lamp dark (the 1/3 strip unlit) */
@@ -386,7 +388,7 @@ img.cjhv-tg { object-fit: contain; display: block; }
 /* lamp TEST push right of CONFIG: Wilson's PUSH (hex nut, brushed face; red ring lit while held). Legend above, like CONFIG */
 .cjv2-testkey { position: absolute; }
 .cjv2-test-lg { position: absolute; left: 0; right: 0; top: 2px; text-align: center; font: 700 11px/13px 'Barlow Semi Condensed', 'B612', system-ui, sans-serif; letter-spacing: 0.04em; color: #c9cdd0; text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6); z-index: 0; }
-.cjv2-test-btn { position: absolute; left: 50%; bottom: 2px; width: 48px; height: 48px; margin-left: -24px; padding: 2px; border: 0; background: transparent; cursor: pointer; touch-action: none; -webkit-touch-callout: none; user-select: none; z-index: 1; }
+.cjv2-test-btn { position: absolute; left: 50%; bottom: 2px; width: 48px; height: 48px; margin-left: -24px; padding: 2px; border: 0; background-color: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; touch-action: none; -webkit-touch-callout: none; user-select: none; z-index: 1; }
 .cjv2-test-btn img { display: block; width: 44px; height: 44px; pointer-events: none; }
 .cjv2-test-btn:focus-visible { outline: 2px solid #8dffad; outline-offset: 1px; }
 /* HOLD TO REV (amber) / SHUTDOWN (red): Wilson's Square Push full lamp. REV lit while held; SHUTDOWN lit while an engine runs */
@@ -402,7 +404,8 @@ img.cjhv-tg { object-fit: contain; display: block; }
 /* BATT off (cold, dark): every key caption and key lamp unlit, at every size */
 .cjv2[data-batt-off] .cjv2-key .cjp-bezel svg text { fill: #8f969b !important; }
 .cjv2[data-batt-off] .cjv2-key .cjp-bezel svg rect[stroke='#7ef7a1'] { stroke: #3a4044 !important; }
-.cjv2[data-batt-off] .cjhv-korry, .cjv2[data-batt-off] .cjhv-korry[data-lit] { border-image-source: var(--sq-dark2, var(--sq-dark, var(--sq))) !important; }
+.cjv2[data-batt-off] .cjhv-korry[data-push], .cjv2[data-batt-off] .cjhv-korry[data-push][data-lit] { border-image-source: var(--sq) !important; }
+.cjv2[data-batt-off] .cjhv-korry:not([data-push]) { border-image-source: var(--sq-dark, var(--sq)) !important; }
 .cjv2[data-batt-off] .cjhv-korry > span { color: #9aa0a4 !important; text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6) !important; }
 .cjhv-bulb[data-mode='off']::before, .cjhv-top-bulb[data-mode='off']::before { filter: brightness(0.5) saturate(0.35); }
 /* map face: no text (credit stays a 44 px tap zone, top right); BATT on + NAV off: a faint grid that fades as the map comes up */
@@ -429,3 +432,30 @@ img.cjhv-tg { object-fit: contain; display: block; }
 .cjv2-tabhdr { position: absolute; height: 18px; box-sizing: border-box; border: 1px solid #000; border-radius: 2px; background: #041009; color: #8dffad;
   font: 700 11px/16px 'B612', system-ui, sans-serif; letter-spacing: 0.06em; text-align: center; pointer-events: none; z-index: 2; }
 .cjv2[data-batt-off] .cjv2-tabhdr { color: #8f969b; }
+/* GPS title sits inside the module. A centred 36px box at the left edge clipped the G ("3PS"). */
+.cjhv-mod-gpsnav > .cjhv-gps-name { position: absolute; text-align: left; letter-spacing: 0.02em; z-index: 2; }
+/* Push Square faces. border-image is the art; the dark fill shows when a browser drops the image
+   (iPad Safari paints a native white button through a failed border-image). */
+.cjv2-key > .cjp-bezel, .cjhv-korry, .cjhv-push, .cjv2-test-btn {
+  -webkit-appearance: none; appearance: none;
+}
+.cjv2-hsd[data-radar='over-map'] .cjv2-wx { display: none; }
+.cjv2-nofeed {
+  position: absolute; top: 8px; right: 8px; z-index: 2; pointer-events: none;
+  font: 700 11px/13px 'B612', ui-monospace, monospace; letter-spacing: 0.04em; color: #ffd07a;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.85);
+}
+/* iPad band: wider than the 773 dock, narrower than the 1236 board hero. The window plate is
+   absolutely placed over the header, so the board starts on the next row. 773, 1256 and 1280
+   are outside this query. The heading-stale tag is pinned inside its label instead of running
+   off the right edge onto ACCEL. Column legends sit above a closed fuel cover. */
+@media (min-width: 800px) and (max-width: 1235px) {
+  .rev-viewport:has(.cjhv-top):has(> .rev-dock > .cjm-bank[data-cjm-v2]) .rev-scene .theme-stage.is-fullscreen .skin-body:has(> .cjm) {
+    padding-top: 134px !important;
+  }
+  .cjm[data-cjm-v2] { overflow-x: clip; }
+  .cjm[data-cjm-v2] .cj-plab-2 > .cj-hstale {
+    left: auto; right: 0; top: 100%; transform: none; max-width: 100%;
+  }
+  .cjhv-rail .cjhv-rname, .cjhv-rail .cjhv-rpos { z-index: 3; }
+}

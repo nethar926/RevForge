@@ -121,7 +121,7 @@ test('host pamphlet = Meghan\'s ChecklistPamphlet markup (APU, every step, both 
   // narrow size: actions at 11px (concept.css), the 773 floor
   assert.match(src('src/skins/carrier-jet/concept/concept.css'), /\.ckp\[data-size='narrow'\] \.ckp-line, \.ckp\[data-size='narrow'\] \.ckp-act \{ font-size: 11px;/);
   assert.match(src('src/packs/mounts/CjColdStart.tsx'), /<CjPamphlet plan=\{plan\} title=\{ckTitle\(mode\)\} cursor=\{view\.cursor\} size=\{size\} page=\{page \?\? undefined\} onPage=\{setPage\} \/>/);
-  assert.match(src('src/packs/mounts/CarrierJetMount.tsx'), /cold\.render\.shelf\(layout === 'board' \? 'wide' : 'narrow'\)/);
+  assert.match(src('src/packs/mounts/CarrierJetMount.tsx'), /cold\.render\.shelf\((?:layout|presented) === 'board' \? 'wide' : 'narrow'\)/);
 
   // MASTER CAUTION and SEAT BELT parts as the mount passes them
   const lit = r(m.MasterCaution, { lit: true, step: '9a' });

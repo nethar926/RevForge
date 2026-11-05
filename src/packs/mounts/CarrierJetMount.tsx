@@ -33,7 +33,7 @@ import { CJ_GRID } from '../carrier-jet/cells';
 import { getPackJet, subscribePackJet } from '../jetBridge';
 import { LAUNCH_OFF, launchAbZone, launchStep, readLaunchActive } from '../carrier-jet/launchLight';
 import { HeroRail, TopPlate } from './CjHeroV2';
-import { abTap, abView, clearsAfter, forcedLamps, heroFits, HV_GUARD_CLOSE_MS, HV_LAMPS, lampStates, radarApply, radarPos, railCue, railPositions, railSw, type HeroLayout, type LampId, type RailSwId, type SourcePos } from '../carrier-jet/heroRail';
+import { abTap, abView, cjPresentedLayout, clearsAfter, forcedLamps, heroFits, HV_GUARD_CLOSE_MS, HV_LAMPS, lampStates, radarApply, radarPos, railCue, railPositions, railSw, type HeroLayout, type LampId, type RailSwId, type SourcePos } from '../carrier-jet/heroRail';
 import { getWxRadar, setWxRadar, subscribeWxRadar } from '../carrier-jet/wxRadar';
 
 /**
@@ -114,6 +114,16 @@ function useFirstBattLampTest(batt: boolean): boolean {
   }, [test]);
   return test;
 }
+function useInnerWidth(): number {
+  const [w, setW] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
+  useLayoutEffect(() => {
+    const check = () => setW(window.innerWidth);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return w;
+}
 function useHeroRoom(l: HeroLayout, viewport: HTMLElement | null): boolean {
   const [room, setRoom] = useState(() => typeof window === 'undefined' || heroFits(window.innerWidth, l));
   useLayoutEffect(() => {
@@ -132,6 +142,11 @@ export function CarrierJetMount(props: PackHudProps) {
   const abZoneAudio = useSyncExternalStore(subscribePackAbZone, readPackAbZone, () => undefined);
   const driveWindow = !!props.driveWindow;
   const layout = useRfLayout(driveWindow);
+  // iPad landscape (1024) is wider than the 773 rail and narrower than the 1280 rail, and it is not a
+  // drive window when the height stays above 640. Draw the window hero there so power, lamps and the
+  // fitted rail exist. 1280, 1256 and 773 keep the layout they already fit.
+  const vw = useInnerWidth();
+  const presented = cjPresentedLayout(layout, vw);
   const fullBoard = driveWindow || layout === 'portrait' || layout === 'phone-landscape';
   // Drive window: always the full board (explicit false, so neither the host's compact request nor
   // the skin's 'auto' size threshold swaps in the essential layout). Elsewhere an explicit host
@@ -205,7 +220,7 @@ export function CarrierJetMount(props: PackHudProps) {
   const viewport = vp.viewport;
   useLayoutEffect(() => {
     const bankEl = bankRef.current;
-    if (!bankEl || !viewport || layout !== 'window' || !docked) return;
+    if (!bankEl || !viewport || presented !== 'window' || !docked) return;
     const fit = () => {
       const t = viewport.querySelector<HTMLElement>(':scope > .rev-throttle');
       const nav = bankEl.querySelector<HTMLElement>(':scope > .cjm-bank-nav');
@@ -228,7 +243,7 @@ export function CarrierJetMount(props: PackHudProps) {
       mo?.disconnect();
       bankEl.style.removeProperty('--cjm-nav-w');
     };
-  }, [layout, docked, viewport]);
+  }, [presented, docked, viewport]);
   const v2 = FEATURES.cjV2;
   // CJ v2 (Tesla): the bank leads the dock line, so it must lead the dock's DOM too (VoiceOver follows the DOM, not
   // CSS order): move the portaled bank to the dock's first child. Same parent, so React's portal bookkeeping holds.
@@ -297,7 +312,7 @@ export function CarrierJetMount(props: PackHudProps) {
   };
   const plate = v2 ? (
     <div className="cjm-bank-plate" role="group" aria-label={plateAria(props.demo, cjGps(gpsStatus), mapView.radar)}>
-      <GpsRadarPlate gps={props.demo ? 'none' : cjGps(gpsStatus)} radarOn={mapView.radar} onRadarToggle={onRadar} size={layout === 'board' ? 'wide' : 'narrow'} />
+      <GpsRadarPlate gps={props.demo ? 'none' : cjGps(gpsStatus)} radarOn={mapView.radar} onRadarToggle={onRadar} size={presented === 'board' ? 'wide' : 'narrow'} />
     </div>
   ) : null;
   // launch: the skin's AB ARMED plate reads LAUNCH via .cjm-bank[data-ab-launch] (carrier-jet-controls.css; no skin edit)
@@ -308,7 +323,7 @@ export function CarrierJetMount(props: PackHudProps) {
   // Drive (seatbeltLamp.ts). Cold start off: guarded SHUTDOWN as before.
   const sbCtx = { coldOn, spds, docked: !!vp.dock };
   const sbLamp = sbLampShown(sbCtx) ? (
-    <div className="cjm-sbl" data-rf-layout={layout} data-sd-off={sdShow || undefined} role="img" aria-label={sbLampAria(cold.seatbelt)}>
+    <div className="cjm-sbl" data-rf-layout={presented} data-sd-off={sdShow || undefined} role="img" aria-label={sbLampAria(cold.seatbelt)}>
       <div aria-hidden="true"><SeatBeltLamp on={cold.seatbelt} /></div>
     </div>
   ) : null;
@@ -320,15 +335,15 @@ export function CarrierJetMount(props: PackHudProps) {
   // Hero v2 (Meghan's cj-hero-2026/v2 + rail v2; CjHeroV2.tsx): with the one bottom row on (Tesla, cold start, docked),
   // the row's parts become the start rail and the top bar's empty right half gets the annunciator plate. Only when the
   // viewport holds both at design size (a fine-pointer phone also reads board / window): else the pre-hero row bank.
-  const heroLayout: HeroLayout = layout === 'window' ? 'window' : 'board';
+  const heroLayout: HeroLayout = presented === 'window' ? 'window' : 'board';
   const heroRoom = useHeroRoom(heroLayout, viewport);
   // Wilson, Oct 18: the hero plate takes the skin's LOOK row, and only MATRIX (Board 2) has CONFIG to change looks,
   // so VECTOR / HOLO keep the pre-hero bank and the skin's own LOOK tabs (always a way back to MATRIX).
   const hero = row && tesla && heroRoom && look === 'carrier-jet';
-  // GPS ACQ lamp: NAV (inertialNav, with BATT and instrument power) drives the sequence; caution only while NAV is on
-  const navOn = !!(hero && coldOn && board2 && cold.sys.on.batt && (cold.sys.on as Record<string, boolean | undefined>).inertialNav);
-  const gpsSeq = useGpsAcqSeq(navOn, reduced);
-  const gpsCau = gpsCaution(navOn, props.demo, cjGps(gpsStatus));
+  // GPS lamps follow AVION (compass and GPS). NAV is the map. INS is speed and the instrument faces.
+  const avionOn = !!(hero && coldOn && board2 && cold.sys.on.batt && (cold.sys.on as Record<string, boolean | undefined>).avionics);
+  const gpsSeq = useGpsAcqSeq(avionOn, reduced);
+  const gpsCau = gpsCaution(avionOn, props.demo, cjGps(gpsStatus));
   const topbar = hero ? vp.viewport?.querySelector<HTMLElement>(':scope > .rev-topbar') ?? null : null;
   const lampIn = { cold: coldOn, running: props.running, batt: !!cold.sys.on.batt, seatbelt: cold.seatbelt, engines: cold.sys.engines, apuOn: !!cold.sys.on.apu, apuReady: cold.sys.apuReady, caution: cold.caution, emergency: !!cold.sys.emergency };
   const rawLamps = lampStates(lampIn);
@@ -406,36 +421,39 @@ export function CarrierJetMount(props: PackHudProps) {
       holdRev={props.running}
       onHoldRev={(on) => void requestPackShell({ type: 'hold-rev', on })}
       running={props.running}
-      onShutdown={() => (coldOn ? (setTimeout(() => setInsOn(false), 3600), cold.shutdownSeq(() => void requestPackShell({ type: 'shutdown' }))) : void requestPackShell({ type: 'shutdown' }))}
+      onShutdown={() => {
+        if (!coldOn) { void requestPackShell({ type: 'shutdown' }); return; }
+        if (cold.shutdownSeq(() => void requestPackShell({ type: 'shutdown' }))) setTimeout(() => setInsOn(false), 3600);
+      }}
       say={cold.announce}
       lampTest={lampTest}
       qsRunning={cold.qsRunning}
       qsLift={cold.qsLift}
     />
   ) : null;
-  const shelf = coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(layout === 'board' ? 'wide' : 'narrow')}</div>;
+  const shelf = coldOn && <div className="cjm-bank-shelf">{cold.render.shelfKey(presented === 'board' ? 'wide' : 'narrow')}</div>;
   const bank = !hero ? (
-    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined} data-cjm-row={row || undefined}>
+    <div ref={bankRef} className="cjm-bank" data-rf-layout={presented} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined} data-cjm-row={row || undefined}>
       {plate}
       <div className="cjm-bank-ab">{guard}</div>
       {row ? null : spds ? shelf : <div className="cjm-bank-nav" ref={setNavSlot} />}
     </div>
   ) : (
     // hero v2: the start rail takes the plate + guard's place (same bank element, so the dock / board padding rules hold)
-    <div ref={bankRef} className="cjm-bank" data-rf-layout={layout} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined} data-cjm-row={row || undefined}>
+    <div ref={bankRef} className="cjm-bank" data-rf-layout={presented} data-ab-launch={launch.lit || undefined} data-launch-motion={reduced ? 'static' : 'live'} data-rf-reduce-motion={reduced || undefined} data-cjm-bank={docked ? 'docked' : undefined} data-cjm-v2={v2 || undefined} data-cjm-row={row || undefined}>
       {heroRail}
     </div>
   );
   const shutdownGuard = sdGuardShown(sdShow, sbCtx) ? (
-    <div className="cjm-sdg" data-rf-layout={layout}>
+    <div className="cjm-sdg" data-rf-layout={presented}>
       <ShutdownGuard guardOpen={sdOpen} onGuardToggle={() => setSdOpen((o) => sdCoverTap(o, sdDeps))} on={props.running} onToggle={() => setSdOpen((o) => sdLever(o, props.running, sdDeps).open)} reduceMotion={reduced} />
     </div>
   ) : null;
   const bankB = row ? (!hero ? (
-    <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={layout} data-rf-reduce-motion={reduced || undefined} data-cjm-row>
+    <div ref={bankBRef} className="cjm-bank-b" data-rf-layout={presented} data-rf-reduce-motion={reduced || undefined} data-cjm-row>
       {/* EMER STOP: Meghan's wide pull (76 px, caption 'EMER STOP' in full) at every size; the narrow one reads 'EMER' */}
       <div className="cjm-bank-es" role="group" aria-label="Engine start and stop">
-        {cold.render.pullQs(layout === 'board' ? 'wide' : 'narrow', 'wide')}
+        {cold.render.pullQs(presented === 'board' ? 'wide' : 'narrow', 'wide')}
       </div>
       {sbLamp}
       {shelf}
@@ -444,9 +462,11 @@ export function CarrierJetMount(props: PackHudProps) {
     // hero v3.1: every switch is on the rail; no SHELF key and no shelf pop-up (NOTES.md)
     null
   )) : null;
-  // Instrument power (Wilson, Oct 19 round 2; hero cold start on MATRIX): BATT off = dark glass; BATT on = backlight +
-  // fixed legends; data per group: AVION (AOA, LOAD, ACCEL, WING SWEEP) · INS = NAV, one switch in Dan's list
-  // (inertialNav: VDI, FLIGHT, map, compass) · RADAR MX / WX (the radar layer). RPM reads 0 until an engine spools.
+  // Instrument power (hero cold start on MATRIX): BATT off = dark glass, lamps and switch tips unlit.
+  // BATT on = backlight and the fixed legends only. Each screen waits for its own switch:
+  // NAV (inertialNav) = the map · RADAR = the scope and weather · INS = speed and the instrument faces
+  // (FLIGHT, VDI, AOA, ACCEL, WING SWEEP) · AVION = the compass and the GPS lamps.
+  // RPM reads 0 until an engine spools.
   const pwr = hero && coldOn && board2;
   const sysOn = cold.sys.on as Record<string, boolean | undefined>;
   const engDark = cold.sys.engines.L === 'off' && cold.sys.engines.R === 'off';
@@ -463,7 +483,7 @@ export function CarrierJetMount(props: PackHudProps) {
       className="rf-pack-fit cjm"
       data-pack={ID.id}
       data-box={driveWindow ? 'drive' : undefined}
-      data-rf-layout={layout}
+      data-rf-layout={presented}
       data-cjm-v2={v2 || undefined}
       data-cj-mapfirst={mapFirst ? 'drive' : undefined}
       style={{ '--pf-s': fit.s, '--pf-w': `${fit.w}px`, '--pf-h': `${fit.h}px` } as CSSProperties}
@@ -475,11 +495,11 @@ export function CarrierJetMount(props: PackHudProps) {
             <div className="cjm-fill">
               <CarrierJetHud {...props} {...hudRpm} compact={compact} driveWindow={false} abZone={abZone} heading={h} headingStale={headingStale} bank={vdiBank} />
             </div>
-            {v2 && <CjV2Layer layout={layout} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} hero={hero ? (topbar ? 'ann+rail' : 'rail') : ''} dark={!!(hero && coldOn && !cold.sys.on.batt)} abLamp={hero && topbar ? { lit: !!railState.on.batt && (ab.lamp || lampTest), armed: ab.lamp, launch: launch.lit } : null} lampTest={hero && topbar ? { batt: !!railState.on.batt, held: testHeld && !!railState.on.batt, on: lampTest && !!railState.on.batt, onHold: setTestHeld } : null} />}
+            {v2 && <CjV2Layer layout={presented} park={park} demo={props.demo} motion={props.motion} heading={h} headingStale={headingStale} unit={props.unit} hero={hero ? (topbar ? 'ann+rail' : 'rail') : ''} dark={!!(hero && coldOn && !cold.sys.on.batt)} abLamp={hero && topbar ? { lit: !!railState.on.batt && (ab.lamp || lampTest), armed: ab.lamp, launch: launch.lit } : null} lampTest={hero && topbar ? { batt: !!railState.on.batt, held: testHeld && !!railState.on.batt, on: lampTest && !!railState.on.batt, onHold: setTestHeld } : null} />}
           </>
         )}
       </CjHeadingEase>
-      {!hero && spds && coldOn && cold.render.shelf(layout === 'board' ? 'wide' : 'narrow')}
+      {!hero && spds && coldOn && cold.render.shelf(presented === 'board' ? 'wide' : 'narrow')}
       {coldOn && <p className="cjcs-say" role="status" aria-live="polite">{cold.say}</p>}
       <p className="rf-sr-only cjm-launch-say" role="status" aria-live="polite">{launch.say}</p>
       {bankB && vp.dock && createPortal(bankB, vp.dock)}

@@ -34,7 +34,7 @@ import { getWxObs, setWxObs, subscribeWxObs, wxValueAt } from '../carrier-jet/wx
 import { startWxPoller } from '../carrier-jet/weather/poller';
 import { storageKey } from '../../lib/storageKey';
 import { CjWxReadout } from './CjWxReadout';
-import { getWxKey, setWxKey, subscribeWxKey, wxShown } from '../carrier-jet/wxRadar';
+import { getWxKey, getWxRadar, setWxKey, subscribeWxKey, subscribeWxRadar } from '../carrier-jet/wxRadar';
 import { wxCreditRows } from '../carrier-jet/wxCredits';
 import { CONFIG_HEADER_CELLS, configCellHeader, type ConfigHeaderCell } from '../carrier-jet/configHeaders';
 import { getPreferTaps, setPreferTaps, subscribePreferTaps } from '../../lib/preferTaps.ts';
@@ -246,14 +246,22 @@ function AccelCell({ box, demo, reduced, header }: { box: Box; demo: boolean; re
  * it has one (GPS ACQ / DEMO / NO TILES), else NO RETURNS. No heading corner: COMPASS owns the heading (sheet panel 7;
  * the TR digits read "040" beside COMPASS "047 M"), the scope keeps its bug.
  */
-function RadarScope({ view, reduced, status, label }: { view: MapView; reduced: boolean; status: string; label?: string }) {
+function RadarScope({ view, reduced, status, label, weather, noFeed }: { view: MapView; reduced: boolean; status: string; label?: string; weather?: boolean; noFeed?: boolean }) {
   return (
-    <div className="cjv2-scope" data-motion={reduced ? 'static' : 'live'} {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}>
+    <div className="cjv2-scope" data-motion={reduced ? 'static' : 'live'} data-wx={weather || undefined} {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}>
       <svg viewBox="-50 -50 100 100" aria-hidden="true">
         <circle r="46" className="cjv2-ring-edge" />
         {rangeRings(view.range).map((r) => (
           <circle key={r.mi} r={46 * r.r} className="cjv2-ring" />
         ))}
+        {weather && (
+          <g className="cjv2-wx">
+            <ellipse cx="-16" cy="-14" rx="16" ry="9" fill="#3ab8d0" fillOpacity="0.55" />
+            <ellipse cx="10" cy="-24" rx="11" ry="7" fill="#66dcec" fillOpacity="0.5" />
+            <ellipse cx="18" cy="4" rx="13" ry="8" fill="#ffb000" fillOpacity="0.5" />
+            <ellipse cx="-8" cy="14" rx="9" ry="6" fill="#ff6a2a" fillOpacity="0.5" />
+          </g>
+        )}
       </svg>
       {/* sweep: its own HTML-level svg (same viewBox + inset), rotated as an element about its CSS box centre = the
           viewBox centre under meet. No CSS transform on SVG children (transform-box: view-box put the pivot at a
@@ -270,11 +278,12 @@ function RadarScope({ view, reduced, status, label }: { view: MapView; reduced: 
       <span className="cjv2-corner cjv2-tl" data-cjmap-ob>{view.mode === 'map' ? 'MAP' : 'TERR'}</span>
       <span className="cjv2-corner cjv2-bl" data-cjmap-ob>{view.range} MI</span>
       <span className="cjv2-corner cjv2-br" data-cjmap-ob>{status || 'NO RETURNS'}</span>
+      {noFeed && <span className="cjv2-nofeed">NO FEED</span>}
     </div>
   );
 }
 type LiveMapCtx = { demo: boolean; park: boolean; hdgRef: 'M' | 'T' };
-function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar, header }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx; wx?: WxView | null; wxRadar?: boolean; header?: string }) {
+function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar, noFeed, header }: { box: Box; view: MapView; heading: number | undefined; headingStale: boolean; reduced: boolean; live: LiveMapCtx; wx?: WxView | null; wxRadar?: boolean; noFeed?: boolean; header?: string }) {
   const [info, setInfo] = useState(false);
   const credits = wxCreditRows(wx?.source ?? null, !!wxRadar);
   return (
@@ -287,8 +296,8 @@ function MapCell({ box, view, heading, headingStale, reduced, live, wx, wxRadar,
         {/* RADAR (Wilson, Oct 16 "Radar overlay should stack atop maps"): the scope is a transparent overlay ON the
             live map, inside CjLiveMap between the dimmed map and the street labels. Until
             the map chunk loads, or with no map (no fix / offline / Park without GPS), the scope stands alone on the CRT. */}
-        <Suspense fallback={view.radar ? <RadarScope view={view} reduced={reduced} status="" label={cjRadarScopeAria({ range: view.range, mode: view.mode }, '', false)} /> : null}>
-          <CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} wxRadar={!!wxRadar} radar={view.radar ? { range: view.range, mode: view.mode, scope: (st) => <RadarScope view={view} reduced={reduced} status={st} /> } : undefined} />
+        <Suspense fallback={view.radar ? <RadarScope view={view} reduced={reduced} status="" weather={!!wxRadar} noFeed={!!noFeed} label={cjRadarScopeAria({ range: view.range, mode: view.mode }, '', false)} /> : null}>
+          <CjLiveMap view={view} heading={heading} headingStale={headingStale} reduced={reduced} demo={live.demo} park={live.park} hdgRef={live.hdgRef} wxRadar={!!wxRadar} noFeed={!!noFeed} radar={view.radar ? { range: view.range, mode: view.mode, scope: (st) => <RadarScope view={view} reduced={reduced} status={st} weather={!!wxRadar} noFeed={!!noFeed} /> } : undefined} />
         </Suspense>
         <button type="button" className="cjv2-info" aria-expanded={info} aria-label="Map credit" data-covered={(info && credits.length > 0) || undefined} onClick={() => setInfo((v) => !v)}>i</button>
         {info && !credits.length && (
@@ -393,7 +402,10 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
   const view = useSyncExternalStore(subscribeMapView, getMapView, getMapView);
   // WX key = show / hide weather only (never the RADAR switch); weather draws while RADAR is MX or WX and the key is on
   const wxKeyOn = useSyncExternalStore(subscribeWxKey, getWxKey, getWxKey);
-  const wxRadar = wxShown(view.radar, wxKeyOn);
+  const leverWx = useSyncExternalStore(subscribeWxRadar, getWxRadar, getWxRadar);
+  // WX (lever) always paints weather. MX paints it too unless the WX key is off. MX has no aircraft feed.
+  const wxRadar = view.radar && (leverWx || wxKeyOn);
+  const noFeed = view.radar && !leverWx;
   const prefs = useSyncExternalStore(subscribeCjPrefs, getCjPrefs, getCjPrefs);
   const cfg = useSyncExternalStore(subscribeCjConfig, getCjConfig, getCjConfig);
   const shell = useSyncExternalStore(onPackShellState, getPackShellState, getPackShellState);
@@ -566,7 +578,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
       {cells && (
         <>
           <AccelCell box={cells.accel} demo={demo} reduced={reduced} header={hdr.accel} />
-          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} wx={wx} wxRadar={edge ? wxRadar : false} header={hdr.map} />
+          <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} wx={wx} wxRadar={edge ? wxRadar : false} noFeed={edge ? noFeed : false} header={hdr.map} />
           <div className="cjv2-hdgcell" style={boxStyle(cells.compass)}><Suspense fallback={null}><CjHeadingReadout heading={heading} headingStale={headingStale} hdgRef={prefs.hdgRef} /></Suspense></div>
           {wx && <CjWxReadout box={cells.compass} view={wx} />}
         </>
@@ -636,7 +648,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
                     onPointerUp={() => lampTest.onHold(false)} onPointerCancel={() => lampTest.onHold(false)} onLostPointerCapture={() => lampTest.onHold(false)}
                     onKeyDown={(e) => { if (lampTest.batt && (e.key === ' ' || e.key === 'Enter')) lampTest.onHold(true); }} onKeyUp={() => lampTest.onHold(false)} onBlur={() => lampTest.onHold(false)}
                     onContextMenu={(e) => e.preventDefault()}>
-                    <img src={lampTest.batt ? pushSquareSrc(lampTest.held) : darkSrc('full')} width={44} height={44} alt="" aria-hidden="true" draggable={false} />
+                    <img src={lampTest.batt && lampTest.held ? pushSquareSrc(true) : pushSquareSrc(false)} width={44} height={44} alt="" aria-hidden="true" draggable={false} />
                   </button>
                 </div>
               )}

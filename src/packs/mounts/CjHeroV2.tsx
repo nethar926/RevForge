@@ -219,8 +219,8 @@ function GuardArt({ color, open, pos, lit: lit0, h }: { color: 'red' | 'black' |
   const w = Math.round((h * 460) / 1040);
   const st = { width: w, height: h, marginLeft: -w / 2, marginTop: -h / 2 };
   const img = (src: string, k: string) => <img key={k} className="cjhv-gart cjhv-art" src={src} width={w} height={h} style={st} alt="" aria-hidden="true" draggable={false} decoding="async" />;
-  // round 4: a closed gunmetal / yellow guard is its cover over the hinge frame (Wilson: no bare grey blocks)
-  if (!open && color !== 'red') return <>{img(guardSrc(color, true, 'dn'), 'f')}{img(guardSrc(color, false), 'c')}</>;
+  // A closed cover is only the cover. The open hinge frame must not paint behind it.
+  if (!open && color !== 'red') return img(guardSrc(color, false), 'c');
   return img(guardSrc(color, open, pos, lit), 'g');
 }
 /** Guard art height that draws its toggle + hex at the plain toggle's size (same sheet scale: 1040 / 780 x 68). */
@@ -560,7 +560,7 @@ export function HeroRail(p: HeroRailProps) {
   const acqAria = seq === 'off' ? 'GPS acquire, off' : seq === 'green' ? 'GPS acquired' : 'GPS acquiring';
   const gps = (
     <Mod kind="gpsnav" w={gpsW} label="GPS and nav">
-      <span className="cjhv-lg cjhv-rname" aria-hidden="true" style={lgAt(lx - 18, narrow ? HV_RAIL_773.left.nameY : G.nameY, 36)}>GPS</span>
+      <span className="cjhv-lg cjhv-rname cjhv-gps-name" aria-hidden="true" style={lgAt(8, narrow ? HV_RAIL_773.left.nameY : G.nameY, 44)}>GPS</span>
       {gpsLamp('acq', 'ACQ', seq === 'yellow' ? 'amber' : 'green', acqOn, lx, narrow ? 46 : 48, lr, seq === 'pulse', acqAria)}
       {gpsLamp('caut', 'CAUT', 'amber', !!p.gpsCaution && acqOn, lx, narrow ? 92 : 90, lr, false, p.gpsCaution && acqOn ? 'GPS caution, lit' : 'GPS caution, off')}
       {narrow ? <Col {...sw('nav')} c={HV_RAIL_773.left.nav} g={HV_RAIL_773.left} k={HV_RAIL_773.tgK} /> : <Col {...sw('nav')} c={G.col.nav!} g={G} />}

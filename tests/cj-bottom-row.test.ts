@@ -44,7 +44,7 @@ test('773 window: all six parts fit one row (dock on the board width, AFTERBURNE
 });
 
 test('EMER STOP reads in full at every size: the row always takes the wide pull (76 px)', () => {
-  assert.match(mount, /cold\.render\.pullQs\(layout === 'board' \? 'wide' : 'narrow', 'wide'\)/);
+  assert.match(mount, /cold\.render\.pullQs\((?:layout|presented) === 'board' \? 'wide' : 'narrow', 'wide'\)/);
   const cs = src('packs/mounts/CjColdStart.tsx');
   assert.match(cs, /const pullQs = \(size: 'wide' \| 'narrow', pullSize: 'wide' \| 'narrow' = size\) =>/);
   assert.match(cs, /<PullHandle [^>]*size=\{pullSize\}/);

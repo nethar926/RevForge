@@ -7,6 +7,7 @@
 @import "./skins/gradient/gradient.css";
 
 :root {
+  color-scheme: dark;
   --bg: #07090d;
   --bg-elev: #10141c;
   --bg-card: #151b26;
@@ -26,6 +27,7 @@
 }
 
 html[data-theme="day"] {
+  color-scheme: light;
   --bg: #f2f5fa;
   --bg-elev: #ffffff;
   --bg-card: #ffffff;
@@ -81,6 +83,12 @@ input,
 textarea {
   font: inherit;
   color: inherit;
+}
+/* iOS Safari paints the native button face (white) unless appearance is reset. Every skin. */
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: transparent;
 }
 
 .app-shell {
