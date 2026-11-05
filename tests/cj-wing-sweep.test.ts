@@ -59,10 +59,10 @@ test('marker is 32 px, 24 px on a short map cell', () => {
   assert.equal(markerPx(0), 32);
 });
 
-test('the scale is a wide arc on the centreline: 75 on the left, 20/45/68 on the right, jet at 70% of the face', () => {
+test('the scale is a wide arc on the centreline: 75 on the left, 20/45/68 on the right, jet at 67.7% of the face', () => {
   const frame = gaugeFrame(249 / 171, false);
   assert.ok(Math.abs(frame.x + frame.w / 2) < 0.01);
-  assert.ok(Math.abs(JET_H / frame.h - 0.7) < 0.001);
+  assert.ok(Math.abs(JET_H / frame.h - 0.677) < 0.001);
   assert.equal(ARC_LEFT.a0, 180 - ARC_RIGHT.a1);
   assert.equal(ARC_LEFT.a1, 180 - ARC_RIGHT.a0);
   assert.ok(ARC_R > 80);

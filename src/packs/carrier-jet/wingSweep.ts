@@ -56,12 +56,13 @@ const PAD_TOP = 8;
 
 /**
  * Gauge viewBox. x = 0 is the centre of the box, so the jet centreline is the face centre.
- * On a normal cell the jet is 70% of the face height and the degree readout sits in the well under the tail.
- * On a short cell the readout sits beside the jet, so the well is only deep enough for the arc labels.
+ * On a normal cell the jet is 67.7% of the face height. That is the scale that leaves about 6px
+ * under the tail tips for the degree readout at 1024. On a short cell the readout sits beside or
+ * under the jet, so the well is only deep enough for the arc labels.
  * `aspect` is the art box width / height. The box is never narrower than the arc labels.
  */
 export function gaugeFrame(aspect: number, short: boolean): { x: number; y: number; w: number; h: number } {
-  const h = short ? JET_H + PAD_TOP + 18 : JET_H / 0.7;
+  const h = short ? JET_H + PAD_TOP + 18 : JET_H / 0.677;
   const y = -PAD_TOP;
   const a = aspect > 0.25 ? aspect : 1;
   const w = Math.max(h * a, 230);

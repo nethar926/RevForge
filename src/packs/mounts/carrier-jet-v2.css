@@ -514,8 +514,8 @@
 .cjm:has(.cjv2-wsw) .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep { visibility: hidden; }
 .cjv2-wsw { --cjw-arc: #7ef7a1; --cjw-cap: #7ef7a1; --cjw-num: #9effb9; pointer-events: none; }
 .cjv2 > .cjv2-wsw { pointer-events: none; }
-/* The art fills the glass. x = 0 in the viewBox is the face centre, and the jet is ~70% of that height.
-   The degree readout is centred under the jet, in the well below the tail. */
+/* The art fills the glass. x = 0 in the viewBox is the face centre, and the jet is 67.7% of that height
+   so the degree digits clear the tail tips by about 6px at 1024. The readout stays centred under the jet. */
 .cjv2-wsw-face { position: absolute; inset: 0; min-height: 0; container-type: size; }
 .cjv2-wsw .cjv2-wsw-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .cjv2-wsw-read { position: absolute; left: 50%; top: 79%; z-index: 1; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; line-height: 1; }
