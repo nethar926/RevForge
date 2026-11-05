@@ -508,3 +508,53 @@
    OAT level, so the backing stays dark: >= 4.5:1 lit, >= 3:1 dimmed (tests/cj-wx-radar-hold.test.ts, shots). */
 .cjv2-hsd > .cjwx-rage { right: 60px; color: #8dffad; opacity: 1; z-index: 1; }
 .cjv2-hsd > .cjwx-rage[data-dim] > .cjwx-rage-t { opacity: var(--cjwx-dim, 0.62); }
+
+/* Wilson wing sweep (pivot A). The skin planform + tape stay in the cell for the anchor and the
+   live angle, and are not drawn once this face is mounted. The CRT glass is the host cell. */
+.cjm:has(.cjv2-wsw) .cj[data-variant='carrier-jet']:is([data-layout='reflow'], [data-layout='full']) .cj-a-sweep { visibility: hidden; }
+.cjv2-wsw { --cjw-arc: #7ef7a1; --cjw-cap: #7ef7a1; --cjw-num: #9effb9; pointer-events: none; }
+.cjv2 > .cjv2-wsw { pointer-events: none; }
+/* The art fills the glass. x = 0 in the viewBox is the face centre, and the jet is ~70% of that height.
+   The degree readout is centred under the jet, in the well below the tail. */
+.cjv2-wsw-face { position: absolute; inset: 0; min-height: 0; container-type: size; }
+.cjv2-wsw .cjv2-wsw-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cjv2-wsw-read { position: absolute; left: 50%; top: 79%; z-index: 1; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.cjv2-wsw-num { font-family: 'VT323', ui-monospace, monospace; font-weight: 400; font-size: clamp(18px, 12cqh, 44px); line-height: 0.85; color: var(--cjw-num); text-shadow: 0 0 10px rgb(126 247 161 / 0.45); }
+.cjv2-wsw-num[data-over] { color: #ffb54a; text-shadow: 0 0 10px rgb(255 181 74 / 0.4); }
+.cjv2-wsw-cap { margin-top: 1px; font-size: 11px; line-height: 13px; letter-spacing: 0.14em; font-weight: 700; color: var(--cjw-cap); white-space: nowrap; }
+.cjv2-wsw-park { position: absolute; top: 3px; left: 50%; transform: translateX(-50%); z-index: 1; padding: 1px 8px; border-radius: 3px; background: #ffb54a; color: #1a0d00; font-size: 11px; line-height: 13px; letter-spacing: 0.04em; font-weight: 800; white-space: nowrap; }
+/* Parked: the art starts under the badge so the nose stays clear of it. */
+.cjv2-wsw[data-over] .cjv2-wsw-art { top: 18px; height: calc(100% - 18px); }
+.cjv2-wsw .cjw-body { fill: #0b2615; stroke: #7ef7a1; stroke-width: 1.3; stroke-linejoin: round; }
+.cjv2-wsw .cjw-wing { fill: #1f6a3a; stroke: #c4ffd4; stroke-width: 1.2; stroke-linejoin: round; }
+.cjv2-wsw .cjw-tail { fill: #174f2c; stroke: #7ef7a1; stroke-width: 1.3; stroke-linejoin: round; }
+.cjv2-wsw .cjw-canopy { fill: #03100a; stroke: #7ef7a1; stroke-width: 0.8; stroke-linejoin: round; }
+.cjv2-wsw .cjw-ghost { fill: none; stroke: #7ef7a1; stroke-opacity: 0.4; stroke-width: 0.9; stroke-dasharray: 2.2 1.5; stroke-linejoin: round; }
+.cjv2-wsw-arc { fill: none; stroke: var(--cjw-arc); stroke-width: 1.35; }
+.cjv2-wsw-tick { stroke: var(--cjw-arc); stroke-width: 1.25; }
+/* 75 stays the backlight green until the jet is parked, then the tick and the numeral go amber. */
+.cjv2-wsw-tick75 { stroke: #4ea86a; }
+.cjv2-wsw-tick75[data-over] { stroke: #ffb54a; stroke-width: 1.6; }
+.cjv2-wsw-lab { fill: var(--cjw-arc); font-family: 'B612', system-ui, sans-serif; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+.cjv2-wsw-lab75 { fill: #4ea86a; }
+.cjv2-wsw-lab75[data-over] { fill: #ffb54a; }
+/* A short wide cell (1256) puts the readout in the top-right, clear of the arc. */
+@container (max-height: 168px) and (min-width: 260px) {
+  .cjv2-wsw .cjv2-wsw-art { right: 108px; width: auto; overflow: hidden; }
+  .cjv2-wsw-read { left: auto; right: 4px; top: 2px; width: 100px; transform: none; align-items: flex-end; }
+  .cjv2-wsw-num { font-size: 22px; }
+  .cjv2-wsw-cap { letter-spacing: 0.04em; text-align: right; }
+  .cjv2-wsw-park { left: 4px; transform: none; }
+}
+/* 773 is too narrow for a side column: the readout sits under the jet, still at least 11px. */
+@container (max-height: 150px) and (max-width: 259px) {
+  .cjv2-wsw .cjv2-wsw-art { top: 0; right: 0; bottom: auto; left: 0; width: 100%; height: calc(100% - 32px); overflow: hidden; }
+  .cjv2-wsw[data-over] .cjv2-wsw-art { top: 16px; height: calc(100% - 48px); }
+  .cjv2-wsw-read { left: 50%; right: auto; top: auto; bottom: 1px; width: auto; transform: translateX(-50%); align-items: center; }
+  .cjv2-wsw-num { font-size: 18px; }
+  .cjv2-wsw-cap { letter-spacing: 0.08em; text-align: center; }
+}
+/* Map own-ship: one solid #e2ffe8, dark union outline. A stale fix dims it to amber. Wings use the gauge's sweep. */
+.cjv2-marker-out { fill: #05080a; stroke: #05080a; stroke-width: 14.1; stroke-linejoin: round; }
+.cjv2-marker-in { fill: #e2ffe8; }
+.cjv2-marker[data-stale] .cjv2-marker-in { fill: #ffb54a; }

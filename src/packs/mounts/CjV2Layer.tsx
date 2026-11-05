@@ -38,6 +38,7 @@ import { getWxKey, getWxRadar, setWxKey, subscribeWxKey, subscribeWxRadar } from
 import { wxCreditRows } from '../carrier-jet/wxCredits';
 import { CONFIG_HEADER_CELLS, configCellHeader, type ConfigHeaderCell } from '../carrier-jet/configHeaders';
 import { getPreferTaps, setPreferTaps, subscribePreferTaps } from '../../lib/preferTaps.ts';
+import { WingSweepGauge } from '../carrier-jet/WingSweepGauge';
 // live map + compass legend: a lazy chunk (CjLiveMap.tsx, Meghan's style + WMM2025); maplibre-gl is a further lazy chunk
 const CjLiveMap = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjLiveMap })));
 const CjHeadingReadout = lazy(() => import('./CjLiveMap').then((m) => ({ default: m.CjHeadingReadout })));
@@ -578,6 +579,7 @@ export function CjV2Layer({ layout, park, demo, motion, heading, headingStale, h
       {cells && (
         <>
           <AccelCell box={cells.accel} demo={demo} reduced={reduced} header={hdr.accel} />
+          <WingSweepGauge style={boxStyle(cells.sweep)} />
           <MapCell box={cells.map} view={view} heading={heading} headingStale={headingStale} reduced={reduced} live={{ demo, park, hdgRef: prefs.hdgRef }} wx={wx} wxRadar={edge ? wxRadar : false} noFeed={edge ? noFeed : false} header={hdr.map} />
           <div className="cjv2-hdgcell" style={boxStyle(cells.compass)}><Suspense fallback={null}><CjHeadingReadout heading={heading} headingStale={headingStale} hdgRef={prefs.hdgRef} /></Suspense></div>
           {wx && <CjWxReadout box={cells.compass} view={wx} />}
